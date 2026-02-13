@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout, StaffLayout, UserLayout } from './layout'
 import { Dashboard } from './admin-module/dashboard'
+import { LandingPage } from './landing-page'
 
 function PagePlaceholder({ title }: { title: string }) {
   return (
@@ -14,7 +15,8 @@ function PagePlaceholder({ title }: { title: string }) {
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+      {/* Landing Page - Public */}
+      <Route path="/" element={<LandingPage />} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLayout />}>
