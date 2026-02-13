@@ -22,12 +22,12 @@ export type UserRole = 'admin' | 'staff' | 'user'
 
 // Admin navigation items
 export const adminNavItems: NavItemType[] = [
-  { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'Reusable Components', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
-  { label: 'Products', path: '/admin/products', icon: Package },
-  { label: 'Market', path: '/admin/market', icon: MapPinHouse },
-  { label: 'Predictions', path: '/admin/predictions', icon: BarChart3 },
-  { label: 'Dietary Tags', path: '/admin/dietary-tags', icon: Leaf },
+  { label: 'Blotter', path: '/admin/products', icon: Package },
+  { label: 'Transactions', path: '/admin/market', icon: MapPinHouse },
+  { label: 'Certificate Template', path: '/admin/predictions', icon: BarChart3 },
+  { label: 'Organization Chart', path: '/admin/dietary-tags', icon: Leaf },
   { label: 'Archive', path: '/admin/archive-products', icon: Archive },
   { label: 'Reports', path: '/admin/reports', icon: FileText },
   { label: 'Users', path: '/admin/users', icon: Users },

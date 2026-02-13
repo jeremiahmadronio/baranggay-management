@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { MobileNav } from './MobileNav'
 import type { UserRole } from './Nav-Items'
+import { getNavItemsByRole } from './Nav-Items'
 import { Hexagon, ChevronDown } from 'lucide-react'
 
 interface LayoutProps {
@@ -15,8 +16,10 @@ export function Layout({ userRole, userName }: LayoutProps) {
   const [isMobile, setIsMobile] = useState(false)
   const location = useLocation()
   
-  // Get current page title from path
-  const pageTitle = location.pathname.split('/').pop()?.replace(/-/g, ' ') || 'Dashboard'
+  // Get current page title from nav items based on current path
+  const navItems = getNavItemsByRole(userRole)
+  const currentNavItem = navItems.find(item => item.path === location.pathname)
+  const pageTitle = currentNavItem?.label || location.pathname.split('/').pop()?.replace(/-/g, ' ') || 'Dashboard'
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)

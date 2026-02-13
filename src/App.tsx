@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout, StaffLayout, UserLayout } from './layout'
+import { Dashboard } from './admin-module/dashboard'
 
 function PagePlaceholder({ title }: { title: string }) {
   return (
@@ -18,7 +19,7 @@ export function App() {
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="Admin Dashboard" />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="analytics" element={<PagePlaceholder title="Analytics" />} />
         <Route path="products" element={<PagePlaceholder title="Products" />} />
         <Route path="market" element={<PagePlaceholder title="Market" />} />
