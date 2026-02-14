@@ -123,14 +123,14 @@ export const Services = () => {
 
         {/* Services Grid - Clean Card Design */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 lg:gap-8">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait">
             {displayedServices.map((service, index) => (
               <motion.div
                 key={service.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4, delay: index * 0.08 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35, delay: index * 0.08 }}
                 className="group"
               >
                 <div className="bg-white rounded-2xl overflow-hidden h-full flex flex-col shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100">
@@ -195,20 +195,40 @@ export const Services = () => {
           </AnimatePresence>
         </div>
 
-        {/* Load More Button */}
-        <div className="mt-10 text-center">
-          <button
+        {/* Load More Button with Animation */}
+        <div className="mt-10 text-center" style={{ minHeight: '80px' }}>
+          <motion.button
             onClick={() => setShowAll(!showAll)}
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg font-semibold bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-sm"
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
-            {showAll ? 'Ipakita ang Mas Kaunti' : 'Tingnan Lahat ng Serbisyo'}
+            <motion.span
+              key={showAll ? 'less' : 'all'}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+            >
+              {showAll ? 'Ipakita ang Mas Kaunti' : 'Tingnan Lahat ng Serbisyo'}
+            </motion.span>
             <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showAll ? 'rotate-180' : ''}`} />
-          </button>
-          {!showAll && (
-            <p className="mt-3 text-sm text-gray-500">
-              +{services.length - 6} pang serbisyo
-            </p>
-          )}
+          </motion.button>
+          <AnimatePresence>
+            {!showAll && (
+              <motion.p
+                key="extra"
+                className="mt-3 text-sm text-gray-500"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+              >
+                +{services.length - 6} pang serbisyo
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* CTA Section */}
