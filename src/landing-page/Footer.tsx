@@ -1,4 +1,5 @@
-import { Facebook, Phone, Mail, MapPin, Heart } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Facebook, Phone, Mail, MapPin, Heart, Calendar } from 'lucide-react';
 
 interface FooterProps {
   onNavigate?: (section: string) => void;
@@ -12,6 +13,7 @@ export const Footer = ({ onNavigate }: FooterProps) => {
     { label: 'Tungkol sa Amin', href: 'about' },
     { label: 'Mga Serbisyo', href: 'services' },
     { label: 'Mga Opisyales', href: 'officials' },
+    { label: 'Social Media', href: 'social' },
     { label: 'Contact', href: 'contact' },
   ];
 
@@ -69,6 +71,15 @@ export const Footer = ({ onNavigate }: FooterProps) => {
                   </button>
                 </li>
               ))}
+              <li>
+                <Link
+                  to="/events"
+                  className="text-gray-400 hover:text-white transition text-sm flex items-center gap-2"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Events Calendar
+                </Link>
+              </li>
             </ul>
           </div>
 

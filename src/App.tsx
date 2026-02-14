@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout, StaffLayout, UserLayout } from './layout'
 import { Dashboard } from './admin-module/dashboard'
 import { LandingPage } from './landing-page'
+import { EventsCalendar } from './pages/EventsCalendar'
 
 function PagePlaceholder({ title }: { title: string }) {
   return (
@@ -17,6 +18,9 @@ export function App() {
     <Routes>
       {/* Landing Page - Public */}
       <Route path="/" element={<LandingPage />} />
+      
+      {/* Events Calendar - Public */}
+      <Route path="/events" element={<EventsCalendar />} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLayout />}>

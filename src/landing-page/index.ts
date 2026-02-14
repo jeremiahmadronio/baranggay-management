@@ -4,5 +4,6 @@ export { Hero } from './Hero';
 export { About } from './About';
 export { Services } from './Services';
 export { Officials } from './Officials';
+export { SocialMedia } from './SocialMedia';
 export { Contact } from './Contact';
 export { Footer } from './Footer';

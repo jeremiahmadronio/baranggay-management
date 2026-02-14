@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Phone, Mail, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Menu, X, Phone, Mail, Clock, Calendar } from 'lucide-react';
 
 interface NavbarProps {
   onNavigate?: (section: string) => void;
@@ -89,6 +90,14 @@ export const Navbar = ({ onNavigate }: NavbarProps) => {
                   <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-white group-hover:w-3/4 transition-all duration-300" />
                 </button>
               ))}
+              <Link
+                to="/events"
+                className="px-4 py-2 text-base font-medium text-white relative group flex items-center gap-1"
+              >
+                <Calendar className="w-4 h-4" />
+                Events
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-white group-hover:w-3/4 transition-all duration-300" />
+              </Link>
             </div>
 
             {/* CTA Button */}
@@ -97,7 +106,7 @@ export const Navbar = ({ onNavigate }: NavbarProps) => {
                 onClick={() => handleNavClick('services')}
                 className="bg-white hover:bg-blue-50 text-blue-800 px-6 py-3 rounded-lg text-sm font-bold transition-colors shadow-md"
               >
-                Kumuha ng Serbisyo
+               Login as a member
               </button>
             </div>
 
@@ -124,6 +133,13 @@ export const Navbar = ({ onNavigate }: NavbarProps) => {
                   {link.label}
                 </button>
               ))}
+              <Link
+                to="/events"
+                className="flex items-center gap-2 w-full px-4 py-3 text-left text-white hover:bg-blue-700 rounded transition-colors"
+              >
+                <Calendar className="w-4 h-4" />
+                Events Calendar
+              </Link>
               <button 
                 onClick={() => handleNavClick('services')}
                 className="w-full mt-4 bg-white hover:bg-blue-50 text-blue-800 px-4 py-3 rounded-lg font-bold transition-colors"

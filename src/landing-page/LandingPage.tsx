@@ -4,6 +4,7 @@ import { Hero } from './Hero';
 import { About } from './About';
 import { Services } from './Services';
 import { Officials } from './Officials';
+import { SocialMedia } from './SocialMedia';
 import { Contact } from './Contact';
 import { Footer } from './Footer';
 
@@ -12,6 +13,7 @@ export const LandingPage = () => {
   const aboutRef = useRef<HTMLDivElement>(null);
   const servicesRef = useRef<HTMLDivElement>(null);
   const officialsRef = useRef<HTMLDivElement>(null);
+  const socialRef = useRef<HTMLDivElement>(null);
   const contactRef = useRef<HTMLDivElement>(null);
 
   const scrollToSection = (section: string) => {
@@ -20,6 +22,7 @@ export const LandingPage = () => {
       about: aboutRef,
       services: servicesRef,
       officials: officialsRef,
+      social: socialRef,
       contact: contactRef,
     };
 
@@ -54,6 +57,10 @@ export const LandingPage = () => {
       
       <div ref={officialsRef}>
         <Officials />
+      </div>
+
+      <div ref={socialRef}>
+        <SocialMedia />
       </div>
       
       <div ref={contactRef}>

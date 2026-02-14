@@ -1,135 +1,253 @@
-import { FileText, Shield, Heart, Home, Users, Briefcase, ArrowRight, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ArrowRight, 
+  ChevronDown,
+  Clock,
+  FileText,
+  Home,
+  Briefcase,
+  Shield,
+  Heart,
+  Users,
+  Scale,
+  Baby,
+  Building2,
+  CheckCircle2
+} from 'lucide-react';
 
 export const Services = () => {
+  const [showAll, setShowAll] = useState(false);
+
   const services = [
     {
       icon: FileText,
       title: 'Barangay Clearance',
-      description: 'Pagkuha ng clearance para sa employment, business, at iba pang legal na dokumento.',
-      features: ['Same-day processing', 'Valid ID required', 'Php 50.00 fee'],
-      color: 'blue'
+      description: 'Official clearance document for employment, business registration, and other legal purposes.',
+      image: '/clearance.png',
+      fee: '₱50.00',
+      processingTime: '15-30 mins',
+      requirements: ['Valid ID (Government-issued)', 'Cedula/Community Tax Certificate', '2x2 ID Picture (2 pcs)'],
     },
     {
       icon: Home,
       title: 'Certificate of Residency',
-      description: 'Patunay ng paninirahan sa Barangay Ugong para sa iba\'t ibang transaksyon.',
-      features: ['Proof of address needed', '1-2 days processing', 'Php 30.00 fee'],
-      color: 'emerald'
+      description: 'Proof of residence in Barangay Ugong for various transactions and requirements.',
+      image: '/residency.png',
+      fee: '₱30.00',
+      processingTime: '1-2 days',
+      requirements: ['Valid ID', 'Proof of Billing Address', 'Barangay Clearance'],
     },
     {
       icon: Briefcase,
       title: 'Business Permit',
-      description: 'Pagproseso ng barangay business clearance para sa mga negosyante.',
-      features: ['DTI registration required', 'Annual renewal', 'Fee varies'],
-      color: 'violet'
+      description: 'Barangay business clearance processing for entrepreneurs and business owners.',
+      image: '/busines-permit.jfif',
+      fee: 'Varies',
+      processingTime: '3-5 days',
+      requirements: ['DTI/SEC Registration', 'Barangay Clearance', 'Valid ID ng May-ari', 'Contract of Lease/Land Title'],
     },
     {
       icon: Shield,
       title: 'Barangay Protection Order',
-      description: 'Tulong sa mga biktima ng karahasan sa pamilya o domestic abuse.',
-      features: ['Free service', 'VAWC desk available', 'Confidential'],
-      color: 'rose'
+      description: 'Assistance for victims of domestic violence and family abuse cases.',
+      image: '/barangay-protection.webp',
+      fee: 'FREE',
+      processingTime: 'Immediate',
+      requirements: ['Valid ID (kung mayroon)', 'Incident Report/Salaysay'],
     },
     {
       icon: Heart,
       title: 'Health Services',
-      description: 'Medical assistance, health consultations, at vaccination programs.',
-      features: ['Free consultation', 'Medicine available', 'Regular medical missions'],
-      color: 'amber'
+      description: 'Medical assistance, consultations, and vaccination programs for residents.',
+      image: '/health.png',
+      imagePosition: 'object-center',
+      fee: 'FREE',
+      processingTime: 'Walk-in',
+      requirements: ['Valid ID', 'Barangay Clearance', 'PhilHealth ID (kung mayroon)'],
     },
     {
       icon: Users,
-      title: 'Senior Citizen & PWD',
-      description: 'Registration at serbisyo para sa mga senior citizen at PWD.',
-      features: ['ID processing', 'Benefits assistance', 'Special programs'],
-      color: 'cyan'
-    }
+      title: 'Senior Citizen & PWD ID',
+      description: 'Registration and services for senior citizens and persons with disabilities.',
+      image: '/senior-citizen.jpg',
+      fee: 'FREE',
+      processingTime: '5-7 days',
+      requirements: ['Birth Certificate/Valid ID', '1x1 ID Picture (2 pcs)', 'Medical Certificate (para sa PWD)'],
+    },
+    {
+      icon: Scale,
+      title: 'Lupong Tagapamayapa',
+      description: 'Mediation and dispute resolution services for community conflicts.',
+      image: '/lupong-tagapagpayapa.jpg',
+      imagePosition: 'object-bottom',
+      fee: 'FREE',
+      processingTime: 'By schedule',
+      requirements: ['Valid ID ng Complainant', 'Nakasulat na Reklamo/Complaint'],
+    },
+    {
+      icon: Baby,
+      title: 'Birth Certificate Assistance',
+      description: 'Help with late registration and birth certificate processing.',
+      image: '/birt-cert.png',
+      fee: '₱100.00',
+      processingTime: '2-3 weeks',
+      requirements: ['Certificate of Live Birth (hospital)', 'Valid ID ng Magulang', 'Marriage Certificate (kung kasal)', 'Affidavit of Late Registration'],
+    },
+    {
+      icon: Building2,
+      title: 'Fencing/Building Permit',
+      description: 'Barangay endorsement for construction and building permit applications.',
+      image: '/construction.png',
+      fee: '₱200.00',
+      processingTime: '3-5 days',
+      requirements: ['Land Title/Tax Declaration', 'Building Plan/Blueprint', 'Valid ID ng May-ari', 'Lot Plan'],
+    },
   ];
 
-  const colorClasses: Record<string, { bg: string; text: string; light: string }> = {
-    blue: { bg: 'bg-blue-600', text: 'text-blue-600', light: 'bg-blue-50' },
-    emerald: { bg: 'bg-emerald-600', text: 'text-emerald-600', light: 'bg-emerald-50' },
-    violet: { bg: 'bg-violet-600', text: 'text-violet-600', light: 'bg-violet-50' },
-    rose: { bg: 'bg-rose-600', text: 'text-rose-600', light: 'bg-rose-50' },
-    amber: { bg: 'bg-amber-600', text: 'text-amber-600', light: 'bg-amber-50' },
-    cyan: { bg: 'bg-cyan-600', text: 'text-cyan-600', light: 'bg-cyan-50' },
-  };
+  const displayedServices = showAll ? services : services.slice(0, 6);
 
   return (
-    <section id="services" className="py-20 bg-gray-50">
+    <section id="services" className="pt-10 pb-20 bg-gray-50 scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">
-            Mga Serbisyo
-          </span>
-          <h2 className="mt-2 text-3xl sm:text-4xl font-bold text-gray-900">
+        <div className="max-w-2xl mx-auto text-center mb-10">
+          
+          <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-2 leading-tight">
             Serbisyong Pampubliko
           </h2>
-          <p className="mt-4 text-lg text-gray-600">
-            Alamin ang iba't ibang serbisyo na inaalok ng Barangay Ugong 
-            para sa mga residente at negosyante.
+          <p className="text-gray-600 text-base md:text-lg leading-snug">
+            Mabilis, maaasahan, at abot-kamay na serbisyo para sa lahat ng residente ng Barangay Ugong.
           </p>
         </div>
 
-        {/* Services Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service, index) => {
-            const colors = colorClasses[service.color];
-            return (
-              <div 
-                key={index} 
-                className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition group"
+        {/* Services Grid - Clean Card Design */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 lg:gap-8">
+          <AnimatePresence mode="popLayout">
+            {displayedServices.map((service, index) => (
+              <motion.div
+                key={service.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4, delay: index * 0.08 }}
+                className="group"
               >
-                {/* Icon */}
-                <div className={`w-12 h-12 ${colors.light} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition`}>
-                  <service.icon className={`w-6 h-6 ${colors.text}`} />
+                <div className="bg-white rounded-2xl overflow-hidden h-full flex flex-col shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100">
+                  
+                  {/* Image Section */}
+                  <div className="relative h-40 md:h-44 overflow-hidden">
+                    <img 
+                      src={service.image} 
+                      alt={service.title}
+                      className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${service.imagePosition || 'object-top'}`}
+                    />
+                    {/* Subtle gradient at bottom only for text readability */}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 to-transparent" />
+                    
+                    {/* Icon Badge */}
+                    <div className="absolute top-4 left-4">
+                      <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg">
+                        <service.icon className="w-5 h-5 text-blue-600" />
+                      </div>
+                    </div>
+
+                    {/* Fee Badge */}
+                    <div className="absolute top-4 right-4">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg ${
+                        service.fee === 'FREE' 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-white/90 backdrop-blur-sm text-blue-900'
+                      }`}>
+                        {service.fee}
+                      </span>
+                    </div>
+
+                    {/* Title on Image */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <h3 className="text-base md:text-lg font-bold text-white drop-shadow-md leading-tight">
+                        {service.title}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Content Section */}
+                  <div className="p-4 md:p-5 flex-1 flex flex-col">
+                    <p className="text-gray-700 text-xs md:text-sm leading-relaxed mb-3 flex-1">
+                      {service.description}
+                    </p>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
+                      <div className="flex items-center gap-1.5 text-gray-500 text-xs md:text-sm">
+                        <Clock className="w-4 h-4" />
+                        <span>{service.processingTime}</span>
+                      </div>
+                      <button className="inline-flex items-center gap-1 text-blue-600 font-medium text-xs md:text-sm hover:text-blue-700 transition-colors group/btn">
+                        Alamin pa
+                        <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-
-                {/* Content */}
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{service.title}</h3>
-                <p className="text-gray-600 text-sm mb-4">{service.description}</p>
-
-                {/* Features */}
-                <ul className="space-y-2 mb-4">
-                  {service.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                      <CheckCircle className={`w-4 h-4 ${colors.text}`} />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Link */}
-                <button className={`inline-flex items-center gap-1 text-sm font-medium ${colors.text} hover:gap-2 transition-all`}>
-                  Learn more
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            );
-          })}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
-        {/* CTA */}
-        <div className="mt-16 text-center">
-          <div className="bg-blue-600 rounded-2xl p-8 sm:p-12">
-            <h3 className="text-2xl font-bold text-white mb-4">
-              Kailangan ng Tulong?
-            </h3>
-            <p className="text-blue-100 mb-6 max-w-xl mx-auto">
-              Pumunta sa aming tanggapan o tumawag sa aming hotline para 
-              sa karagdagang impormasyon tungkol sa aming mga serbisyo.
+        {/* Load More Button */}
+        <div className="mt-10 text-center">
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg font-semibold bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-sm"
+          >
+            {showAll ? 'Ipakita ang Mas Kaunti' : 'Tingnan Lahat ng Serbisyo'}
+            <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showAll ? 'rotate-180' : ''}`} />
+          </button>
+          {!showAll && (
+            <p className="mt-3 text-sm text-gray-500">
+              +{services.length - 6} pang serbisyo
             </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition">
-                Visit 3S Center
-              </button>
-              <button className="bg-transparent border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition">
-                Call Hotline
-              </button>
+          )}
+        </div>
+
+        {/* CTA Section */}
+        <div className="mt-16">
+          <div className="bg-blue-900 rounded-2xl overflow-hidden">
+            <div className="grid lg:grid-cols-2">
+              {/* Content */}
+              <div className="p-8 lg:p-12 flex flex-col justify-center">
+                <h3 className="text-2xl lg:text-3xl font-bold text-white mb-4">
+                  Kailangan ng Tulong?
+                </h3>
+                <p className="text-blue-200 mb-8 leading-relaxed">
+                  Bisitahin ang aming 3S Center o tumawag sa aming hotline. 
+                  Bukas kami Lunes hanggang Biyernes, 8:00 AM - 5:00 PM.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button className="inline-flex items-center justify-center gap-2 bg-white text-blue-900 px-6 py-3.5 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
+                    <Building2 className="w-5 h-5" />
+                    Bisitahin ang 3S Center
+                  </button>
+                  <button className="inline-flex items-center justify-center gap-2 bg-blue-800 text-white px-6 py-3.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors border border-blue-700">
+                    Tumawag: (02) 8292-6754
+                  </button>
+                </div>
+              </div>
+              
+              {/* Image */}
+              <div className="hidden lg:block relative h-full min-h-[300px]">
+                <img 
+                  src="/helping.png"
+                  alt="Kailangan ng Tulong"
+                  className="absolute inset-0 w-full h-full object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-transparent" />
+              </div>
             </div>
           </div>
         </div>
+
       </div>
     </section>
   );
