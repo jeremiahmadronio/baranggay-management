@@ -3,6 +3,7 @@ import { AdminLayout, StaffLayout, UserLayout } from './layout'
 import { Dashboard } from './admin-module/dashboard'
 import { LandingPage } from './landing-page'
 import OfficialsPage from './landing-page/OfficialsPage'
+import MapsPage from './landing-page/MapsPage'
 import { EventsCalendar } from './pages/EventsCalendar'
 
 function PagePlaceholder({ title }: { title: string }) {
@@ -20,6 +21,7 @@ export function App() {
       {/* Landing Page - Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/officials" element={<OfficialsPage />} />
+      <Route path="/map" element={<MapsPage />} />
       {/* Events Calendar - Public */}
       <Route path="/events" element={<EventsCalendar />} />
 

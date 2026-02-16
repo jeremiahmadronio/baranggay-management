@@ -20,6 +20,7 @@ export const Navbar = () => {
     { label: 'About Us', href: '/#about' },
     { label: 'Services', href: '/#services' },
     { label: 'Officials', href: '/officials' },
+    { label: 'Map', href: '/map' },
     { label: 'Contact', href: '/#contact' },
   ];
 
