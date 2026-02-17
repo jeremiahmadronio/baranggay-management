@@ -1,5 +1,5 @@
 // Layout components
-export { Layout, AdminLayout, StaffLayout, UserLayout } from './Layout'
+export { Layout, AdminLayout, OfficialLayout } from './Layout'
 export { Sidebar } from './Sidebar'
 export { Header } from './Header'
 export { MobileNav } from './MobileNav'
@@ -7,8 +7,13 @@ export { MobileNav } from './MobileNav'
 // Navigation items
 export {
   adminNavItems,
-  staffNavItems,
-  userNavItems,
+  blotterNavItems,
+  officialNavItems,
+  lupongTagapamayapaNavItems,
+  DcpcNavItems,
+  clearanceNavItems,
+  vawcNavItems,
+  firstTimeJobSeekerNavItems,
   getNavItemsByRole,
   type NavItemType,
   type UserRole,

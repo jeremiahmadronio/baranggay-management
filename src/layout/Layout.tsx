@@ -12,11 +12,9 @@ interface LayoutProps {
 }
 
 export function Layout({ userRole, userName }: LayoutProps) {
-  const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const location = useLocation()
   
-  // Get current page title from nav items based on current path
   const navItems = getNavItemsByRole(userRole)
   const currentNavItem = navItems.find(item => item.path === location.pathname)
   const pageTitle = currentNavItem?.label || location.pathname.split('/').pop()?.replace(/-/g, ' ') || 'Dashboard'
@@ -30,19 +28,15 @@ export function Layout({ userRole, userName }: LayoutProps) {
 
   return (
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden font-sans text-slate-900">
-      {/* Desktop Sidebar */}
       <Sidebar
-        isExpanded={sidebarExpanded}
-        toggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
+        
         userRole={userRole}
         userName={userName}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full relative overflow-hidden">
-        {/* Header */}
         <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200">
-          {/* Left Side */}
           <div className="flex items-center gap-4">
             {isMobile && (
               <div className="flex items-center gap-2">
@@ -61,7 +55,6 @@ export function Layout({ userRole, userName }: LayoutProps) {
             )}
           </div>
 
-          {/* Profile */}
           <button className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors">
             <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-semibold text-sm">
               {userName?.charAt(0).toUpperCase() || 'U'}
@@ -74,7 +67,6 @@ export function Layout({ userRole, userName }: LayoutProps) {
           </button>
         </header>
 
-        {/* Scrollable Content */}
         <div className="flex-1 h-full overflow-y-auto p-4 md:p-8 pt-0 md:pt-2">
           <div className="max-w-6xl mx-auto pb-24 md:pb-8">
             <Outlet />
@@ -82,21 +74,39 @@ export function Layout({ userRole, userName }: LayoutProps) {
         </div>
       </main>
 
-      {/* Mobile Navigation */}
       <MobileNav userRole={userRole} />
     </div>
   )
 }
 
-// Pre-configured layouts for each role
 export function AdminLayout() {
   return <Layout userRole="admin" userName="Admin User" />
 }
 
-export function StaffLayout() {
-  return <Layout userRole="staff" userName="Staff User" />
+export function BlotterLayout() {
+  return <Layout userRole="blotter" userName="Blotter User" />
 }
 
-export function UserLayout() {
-  return <Layout userRole="user" userName="User" />
+export function OfficialLayout() {
+  return <Layout userRole="official" userName="Official User" />
 }
+export function LupongTagapamayapaLayout() {
+  return <Layout userRole="lupongtagapamayapa" userName="Lupon User" />
+}
+
+export function DcpcLayout() {
+  return <Layout userRole="dcpc" userName="DCPC User" />  
+}
+
+export function ClearanceLayout() {
+  return <Layout userRole="clearance" userName='Clearance User'/>
+}
+
+export function VawcLayout() {
+  return <Layout userRole="vawc" userName='VAWC User'/>
+}
+
+export function FirstTimeJobSeekerLayout() {
+  return <Layout userRole="firstTimeJobSeeker" userName='First Time Job Seeker'/>
+}
+

@@ -1,10 +1,12 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { AdminLayout, StaffLayout, UserLayout } from './layout'
+import { AdminLayout, } from './layout'
+import { DcpcLayout,BlotterLayout, LupongTagapamayapaLayout,ClearanceLayout, VawcLayout,FirstTimeJobSeekerLayout, OfficialLayout} from './layout/Layout'
+
 import { Dashboard } from './admin-module/dashboard'
 import { LandingPage } from './landing-page'
 import OfficialsPage from './landing-page/OfficialsPage'
 import MapsPage from './landing-page/MapsPage'
-import { EventsCalendar } from './pages/EventsCalendar'
+import { EventsCalendar } from './landing-page/EventsCalendar'
 
 function PagePlaceholder({ title }: { title: string }) {
   return (
@@ -18,43 +20,76 @@ function PagePlaceholder({ title }: { title: string }) {
 export function App() {
   return (
     <Routes>
-      {/* Landing Page - Public */}
+      {/* Landing Page  */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/officials" element={<OfficialsPage />} />
       <Route path="/map" element={<MapsPage />} />
-      {/* Events Calendar - Public */}
       <Route path="/events" element={<EventsCalendar />} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="analytics" element={<PagePlaceholder title="Analytics" />} />
-        <Route path="products" element={<PagePlaceholder title="Products" />} />
-        <Route path="market" element={<PagePlaceholder title="Market" />} />
-        <Route path="predictions" element={<PagePlaceholder title="Predictions" />} />
-        <Route path="dietary-tags" element={<PagePlaceholder title="Dietary Tags" />} />
-        <Route path="archive-products" element={<PagePlaceholder title="Archive Products" />} />
-        <Route path="reports" element={<PagePlaceholder title="Reports" />} />
+        <Route path="archive" element={<PagePlaceholder title="Archive" />} />
         <Route path="users" element={<PagePlaceholder title="User Management" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
       </Route>
 
-      {/* Staff Routes */}
-      <Route path="/staff" element={<StaffLayout />}>
+      {/* Blotter Routes */}
+      <Route path="/blotter" element={<BlotterLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="Staff Dashboard" />} />
-        <Route path="products" element={<PagePlaceholder title="Products" />} />
-        <Route path="market" element={<PagePlaceholder title="Market" />} />
+        <Route path="dashboard" element={<PagePlaceholder title="Blotter Dashboard" />} />
+        <Route path="docket" element={<PagePlaceholder title="Docket Books" />} />
+        <Route path="new-complaints" element={<PagePlaceholder title="New Complaints" />} />
+        <Route path="all-complaints" element={<PagePlaceholder title="All Complaints" />} />
         <Route path="reports" element={<PagePlaceholder title="Reports" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
       </Route>
 
-      {/* User Routes */}
-      <Route path="/" element={<UserLayout />}>
+      {/* Lupong Tagapamayapa Routes */}
+      <Route path="/lupongtagapamayapa" element={<LupongTagapamayapaLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<PagePlaceholder title="Lupon Dashboard" />} />
+        <Route path="reports" element={<PagePlaceholder title="Lupon Reports" />} />
+      </Route>
+
+      {/* DCPC Routes */}
+      <Route path="/dcpc" element={<DcpcLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<PagePlaceholder title="DCPC Dashboard" />} />
+        <Route path="reports" element={<PagePlaceholder title="DCPC Reports" />} />
+      </Route>
+
+      {/* Vawc Routes */}
+      <Route path="/vawc" element={<VawcLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<PagePlaceholder title="VAWC Dashboard" />} />
+        <Route path="cases" element={<PagePlaceholder title="VAWC Cases" />} />
+        <Route path="reports" element={<PagePlaceholder title="VAWC Reports" />} />
+      </Route>
+
+
+      {/* Clearance Routes */}
+      <Route path="/clearance" element={<ClearanceLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<PagePlaceholder title="Clearance Dashboard" />} />
+        <Route path="reports" element={<PagePlaceholder title="Clearance Reports" />} />
+      </Route>
+
+
+
+      {/* First Time Job Seeker Routes */}
+      <Route path="/first-time-job-seeker" element={<FirstTimeJobSeekerLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<PagePlaceholder title="First Time Job Seeker Dashboard" />} />
+        <Route path="reports" element={<PagePlaceholder title="First Time Job Seeker Reports" />} />
+      </Route>
+
+
+
+      {/* Officials Routes */}
+      <Route path="/officials" element={<OfficialLayout />}>
         <Route path="dashboard" element={<PagePlaceholder title="Dashboard" />} />
-        <Route path="products" element={<PagePlaceholder title="Products" />} />
-        <Route path="market" element={<PagePlaceholder title="Market" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
       </Route>
     </Routes>
