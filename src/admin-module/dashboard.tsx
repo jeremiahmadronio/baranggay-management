@@ -241,27 +241,12 @@ export function Dashboard() {
 
   return (
     <div className="p-4 md:p-8 w-full">
-      {/* Notification Banners at the top (all types) */}
-      <div className="mb-4 flex flex-col gap-2">
+      {/* Notification Banner at the top */}
+      <div className="mb-4">
         <NoticeBanner
           title="Privacy Notice:"
           message="In compliance with RA 9262 (Anti-VAWC Act) and the Data Privacy Act of 2012, all records display victim initials only. Full details are accessible only to authorized personnel."
           variant="info"
-        />
-        <NoticeBanner
-          title="Warning:"
-          message="Your session will expire in 5 minutes. Please save your work."
-          variant="warning"
-        />
-        <NoticeBanner
-          title="Success:"
-          message="Record has been submitted and is pending review."
-          variant="success"
-        />
-        <NoticeBanner
-          title="Error:"
-          message="You do not have permission to access this record."
-          variant="error"
         />
       </div>
       <h1 className="text-2xl font-bold mb-4">Reusable Components Testing</h1>

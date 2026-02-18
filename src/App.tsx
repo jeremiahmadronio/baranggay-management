@@ -2,7 +2,12 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout, } from './layout'
 import { DcpcLayout,BlotterLayout, LupongTagapamayapaLayout,ClearanceLayout, VawcLayout,FirstTimeJobSeekerLayout, OfficialLayout} from './layout/Layout'
 
+
+//admin 
 import { Dashboard } from './admin-module/dashboard'
+import RecordInputDemo from './admin-module/record-input'
+
+//landing page
 import { LandingPage } from './landing-page'
 import OfficialsPage from './landing-page/OfficialsPage'
 import MapsPage from './landing-page/MapsPage'
@@ -31,6 +36,7 @@ export function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="archive" element={<PagePlaceholder title="Archive" />} />
+          <Route path="inputform" element={<RecordInputDemo/>} />
         <Route path="users" element={<PagePlaceholder title="User Management" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
       </Route>

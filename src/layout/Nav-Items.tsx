@@ -23,6 +23,7 @@ export type UserRole = 'admin' | 'blotter' | 'official' | 'lupongtagapamayapa' |
 // Admin navigation items
 export const adminNavItems: NavItemType[] = [
   { label: 'Reusable Components', path: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'reusable inputform', path: '/admin/inputform', icon: BarChart3 },
   { label: 'Archive', path: '/admin/archive', icon: Archive },
   { label: 'Users', path: '/admin/users', icon: Users },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
