@@ -17,7 +17,7 @@ export interface NavItemType {
   icon: LucideIcon
 }
 
-// User type for determining nav items
+// User type nav items
 export type UserRole = 'admin' | 'blotter' | 'official' | 'lupongtagapamayapa' | 'dcpc' | 'clearance' | 'vawc' | 'firstTimeJobSeeker' 
 
 // Admin navigation items
@@ -79,7 +79,7 @@ export const officialNavItems: NavItemType[] = [
   { label: 'Settings', path: '/officials/settings', icon: Settings },
 ]
 
-// Helper to get nav items by role
+// Helper nav items by role
 export function getNavItemsByRole(role: UserRole): NavItemType[] {
   switch (role) {
     case 'admin':
