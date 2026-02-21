@@ -7,6 +7,7 @@ import { DcpcLayout,BlotterLayout, LupongTagapamayapaLayout,ClearanceLayout, Vaw
 import { Dashboard } from './admin-module/dashboard'
 import RecordInputDemo from './admin-module/record-input'
 import ChartPage from './admin-module/chart'
+import AdminPage from './admin-module/DashboardReusable'
 
 //landing page
 import { LandingPage } from './landing-page'
@@ -41,6 +42,7 @@ export function App() {
           <Route path="inputform" element={<RecordInputDemo/>} />
         <Route path="users" element={<PagePlaceholder title="User Management" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
+        <Route path="tables" element={<AdminPage />} />
       </Route>
 
       {/* Blotter Routes */}

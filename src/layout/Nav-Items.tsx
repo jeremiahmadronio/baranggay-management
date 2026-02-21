@@ -25,8 +25,10 @@ export const adminNavItems: NavItemType[] = [
   { label: 'Reusable Components', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'reusable inputform', path: '/admin/inputform', icon: BarChart3 },
   { label: 'Charts', path: '/admin/charts', icon: BarChart3 },
+  { label: 'Tables', path: '/admin/tables', icon: BarChart3 },
   { label: 'Archive', path: '/admin/archive', icon: Archive },
   { label: 'Users', path: '/admin/users', icon: Users },
+
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ]
 
