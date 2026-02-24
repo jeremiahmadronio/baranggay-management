@@ -33,6 +33,18 @@ const sampleRecentCertificates: RecentCertificate[] = [
     { name: 'Jerem Madronio', type: 'Barangay Clearance', dateIssued: '2024-06-04' },
 ]
 
+//top certificate types
+export interface TopCertificateType {
+    type: string;
+    count: number;
+}
+
+
+const sampleTopCertificateTypes: TopCertificateType[] = [
+    { type: 'Barangay Clearance', count: 50 },
+    { type: 'Business Clearance', count: 30 },
+    { type: 'First Time Job Seeker', count: 20 },
+];
 
 
 
@@ -72,5 +84,19 @@ export const fetchRecentCertificates = async (): Promise<RecentCertificate[]> =>
         return await response.json();
     }catch(error){
         return sampleRecentCertificates;
+    }
+}
+
+//top certificate 
+export const fetchTopCertificateTypes = async (): Promise<TopCertificateType[]> => {
+    try{
+        const response = await fetch('/api/clearance/top-certificate-types');   
+        if (!response.ok) {
+            throw new Error('Failed to fetch top certificate types');
+        }
+        return await response.json();
+    }
+    catch(error){
+        return sampleTopCertificateTypes;
     }
 }
