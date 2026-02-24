@@ -18,3 +18,7 @@ export { KPICard, KPIGrid, KPIIcons } from './KPICard';
 // View/Edit Components
 export { ViewModal, DetailModal, DetailCard, Avatar } from './DetailView';
 export type { DetailField, DetailSection } from './DetailView';
+
+
+// Recent System Actions
+export { ResponsiveTable, type ColumnDef } from './RecentSystemActions';

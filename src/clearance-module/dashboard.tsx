@@ -1,13 +1,24 @@
 import React, { useEffect } from "react";
-import { KPICard, KPIGrid, KPIIcons } from "../reusable";
+import { KPICard, KPIGrid, KPIIcons,ResponsiveTable, type ColumnDef } from "../reusable";
 import { LoadingModal } from "../reusable";
+
 import {
   type ClearanceStats,
   fetchClearanceStats,
+  type RecentCertificate,
+  fetchRecentCertificates
 } from "../clearance-api.ts/dashboard";
+
+
+
+
+
+
+
 
 export const ClearanceDashboard = () => {
   const [kpiData, setKpiData] = React.useState<ClearanceStats | null>(null);
+  const [recentCerts, setRecentCerts] = React.useState<RecentCertificate[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   //stats money formatting
@@ -21,15 +32,46 @@ export const ClearanceDashboard = () => {
   const numberFormatted = (num: number) =>
     new Intl.NumberFormat("en-US").format(num);
 
+ //table columns
+  const columns: ColumnDef<RecentCertificate>[] = [
+    { header: "Resident Name", accessorKey: "name" },
+    { header: "Certificate Type", accessorKey: "type" },
+    { 
+      header: "Date Issued", 
+      render: (row) => new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium"
+      }).format(new Date(row.dateIssued))
+    },
+{
+    header: "Status",
+    render: () => (
+      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
+        Issued
+      </span>
+    ),
+  },  ];
+
+
   //fetching api
   useEffect(() => {
-    const loadStats = async () => {
+    const loadAllData = async () => {
       setLoading(true);
-      const stats = await fetchClearanceStats();
-      setKpiData(stats);
-      setLoading(false);
+      try {
+        const [stats, certs] = await Promise.all([
+          fetchClearanceStats(),
+          fetchRecentCertificates()
+        ]);
+
+        setKpiData(stats);
+        setRecentCerts(certs);
+      } catch (error) {
+        console.error("Error loading dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-    loadStats();
+
+    loadAllData();
   }, []);
 
   //loading
@@ -89,8 +131,18 @@ export const ClearanceDashboard = () => {
         </KPIGrid>
       </div>
 
+        <div className="max-w-[1600px] mx-auto w-full mt-6">
+            <ResponsiveTable 
+          title="Recent Issued Certificates"
+          data={recentCerts}
+          columns={columns}
+          onViewAll={() => console.log("Go to full list")}
+          onRowClick={(item) => alert(`Viewing ${item.name}`)}
+        />
+        </div>
 
-      
+        
+
     </div>
   );
 };
