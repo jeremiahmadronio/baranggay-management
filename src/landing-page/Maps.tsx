@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react';
 import { GoogleMap, LoadScript, Polyline, Marker } from '@react-google-maps/api';
 
-// Accurate coordinates for Barangay Ugong boundary approximation
-// Para makuha ang saktong shape, i-trace ito sa geojson.io at i-paste dito.
-// More detailed boundary for Barangay Ugong (sampled, replace with full geojson.io output for best accuracy)
+
 const ugongBoundaryLine = [
     { lat: 14.696788204218795, lng: 121.00312090841649 },
     { lat: 14.68654412070046, lng: 121.00634199547777 },
@@ -61,19 +59,16 @@ const mapOptions = {
     fullscreenControl: false,
     clickableIcons: false,
     gestureHandling: 'greedy',
-    // Custom "Silver" map style para magmukhang modern
     styles: [
         { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }
     ]
 };
 
 export const Maps = () => {
-    // SECURITY NOTE: Gamitin ang process.env.VITE_GOOGLE_MAPS_API_KEY sa production
-    const apiKey = 'AIzaSyCDb4uDER9VNE8-FA-1nG7lw97dVSsARRY'; 
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
-    const [zoom, setZoom] = useState(15); // Default zoom for balanced barangay view
+    const [zoom, setZoom] = useState(15); 
 
-        // Info overlay (improved design)
         const InfoOverlay = () => (
             <div className="absolute top-24 left-8 z-20 bg-white rounded-xl shadow-lg p-6 max-w-sm border border-blue-200 flex flex-col gap-3" style={{backdropFilter:'blur(6px)'}}>
                 <h3 className="font-bold text-blue-900 text-xl mb-2">Barangay Ugong Map Guide</h3>
@@ -96,7 +91,6 @@ export const Maps = () => {
         <section id="maps" className="relative w-full overflow-hidden bg-slate-100">
             <InfoOverlay />
 
-            {/* Custom Control: Satellite Toggle */}
             <button
                 className="absolute top-24 right-8 z-20 bg-white text-blue-900 px-5 py-2 rounded-full shadow-md border border-blue-200 flex items-center gap-2 font-semibold text-sm hover:bg-blue-50 transition-all"
                 style={{ minWidth: 140 }}
@@ -116,7 +110,6 @@ export const Maps = () => {
                 )}
             </button>
 
-            {/* Custom Control: Zoom */}
             <div className="absolute bottom-10 right-6 z-20 flex flex-col gap-3">
                 <button
                     className="bg-white text-blue-950 w-12 h-12 rounded-xl shadow-lg flex items-center justify-center text-2xl font-bold hover:bg-slate-50 transition-colors border border-slate-200"
@@ -138,7 +131,6 @@ export const Maps = () => {
                         mapTypeId={mapType}
                         options={{ ...mapOptions, mapTypeId: mapType }}
                     >
-                        {/* RED DASHED POLYLINE */}
                         <Polyline
                             path={ugongBoundaryLine}
                             options={{
@@ -160,7 +152,6 @@ export const Maps = () => {
                             }}
                         />
 
-                        {/* OFFICIAL MARKER */}
                         <Marker
                             position={hallLocation}
                             icon={{

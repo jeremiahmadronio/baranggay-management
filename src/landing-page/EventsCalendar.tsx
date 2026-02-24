@@ -239,8 +239,8 @@ export const EventsCalendar = () => {
     });
   };
 
-  const monthNames = ['Enero', 'Pebrero', 'Marso', 'Abril', 'Mayo', 'Hunyo', 
-                      'Hulyo', 'Agosto', 'Setyembre', 'Oktubre', 'Nobyembre', 'Disyembre'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNames = ['Lin', 'Lun', 'Mar', 'Miy', 'Huw', 'Biy', 'Sab'];
 
   const daysInMonth = getDaysInMonth(currentDate);
@@ -268,10 +268,7 @@ export const EventsCalendar = () => {
                 <p className="text-sm text-gray-500">Barangay Ugong Schedule at Events</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-              <Bell className="w-4 h-4" />
-              <span className="hidden sm:inline">Subscribe</span>
-            </button>
+           
           </div>
         </div>
       </header>
@@ -485,24 +482,6 @@ export const EventsCalendar = () => {
                     <div className="text-3xl font-bold">{events.filter(e => e.isFeatured && e.date.getMonth() === currentDate.getMonth()).length}</div>
                     <div className="text-sm text-blue-100">Featured</div>
                   </div>
-                </div>
-              </motion.div>
-
-              {/* Legend */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
-              >
-                <h3 className="font-bold text-gray-900 mb-4">Category Legend</h3>
-                <div className="space-y-2">
-                  {categories.slice(1).map(cat => (
-                    <div key={cat.id} className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${categoryColors[cat.id]?.bg || 'bg-gray-300'}`} />
-                      <span className="text-sm text-gray-600">{cat.label}</span>
-                    </div>
-                  ))}
                 </div>
               </motion.div>
             </div>

@@ -89,7 +89,7 @@ export function App() {
 
 
       {/* First Time Job Seeker Routes */}
-      <Route path="/first-time-job-seeker" element={<FirstTimeJobSeekerLayout />}>
+      <Route path="/  first-time-job-seeker" element={<FirstTimeJobSeekerLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<PagePlaceholder title="First Time Job Seeker Dashboard" />} />
         <Route path="reports" element={<PagePlaceholder title="First Time Job Seeker Reports" />} />

@@ -7,7 +7,6 @@ interface HeroProps {
 export const Hero = ({ onNavigate }: HeroProps) => {
   return (
     <section className="relative min-h-screen bg-white">
-      {/* Background Image - Right Side */}
       <div 
         className="absolute top-0 right-0 w-full lg:w-1/2 h-full bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url('/sample.png')` }}

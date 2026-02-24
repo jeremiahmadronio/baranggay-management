@@ -27,10 +27,8 @@ export const Footer = ({ onNavigate }: FooterProps) => {
 
   return (
     <footer className="bg-gray-900 text-gray-300">
-      {/* Main Footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
-          {/* About */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
@@ -57,7 +55,6 @@ export const Footer = ({ onNavigate }: FooterProps) => {
             </div>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h4 className="font-semibold text-white mb-6">Quick Links</h4>
             <ul className="space-y-3">
