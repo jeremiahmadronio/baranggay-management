@@ -57,9 +57,11 @@ export const DcpcNavItems: NavItemType[] = [
 //Clearance navigation items
 export const clearanceNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/clearance/dashboard', icon: LayoutDashboard },
-  { label: 'Clearance Requests', path: '/clearance/requests', icon: FileText },
-  {label: 'Clearance Template', path: '/clearance/template', icon: Users },
-  { label: 'Reports', path: '/clearance/reports', icon: Settings },
+  { label: 'Issue Certificate', path: '/clearance/issue-certificate', icon: MapPinHouse },
+  { label: 'Issued Certificates', path: '/clearance/issued-certificates', icon: FileText },
+  { label: 'Revenue & Collection', path: '/clearance/revenue-and-collection', icon: Leaf },
+  {label: 'Template', path: '/clearance/templates', icon: Users },
+  { label: 'Settings', path: '/clearance/settings', icon: Settings },
 ]
 
 // VAWC navigation items

@@ -9,6 +9,19 @@ import RecordInputDemo from './admin-module/record-input'
 import ChartPage from './admin-module/chart'
 import AdminPage from './admin-module/DashboardReusable'
 
+
+//clearance
+import ClearanceDashboard from './clearance-module/dashboard'
+import { IssueCertificatePage } from './clearance-module/issue-certificate'
+import IssuedCertificatePage from './clearance-module/issued-certificate'
+import RevenueAndCollectionPage from './clearance-module/revenue-and-collection'
+import ClearanceTemplatesPage from './clearance-module/templates'
+import { ClearanceSettings } from './clearance-module/settings'
+
+
+
+
+
 //landing page
 import { LandingPage } from './landing-page'
 import OfficialsPage from './landing-page/OfficialsPage'
@@ -81,15 +94,18 @@ export function App() {
 
       {/* Clearance Routes */}
       <Route path="/clearance" element={<ClearanceLayout />}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="Clearance Dashboard" />} />
-        <Route path="reports" element={<PagePlaceholder title="Clearance Reports" />} />
+        <Route path="dashboard" element={<ClearanceDashboard />} />
+        <Route path="templates" element={<ClearanceTemplatesPage />} />
+        <Route path="issued-certificates" element={<IssuedCertificatePage />} />
+        <Route path="revenue-and-collection" element={<RevenueAndCollectionPage />} />
+        <Route path="issue-certificate" element={<IssueCertificatePage />} />
+        <Route path="settings" element={<ClearanceSettings />} />
       </Route>
 
 
 
       {/* First Time Job Seeker Routes */}
-      <Route path="/  first-time-job-seeker" element={<FirstTimeJobSeekerLayout />}>
+      <Route path="/first-time-job-seeker" element={<FirstTimeJobSeekerLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<PagePlaceholder title="First Time Job Seeker Dashboard" />} />
         <Route path="reports" element={<PagePlaceholder title="First Time Job Seeker Reports" />} />
