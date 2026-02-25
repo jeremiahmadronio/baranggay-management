@@ -62,6 +62,7 @@ export const clearanceNavItems: NavItemType[] = [
   { label: 'Revenue & Collection', path: '/clearance/revenue-and-collection', icon: Leaf },
   {label: 'Template', path: '/clearance/templates', icon: Users },
   { label: 'Settings', path: '/clearance/settings', icon: Settings },
+  { label: 'Main Template', path: '/clearance/main-template', icon: Settings },
 ]
 
 // VAWC navigation items

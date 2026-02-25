@@ -18,6 +18,8 @@ import RevenueAndCollectionPage from './clearance-module/revenue-and-collection'
 import ClearanceTemplatesPage from './clearance-module/templates'
 import { ClearanceSettings } from './clearance-module/settings'
 
+import { MainTemplatePage } from './clearance-module/MainTemplate'
+
 
 
 
@@ -100,6 +102,7 @@ export function App() {
         <Route path="revenue-and-collection" element={<RevenueAndCollectionPage />} />
         <Route path="issue-certificate" element={<IssueCertificatePage />} />
         <Route path="settings" element={<ClearanceSettings />} />
+        <Route path="main-template" element={<MainTemplatePage />} />
       </Route>
 
 
