@@ -1,34 +1,36 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { AdminLayout, } from './layout'
-import { DcpcLayout,BlotterLayout, LupongTagapamayapaLayout,ClearanceLayout, VawcLayout,FirstTimeJobSeekerLayout, OfficialLayout} from './layout/Layout'
+import { Routes, Route, Navigate } from "react-router-dom";
 
+// Layouts
+import { AdminLayout } from "./layout";
+import {
+  DcpcLayout,
+  BlotterLayout,
+  LupongTagapamayapaLayout,
+  ClearanceLayout,
+  VawcLayout,
+  FirstTimeJobSeekerLayout,
+  OfficialLayout,
+} from "./layout/Layout";
 
-//admin 
-import { Dashboard } from './admin-module/dashboard'
-import RecordInputDemo from './admin-module/record-input'
-import ChartPage from './admin-module/chart'
-import AdminPage from './admin-module/DashboardReusable'
+// Admin
+import { Dashboard } from "./admin-module/dashboard";
+import RecordInputDemo from "./admin-module/record-input";
+import ChartPage from "./admin-module/chart";
+import AdminPage from "./admin-module/DashboardReusable";
 
+// Clearance
+import ClearanceDashboard from "./clearance/Dashboard";
+import { IssueCertificatePage } from "./clearance/issue-certificate";
+import IssuedCertificatePage from "./clearance/issued-certificate";
+import RevenueAndCollectionPage from "./clearance/revenue-and-collections";
+import EditTemplate from "./clearance/clearance-template/EditTemplate";
+import { ClearanceSettings } from "./clearance/settings";
 
-//clearance
-import ClearanceDashboard from './clearance-module/dashboard'
-import { IssueCertificatePage } from './clearance-module/issue-certificate'
-import IssuedCertificatePage from './clearance-module/issued-certificate'
-import RevenueAndCollectionPage from './clearance-module/revenue-and-collection'
-import ClearanceTemplatesPage from './clearance-module/templates'
-import { ClearanceSettings } from './clearance-module/settings'
-
-import { MainTemplatePage } from './clearance-module/MainTemplate'
-
-
-
-
-
-//landing page
-import { LandingPage } from './landing-page'
-import OfficialsPage from './landing-page/OfficialsPage'
-import MapsPage from './landing-page/MapsPage'
-import { EventsCalendar } from './landing-page/EventsCalendar'
+// Landing Page
+import { LandingPage } from "./landing-page";
+import OfficialsPage from "./landing-page/OfficialsPage";
+import MapsPage from "./landing-page/MapsPage";
+import { EventsCalendar } from "./landing-page/EventsCalendar";
 
 function PagePlaceholder({ title }: { title: string }) {
   return (
@@ -36,13 +38,13 @@ function PagePlaceholder({ title }: { title: string }) {
       <h1 className="text-2xl font-bold text-gray-900 mb-4">{title}</h1>
       <p className="text-gray-600">This is the {title} page.</p>
     </div>
-  )
+  );
 }
 
 export function App() {
   return (
     <Routes>
-      {/* Landing Page  */}
+      {/* Landing Page Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/officials" element={<OfficialsPage />} />
       <Route path="/map" element={<MapsPage />} />
@@ -54,7 +56,7 @@ export function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="charts" element={<ChartPage />} />
         <Route path="archive" element={<PagePlaceholder title="Archive" />} />
-          <Route path="inputform" element={<RecordInputDemo/>} />
+        <Route path="inputform" element={<RecordInputDemo />} />
         <Route path="users" element={<PagePlaceholder title="User Management" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
         <Route path="tables" element={<AdminPage />} />
@@ -85,7 +87,7 @@ export function App() {
         <Route path="reports" element={<PagePlaceholder title="DCPC Reports" />} />
       </Route>
 
-      {/* Vawc Routes */}
+      {/* VAWC Routes */}
       <Route path="/vawc" element={<VawcLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<PagePlaceholder title="VAWC Dashboard" />} />
@@ -93,19 +95,16 @@ export function App() {
         <Route path="reports" element={<PagePlaceholder title="VAWC Reports" />} />
       </Route>
 
-
       {/* Clearance Routes */}
       <Route path="/clearance" element={<ClearanceLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<ClearanceDashboard />} />
-        <Route path="templates" element={<ClearanceTemplatesPage />} />
         <Route path="issued-certificates" element={<IssuedCertificatePage />} />
         <Route path="revenue-and-collection" element={<RevenueAndCollectionPage />} />
         <Route path="issue-certificate" element={<IssueCertificatePage />} />
+          <Route path="template" element={<EditTemplate />} />
         <Route path="settings" element={<ClearanceSettings />} />
-        <Route path="main-template" element={<MainTemplatePage />} />
       </Route>
-
-
 
       {/* First Time Job Seeker Routes */}
       <Route path="/first-time-job-seeker" element={<FirstTimeJobSeekerLayout />}>
@@ -114,15 +113,15 @@ export function App() {
         <Route path="reports" element={<PagePlaceholder title="First Time Job Seeker Reports" />} />
       </Route>
 
-
-
-      {/* Officials Routes */}
-      <Route path="/officials" element={<OfficialLayout />}>
+      {/* Officials Portal Routes */}
+ 
+      <Route path="/official-portal" element={<OfficialLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<PagePlaceholder title="Dashboard" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
       </Route>
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;

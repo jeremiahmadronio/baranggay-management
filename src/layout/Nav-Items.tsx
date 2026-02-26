@@ -60,9 +60,9 @@ export const clearanceNavItems: NavItemType[] = [
   { label: 'Issue Certificate', path: '/clearance/issue-certificate', icon: MapPinHouse },
   { label: 'Issued Certificates', path: '/clearance/issued-certificates', icon: FileText },
   { label: 'Revenue & Collection', path: '/clearance/revenue-and-collection', icon: Leaf },
-  {label: 'Template', path: '/clearance/templates', icon: Users },
+  {label: 'Template', path: '/clearance/template', icon: Users },
   { label: 'Settings', path: '/clearance/settings', icon: Settings },
-  { label: 'Main Template', path: '/clearance/main-template', icon: Settings },
+  
 ]
 
 // VAWC navigation items
