@@ -14,6 +14,7 @@ export {
   clearanceNavItems,
   vawcNavItems,
   firstTimeJobSeekerNavItems,
+  rootAdminNavItems,
   getNavItemsByRole,
   type NavItemType,
   type UserRole,

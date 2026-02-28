@@ -35,7 +35,6 @@ export default function ChartPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         
-        {/* Donut Chart Section */}
         <div className="w-full">
           <DonutChart 
             title="Nature of Complaints Distribution"
@@ -44,7 +43,6 @@ export default function ChartPage() {
           />
         </div>
 
-        {/* Bar Chart Section */}
         <div className="w-full">
           <BarChartComponent 
             title="Monthly Case Statistics - 2026"

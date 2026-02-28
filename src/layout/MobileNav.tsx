@@ -13,13 +13,11 @@ export function MobileNav({ userRole }: MobileNavProps) {
   const location = useLocation()
   const navItems = getNavItemsByRole(userRole)
   
-  // Show max 4 items in bottom bar
   const visibleItems = navItems.slice(0, 4)
   const hasMore = navItems.length > 4
 
   return (
     <>
-      {/* Floating Bottom Navigation */}
       <div className="fixed bottom-6 left-4 right-4 z-50 md:hidden flex justify-center pointer-events-none">
         <motion.div
           initial={{ y: 100, opacity: 0 }}
@@ -62,7 +60,6 @@ export function MobileNav({ userRole }: MobileNavProps) {
         </motion.div>
       </div>
 
-      {/* Bottom Sheet for More Items */}
       <AnimatePresence>
         {isSheetOpen && (
           <>
@@ -83,12 +80,10 @@ export function MobileNav({ userRole }: MobileNavProps) {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-[70] md:hidden shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.2)] max-h-[85vh] overflow-hidden flex flex-col"
             >
-              {/* Drag Handle */}
               <div className="flex justify-center pt-3 pb-1" onClick={() => setIsSheetOpen(false)}>
                 <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
               </div>
 
-              {/* Header */}
               <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
                 <h2 className="text-lg font-bold text-slate-800">All Navigation</h2>
                 <button
@@ -99,7 +94,6 @@ export function MobileNav({ userRole }: MobileNavProps) {
                 </button>
               </div>
 
-              {/* Grid Content */}
               <div className="p-6 overflow-y-auto">
                 <div className="grid grid-cols-3 gap-4">
                   {navItems.map((item) => {

@@ -82,7 +82,6 @@ export function CertificateSettings({
           </p>
         </div>
 
-        {/* Specific Validity Date with Past Date Restriction */}
         <div>
           <label className="block text-xs text-gray-500 mb-1 uppercase font-semibold">
             Specific Validity Date
@@ -90,7 +89,7 @@ export function CertificateSettings({
           <input
             type="date"
             value={settings.validityDate || ''} 
-            min={today} // DITO NAKALAGAY ANG RESTRICTION
+            min={today}
             onChange={(e) => onChange('validityDate', e.target.value)}
             className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none hover:border-blue-300 transition-colors"
           />

@@ -28,6 +28,7 @@ export function Sidebar({
     vawc : { displayName: 'VAWC Officer', brand: 'VAWC', brandColor: 'text-pink-600' },
     firstTimeJobSeeker: { displayName: 'First Time Job Seeker', brand: 'JobSeeker', brandColor: 'text-green-600' },
     official: { displayName: 'Barangay Official', brand: 'Official', brandColor: 'text-yellow-600' },
+    rootadmin: { displayName: 'Root Admin', brand: 'rootadmin', brandColor: 'text-black-600'}
 
 
   }[userRole]

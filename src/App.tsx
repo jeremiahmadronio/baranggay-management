@@ -10,6 +10,7 @@ import {
   VawcLayout,
   FirstTimeJobSeekerLayout,
   OfficialLayout,
+  RootAdminLayout,
 } from "./layout/Layout";
 
 // Admin
@@ -18,19 +19,47 @@ import RecordInputDemo from "./admin-module/record-input";
 import ChartPage from "./admin-module/chart";
 import AdminPage from "./admin-module/DashboardReusable";
 
+// Root Admin
+import RootAdminDashboard from "./admin-root-module/dashboard";
+
+
+// BCPC
+import BCPCDashboard from "./bcpc-module/dashboard";
+
+
+// Blotter
+import BlotterDashboard from "./blotter-module/dashboard";
+
 // Clearance
-import ClearanceDashboard from "./clearance/Dashboard";
-import { IssueCertificatePage } from "./clearance/issue-certificate";
-import IssuedCertificatePage from "./clearance/issued-certificate";
-import RevenueAndCollectionPage from "./clearance/revenue-and-collections";
-import EditTemplate from "./clearance/clearance-template/EditTemplate";
-import { ClearanceSettings } from "./clearance/settings";
+import ClearanceDashboard from "./clearance-module/Dashboard";
+import { IssueCertificatePage } from "./clearance-module/issue-certificate";
+import IssuedCertificatePage from "./clearance-module/issued-certificate";
+import RevenueAndCollectionPage from "./clearance-module/revenue-and-collections";
+import EditTemplate from "./clearance-module/clearance-template/EditTemplate";
+import { ClearanceSettings } from "./clearance-module/settings";
+
+
+//FTJS
+import FirstTimeJobSeekerDashboard from "./first-time-job-seeker-module/dashboard";
+
+
+//LUPON
+import LupongTagapamayapaDashboard from "./lupong-tagapamayapa-module/dashboard";
+
+
+// Official
+import OfficialDashboard from "./official-module/dashboard";
+
+
+//VAWC
+import VAWCDashboard from "./vawc-module/dashboard";
 
 // Landing Page
 import { LandingPage } from "./landing-page";
 import OfficialsPage from "./landing-page/OfficialsPage";
 import MapsPage from "./landing-page/MapsPage";
 import { EventsCalendar } from "./landing-page/EventsCalendar";
+
 
 function PagePlaceholder({ title }: { title: string }) {
   return (
@@ -44,13 +73,13 @@ function PagePlaceholder({ title }: { title: string }) {
 export function App() {
   return (
     <Routes>
-      {/* Landing Page Routes */}
+      {/* Landing Page */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/officials" element={<OfficialsPage />} />
       <Route path="/map" element={<MapsPage />} />
       <Route path="/events" element={<EventsCalendar />} />
 
-      {/* Admin Routes */}
+      {/* Admin */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
@@ -62,10 +91,16 @@ export function App() {
         <Route path="tables" element={<AdminPage />} />
       </Route>
 
-      {/* Blotter Routes */}
+      {/* Root Admin */}
+      <Route path="/rootadmin" element={<RootAdminLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<RootAdminDashboard />} />
+      </Route>
+
+      {/* Blotter */}
       <Route path="/blotter" element={<BlotterLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="Blotter Dashboard" />} />
+        <Route path="dashboard" element={<BlotterDashboard />} />
         <Route path="docket" element={<PagePlaceholder title="Docket Books" />} />
         <Route path="new-complaints" element={<PagePlaceholder title="New Complaints" />} />
         <Route path="all-complaints" element={<PagePlaceholder title="All Complaints" />} />
@@ -73,51 +108,50 @@ export function App() {
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
       </Route>
 
-      {/* Lupong Tagapamayapa Routes */}
+      {/* Lupong Tagapamayapa */}
       <Route path="/lupongtagapamayapa" element={<LupongTagapamayapaLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="Lupon Dashboard" />} />
+        <Route path="dashboard" element={<LupongTagapamayapaDashboard />} />
         <Route path="reports" element={<PagePlaceholder title="Lupon Reports" />} />
       </Route>
 
-      {/* DCPC Routes */}
-      <Route path="/dcpc" element={<DcpcLayout />}>
+      {/* BCPC */}
+      <Route path="/bcpc" element={<DcpcLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="DCPC Dashboard" />} />
+        <Route path="dashboard" element={<BCPCDashboard/>} />
         <Route path="reports" element={<PagePlaceholder title="DCPC Reports" />} />
       </Route>
 
-      {/* VAWC Routes */}
+      {/* VAWC */}
       <Route path="/vawc" element={<VawcLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="VAWC Dashboard" />} />
+        <Route path="dashboard" element={<VAWCDashboard/>} />
         <Route path="cases" element={<PagePlaceholder title="VAWC Cases" />} />
         <Route path="reports" element={<PagePlaceholder title="VAWC Reports" />} />
       </Route>
 
-      {/* Clearance Routes */}
+      {/* Clearance */}
       <Route path="/clearance" element={<ClearanceLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<ClearanceDashboard />} />
         <Route path="issued-certificates" element={<IssuedCertificatePage />} />
         <Route path="revenue-and-collection" element={<RevenueAndCollectionPage />} />
         <Route path="issue-certificate" element={<IssueCertificatePage />} />
-          <Route path="template" element={<EditTemplate />} />
+        <Route path="template" element={<EditTemplate />} />
         <Route path="settings" element={<ClearanceSettings />} />
       </Route>
 
-      {/* First Time Job Seeker Routes */}
+      {/* First Time Job Seeker */}
       <Route path="/first-time-job-seeker" element={<FirstTimeJobSeekerLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="First Time Job Seeker Dashboard" />} />
+        <Route path="dashboard" element={<FirstTimeJobSeekerDashboard/>} />
         <Route path="reports" element={<PagePlaceholder title="First Time Job Seeker Reports" />} />
       </Route>
 
-      {/* Officials Portal Routes */}
- 
+      {/* Officials  */}
       <Route path="/official-portal" element={<OfficialLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<PagePlaceholder title="Dashboard" />} />
+        <Route path="dashboard" element={<OfficialDashboard/>} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
       </Route>
     </Routes>

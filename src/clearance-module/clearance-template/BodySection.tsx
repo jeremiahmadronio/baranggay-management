@@ -24,11 +24,9 @@ export function BodySection({ section, index, onChange }: BodySectionProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Character count kasama ang space at newlines
   const charCount = section.text.length
   const isAtLimit = charCount >= MAX_CHAR_COUNT
 
-  // Variable validation logic
   const requiredVars = section.requiredVariables || []
   const currentVars = extractVariables(section.text)
   const missingVars = requiredVars.filter((v) => !currentVars.includes(v))

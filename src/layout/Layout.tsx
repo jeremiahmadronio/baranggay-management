@@ -83,6 +83,10 @@ export function AdminLayout() {
   return <Layout userRole="admin" userName="Admin User" />
 }
 
+export function RootAdminLayout() {
+  return <Layout userRole= "rootadmin" userName="Root Admin" />
+}
+
 export function BlotterLayout() {
   return <Layout userRole="blotter" userName="Blotter User" />
 }

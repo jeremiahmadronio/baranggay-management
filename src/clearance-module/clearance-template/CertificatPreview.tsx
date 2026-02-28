@@ -23,13 +23,11 @@ export function CertificatePreview({ template }: CertificatePreviewProps) {
       case 'tricycle':
         return <TricyclePreview template={template} />
       default:
-        // Default fallback to Residency style for others
         return <ResidencyPreview template={template} />
     }
   }
   return (
     <div className="flex flex-col h-full">
-      {/* Header Controls */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-bold text-gray-800">Live Preview</h2>

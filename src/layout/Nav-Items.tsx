@@ -18,7 +18,7 @@ export interface NavItemType {
 }
 
 // User type nav items
-export type UserRole = 'admin' | 'blotter' | 'official' | 'lupongtagapamayapa' | 'dcpc' | 'clearance' | 'vawc' | 'firstTimeJobSeeker' 
+export type UserRole = 'admin' | 'blotter' | 'official' | 'lupongtagapamayapa' | 'dcpc' | 'clearance' | 'vawc' | 'firstTimeJobSeeker' | 'rootadmin'
 
 // Admin navigation items
 export const adminNavItems: NavItemType[] = [
@@ -28,8 +28,12 @@ export const adminNavItems: NavItemType[] = [
   { label: 'Tables', path: '/admin/tables', icon: BarChart3 },
   { label: 'Archive', path: '/admin/archive', icon: Archive },
   { label: 'Users', path: '/admin/users', icon: Users },
-
   { label: 'Settings', path: '/admin/settings', icon: Settings },
+]
+
+// Root Admin navigation items
+export const rootAdminNavItems: NavItemType[] = [
+  { label: 'Dashboard', path: '/rootadmin/dashboard', icon: LayoutDashboard },
 ]
 
 // Blotter navigation items
@@ -72,6 +76,7 @@ export const vawcNavItems: NavItemType[] = [
   { label: 'Reports', path: '/vawc/reports', icon: Settings },
 ]
 
+// First Time Job Seeker navigation items
 export const firstTimeJobSeekerNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/first-time-job-seeker/dashboard', icon: LayoutDashboard },
   { label: 'Settings', path: '/first-time-job-seeker/settings', icon: Settings },
@@ -84,7 +89,7 @@ export const officialNavItems: NavItemType[] = [
   { label: 'Settings', path: '/officials/settings', icon: Settings },
 ]
 
-// Helper nav items by role
+
 export function getNavItemsByRole(role: UserRole): NavItemType[] {
   switch (role) {
     case 'admin':
@@ -105,6 +110,9 @@ export function getNavItemsByRole(role: UserRole): NavItemType[] {
 
     case 'firstTimeJobSeeker':
       return firstTimeJobSeekerNavItems
+    
+      case 'rootadmin':
+        return rootAdminNavItems
             
     default:
       return officialNavItems

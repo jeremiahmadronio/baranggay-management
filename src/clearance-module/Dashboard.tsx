@@ -15,7 +15,7 @@ import {
   fetchRecentCertificates,
   type TopCertificateType,
   fetchTopCertificateTypes,
-} from "../clearance-api/dashboard";
+} from "../clearance-api/dashboard-api";
 import { LayoutList, Plus } from "lucide-react";
 
 export const ClearanceDashboard = () => {
