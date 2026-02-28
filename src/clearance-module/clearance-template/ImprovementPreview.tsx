@@ -8,10 +8,8 @@ import {
   Signatories,
   PaymentDetails,
 } from "./SharedComponents";
-export function ResidencyPreview({ template }: { template: TemplateData }) {
+export function ImprovementPreview({ template }: { template: TemplateData }) {
   const hasPhoto = template.settings.requiresPhoto;
-  const hasThumbmark = template.settings.requiresThumbmark;
-  const hasFee = template.settings.hasFee;
   return (
     <div
       className="bg-white w-full max-w-[210mm] mx-auto shadow-xl relative flex flex-col border border-gray-200"

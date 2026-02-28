@@ -8,7 +8,7 @@ import {
   Signatories,
   PaymentDetails,
 } from "./SharedComponents";
-export function ResidencyPreview({ template }: { template: TemplateData }) {
+export function TechnicalPermitPreview({ template }: { template: TemplateData }) {
   const hasPhoto = template.settings.requiresPhoto;
   const hasThumbmark = template.settings.requiresThumbmark;
   const hasFee = template.settings.hasFee;

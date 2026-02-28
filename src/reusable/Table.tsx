@@ -18,8 +18,7 @@ interface TableProps<T> {
   onRowClick?: (item: T) => void;
   striped?: boolean;
   hoverable?: boolean;
-  minRows?: number; // Minimum rows to reserve height for (prevents jumping)
-  // Checkbox selection
+  minRows?: number; 
   selectable?: boolean;
   selectedKeys?: (string | number)[];
   onSelectionChange?: (keys: (string | number)[]) => void;

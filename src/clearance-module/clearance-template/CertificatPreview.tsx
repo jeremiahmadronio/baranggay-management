@@ -6,6 +6,10 @@ import { ClearancePreview } from './ClearancePreview'
 import { IndigencyPreview } from './IndegencyPreview' 
 import { JobSeekerPreview } from './JobSeekerPreview'
 import { TricyclePreview } from './TricyclePreview'
+import { TricycleRegistrationPreview } from './Tricycle-Registration'
+import { ImprovementPreview } from './ImprovementPreview'
+import { TechnicalPermitPreview } from './Technical-PermitPreview'
+import { WorkingClearancePreview } from './Working-ClearancePreview'
 interface CertificatePreviewProps {
   template: TemplateData
 }
@@ -22,6 +26,20 @@ export function CertificatePreview({ template }: CertificatePreviewProps) {
         return <JobSeekerPreview template={template} />
       case 'tricycle':
         return <TricyclePreview template={template} />
+      case 'tricycle-registration':
+        return <TricycleRegistrationPreview template={template} />
+      
+      case 'working-clearance':
+        return <WorkingClearancePreview template={template} />
+
+      
+      case 'improvement':
+        return <ImprovementPreview template={template} />
+
+        
+      
+        case 'technical-permits':
+          return <TechnicalPermitPreview template={template} />
       default:
         return <ResidencyPreview template={template} />
     }

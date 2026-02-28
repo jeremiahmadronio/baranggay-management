@@ -13,11 +13,7 @@ export function CertificateSettings({
   onBatchChange,
 }: CertificateSettingsProps) {
   
-  /**
-   * BRUTAL TIP: Wag gumamit ng .toISOString() para sa local date min/max.
-   * Gamitin ang locale 'en-CA' para makuha ang YYYY-MM-DD format base sa local time ng PC mo.
-   * Sisiguraduhin nito na ang "kahapon" ay laging disabled.
-   */
+  
   const today = new Date().toLocaleDateString('en-CA'); 
 
   const handleHasFeeToggle = (checked: boolean) => {

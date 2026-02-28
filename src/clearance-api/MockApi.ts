@@ -1,3 +1,4 @@
+import { body } from "framer-motion/client";
 import {
   type TemplateData,
   type TemplateOption,
@@ -9,6 +10,11 @@ const TEMPLATE_OPTIONS: TemplateOption[] = [
   { id: "residency", name: "Certificate of Residency", isFree: false },
   { id: "job-seeker", name: "First Time Job Seeker", isFree: true },
   { id: "tricycle", name: "Tricycle Registration", isFree: false },
+  { id: "tricycle-registration", name: "Tricycle Registration Unit", isFree: false },
+  { id: "certificate-improvement", name: "Certificate of Improvement", isFree: false },
+  { id: "technical-permits", name: "Technical Permit", isFree: false },
+ { id: "working-clearance", name: "Working Clearance", isFree: true },
+
 ];
 
 const DEFAULT_VARIABLES = [
@@ -80,7 +86,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       {
         id: "body-1",
         isEditable: true,
-        text: "This is to CERTIFY that {{FULL_NAME}} of legal age, residing at {{ADDRESS}}, UGONG, VALENZUELA CITY since {{RESIDENCY_SINCE}}, is known to belong to the indigent families/sector of Barangay as of this date.",
+        text: "This is to CERTIFY that {{FULL_NAME}}, {{AGE}} years old,of legal age, residing at {{ADDRESS}}, UGONG, VALENZUELA CITY since {{RESIDENCY_SINCE}}, is known to belong to the indigent families/sector of Barangay as of this date.",
       },
       {
         id: "body-2",
@@ -207,8 +213,166 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       "YEAR",
     ],
   },
-};
+  "tricycle-registration":{
+    id: "tricycle-registration",
+    title: "TRICYCLE REGISTRATION",
+    bodySections: [
+      {
+        id: "body-1",
+        isEditable: true,
+        text: "To whom it may concern;\n\nThis is to CERTIFY that {{FULL_NAME}} is the owner of vehicle with the following descriptions:\n\nMake : {{MAKE}}\nPlate NO : {{PLATE_NO}}\nMOTOR NO. : {{MOTOR_NO}}\nChasis No: {{CHASSIS_NO}}\BODY  NO. : {{BODY_NO}}\nBODY COLOR : {{BODY_COLOR}}\CR NO. : {{CR_NO}}\nOR NO. : {{OR_NO_VEHICLE}}\nMTOP NO. : {{MTOP_NO}}",
+      },
+      {
+        id: "body-2",
+        isEditable: true,
+        text: "This Certification is being issued upon the request of the above individual for the purpose of TRICYCLE REGULATION UNIT REGISTRATION only.",
+      },
+     
+      
+    ],
+    footerText: "Una ang KAPakanan ng Mamamayan...",
+    signatories: [PUNONG_BARANGAY],
+    settings: {
+      fee: 100,
+      validityDate: "2026-08-17",
+      requiresPhoto: false,
+      requiresThumbmark: false,
+      hasFee: true,
+    },
+    variables: [
+    "FULL_NAME",   
+      "MAKE",
+      "PLATE_NO",
+      "MOTOR_NO",
+      "CHASSIS_NO",
+      "BODY_NO",
+      "BODY_COLOR",
+      "CR_NO",
+      "OR_NO_VEHICLE",
+      "MTOP_NO",
+      "DAY",
+      "MONTH",
+      "YEAR"
+    ],
 
+  },
+
+  "certificate-improvement":{
+    id: "certificate-improvement",
+    title: "CERTIFICATE OF IMPROVEMENT",
+    bodySections: [
+      {
+        id: "body-1",
+        isEditable: true,
+        text: "This is to certify that the IMPROVEMENT was built in the year {{YEAR}} on the lot owned by {{FULL_NAME}}. The building was constructed with a total floor area of {{FLOOR_AREA}} square meters and is covered by the said property.",
+      },
+      {
+        id: "body-2",
+        isEditable: true,
+        text: "The residential house and lot are located at Barangay Ugong, Valenzuela City. This certification is issued this {{DAY}} day of {{MONTH}} {{YEAR}} upon the request of the interested party for assessment purposes by the Assessor’s Office of Valenzuela City.",
+      }
+    ],
+    footerText: "Una ang KAPakanan ng Mamamayan...",
+    signatories: [PUNONG_BARANGAY],
+    settings: {
+      fee: 100,
+      validityDate: "2026-08-17",
+      requiresPhoto: false,
+      requiresThumbmark: false,
+      hasFee: true,
+  },    variables: [
+      "FULL_NAME",
+      "YEAR",
+      "FLOOR_AREA",
+      "DAY",
+      "MONTH",
+      "YEAR"
+    ],
+
+},
+  "technical-permits" : {
+    
+    id: "technical-permits",
+    title: "TECHNICAL PERMIT",
+    bodySections: [
+      {
+        id: "body-1",
+        isEditable: true,
+        text: "is hereby granted to {{FULL_NAME}}.\n\n To apply for {{CERT_NATURE}} located at {{ADDRESS}} UGONG VALENZUELA CITY.\n\n Has been found to be fully complying with and not violative of the existing rules and regulations / building code being enforced and is located within the limits of this barangay. This is to further certify that upon verification of the records filed in this office, applicant owner was found to have NO DEROGATORY RECORD.",
+      },
+      {
+        id: "body-2",
+        isEditable: true,
+        text: "IMPORTANT REMINDERS: \n\n This clearance is subject for {{PURPOSE}} for any violation of Building Codes, DENR Guidelines and existing laws.\n This Barangay Clearance for {{CERT_NATURE}} application cannot be used as PERMIT for the subject/s to directly commence their project, unless filed with the City Engineer's Office and approved by the Mayor, City of Valenzuela.",
+      },
+        {
+        id: "body-3",
+        isEditable: true,
+        text: "This certification is issued this {{DAY}} day of {{MONTH}} {{YEAR}} upon the request of the individual for {{CERT_NATURE}} purpose only.",
+        }
+    ],
+    footerText: "Una ang KAPakanan ng Mamamayan...",
+    signatories: [PUNONG_BARANGAY],
+    settings:{
+        fee: 100,
+      validityDate: "2026-08-17",
+      requiresPhoto: false,
+      requiresThumbmark: false,
+      hasFee: true,
+    },
+    variables:[
+      "FULL_NAME",
+      "ADDRESS",
+      "CERT_NATURE",
+      "PURPOSE",
+      "DAY",
+      "MONTH",
+      "YEAR"
+    ]
+    
+  },
+  "working-clearance" : {
+    id: "working-clearance",
+    title: "WORKING CLEARANCE",
+    bodySections: [
+      {
+        id: "body-1",
+        isEditable: true,
+        text: "TO WHOM IT MAY CONCERN:\n\n THIS IS TO CERTIFY that {{FULL_NAME}}, of legal age, Filipino, and a resident of {{ADDRESS}}, is hereby granted permission to conduct work or activity as requested.",
+      },
+      {
+        id: "body-2",
+        isEditable: true,
+        text:"\nACTIVITY DETAILS:\n Nature of Work: {{NATURE_OF_WORK}}\n Location: {{ADDRESS}} \n Activity {{TIME}} \n\n FURTHER CERTIFICATION: \n This office further certifies that the above-named individual has no derogatory records based on the available files of this Barangay as of this date, and is known to be of good moral character.",
+      },
+      {
+        id: "body-3",
+        isEditable: true,
+        text: "This certification is issued this {{DAY}} day of {{MONTH}} {{YEAR}} upon the request of {{FULL_NAME}} for whatever legal purpose it may serve..",
+      }
+    ],
+    footerText: "Una ang KAPakanan ng Mamamayan...",
+    signatories: [PUNONG_BARANGAY],
+    settings: {
+      fee: 0,
+      validityDate: "2026-08-17",
+      requiresPhoto: false,
+      requiresThumbmark: false,
+      hasFee: false,
+    },
+    variables: [
+      "FULL_NAME",
+      "ADDRESS",
+      "NATURE_OF_WORK",
+      "TIME",
+      "DAY",
+      "MONTH",
+      "YEAR"
+
+    ],
+  }
+
+}
 const DEFAULT_TEMPLATE: TemplateData = {
   id: "default",
   title: "CERTIFICATE TEMPLATE",
@@ -300,4 +464,9 @@ export const SAMPLE_DATA: Record<string, string> = {
   DAY: "7th",
   MONTH: "OCTOBER",
   YEAR: "2025",
+  FLOOR_AREA: "120",
+  CERT_NATURE: "Electrical Clearance (MERALCO)",
+  NATURE_OF_WORK: "Electrical Installation",
+  TIME : "12:00 PM - 5:00 PM",
+
 };
