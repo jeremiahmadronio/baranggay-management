@@ -14,7 +14,7 @@ export function ClearancePreview({ template }: { template: TemplateData }) {
         fontFamily: "'Times New Roman', 'Georgia', serif",
         minHeight: "297mm",
         aspectRatio: "210 / 297",
-      }}
+      }}  
     >
       <Header />
       <Watermark />
