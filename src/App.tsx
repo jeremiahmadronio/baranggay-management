@@ -21,6 +21,10 @@ import AdminPage from "./admin-module/DashboardReusable";
 
 // Root Admin
 import RootAdminDashboard from "./admin-root-module/dashboard";
+import AdminManagement from "./admin-root-module/admin-management";
+import AuditLogs from "./admin-root-module/audit-logs";
+import AccountSettings from "./admin-root-module/account-settings";
+import RootAdminAccess from "./admin-root-module/access";
 
 
 // BCPC
@@ -91,11 +95,19 @@ export function App() {
         <Route path="tables" element={<AdminPage />} />
       </Route>
 
+      
+
+
       {/* Root Admin */}
       <Route path="/rootadmin" element={<RootAdminLayout />}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<RootAdminDashboard />} />
+       <Route index element={<Navigate to="dashboard" replace />} />
+       <Route path="dashboard" element={<RootAdminDashboard />} />
+       <Route path="admin-management" element={<AdminManagement />} />
+       <Route path="audit-logs" element={<AuditLogs />} />
+       <Route path="account-settings" element={<AccountSettings />} />
+       <Route path="access" element={<RootAdminAccess />} />
       </Route>
+
 
       {/* Blotter */}
       <Route path="/blotter" element={<BlotterLayout />}>
