@@ -13,7 +13,10 @@ import {
   CalendarDays, 
   Banknote, 
   Hourglass ,
-  PiggyBank 
+  PiggyBank ,
+  FileBadge ,
+  CreditCard ,
+  Gift ,
 } from 'lucide-react';
 
 type KPITrend = 'up' | 'down' | 'neutral';
@@ -68,7 +71,13 @@ const defaultIcons: Record<string, React.ReactNode> = {
   issued: <FileCheck className="w-6 h-6" />,
   month: <CalendarDays className="w-6 h-6" />,
   revenue: <PiggyBank className="w-6 h-6" />,
-  pending: <Hourglass className="w-6 h-6" />
+  pending: <Hourglass className="w-6 h-6" />,
+
+  //issued certificate icons
+  total: <FileBadge className="w-6 h-6" />,
+  card: <CreditCard className="w-6 h-6" />,
+  gift: <Gift className="w-6 h-6" />
+  
 };
 
 export const KPICard = ({
