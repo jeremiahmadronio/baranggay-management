@@ -8,6 +8,8 @@ import {
   Archive,
   Leaf,
   FileText,
+  ShieldCheck,
+  ScrollText,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -34,7 +36,13 @@ export const adminNavItems: NavItemType[] = [
 // Root Admin navigation items
 export const rootAdminNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/rootadmin/dashboard', icon: LayoutDashboard },
+  { label: 'Admin Management',  path: "/rootadmin/admin-management",  icon: Users},
+  { label: 'Audit Logs',        path: "/rootadmin/audit-logs",        icon: ScrollText},
+  { label: 'Account Settings',  path: "/rootadmin/account-settings",  icon: Settings},
+  { label: 'Root Admin Access', path: "/rootadmin/access",            icon: ShieldCheck },
 ]
+
+
 
 // Blotter navigation items
 export const blotterNavItems: NavItemType[] = [
