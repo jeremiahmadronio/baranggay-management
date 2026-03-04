@@ -14,10 +14,12 @@ import {
 } from "./layout/Layout";
 
 // Admin
-import { Dashboard } from "./admin-module/dashboard";
+import { Reusable } from "./admin-module/reusable";
 import RecordInputDemo from "./admin-module/record-input";
 import ChartPage from "./admin-module/chart";
 import AdminPage from "./admin-module/DashboardReusable";
+import AdminDashboard from "./admin-module/dashboard";
+import Admin from "./admin-module/admin-management";
 
 // Root Admin
 import RootAdminDashboard from "./admin-root-module/dashboard";
@@ -86,7 +88,9 @@ export function App() {
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="admin-management" element={<Admin />} />
+        <Route path="reusable" element={<Reusable />} />
         <Route path="charts" element={<ChartPage />} />
         <Route path="archive" element={<PagePlaceholder title="Archive" />} />
         <Route path="inputform" element={<RecordInputDemo />} />
