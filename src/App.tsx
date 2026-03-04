@@ -19,7 +19,8 @@ import RecordInputDemo from "./admin-module/record-input";
 import ChartPage from "./admin-module/chart";
 import AdminPage from "./admin-module/DashboardReusable";
 import AdminDashboard from "./admin-module/dashboard";
-import Admin from "./admin-module/admin-management";
+import UserManagement from "./admin-module/user-management";
+
 
 // Root Admin
 import RootAdminDashboard from "./admin-root-module/dashboard";
@@ -89,7 +90,7 @@ export function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="admin-management" element={<Admin />} />
+        <Route path="user-management" element={<UserManagement />} />
         <Route path="reusable" element={<Reusable />} />
         <Route path="charts" element={<ChartPage />} />
         <Route path="archive" element={<PagePlaceholder title="Archive" />} />
