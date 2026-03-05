@@ -12,7 +12,6 @@ interface StatusBadgeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-// Clean, professional color palette
 const statusConfig: Record<StatusType, { border: string; text: string; dot: string }> = {
   success: {
     border: 'border-emerald-400',
@@ -78,7 +77,6 @@ export const StatusBadge = ({
   );
 };
 
-// Helper function para mas madaling gamitin sa common status values
 export const getStatusFromValue = (value: string): StatusType => {
   const statusMap: Record<string, StatusType> = {
     // Success variants
