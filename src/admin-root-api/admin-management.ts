@@ -1,11 +1,15 @@
 const BASE_URL = "http://localhost:8080/api/v1/users";
+const DEPT_URL = "http://localhost:8080/api/v1/departments";
+const ROLE_URL = "http://localhost:8080/api/v1/roles";
 
 const ENDPOINTS = {
-  ADMIN_STATS: "/stats",
-  ADMIN_TABLE: "/admin-table",
-  CREATE_ADMIN: "/create-admin",
-  UPDATE_ADMIN: "/update-admin",
+  ADMIN_STATS:   "/stats",
+  ADMIN_TABLE:   "/admin-table",
+  UPDATE_ADMIN:  "/update-admin",
   UPDATE_STATUS: "/update-status",
+  CREATE_ADMIN:  "/create-admin", 
+  SETTINGS_PREVIEW: "/settings-preview",
+  UPDATE_SETTINGS: "/update-settings",
 };
 
 export const Statuses = {
@@ -16,6 +20,30 @@ export const Statuses = {
 } as const;
 
 export type Status = (typeof Statuses)[keyof typeof Statuses];
+
+
+
+export interface SettingsPreview{
+  id: string;
+  username: string;
+  
+  email: string;
+  firstName: string;
+  lastName: string;
+  contactNumber: string;
+  
+}
+
+export interface UpdateSettings{
+  id: string;
+  username: string;
+  password: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  contactNumber: string;
+}
+
 
 export interface AdminStats {
   totalAdmin:    number;
@@ -53,6 +81,7 @@ export interface UpdateAdmin {
   firstName:      string;
   lastName:       string;
   email:          string;
+  password:       string;
   username:       string;
   contactNumber:  string;
   allDepartments: boolean;
@@ -72,7 +101,33 @@ export interface AdminTableParams {
   status?: string;
 }
 
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export interface DepartmentOptions {
+  id:   number;
+  name: string;
+}
+
+export interface CreateAdmin{
+  username:      string;
+  firstName:     string;
+  lastName:      string;
+  email:         string;
+  password:      string;
+  contactNumber: string;
+  roleId:       number;
+  allDepartments: boolean;
+  departmentIds: number[];
+  activateImmediately: boolean;
+
+}
+
+export interface RoleOptions {
+  id:   number;
+  roleName: string;
+}
+
+
+
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}, baseUrl = BASE_URL): Promise<T> {
   const token = localStorage.getItem("token");
 
   const headers: HeadersInit = {
@@ -81,19 +136,27 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     ...options.headers,
   };
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+  const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.message || `HTTP error! status: ${response.status}`);
+    const contentType = response.headers.get("content-type");
+    const errMsg = contentType?.includes("application/json")
+      ? (await response.json().catch(() => ({}))).message
+      : await response.text();
+    throw new Error(errMsg || `HTTP error! status: ${response.status}`);
   }
 
   if (response.status === 204) return {} as T;
-  return response.json();
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return response.json();
+  }
+  return response.text() as unknown as T;
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
@@ -111,6 +174,10 @@ export async function getAdminTable(
   if (params.status) query.set("status", params.status);
 
   return apiFetch<PageResponse<AdminTable>>(`${ENDPOINTS.ADMIN_TABLE}?${query.toString()}`);
+}
+
+export async function getDepartmentOptions(): Promise<DepartmentOptions[]> {
+  return apiFetch<DepartmentOptions[]>("/options", {}, DEPT_URL);
 }
 
 export async function updateAdmin(
@@ -149,5 +216,27 @@ export async function updateUserStatus(
   return apiFetch<string>(`${ENDPOINTS.UPDATE_STATUS}?${query.toString()}`, {
     method: "PATCH",
     body:   JSON.stringify(actionRequest),
+  });
+}
+
+export async function getAdminRoleOptions(): Promise<RoleOptions[]> {
+  return apiFetch<RoleOptions[]>("/admin-options", {}, ROLE_URL);
+}
+
+export async function createAdminAccount(body: CreateAdmin): Promise<string> {
+  return apiFetch<string>(ENDPOINTS.CREATE_ADMIN, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getSettingsPreview(): Promise<SettingsPreview> {
+  return apiFetch<SettingsPreview>(ENDPOINTS.SETTINGS_PREVIEW);
+}
+
+export async function updateSettings(body: UpdateSettings): Promise<string> {
+  return apiFetch<string>(ENDPOINTS.UPDATE_SETTINGS, {
+    method: "PUT",
+    body:   JSON.stringify(body),
   });
 }

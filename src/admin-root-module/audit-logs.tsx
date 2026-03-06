@@ -1,276 +1,499 @@
-import { useState } from "react";
-import { Download, Search, Eye, SlidersHorizontal } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Download, Eye, ShieldAlert, AlertTriangle, Database, CalendarDays } from "lucide-react";
 
-const ALL_LOGS = [
-  { timestamp: "2026-02-26 14:32:15", user: "Maria Santos",    role: "Case Officer",      action: "Create",             module: "VAWC",        details: "Case #2026-001 created",           ip: "192.168.1.45", severity: "Info" },
-  { timestamp: "2026-02-26 14:28:03", user: "Pedro Reyes",     role: "Social Worker",     action: "Update",             module: "BCPC",        details: "Child record #BC-445...",          ip: "192.168.1.52", severity: "Info" },
-  { timestamp: "2026-02-26 14:15:22", user: "Root Admin",      role: "Root Admin",        action: "Create",             module: "System",      details: "New admin...",                     ip: "192.168.1.1",  severity: "Warning" },
-  { timestamp: "2026-02-26 13:42:07", user: "Ana Lopez",       role: "Desk Officer",      action: "Login",              module: "System",      details: "3rd failed attempt -...",          ip: "192.168.1.78", severity: "Critical" },
-  { timestamp: "2026-02-26 13:38:00", user: "Admin User",      role: "Admin",             action: "Lock",               module: "System",      details: "Account ana.lopez locked...",      ip: "192.168.1.1",  severity: "Warning" },
-  { timestamp: "2026-02-26 13:15:44", user: "Roberto Garcia",  role: "Youth Officer",     action: "View",               module: "FTJS",        details: "Accessed youth records list",      ip: "192.168.1.61", severity: "Info" },
-  { timestamp: "2026-02-26 12:58:13", user: "Liza Mendoza",    role: "Event Coordinator", action: "Create",             module: "Operational", details: "Barangay Assembly...",             ip: "192.168.1.44", severity: "Info" },
-  { timestamp: "2026-02-26 12:45:19", user: "Root Admin",      role: "Root Admin",        action: "Modify Permissions", module: "System",      details: "Updated VAWC Case...",             ip: "192.168.1.1",  severity: "Warning" },
-  { timestamp: "2026-02-26 12:30:05", user: "Maria Santos",    role: "Case Officer",      action: "Delete",             module: "VAWC",        details: "Draft case #2026-000...",          ip: "192.168.1.45", severity: "Warning" },
-  { timestamp: "2026-02-26 12:10:44", user: "Juan Dela Cruz",  role: "Blotter Officer",   action: "Update",             module: "Blotter",     details: "Incident report #BL-112 updated",  ip: "192.168.1.33", severity: "Info" },
-  { timestamp: "2026-02-26 11:55:30", user: "Elena Reyes",     role: "Clearance Officer", action: "Create",             module: "Clearance",   details: "Clearance #CL-889 issued",         ip: "192.168.1.22", severity: "Info" },
-  { timestamp: "2026-02-26 11:40:17", user: "Root Admin",      role: "Root Admin",        action: "Delete",             module: "System",      details: "Removed expired audit logs",       ip: "192.168.1.1",  severity: "Warning" },
-  { timestamp: "2026-02-26 11:20:05", user: "Carlos Bautista", role: "Lupong Member",     action: "View",               module: "Lupong",      details: "Accessed mediation record #L-44",  ip: "192.168.1.55", severity: "Info" },
-  { timestamp: "2026-02-26 10:58:22", user: "Rosa Villanueva", role: "BCPC Officer",      action: "Update",             module: "BCPC",        details: "Child welfare report updated",     ip: "192.168.1.67", severity: "Info" },
-  { timestamp: "2026-02-26 10:35:11", user: "Admin User",      role: "Admin",             action: "Create",             module: "System",      details: "New staff account created",        ip: "192.168.1.1",  severity: "Warning" },
-  { timestamp: "2026-02-26 10:10:48", user: "Maria Santos",    role: "Case Officer",      action: "Update",             module: "VAWC",        details: "Case #2026-001 status changed",    ip: "192.168.1.45", severity: "Info" },
-  { timestamp: "2026-02-26 09:55:33", user: "Pedro Reyes",     role: "Social Worker",     action: "Login",              module: "System",      details: "Successful login",                 ip: "192.168.1.52", severity: "Info" },
-  { timestamp: "2026-02-26 09:40:20", user: "Liza Mendoza",    role: "Event Coordinator", action: "Update",             module: "Operational", details: "Assembly schedule updated",         ip: "192.168.1.44", severity: "Info" },
-  { timestamp: "2026-02-26 09:25:07", user: "Root Admin",      role: "Root Admin",        action: "Modify Permissions", module: "System",      details: "BCPC permissions updated",         ip: "192.168.1.1",  severity: "Warning" },
-  { timestamp: "2026-02-26 09:10:55", user: "Ana Lopez",       role: "Desk Officer",      action: "View",               module: "Clearance",   details: "Viewed clearance queue",           ip: "192.168.1.78", severity: "Info" },
-  { timestamp: "2026-02-26 08:50:30", user: "Roberto Garcia",  role: "Youth Officer",     action: "Create",             module: "FTJS",        details: "Youth program #YP-77 created",     ip: "192.168.1.61", severity: "Info" },
-  { timestamp: "2026-02-26 08:30:00", user: "Carlos Bautista", role: "Lupong Member",     action: "Login",              module: "System",      details: "Successful login",                 ip: "192.168.1.55", severity: "Info" },
-];
+// ─── Reusable Components ──────────────────────────────────────────────────────
+import { KPICard, KPIGrid }        from "../reusable/KPICard";
+import { Table, type TableColumn } from "../reusable/Table";
+import { TableFilter }             from "../reusable/TableFilter";
+import { ViewModal }               from "../reusable/DetailView";
 
-const MODULE_STYLES: Record<string, string> = {
-  VAWC:        "bg-blue-100 text-blue-600",
-  BCPC:        "bg-teal-100 text-teal-600",
-  System:      "bg-gray-100 text-gray-600",
-  FTJS:        "bg-cyan-100 text-cyan-600",
-  Operational: "bg-pink-100 text-pink-600",
-  Blotter:     "bg-orange-100 text-orange-600",
-  Clearance:   "bg-green-100 text-green-600",
-  Lupong:      "bg-yellow-100 text-yellow-700",
+import {
+  getAuditStats, getAuditTable, getFilterOptions, getAuditLog,
+  type AuditTable, type AuditLogStats,
+  type AuditFilterOptions, type AuditTableView,
+} from "../admin-root-api/audit-logs";
+
+
+const HIDDEN_FIELDS = new Set([
+  "id", "uuid", "password", "passwordHash", "password_hash",
+  "salt", "token", "refreshToken", "refresh_token",
+  "accessToken", "access_token", "secret",
+]);
+
+const DATE_FIELDS = new Set([
+  "createdAt", "created_at", "updatedAt", "updated_at",
+  "lastLoginAt", "last_login_at", "deletedAt", "deleted_at",
+  "lockUntil", "lock_until",
+]);
+
+
+const isIsoDate = (v: string) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v);
+
+const fmtDate = (raw: string) => {
+  if (!raw) return "—";
+  try {
+    return new Intl.DateTimeFormat("en-PH", {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).format(new Date(raw));
+  } catch { return raw; }
 };
 
+const fmtVal = (v: unknown, key = ""): string => {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  const str = String(v);
+  if (DATE_FIELDS.has(key) || isIsoDate(str)) return fmtDate(str);
+  return str;
+};
+
+const humanKey = (key: string) =>
+  key
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const tryParseObj = (raw: string): Record<string, unknown> | null => {
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw);
+    if (typeof p === "object" && p !== null && !Array.isArray(p)) return p;
+    return null;
+  } catch { return null; }
+};
+
+const visible = (obj: Record<string, unknown>) =>
+  Object.entries(obj).filter(([k]) => !HIDDEN_FIELDS.has(k));
+
+type StatusType = "success" | "warning" | "danger" | "info" | "pending" | "default";
+
+const statusCfg: Record<StatusType, { border: string; text: string; dot: string }> = {
+  success: { border: "border-emerald-400", text: "text-emerald-600", dot: "bg-emerald-500" },
+  warning: { border: "border-amber-400",   text: "text-amber-600",   dot: "bg-amber-500"   },
+  danger:  { border: "border-rose-400",    text: "text-rose-600",    dot: "bg-rose-500"    },
+  info:    { border: "border-sky-400",     text: "text-sky-600",     dot: "bg-sky-500"     },
+  pending: { border: "border-orange-400",  text: "text-orange-600",  dot: "bg-orange-500"  },
+  default: { border: "border-slate-300",   text: "text-slate-500",   dot: "bg-slate-400"   },
+};
+
+const StatusBadge = ({ status, label }: { status: StatusType; label: string }) => {
+  const c = statusCfg[status] ?? statusCfg.default;
+  return (
+    <span className={`inline-flex items-center gap-1.5 font-medium rounded-full border bg-white text-xs px-3 py-1 ${c.border} ${c.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+      {label}
+    </span>
+  );
+};
+
+const sevToStatus = (s: string): StatusType =>
+  ({ critical: "danger", warning: "warning", info: "info" } as Record<string, StatusType>)[s?.toLowerCase()] ?? "default";
+
+const MOD_STYLES: Record<string, string> = {
+  VAWC:          "bg-blue-100 text-blue-700",
+  BCPC:          "bg-teal-100 text-teal-700",
+  System:        "bg-gray-100 text-gray-600",
+  USER_SECURITY: "bg-violet-100 text-violet-700",
+  FTJS:          "bg-cyan-100 text-cyan-700",
+  Operational:   "bg-pink-100 text-pink-700",
+  Blotter:       "bg-orange-100 text-orange-700",
+  Clearance:     "bg-green-100 text-green-700",
+  Lupong:        "bg-yellow-100 text-yellow-700",
+};
+
+const ModuleBadge = ({ module }: { module: string }) => (
+  <span className={`px-2.5 py-1 text-xs font-semibold rounded-md ${MOD_STYLES[module] ?? "bg-purple-100 text-purple-700"}`}>
+    {module}
+  </span>
+);
+
+const PlainCard = ({ raw, variant }: { raw: string; variant: "old" | "new" }) => {
+  if (!raw) return <span className="text-gray-400 text-xs italic">No data</span>;
+  const isOld   = variant === "old";
+  const wrapCls = isOld ? "border-rose-200 bg-rose-50"     : "border-emerald-200 bg-emerald-50";
+  const labCls  = isOld ? "text-rose-600"                  : "text-emerald-600";
+  const valCls  = isOld ? "text-rose-700 font-semibold"    : "text-emerald-700 font-semibold";
+  const display = isIsoDate(raw) ? fmtDate(raw) : raw;
+  return (
+    <div className={`rounded-lg border px-4 py-3 ${wrapCls}`}>
+      <p className={`text-xs font-semibold mb-1 ${labCls}`}>{isOld ? "Before" : "After"}</p>
+      <p className={`text-sm break-all ${valCls}`}>{display}</p>
+    </div>
+  );
+};
+
+const FieldCard = ({ entries, variant }: { entries: [string, unknown][]; variant: "old" | "new" }) => {
+  const isOld   = variant === "old";
+  const wrapCls = isOld ? "border-rose-200"                          : "border-emerald-200";
+  const headCls = isOld ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
+  const rowEven = isOld ? "even:bg-rose-50/30"                       : "even:bg-emerald-50/30";
+  const rowBdr  = isOld ? "border-rose-100"                          : "border-emerald-100";
+  const valCls  = isOld ? "text-rose-700 font-semibold"              : "text-emerald-700 font-semibold";
+  return (
+    <div className={`rounded-lg border overflow-hidden ${wrapCls}`}>
+      <div className={`px-3 py-1.5 text-xs font-semibold border-b ${headCls}`}>
+        {isOld ? "Before" : "After"}
+      </div>
+      <table className="w-full text-xs">
+        <tbody>
+          {entries.map(([k, v]) => (
+            <tr key={k} className={`border-b last:border-0 ${rowEven} ${rowBdr}`}>
+              <td className="px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap w-5/12">{humanKey(k)}</td>
+              <td className={`px-3 py-1.5 break-all ${valCls}`}>{fmtVal(v, k)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const DiffViewer = ({ oldRaw, newRaw }: { oldRaw: string; newRaw: string }) => {
+  const oldObj = tryParseObj(oldRaw);
+  const newObj = tryParseObj(newRaw);
+
+  if (oldObj && newObj) {
+    const allKeys       = Array.from(new Set([...Object.keys(oldObj), ...Object.keys(newObj)])).filter((k) => !HIDDEN_FIELDS.has(k));
+    const changedKeys   = allKeys.filter((k) => fmtVal(oldObj[k], k) !== fmtVal(newObj[k], k));
+    const unchangedKeys = allKeys.filter((k) => fmtVal(oldObj[k], k) === fmtVal(newObj[k], k));
+
+    if (changedKeys.length === 0)
+      return <p className="text-xs text-gray-400 italic px-1">No field changes recorded.</p>;
+
+    return (
+      <div className="space-y-1.5">
+        <div className="rounded-lg border border-gray-200 overflow-hidden text-xs">
+          <div className="grid grid-cols-[1.4fr_1fr_1fr] bg-gray-50 border-b border-gray-200 font-semibold text-gray-500">
+            <div className="px-3 py-2">Field</div>
+            <div className="px-3 py-2 border-l border-gray-200 text-rose-500">Before</div>
+            <div className="px-3 py-2 border-l border-gray-200 text-emerald-600">After</div>
+          </div>
+          {changedKeys.map((k) => (
+            <div key={k} className="grid grid-cols-[1.4fr_1fr_1fr] border-b last:border-0 border-amber-100 bg-amber-50/40">
+              <div className="px-3 py-2 font-medium text-gray-700 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                {humanKey(k)}
+              </div>
+              <div className="px-3 py-2 border-l border-amber-100 text-rose-600 font-semibold break-all line-through decoration-rose-300">
+                {fmtVal(oldObj[k], k)}
+              </div>
+              <div className="px-3 py-2 border-l border-amber-100 text-emerald-600 font-semibold break-all">
+                {fmtVal(newObj[k], k)}
+              </div>
+            </div>
+          ))}
+        </div>
+        {unchangedKeys.length > 0 && (
+          <p className="text-xs text-gray-400 pl-1">
+            {unchangedKeys.length} field{unchangedKeys.length > 1 ? "s" : ""} unchanged ({unchangedKeys.map(humanKey).join(", ")})
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (!oldObj && !newObj)
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <PlainCard raw={oldRaw} variant="old" />
+        <PlainCard raw={newRaw} variant="new" />
+      </div>
+    );
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {oldObj ? <FieldCard entries={visible(oldObj)} variant="old" /> : <PlainCard raw={oldRaw} variant="old" />}
+      {newObj ? <FieldCard entries={visible(newObj)} variant="new" /> : <PlainCard raw={newRaw} variant="new" />}
+    </div>
+  );
+};
+
+const SingleSide = ({ raw, variant }: { raw: string; variant: "old" | "new" }) => {
+  const obj = tryParseObj(raw);
+  return obj ? <FieldCard entries={visible(obj)} variant={variant} /> : <PlainCard raw={raw} variant={variant} />;
+};
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
 export default function AuditLogs() {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [actionFilter, setActionFilter] = useState("All Actions");
-  const [deptFilter, setDeptFilter] = useState("All Departments");
-  const [severityFilter, setSeverityFilter] = useState("All Severity");
-  const [revealedRows, setRevealedRows] = useState<Set<number>>(new Set());
+  const [stats,         setStats]         = useState<AuditLogStats | null>(null);
+  const [logs,          setLogs]          = useState<AuditTable[]>([]);
+  const [filterOptions, setFilterOptions] = useState<AuditFilterOptions | null>(null);
+  const [totalPages,    setTotalPages]    = useState(1);
+  const [totalItems,    setTotalItems]    = useState(0);
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const [loading,       setLoading]       = useState(false);
+  const [selectedLog,   setSelectedLog]   = useState<AuditTableView | null>(null);
+  const [modalLoading,  setModalLoading]  = useState(false);
+  const [modalOpen,     setModalOpen]     = useState(false);
 
-  const toggleReveal = (idx: number) => {
-    setRevealedRows((prev) => {
-      const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
-      return next;
-    });
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const [search,    setSearch]    = useState("");
+  const [severity,  setSeverity]  = useState("");
+  const [module,    setModule]    = useState("");
+  const [action,    setAction]    = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate,   setEndDate]   = useState("");
+
+  useEffect(() => {
+    getAuditStats().then(setStats).catch(console.error);
+    getFilterOptions().then(setFilterOptions).catch(console.error);
+  }, []);
+
+  const fetchTable = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getAuditTable({
+        search:    search    || undefined,
+        severity:  severity  || undefined,
+        module:    module    || undefined,
+        action:    action    || undefined,
+        startDate: startDate || undefined,
+        endDate:   endDate   || undefined,
+        page:      currentPage - 1,
+        size:      PAGE_SIZE,
+      });
+      setLogs(res.content);
+      setTotalPages(res.totalPages);
+      setTotalItems(res.totalElements);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }, [search, severity, module, action, startDate, endDate, currentPage]);
+
+  useEffect(() => { fetchTable(); }, [fetchTable]);
+
+  const handleFilterApply = () => { setCurrentPage(1); fetchTable(); };
+  const handleClear = () => {
+    setSearch(""); setSeverity(""); setModule(""); setAction("");
+    setStartDate(""); setEndDate("");
+    setCurrentPage(1);
   };
 
-  const filtered = ALL_LOGS.filter((log) => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || log.user.toLowerCase().includes(q) || log.action.toLowerCase().includes(q) || log.details.toLowerCase().includes(q);
-    const matchAction = actionFilter === "All Actions" || log.action === actionFilter;
-    const matchDept = deptFilter === "All Departments" || log.module === deptFilter;
-    const matchSeverity = severityFilter === "All Severity" || log.severity === severityFilter;
-    return matchSearch && matchAction && matchDept && matchSeverity;
-  });
+  const handleView = async (log: AuditTable) => {
+    setModalLoading(true);
+    setModalOpen(true);
+    try {
+      const detail = await getAuditLog(log.id);
+      setSelectedLog(detail);
+    } catch (err) { console.error(err); }
+    finally { setModalLoading(false); }
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const handleCloseModal = () => { setModalOpen(false); setSelectedLog(null); };
 
-  const warnings = ALL_LOGS.filter((l) => l.severity === "Warning").length;
-  const critical = ALL_LOGS.filter((l) => l.severity === "Critical").length;
+  // ── Active filter count (for badge on Apply button) ───────────────────────
+  const activeFilterCount = [search, severity, module, action, startDate, endDate].filter(Boolean).length;
 
-  const resetPage = () => setPage(1);
+  // ── Table Columns ─────────────────────────────────────────────────────────
+  const columns: TableColumn<AuditTable>[] = [
+    {
+      key: "firstName",
+      header: "User",
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+            {row.firstName?.[0]}{row.lastName?.[0]}
+          </div>
+          <div>
+            <p className="font-semibold text-gray-800 text-sm leading-tight">{row.firstName} {row.lastName}</p>
+            <p className="text-xs text-gray-400">{row.roleName}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "actionTaken",
+      header: "Action",
+      render: (row) => (
+        <span className="text-xs font-mono font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
+          {row.actionTaken}
+        </span>
+      ),
+    },
+    {
+      key: "module",
+      header: "Module",
+      render: (row) => <ModuleBadge module={row.module} />,
+    },
+    {
+      key: "reason",
+      header: "Reason",
+      render: (row) => (
+        <span className="text-gray-500 text-xs line-clamp-2 max-w-[180px] block">{row.reason || "—"}</span>
+      ),
+    },
+    {
+      key: "ipAddress",
+      header: "IP Address",
+      render: (row) => (
+        <span className="text-gray-500 text-xs font-mono">{row.ipAddress}</span>
+      ),
+    },
+    {
+      key: "severity",
+      header: "Severity",
+      render: (row) => <StatusBadge status={sevToStatus(row.severity)} label={row.severity} />,
+    },
+    {
+      key: "id",
+      header: "",
+      align: "center",
+      width: "56px",
+      render: (row) => (
+        <button
+          onClick={() => handleView(row)}
+          title="View details"
+          className="p-1.5 rounded-lg hover:bg-blue-50 transition group"
+        >
+          <Eye className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition" />
+        </button>
+      ),
+    },
+  ];
+
+  // ── Modal sections ────────────────────────────────────────────────────────
+  const buildModalSections = (log: AuditTableView) => {
+    const hasOld = !!log.oldValue;
+    const hasNew = !!log.newValue;
+    return [
+      {
+        title: "Activity Info",
+        fields: [
+          { key: "module",    label: "Module",     value: <ModuleBadge module={log.module} /> },
+          { key: "action",    label: "Action",     value: <span className="text-xs font-mono font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">{log.actionTaken}</span> },
+          { key: "severity",  label: "Severity",   value: <StatusBadge status={sevToStatus(log.severity)} label={log.severity} /> },
+          { key: "ip",        label: "IP Address", value: <span className="font-mono text-sm text-gray-700">{log.ipAddress || "—"}</span> },
+          { key: "lastLogin", label: "Last Login", value: fmtDate(log.lastLoginAt) },
+          { key: "createdAt", label: "Logged At",  value: fmtDate(log.createdAt) },
+        ],
+      },
+      {
+        title: "Details",
+        fields: [
+          {
+            key: "reason",
+            label: "Reason",
+            width: "full" as const,
+            value: (
+              <span className="block bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5 text-sm text-gray-700">
+                {log.reason || "—"}
+              </span>
+            ),
+          },
+          ...(hasOld || hasNew
+            ? [{
+                key: "changes",
+                label: "Field Changes",
+                width: "full" as const,
+                value: hasOld && hasNew
+                  ? <DiffViewer oldRaw={log.oldValue} newRaw={log.newValue} />
+                  : hasOld
+                    ? <SingleSide raw={log.oldValue} variant="old" />
+                    : <SingleSide raw={log.newValue} variant="new" />,
+              }]
+            : []),
+        ],
+      },
+    ];
+  };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+    <div className="p-6 min-h-screen font-sans">
 
-      {/* Header */}
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Audit Logs</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Complete system activity trail — all {ALL_LOGS.length} entries</p>
-        </div>
-        <button className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition shadow-sm">
-          <Download className="w-4 h-4" />
-          Export All CSV
-        </button>
+
+      {/* KPI Cards */}
+      <div className="mb-5">
+        <KPIGrid columns={4}>
+          <KPICard title="Total Entries" value={stats?.totalEntries  ?? "—"} icon={<Database      className="w-6 h-6" />} color="blue"    />
+          <KPICard title="Today"         value={stats?.todayEntry    ?? "—"} icon={<CalendarDays  className="w-6 h-6" />} color="emerald" />
+          <KPICard title="Warnings"      value={stats?.totalWarning  ?? "—"} icon={<AlertTriangle className="w-6 h-6" />} color="amber"   />
+          <KPICard title="Critical"      value={stats?.totalCritical ?? "—"} icon={<ShieldAlert   className="w-6 h-6" />} color="rose"    />
+        </KPIGrid>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-5">
-        {[
-          { label: "Total Entries", value: ALL_LOGS.length, color: "text-gray-900" },
-          { label: "Today",         value: ALL_LOGS.length, color: "text-blue-600" },
-          { label: "Warnings",      value: warnings,        color: "text-yellow-500" },
-          { label: "Critical",      value: critical,        color: "text-red-500" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-            <p className="text-sm text-gray-400">{s.label}</p>
-            <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters Box */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 pt-4 pb-5 mb-5">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 mb-3">
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          FILTERS
-        </div>
-        {/* Row 1 */}
-        <div className="grid grid-cols-5 gap-3 mb-3">
-          <div className="relative col-span-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
-            <input
-              type="text"
-              placeholder="Search user, action, or details..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <input type="date" className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <input type="date" className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <select value={actionFilter} onChange={(e) => { setActionFilter(e.target.value); resetPage(); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option>All Actions</option>
-            <option>Login</option>
-            <option>Update</option>
-            <option>Delete</option>
-            <option>Create</option>
-            <option>View</option>
-            <option>Lock</option>
-            <option>Modify Permissions</option>
-          </select>
-        </div>
-        {/* Row 2 */}
-        <div className="grid grid-cols-5 gap-3">
-          <select value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); resetPage(); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 col-span-2">
-            <option>All Departments</option>
-            <option>VAWC</option>
-            <option>BCPC</option>
-            <option>System</option>
-            <option>FTJS</option>
-            <option>Operational</option>
-            <option>Blotter</option>
-            <option>Clearance</option>
-            <option>Lupong</option>
-          </select>
-          <select value={severityFilter} onChange={(e) => { setSeverityFilter(e.target.value); resetPage(); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option>All Severity</option>
-            <option>Info</option>
-            <option>Warning</option>
-            <option>Critical</option>
-          </select>
-        </div>
-      </div>
+      {/* ── TableFilter — now includes date range via dateRange prop ── */}
+      <TableFilter
+        searchPlaceholder="Search user, action, reason..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        filters={[
+          {
+            label: "Module",
+            key: "module",
+            value: module,
+            options: (filterOptions?.modules ?? []).map((m) => ({ value: m, label: m })),
+          },
+          {
+            label: "Action",
+            key: "action",
+            value: action,
+            options: (filterOptions?.actions ?? []).map((a) => ({ value: a, label: a })),
+          },
+          {
+            label: "Severity",
+            key: "severity",
+            value: severity,
+            options: (filterOptions?.severities ?? []).map((s) => ({ value: s, label: s })),
+          },
+        ]}
+        onFilterChange={(key, val) => {
+          if (key === "module")   setModule(val);
+          if (key === "action")   setAction(val);
+          if (key === "severity") setSeverity(val);
+        }}
+        // ── Date range passed as a single prop ──────────────────────────────
+        dateRange={{
+          startValue:    startDate,
+          endValue:      endDate,
+          onStartChange: setStartDate,
+          onEndChange:   setEndDate,
+        }}
+        activeFilterCount={activeFilterCount}
+        onFilterClick={handleFilterApply}
+        onClearClick={handleClear}
+        filterButtonText="Apply"
+        clearButtonText="Clear"
+      />
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm text-left">
-          <thead>
-            <tr className="border-b border-gray-100">
-              {["Timestamp","User","Role","Action","Module","Details","IP Address","Severity",""].map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-12 text-center text-gray-300 text-sm">No records found.</td></tr>
-            ) : paginated.map((log, i) => {
-              const globalIdx = (page - 1) * PAGE_SIZE + i;
-              const revealed = revealedRows.has(globalIdx);
-              return (
-                <tr key={i} className={`border-b border-gray-50 transition-colors ${revealed ? "bg-blue-50/30" : "hover:bg-gray-50"}`}>
+      <Table<AuditTable>
+        columns={columns}
+        data={logs}
+        keyExtractor={(row) => row.id}
+        loading={loading}
+        minRows={PAGE_SIZE}
+        emptyMessage="No audit logs found."
+        pagination={{
+          currentPage, totalPages, totalItems,
+          itemsPerPage: PAGE_SIZE,
+          onPageChange: setCurrentPage,
+        }}
+      />
 
-                  {/* Timestamp — always visible */}
-                  <td className="px-4 py-3.5 text-gray-400 text-xs whitespace-nowrap">{log.timestamp}</td>
-
-                  {/* User */}
-                  <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                    {revealed
-                      ? log.user
-                      : <><span>{log.user.split(" ")[0]} </span><span className="blur-sm select-none text-gray-300">{log.user.split(" ").slice(1).join(" ")}</span></>
-                    }
-                  </td>
-
-                  {/* Role */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
-                    {revealed
-                      ? <span className="text-gray-500">{log.role}</span>
-                      : <span className="blur-sm select-none text-gray-300 text-xs pointer-events-none">{"●●●●●●●●●"}</span>
-                    }
-                  </td>
-
-                  {/* Action — always visible */}
-                  <td className="px-4 py-3.5 text-gray-500 whitespace-nowrap">{log.action}</td>
-
-                  {/* Module — always visible */}
-                  <td className="px-4 py-3.5">
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded ${MODULE_STYLES[log.module] || "bg-purple-100 text-purple-600"}`}>
-                      {log.module}
-                    </span>
-                  </td>
-
-                  {/* Details */}
-                  <td className="px-4 py-3.5 max-w-[160px]">
-                    {revealed
-                      ? <span className="text-gray-500 text-xs">{log.details}</span>
-                      : <span className="blur-sm select-none text-gray-300 text-xs pointer-events-none">{"●●●●●●●●●●●●●●●"}</span>
-                    }
-                  </td>
-
-                  {/* IP Address */}
-                  <td className="px-4 py-3.5 whitespace-nowrap text-xs">
-                    {revealed
-                      ? <span className="text-gray-400">{log.ip}</span>
-                      : <span className="blur-sm select-none text-gray-300 pointer-events-none">{log.ip.replace(/\d+$/, "•••")}</span>
-                    }
-                  </td>
-
-                  {/* Severity — always visible */}
-                  <td className="px-4 py-3.5">
-                    {log.severity === "Critical" ? (
-                      <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-600 text-xs font-semibold px-2.5 py-1 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Critical
-                      </span>
-                    ) : log.severity === "Warning" ? (
-                      <span className="inline-flex items-center gap-1.5 text-yellow-500 text-xs font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span> Warning
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-gray-400 text-xs font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span> Info
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Eye toggle */}
-                  <td className="px-4 py-3.5 text-center">
-                    <button
-                      onClick={() => toggleReveal(globalIdx)}
-                      title={revealed ? "Hide details" : "Reveal details"}
-                      className={`p-1.5 rounded transition ${revealed ? "bg-blue-100" : "hover:bg-gray-100"}`}
-                    >
-                      <Eye className={`w-4 h-4 transition ${revealed ? "text-blue-500" : "text-gray-300 hover:text-blue-400"}`} />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center px-5 py-3.5 border-t border-gray-100">
-          <span className="text-sm text-gray-400">
-            Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} entries
-          </span>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base">‹</button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button key={p} onClick={() => setPage(p)}
-                className={`w-7 h-7 flex items-center justify-center rounded text-sm font-medium transition ${p === page ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}>
-                {p}
-              </button>
-            ))}
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base">›</button>
+      {/* Modal loading */}
+      {modalLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-xl px-8 py-6 flex items-center gap-3 shadow-xl">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-200 border-t-blue-600" />
+            <span className="text-sm text-gray-600">Loading details…</span>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Detail Modal */}
+      {selectedLog && (
+        <ViewModal
+          isOpen={modalOpen}
+          onClose={handleCloseModal}
+          title="Audit Log Details"
+          subtitle={`Entry ID #${selectedLog.id}`}
+          size="lg"
+          closeText="Close"
+          avatar={{ name: `${selectedLog.firstName} ${selectedLog.lastName}` }}
+          sections={buildModalSections(selectedLog)}
+        />
+      )}
     </div>
   );
 }

@@ -32,7 +32,7 @@ import UserManagement from "./admin-module/user-management";
 import RootAdminDashboard from "./admin-root-module/dashboard";
 import AdminManagement from "./admin-root-module/admin-management";
 import AuditLogs from "./admin-root-module/audit-logs";
-import AccountSettings from "./admin-root-module/account-settings";
+import {AccountSettings} from "./admin-root-module/account-settings";
 import RootAdminAccess from "./admin-root-module/access";
 
 // BCPC
@@ -123,7 +123,6 @@ export function App() {
         <Route path="admin-management" element={<AdminManagement />} />
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="account-settings" element={<AccountSettings />} />
-        <Route path="access" element={<RootAdminAccess />} />
       </Route>
 
       {/* Blotter */}

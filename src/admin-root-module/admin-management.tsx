@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { Pencil, Lock, Trash2, Eye, ShieldAlert } from "lucide-react";
+import { Pencil, Lock, LockOpen, Trash2, Eye, ShieldAlert, RotateCcw } from "lucide-react";
 import CreateAdminModal from "./create-admin-modal";
 import { EditUserModal } from "./edit-user-modal";
 import { ViewUserModal } from "./view-user-modal";
 import { LockUserModal } from "./lock-user-modal";
 import { DeleteUserModal } from "./delete-user-modal";
+import { RestoreUserModal } from "./restore-user-modal";
 import { KPIGrid, KPICard, KPIIcons } from "../reusable/KPICard";
 import { Table, type TableColumn } from "../reusable/Table";
 import { TableFilter } from "../reusable/TableFilter";
@@ -15,6 +16,7 @@ import {
   type AdminStats,
   type AdminTable,
 } from "../admin-root-api/admin-management";
+import { NoticeBanner } from "../reusable/Notification";
 
 function AnimatedCounter({ target }: { target: number }) {
   const [count, setCount] = useState(0);
@@ -84,10 +86,11 @@ function DepartmentCell({ departments }: { departments: string[] }) {
 }
 
 const buildColumns = (
-  onView:   (a: AdminTable) => void,
-  onEdit:   (a: AdminTable) => void,
-  onLock:   (a: AdminTable) => void,
-  onDelete: (a: AdminTable) => void,
+  onView:    (a: AdminTable) => void,
+  onEdit:    (a: AdminTable) => void,
+  onLock:    (a: AdminTable) => void,
+  onDelete:  (a: AdminTable) => void,
+  onRestore: (a: AdminTable) => void,
 ): TableColumn<AdminTable>[] => [
   {
     key: "profile",
@@ -140,22 +143,57 @@ const buildColumns = (
     key: "actions",
     header: "Actions",
     align: "center",
-    render: (item) => (
-      <div className="flex justify-center items-center gap-3">
-        <button title="View"   onClick={(e) => { e.stopPropagation(); onView(item);   }} className="p-1.5 rounded-md hover:bg-gray-100 transition">
-          <Eye    className="w-4 h-4 text-gray-400 hover:text-blue-500" />
-        </button>
-        <button title="Edit"   onClick={(e) => { e.stopPropagation(); onEdit(item);   }} className="p-1.5 rounded-md hover:bg-blue-50 transition">
-          <Pencil className="w-4 h-4 text-blue-400 hover:text-blue-600" />
-        </button>
-        <button title={item.isLocked ? "Unlock" : "Lock"} onClick={(e) => { e.stopPropagation(); onLock(item); }} className="p-1.5 rounded-md hover:bg-amber-50 transition">
-          <Lock   className="w-4 h-4 text-amber-400 hover:text-amber-600" />
-        </button>
-        <button title="Deactivate" onClick={(e) => { e.stopPropagation(); onDelete(item); }} className="p-1.5 rounded-md hover:bg-rose-50 transition">
-          <Trash2 className="w-4 h-4 text-rose-400 hover:text-rose-600" />
-        </button>
-      </div>
-    ),
+    render: (item) => {
+      const isInactive = item.status?.toUpperCase() === "INACTIVE";
+      const LockIcon   = item.isLocked ? LockOpen : Lock;
+      const lockTitle  = item.isLocked ? "Unlock" : "Lock";
+
+      return (
+        <div className="flex justify-center items-center gap-3">
+          <button
+            title="View"
+            onClick={(e) => { e.stopPropagation(); onView(item); }}
+            className="p-1.5 rounded-md hover:bg-gray-100 transition"
+          >
+            <Eye className="w-4 h-4 text-gray-400 hover:text-blue-500" />
+          </button>
+
+          <button
+            title="Edit"
+            onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+            className="p-1.5 rounded-md hover:bg-blue-50 transition"
+          >
+            <Pencil className="w-4 h-4 text-blue-400 hover:text-blue-600" />
+          </button>
+
+          <button
+            title={lockTitle}
+            onClick={(e) => { e.stopPropagation(); onLock(item); }}
+            className="p-1.5 rounded-md hover:bg-amber-50 transition"
+          >
+            <LockIcon className="w-4 h-4 text-amber-400 hover:text-amber-600" />
+          </button>
+
+          {isInactive ? (
+            <button
+              title="Restore"
+              onClick={(e) => { e.stopPropagation(); onRestore(item); }}
+              className="p-1.5 rounded-md hover:bg-blue-50 transition"
+            >
+              <RotateCcw className="w-4 h-4 text-blue-400 hover:text-blue-600" />
+            </button>
+          ) : (
+            <button
+              title="Deactivate"
+              onClick={(e) => { e.stopPropagation(); onDelete(item); }}
+              className="p-1.5 rounded-md hover:bg-rose-50 transition"
+            >
+              <Trash2 className="w-4 h-4 text-rose-400 hover:text-rose-600" />
+            </button>
+          )}
+        </div>
+      );
+    },
   },
 ];
 
@@ -180,6 +218,7 @@ export default function AdminManagement() {
   const [openView,      setOpenView]      = useState(false);
   const [openLock,      setOpenLock]      = useState(false);
   const [openDelete,    setOpenDelete]    = useState(false);
+  const [openRestore,   setOpenRestore]   = useState(false);
 
   useEffect(() => {
     async function fetchStats() {
@@ -222,35 +261,33 @@ export default function AdminManagement() {
   const handleFilterApply = () => { setCurrentPage(1); fetchTable(); };
   const handleFilterClear = () => { setSearch(""); setRoleFilter(""); setStatusFilter(""); setCurrentPage(1); };
 
-  const handleView   = (a: AdminTable) => { setSelectedAdmin(a); setOpenView(true);   };
-  const handleEdit   = (a: AdminTable) => { setSelectedAdmin(a); setOpenEdit(true);   };
-  const handleLock   = (a: AdminTable) => { setSelectedAdmin(a); setOpenLock(true);   };
-  const handleDelete = (a: AdminTable) => { setSelectedAdmin(a); setOpenDelete(true); };
+  const handleView    = (a: AdminTable) => { setSelectedAdmin(a); setOpenView(true);    };
+  const handleEdit    = (a: AdminTable) => { setSelectedAdmin(a); setOpenEdit(true);    };
+  const handleLock    = (a: AdminTable) => { setSelectedAdmin(a); setOpenLock(true);    };
+  const handleDelete  = (a: AdminTable) => { setSelectedAdmin(a); setOpenDelete(true);  };
+  const handleRestore = (a: AdminTable) => { setSelectedAdmin(a); setOpenRestore(true); };
 
-  const columns = buildColumns(handleView, handleEdit, handleLock, handleDelete);
+  const columns = buildColumns(handleView, handleEdit, handleLock, handleDelete, handleRestore);
 
   return (
     <div className="p-6 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-gray-800">Admin Management</h2>
-            <span className="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-600">Root Admin Only</span>
-          </div>
-          <p className="text-sm text-gray-500 mt-1">Manage administrator accounts and access control</p>
-        </div>
-        <button
-          onClick={() => setOpenCreate(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg shadow"
-        >
-          + Create Admin Account
-        </button>
-      </div>
+   <div className="flex justify-end items-center mb-6">
+  <button
+    onClick={() => setOpenCreate(true)}
+    className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg shadow transition-all active:scale-95"
+  >
+    + Create Admin Account
+  </button>
+</div>
 
-      <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg mb-6">
-        <div className="font-semibold">⚠ Elevated Privilege Zone</div>
-        <p className="text-sm mt-1">This section is only accessible to Root Admins. All actions performed here are logged in the audit trail with high-priority flags.</p>
-      </div>
+      
+      <div className="mb-4">
+             <NoticeBanner
+               title="Elevated Privilege Zone:"
+               message="This section is only accessible to Root Admins. All actions performed here are logged in the audit trail with high-priority flags."
+               variant="warning"
+             />
+           </div>
 
       {statsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -267,9 +304,9 @@ export default function AdminManagement() {
         stats && (
           <div className="mb-6">
             <KPIGrid columns={4}>
-              <KPICard title="Total Admins"     value={<AnimatedCounter target={stats.totalAdmin}    />} icon={KPIIcons.users}    color="blue"    subtitle="Registered accounts" />
-              <KPICard title="Active Admins"    value={<AnimatedCounter target={stats.totalActive}   />} icon={KPIIcons.clock}    color="emerald" subtitle="Currently active"    />
-              <KPICard title="Locked Accounts"  value={<AnimatedCounter target={stats.totalLock}     />} icon={<ShieldAlert className="w-6 h-6" />} color="rose" subtitle="Require attention" />
+              <KPICard title="Total Admins"      value={<AnimatedCounter target={stats.totalAdmin}    />} icon={KPIIcons.users}    color="blue"    subtitle="Registered accounts" />
+              <KPICard title="Active Admins"     value={<AnimatedCounter target={stats.totalActive}   />} icon={KPIIcons.clock}    color="emerald" subtitle="Currently active"    />
+              <KPICard title="Locked Accounts"   value={<AnimatedCounter target={stats.totalLock}     />} icon={<ShieldAlert className="w-6 h-6" />} color="rose" subtitle="Require attention" />
               <KPICard title="Inactive Accounts" value={<AnimatedCounter target={stats.totalInactive} />} icon={KPIIcons.document} color="amber"   subtitle="No recent activity"  />
             </KPIGrid>
           </div>
@@ -357,6 +394,13 @@ export default function AdminManagement() {
         <DeleteUserModal
           admin={selectedAdmin}
           onClose={() => { setOpenDelete(false); setSelectedAdmin(null); fetchTable(); }}
+        />
+      )}
+
+      {openRestore && selectedAdmin && (
+        <RestoreUserModal
+          admin={selectedAdmin}
+          onClose={() => { setOpenRestore(false); setSelectedAdmin(null); fetchTable(); }}
         />
       )}
     </div>

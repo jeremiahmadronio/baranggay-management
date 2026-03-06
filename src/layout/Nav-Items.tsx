@@ -40,7 +40,6 @@ export const rootAdminNavItems: NavItemType[] = [
   { label: 'Admin Management',  path: "/rootadmin/admin-management",  icon: Users},
   { label: 'Audit Logs',        path: "/rootadmin/audit-logs",        icon: ScrollText},
   { label: 'Account Settings',  path: "/rootadmin/account-settings",  icon: Settings},
-  { label: 'Root Admin Access', path: "/rootadmin/access",            icon: ShieldCheck },
 ]
 
 
