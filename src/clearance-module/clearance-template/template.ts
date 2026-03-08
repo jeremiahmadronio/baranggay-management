@@ -18,7 +18,7 @@ export interface Signatory {
 
 export interface CertificateSettings {
   fee: number
-  validityDate: string
+  validityMonths: number // How many months the certificate is valid (e.g., 6 = 6 months)
   requiresPhoto: boolean
   requiresThumbmark: boolean
   hasFee: boolean

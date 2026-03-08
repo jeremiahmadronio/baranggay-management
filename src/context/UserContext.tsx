@@ -7,17 +7,6 @@ import {
 } from "react";
 import { getUserProfile, type UserProfile } from "../login-api/user-profile";
 
-// Mock user data for development when backend is unavailable
-const MOCK_USER: UserProfile = {
-  id: "mock-user-001",
-  username: "dev_admin",
-  email: "admin@barangay.dev",
-  firstName: "Dev",
-  lastName: "Admin",
-  contactNumber: "+63 912 345 6789",
-  role: "rootadmin",
-};
-
 interface UserContextType {
   user: UserProfile | null;
   loading: boolean;
@@ -35,9 +24,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const fetchUser = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      // No token - use mock data for development
-      console.warn("[UserContext] No token found, using mock user data");
-      setUser(MOCK_USER);
       setLoading(false);
       return;
     }
@@ -48,11 +34,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const data = await getUserProfile();
       setUser(data);
     } catch (err: any) {
+      setError(err.message || "Failed to fetch user profile");
       console.error("Failed to fetch user profile:", err);
-      // Fallback to mock data when API fails
-      console.warn("[UserContext] API failed, using mock user data");
-      setUser(MOCK_USER);
-      setError(null); // Clear error since we have fallback data
     } finally {
       setLoading(false);
     }

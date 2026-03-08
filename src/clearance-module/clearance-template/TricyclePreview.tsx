@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import { type TemplateData } from "./template";
 import { renderTextWithVariables } from "./PreviewUtils";
 import {
@@ -8,7 +8,13 @@ import {
   Signatories,
   PaymentDetails,
 } from "./SharedComponents";
-export function TricyclePreview({ template }: { template: TemplateData }) {
+
+interface PreviewProps {
+  template: TemplateData;
+  customData?: Record<string, string>;
+}
+
+export function TricyclePreview({ template, customData }: PreviewProps) {
   const hasPhoto = template.settings.requiresPhoto;
   return (
     <div
@@ -50,13 +56,13 @@ export function TricyclePreview({ template }: { template: TemplateData }) {
                 key={section.id}
                 className="text-[12.5px] leading-[1.6] text-gray-800 text-left mb-6 break-words whitespace-pre-wrap"
               >
-                {renderTextWithVariables(section.text)}
+                {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
           </div>
         </div>
 
-        <PaymentDetails hasFee={template.settings.hasFee} />
+        <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
         <Signatories template={template} />
       </div>
 

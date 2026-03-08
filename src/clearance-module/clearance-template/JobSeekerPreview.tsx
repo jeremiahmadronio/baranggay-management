@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import { type TemplateData } from "./template";
 import { renderTextWithVariables } from "./PreviewUtils";
 import {
@@ -8,7 +8,13 @@ import {
   Signatories,
   PaymentDetails,
 } from "./SharedComponents";
-export function JobSeekerPreview({ template }: { template: TemplateData }) {
+
+interface PreviewProps {
+  template: TemplateData;
+  customData?: Record<string, string>;
+}
+
+export function JobSeekerPreview({ template, customData }: PreviewProps) {
   return (
     <div
       className="bg-white w-full max-w-[210mm] mx-auto shadow-xl relative flex flex-col border border-gray-200"
@@ -44,13 +50,13 @@ export function JobSeekerPreview({ template }: { template: TemplateData }) {
                     idx === template.bodySections.length - 1 ? "0" : "2em",
                 }}
               >
-                {renderTextWithVariables(section.text)}
+                {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
           </div>
         </div>
 
-        <PaymentDetails hasFee={template.settings.hasFee} />
+        <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
         <Signatories template={template} />
       </div>
 

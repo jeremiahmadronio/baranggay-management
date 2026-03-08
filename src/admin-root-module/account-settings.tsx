@@ -1,9 +1,4 @@
-/**
- * AccountSettings.tsx (Refactored)
- *
- * Now uses the reusable ReusableSettings component instead of reimplementing
- * all the form logic, validation, toasts, dirty tracking, etc.
- */
+
 
 import React from "react";
 import { User, ShieldCheck, Mail, AtSign, Phone } from "lucide-react";
@@ -58,7 +53,7 @@ const ACCOUNT_SECTIONS: SettingsSectionConfig[] = [
         type: "tel",
         placeholder: "+63 900 000 0000",
         icon: <Phone className="w-3.5 h-3.5" />,
-        hint: "e.g. +63 912 345 6789",
+        hint: " e.g. +63 912 345 6789",
         required: true,
       },
     ],
@@ -86,6 +81,7 @@ const ACCOUNT_SECTIONS: SettingsSectionConfig[] = [
   },
 ];
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function AccountSettings() {
   // Load the current user's settings

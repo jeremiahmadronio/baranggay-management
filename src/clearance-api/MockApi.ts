@@ -64,7 +64,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY],
     settings: {
       fee: 50,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: true,
       requiresThumbmark: true,
       hasFee: true,
@@ -98,7 +98,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY, RECIPIENT],
     settings: {
       fee: 0,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: true,
       requiresThumbmark: false,
       hasFee: false,
@@ -124,7 +124,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY, BARANGAY_SECRETARY],
     settings: {
       fee: 30,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
@@ -163,7 +163,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     ],
     settings: {
       fee: 0,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: false,
@@ -194,7 +194,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY],
     settings: {
       fee: 100,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: true,
       requiresThumbmark: false,
       hasFee: true,
@@ -234,7 +234,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY],
     settings: {
       fee: 100,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
@@ -276,7 +276,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY],
     settings: {
       fee: 100,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
@@ -315,7 +315,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY],
     settings:{
         fee: 100,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
@@ -355,7 +355,7 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
     signatories: [PUNONG_BARANGAY],
     settings: {
       fee: 0,
-      validityDate: "2026-08-17",
+      validityMonths: 6,
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: false,
@@ -387,7 +387,7 @@ const DEFAULT_TEMPLATE: TemplateData = {
   signatories: [PUNONG_BARANGAY],
   settings: {
     fee: 0,
-    validityDate: "2026-08-17",
+    validityMonths: 6,
     requiresPhoto: false,
     requiresThumbmark: false,
     hasFee: false,

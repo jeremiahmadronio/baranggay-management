@@ -1,6 +1,18 @@
 import React from "react";
 import { type TemplateData } from "./template";
-import { SAMPLE_DATA } from "../../clearance-api/MockApi";
+import { SAMPLE_DATA } from "../../clearance-api/template-api";
+
+// Helper to get value with priority: customData > SAMPLE_DATA > fallback
+const getValue = (key: string, customData?: Record<string, string>, fallback: string = "") => {
+  if (customData && customData[key]) return customData[key];
+  return SAMPLE_DATA[key] || fallback;
+};
+
+// Helper to determine if value is from custom data
+const isCustomValue = (key: string, customData?: Record<string, string>) => {
+  return customData && customData[key];
+};
+
 export const Header = () => (
   <div className="relative">
     <div
@@ -174,27 +186,42 @@ export const Signatories = ({ template }: { template: TemplateData }) => {
     </div>
   );
 };
-export const PaymentDetails = ({ hasFee }: { hasFee: boolean }) => {
+export const PaymentDetails = ({ 
+  hasFee, 
+  customData 
+}: { 
+  hasFee: boolean; 
+  customData?: Record<string, string>;
+}) => {
   if (!hasFee) return null;
   return (
     <div className="mt-6 text-[11px] space-y-1 text-gray-800">
       <div className="flex">
         <span className="w-[120px] font-medium">PAID UNDER O.R. NO</span>
         <span className="mr-2">:</span>
-        <span className="font-bold text-blue-700">{SAMPLE_DATA.OR_NUMBER}</span>
+        <span className={`font-bold ${isCustomValue("OR_NUMBER", customData) ? "text-green-600" : "text-blue-700"}`}>
+          {getValue("OR_NUMBER", customData)}
+        </span>
       </div>
       <div className="flex">
         <span className="w-[120px] font-medium">Requested On</span>
         <span className="mr-2">:</span>
-        <span className="font-bold text-blue-700">
-          {SAMPLE_DATA.DATE_ISSUED}
+        <span className={`font-bold ${isCustomValue("DATE_ISSUED", customData) ? "text-green-600" : "text-blue-700"}`}>
+          {getValue("DATE_ISSUED", customData)}
         </span>
       </div>
       <div className="flex">
         <span className="w-[120px] font-medium">Amount</span>
         <span className="mr-2">:</span>
-        <span className="font-bold text-blue-700">
-          {SAMPLE_DATA.AMOUNT_PAID}
+        <span className={`font-bold ${isCustomValue("AMOUNT_PAID", customData) ? "text-green-600" : "text-blue-700"}`}>
+          {customData?.AMOUNT_PAID ? `₱${customData.AMOUNT_PAID}` : getValue("AMOUNT_PAID", customData)}
+        </span>
+      </div>
+      <div className="flex">
+        <span className="w-[120px] font-medium">Valid Until</span>
+        <span className="mr-2">:</span>
+        <span className={`font-bold ${isCustomValue("VALID_UNTIL", customData) ? "text-green-600" : "text-blue-700"}`}>
+          {getValue("VALID_UNTIL", customData)}
         </span>
       </div>
     </div>

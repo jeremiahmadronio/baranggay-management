@@ -1,9 +1,14 @@
-import React, { Component } from "react";
+import React from "react";
 import { type TemplateData } from "./template";
-import { renderTextWithVariables } from "./PreviewUtils";
-import { SAMPLE_DATA } from "../../clearance-api/MockApi";
-import { Header, Watermark, Footer, Signatories } from "./SharedComponents";
-export function ClearancePreview({ template }: { template: TemplateData }) {
+import { renderTextWithVariables, DataValue } from "./PreviewUtils";
+import { Header, Watermark, Footer } from "./SharedComponents";
+
+interface PreviewProps {
+  template: TemplateData;
+  customData?: Record<string, string>;
+}
+
+export function ClearancePreview({ template, customData }: PreviewProps) {
   const hasPhoto = template.settings.requiresPhoto;
   const hasThumbmark = template.settings.requiresThumbmark;
   const hasFee = template.settings.hasFee;
@@ -49,7 +54,7 @@ export function ClearancePreview({ template }: { template: TemplateData }) {
                   textIndent: "2em",
                 }}
               >
-                {renderTextWithVariables(template.bodySections[0].text)}
+                {renderTextWithVariables(template.bodySections[0].text, customData)}
               </div>
             )}
 
@@ -61,54 +66,42 @@ export function ClearancePreview({ template }: { template: TemplateData }) {
                     Name
                   </span>
                   <span className="mr-2 flex-shrink-0">:</span>
-                  <span className="font-bold text-blue-700">
-                    {SAMPLE_DATA.FULL_NAME}
-                  </span>
+                  <DataValue fieldKey="FULL_NAME" customData={customData} />
                 </div>
                 <div className="flex">
                   <span className="w-[130px] uppercase font-semibold text-gray-700 flex-shrink-0">
                     Address
                   </span>
                   <span className="mr-2 flex-shrink-0">:</span>
-                  <span className="font-bold text-blue-700">
-                    {SAMPLE_DATA.ADDRESS}
-                  </span>
+                  <DataValue fieldKey="ADDRESS" customData={customData} />
                 </div>
                 <div className="flex">
                   <span className="w-[130px] uppercase font-semibold text-gray-700 flex-shrink-0">
                     Date of Birth
                   </span>
                   <span className="mr-2 flex-shrink-0">:</span>
-                  <span className="font-bold text-blue-700">
-                    {SAMPLE_DATA.DATE_OF_BIRTH}
-                  </span>
+                  <DataValue fieldKey="DATE_OF_BIRTH" customData={customData} />
                 </div>
                 <div className="flex">
                   <span className="w-[130px] uppercase font-semibold text-gray-700 flex-shrink-0">
                     Place of Birth
                   </span>
                   <span className="mr-2 flex-shrink-0">:</span>
-                  <span className="font-bold text-blue-700">
-                    {SAMPLE_DATA.PLACE_OF_BIRTH}
-                  </span>
+                  <DataValue fieldKey="PLACE_OF_BIRTH" customData={customData} />
                 </div>
                 <div className="flex">
                   <span className="w-[130px] uppercase font-semibold text-gray-700 flex-shrink-0">
                     Purpose
                   </span>
                   <span className="mr-2 flex-shrink-0">:</span>
-                  <span className="font-bold text-blue-700">
-                    {SAMPLE_DATA.PURPOSE}
-                  </span>
+                  <DataValue fieldKey="PURPOSE" customData={customData} />
                 </div>
                 <div className="flex">
                   <span className="w-[130px] uppercase font-semibold text-gray-700 flex-shrink-0">
                     Residency Date
                   </span>
                   <span className="mr-2 flex-shrink-0">:</span>
-                  <span className="font-bold text-blue-700">
-                    {SAMPLE_DATA.RESIDENCY_DATE}
-                  </span>
+                  <DataValue fieldKey="RESIDENCY_SINCE" customData={customData} />
                 </div>
               </div>
             </div>
@@ -123,7 +116,7 @@ export function ClearancePreview({ template }: { template: TemplateData }) {
                   textIndent: "2em",
                 }}
               >
-                {renderTextWithVariables(template.bodySections[1].text)}
+                {renderTextWithVariables(template.bodySections[1].text, customData)}
               </div>
             )}
 
@@ -136,7 +129,7 @@ export function ClearancePreview({ template }: { template: TemplateData }) {
                   textIndent: "2em",
                 }}
               >
-                {renderTextWithVariables(section.text)}
+                {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
 
@@ -147,44 +140,32 @@ export function ClearancePreview({ template }: { template: TemplateData }) {
                   <div className="flex">
                     <span className="w-[100px] font-medium">Com. Tax No.</span>
                     <span className="mr-2">:</span>
-                    <span className="font-bold text-blue-700">
-                      {SAMPLE_DATA.COM_TAX_NO || "___________"}
-                    </span>
+                    <DataValue fieldKey="COM_TAX_NO" customData={customData} />
                   </div>
                   <div className="flex">
                     <span className="w-[100px] font-medium">Issued At</span>
                     <span className="mr-2">:</span>
-                    <span className="font-bold text-blue-700">
-                      {SAMPLE_DATA.ISSUED_AT || "___________"}
-                    </span>
+                    <DataValue fieldKey="ISSUED_AT" customData={customData} />
                   </div>
                   <div className="flex">
                     <span className="w-[100px] font-medium">Issued On</span>
                     <span className="mr-2">:</span>
-                    <span className="font-bold text-blue-700">
-                      {SAMPLE_DATA.DATE_ISSUED}
-                    </span>
+                    <DataValue fieldKey="DATE_ISSUED" customData={customData} />
                   </div>
                   <div className="flex">
                     <span className="w-[100px] font-medium">O.R. No.</span>
                     <span className="mr-2">:</span>
-                    <span className="font-bold text-blue-700">
-                      {SAMPLE_DATA.OR_NUMBER}
-                    </span>
+                    <DataValue fieldKey="OR_NUMBER" customData={customData} />
                   </div>
                   <div className="flex">
                     <span className="w-[100px] font-medium">O.R. Date</span>
                     <span className="mr-2">:</span>
-                    <span className="font-bold text-blue-700">
-                      {SAMPLE_DATA.OR_DATE || "___________"}
-                    </span>
+                    <DataValue fieldKey="OR_DATE" customData={customData} />
                   </div>
                   <div className="flex">
                     <span className="w-[100px] font-medium">Valid Until</span>
                     <span className="mr-2">:</span>
-                    <span className="font-bold text-blue-700">
-                      {SAMPLE_DATA.VALID_UNTIL || "___________"}
-                    </span>
+                    <DataValue fieldKey="VALID_UNTIL" customData={customData} />
                   </div>
                 </div>
 

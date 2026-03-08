@@ -119,8 +119,8 @@ export function TemplateEditor({
     0,
   )
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-lg sticky top-0 z-10">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-lg">
         <div>
           <h2 className="text-lg font-bold text-gray-800">Template Editor</h2>
           <p className="text-xs text-gray-500 mt-0.5">{template.title}</p>
@@ -169,7 +169,7 @@ export function TemplateEditor({
         </div>
       )}
 
-      <div className="p-6 overflow-y-auto flex-1 space-y-8">
+      <div className="p-6 space-y-8">
         <div>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
             Certificate Title

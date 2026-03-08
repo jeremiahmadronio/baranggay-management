@@ -2,13 +2,16 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import { TemplateSelector } from "./TemplateSelector";
 import { TemplateEditor } from "./TemplateEditor";
 import { CertificatePreview } from "./CertificatPreview";
-import { mockApi } from "../../clearance-api/MockApi";
-import { type TemplateData, type TemplateOption } from "./template";
+import {
+  fetchTemplateOptions,
+  fetchTemplate,
+  saveTemplate,
+  resetTemplate,
+  extractVariables,
+  type TemplateData,
+  type TemplateOption,
+} from "../../clearance-api/template-api";
 import { Loader2 } from "lucide-react";
-function extractVariables(text: string): string[] {
-  const matches = text.match(/\{\{[^}]+\}\}/g);
-  return matches || [];
-}
 export default function EditTemplate() {
   const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -23,7 +26,7 @@ export default function EditTemplate() {
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const options = await mockApi.getTemplateOptions();
+        const options = await fetchTemplateOptions();
         setTemplateOptions(options);
         if (options.length > 0) {
           const defaultId =
@@ -42,10 +45,10 @@ export default function EditTemplate() {
     const loadTemplate = async () => {
       setIsLoading(true);
       try {
-        const data = await mockApi.fetchTemplate(selectedTemplateId);
+        const data = await fetchTemplate(selectedTemplateId);
         const varsMap: Record<string, string[]> = {};
         data.bodySections.forEach((section) => {
-          varsMap[section.id] = extractVariables(section.text);
+          varsMap[section.id] = extractVariables(section.text).map((v) => `{{${v}}}`);
         });
         requiredVarsMap.current = varsMap;
         const enrichedData: TemplateData = {
@@ -83,8 +86,8 @@ export default function EditTemplate() {
     }[] = [];
     templateData.bodySections.forEach((section, idx) => {
       const required = requiredVarsMap.current[section.id] || [];
-      const current = extractVariables(section.text);
-      const missing = required.filter((v) => !current.includes(v));
+      const currentVars = extractVariables(section.text).map((v) => `{{${v}}}`);
+      const missing = required.filter((v) => !currentVars.includes(v));
       if (missing.length > 0) {
         errors.push({
           sectionIndex: idx,
@@ -125,7 +128,7 @@ export default function EditTemplate() {
     }
     setIsSaving(true);
     try {
-      await mockApi.saveTemplate(templateData.id, templateData);
+      await saveTemplate(templateData.id, templateData);
       setNotification({
         message: "Template saved successfully!",
         type: "success",
@@ -143,11 +146,12 @@ export default function EditTemplate() {
     if (!selectedTemplateId) return;
     setIsLoading(true);
     try {
-      const data = await mockApi.fetchTemplate(selectedTemplateId);
+      // Use resetTemplate to clear localStorage and get original mock data
+      const data = await resetTemplate(selectedTemplateId);
       // Recompute required variables
       const varsMap: Record<string, string[]> = {};
       data.bodySections.forEach((section) => {
-        varsMap[section.id] = extractVariables(section.text);
+        varsMap[section.id] = extractVariables(section.text).map((v) => `{{${v}}}`);
       });
       requiredVarsMap.current = varsMap;
       const enrichedData: TemplateData = {
@@ -159,11 +163,15 @@ export default function EditTemplate() {
       };
       setTemplateData(enrichedData);
       setNotification({
-        message: "Changes discarded",
+        message: "Template reset to original",
         type: "success",
       });
     } catch (error) {
       console.error("Failed to reset", error);
+      setNotification({
+        message: "Failed to reset template",
+        type: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -178,10 +186,10 @@ export default function EditTemplate() {
           onSelect={setSelectedTemplateId}
         />
 
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-300px)] min-h-[800px]">
-          <div className="w-full lg:w-5/12 h-full">
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="w-full lg:w-5/12">
             {isLoading ? (
-              <div className="h-full flex items-center justify-center bg-white rounded-lg border border-gray-200">
+              <div className="flex items-center justify-center bg-white rounded-lg border border-gray-200 p-12">
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
               </div>
             ) : templateData ? (
@@ -197,9 +205,9 @@ export default function EditTemplate() {
             ) : null}
           </div>
 
-          <div className="w-full lg:w-7/12 h-full sticky top-6">
+          <div className="w-full lg:w-7/12 lg:sticky lg:top-6 lg:self-start">
             {isLoading ? (
-              <div className="h-full flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200 p-12">
                 <p className="text-gray-400">Loading preview...</p>
               </div>
             ) : templateData ? (
