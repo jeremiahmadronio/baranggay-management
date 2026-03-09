@@ -1,11 +1,11 @@
-import React from 'react';
-import { Pagination } from './Pagination';
+import React from "react";
+import { Pagination } from "./Pagination";
 
 export interface TableColumn<T> {
   key: keyof T | string;
   header: string;
   width?: string;
-  align?: 'left' | 'center' | 'right';
+  align?: "left" | "center" | "right";
   render?: (item: T, index: number) => React.ReactNode;
 }
 
@@ -18,7 +18,7 @@ interface TableProps<T> {
   onRowClick?: (item: T) => void;
   striped?: boolean;
   hoverable?: boolean;
-  minRows?: number; 
+  minRows?: number;
   selectable?: boolean;
   selectedKeys?: (string | number)[];
   onSelectionChange?: (keys: (string | number)[]) => void;
@@ -36,7 +36,7 @@ export const Table = <T,>({
   columns,
   data,
   keyExtractor,
-  emptyMessage = 'No data available',
+  emptyMessage = "No data available",
   loading = false,
   onRowClick,
   striped = false,
@@ -45,16 +45,17 @@ export const Table = <T,>({
   selectable = false,
   selectedKeys = [],
   onSelectionChange,
-  pagination
+  pagination,
 }: TableProps<T>) => {
   const allKeys = data.map((item, index) => keyExtractor(item, index));
-  const isAllSelected = data.length > 0 && allKeys.every(key => selectedKeys.includes(key));
-  const isSomeSelected = selectedKeys.some(key => allKeys.includes(key));
+  const isAllSelected =
+    data.length > 0 && allKeys.every((key) => selectedKeys.includes(key));
+  const isSomeSelected = selectedKeys.some((key) => allKeys.includes(key));
 
   const handleSelectAll = () => {
     if (isAllSelected) {
       // Deselect all on current page
-      onSelectionChange?.(selectedKeys.filter(key => !allKeys.includes(key)));
+      onSelectionChange?.(selectedKeys.filter((key) => !allKeys.includes(key)));
     } else {
       // Select all on current page
       const newKeys = [...new Set([...selectedKeys, ...allKeys])];
@@ -64,16 +65,19 @@ export const Table = <T,>({
 
   const handleSelectRow = (key: string | number) => {
     if (selectedKeys.includes(key)) {
-      onSelectionChange?.(selectedKeys.filter(k => k !== key));
+      onSelectionChange?.(selectedKeys.filter((k) => k !== key));
     } else {
       onSelectionChange?.([...selectedKeys, key]);
     }
   };
-  const getAlignment = (align?: 'left' | 'center' | 'right') => {
+  const getAlignment = (align?: "left" | "center" | "right") => {
     switch (align) {
-      case 'center': return 'text-center';
-      case 'right': return 'text-right';
-      default: return 'text-left';
+      case "center":
+        return "text-center";
+      case "right":
+        return "text-right";
+      default:
+        return "text-left";
     }
   };
 
@@ -82,7 +86,7 @@ export const Table = <T,>({
       return column.render(item, data.indexOf(item));
     }
     const value = item[column.key as keyof T];
-    return value !== undefined && value !== null ? String(value) : '-';
+    return value !== undefined && value !== null ? String(value) : "-";
   };
 
   if (loading) {
@@ -97,14 +101,15 @@ export const Table = <T,>({
   }
 
   // Calculate fixed height based on minRows (header ~41px + row ~49px each)
-  const tableMinHeight = minRows ? `${41 + (minRows * 49)}px` : undefined;
+  const tableMinHeight = minRows ? `${41 + minRows * 49}px` : undefined;
 
   // Generate empty rows to fill minRows
-  const emptyRowsCount = minRows && data.length < minRows ? minRows - data.length : 0;
+  const emptyRowsCount =
+    minRows && data.length < minRows ? minRows - data.length : 0;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-      <div 
+      <div
         className="overflow-x-auto flex-1"
         style={{ minHeight: tableMinHeight }}
       >
@@ -117,7 +122,8 @@ export const Table = <T,>({
                     type="checkbox"
                     checked={isAllSelected}
                     ref={(el) => {
-                      if (el) el.indeterminate = isSomeSelected && !isAllSelected;
+                      if (el)
+                        el.indeterminate = isSomeSelected && !isAllSelected;
                     }}
                     onChange={handleSelectAll}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
@@ -138,10 +144,23 @@ export const Table = <T,>({
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td colSpan={selectable ? columns.length + 1 : columns.length} className="px-4 py-12 text-center text-gray-500">
+                <td
+                  colSpan={selectable ? columns.length + 1 : columns.length}
+                  className="px-4 py-12 text-center text-gray-500"
+                >
                   <div className="flex flex-col items-center">
-                    <svg className="w-10 h-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      className="w-10 h-10 text-gray-300 mb-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                     <span className="text-sm">{emptyMessage}</span>
                   </div>
@@ -160,11 +179,11 @@ export const Table = <T,>({
                       key={rowKey}
                       onClick={() => onRowClick?.(item)}
                       className={`
-                        ${striped && index % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}
-                        ${hoverable ? 'hover:bg-slate-50 transition-colors' : ''}
-                        ${onRowClick ? 'cursor-pointer' : ''}
-                        ${isSelected ? 'bg-blue-50/50' : ''}
-                        ${showBorder ? 'border-b border-gray-100' : ''}
+                        ${striped && index % 2 === 1 ? "bg-slate-50/50" : "bg-white"}
+                        ${hoverable ? "hover:bg-slate-50 transition-colors" : ""}
+                        ${onRowClick ? "cursor-pointer" : ""}
+                        ${isSelected ? "bg-blue-50/50" : ""}
+                        ${showBorder ? "border-b border-gray-100" : ""}
                       `}
                     >
                       {selectable && (
@@ -194,7 +213,12 @@ export const Table = <T,>({
                   <tr key={`empty-${index}`} className="bg-white">
                     {selectable && <td className="px-4 py-3">&nbsp;</td>}
                     {columns.map((column) => (
-                      <td key={String(column.key)} className="px-4 py-3 text-sm">&nbsp;</td>
+                      <td
+                        key={String(column.key)}
+                        className="px-4 py-3 text-sm"
+                      >
+                        &nbsp;
+                      </td>
                     ))}
                   </tr>
                 ))}
@@ -203,9 +227,9 @@ export const Table = <T,>({
           </tbody>
         </table>
       </div>
-      
+
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
+      {pagination && (
         <Pagination
           currentPage={pagination.currentPage}
           totalPages={pagination.totalPages}

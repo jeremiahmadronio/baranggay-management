@@ -14,13 +14,16 @@ import {
 import { LoadingModal } from "../reusable/LoadingModal";
 import {
   fetchTemplateOptions,
-  fetchIssuanceTemplate,
-  issueCertificate,
   getPreviewData,
   type TemplateOption,
+} from "../clearance-api/template-api";
+import {
+  fetchIssuanceTemplate,
+  issueCertificate,
   type IssuanceTemplate,
   type FormFieldConfig,
-} from "../clearance-api/template-api";
+} from "../clearance-api/issue-certificate-api";
+import type { FormSection as FormSectionType } from "../clearance-api/types";
 import { CertificatePreview } from "./clearance-template/CertificatPreview";
 import { type TemplateData } from "./clearance-template/template";
 
@@ -31,7 +34,9 @@ import { type TemplateData } from "./clearance-template/template";
 export const IssueCertificatePage = () => {
   const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [templateData, setTemplateData] = useState<IssuanceTemplate | null>(null);
+  const [templateData, setTemplateData] = useState<IssuanceTemplate | null>(
+    null,
+  );
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,9 +53,9 @@ export const IssueCertificatePage = () => {
         setTemplateOptions(options);
         if (options.length > 0) {
           const defaultId =
-            options.find((o) => o.id === "barangay-clearance")?.id ||
+            options.find((o) => String(o.id) === "barangay-clearance")?.id ||
             options[0].id;
-          setSelectedTemplateId(defaultId);
+          setSelectedTemplateId(String(defaultId));
         }
       } catch (error) {
         console.error("Failed to load options", error);
@@ -69,7 +74,7 @@ export const IssueCertificatePage = () => {
   const formatDateReadable = (date: Date): string => {
     return date.toLocaleDateString("en-US", {
       month: "long",
-      day: "numeric", 
+      day: "numeric",
       year: "numeric",
     });
   };
@@ -101,7 +106,7 @@ export const IssueCertificatePage = () => {
       try {
         const data = await fetchIssuanceTemplate(selectedTemplateId);
         setTemplateData(data);
-        
+
         // Auto-fill common fields to reduce human error
         const today = new Date();
         const autoFilledData: Record<string, string> = {
@@ -116,12 +121,12 @@ export const IssueCertificatePage = () => {
           // Validity
           VALID_UNTIL: calculateValidityDate(data.settings.validityMonths || 6), // Based on template validity
         };
-        
+
         // Set default amount based on template fee (format as currency)
         if (data.settings.fee > 0) {
           autoFilledData.AMOUNT_PAID = `₱${data.settings.fee.toFixed(2)}`;
         }
-        
+
         setFormData(autoFilledData);
       } catch (error) {
         console.error("Failed to load template", error);
@@ -148,7 +153,7 @@ export const IssueCertificatePage = () => {
   const previewTemplate = useMemo((): TemplateData | null => {
     if (!templateData) return null;
     const previewData = getPreviewData(formData);
-    
+
     // Replace variables in body sections with actual form values
     const processedSections = templateData.bodySections.map((section) => ({
       ...section,
@@ -160,6 +165,7 @@ export const IssueCertificatePage = () => {
 
     return {
       ...templateData,
+      id: String(templateData.id), // Ensure id is string for TemplateData type
       bodySections: processedSections,
     };
   }, [templateData, formData]);
@@ -176,10 +182,15 @@ export const IssueCertificatePage = () => {
   const handleSubmit = async () => {
     if (!templateData) return;
 
-    // Validate required fields
-    const missingFields = templateData.formFields
-      .filter((field) => field.required && !formData[field.key])
-      .map((field) => field.label);
+    // Validate required fields from all sections
+    const missingFields: string[] = [];
+    templateData.formFields.sections.forEach((section) => {
+      section.fields.forEach((field) => {
+        if (field.required && !formData[field.name]?.trim()) {
+          missingFields.push(field.label);
+        }
+      });
+    });
 
     if (missingFields.length > 0) {
       setNotification({
@@ -191,7 +202,11 @@ export const IssueCertificatePage = () => {
 
     setIsSubmitting(true);
     try {
-      const result = await issueCertificate(selectedTemplateId, formData);
+      const result = await issueCertificate({
+        templateId: selectedTemplateId,
+        formData,
+        issuedBy: "Admin", // TODO: Get from auth context
+      });
       if (result.success) {
         setNotification({
           message: result.message || "Certificate issued successfully!",
@@ -211,19 +226,8 @@ export const IssueCertificatePage = () => {
     }
   };
 
-  // Group form fields by section
-  const groupedFields = useMemo(() => {
-    if (!templateData) return {};
-    return templateData.formFields.reduce(
-      (acc, field) => {
-        const section = field.section || "other";
-        if (!acc[section]) acc[section] = [];
-        acc[section].push(field);
-        return acc;
-      },
-      {} as Record<string, FormFieldConfig[]>
-    );
-  }, [templateData]);
+  // Form sections are already grouped in the API response
+  const formSections = templateData?.formFields?.sections || [];
 
   if (isLoading && templateOptions.length === 0) {
     return <LoadingModal isOpen={true} message="Loading templates..." />;
@@ -250,7 +254,7 @@ export const IssueCertificatePage = () => {
               <IssuanceForm
                 template={templateData}
                 formData={formData}
-                groupedFields={groupedFields}
+                formSections={formSections}
                 onInputChange={handleInputChange}
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
@@ -289,8 +293,12 @@ export const IssueCertificatePage = () => {
                 : "bg-red-600"
           }`}
         >
-          {notification.type === "success" && <CheckCircle className="w-4 h-4" />}
-          {notification.type === "warning" && <AlertCircle className="w-4 h-4" />}
+          {notification.type === "success" && (
+            <CheckCircle className="w-4 h-4" />
+          )}
+          {notification.type === "warning" && (
+            <AlertCircle className="w-4 h-4" />
+          )}
           {notification.type === "error" && <AlertCircle className="w-4 h-4" />}
           <span>{notification.message}</span>
         </div>
@@ -309,7 +317,11 @@ interface TemplateSelectorProps {
   onSelect: (id: string) => void;
 }
 
-function TemplateSelector({ options, selectedId, onSelect }: TemplateSelectorProps) {
+function TemplateSelector({
+  options,
+  selectedId,
+  onSelect,
+}: TemplateSelectorProps) {
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
       <h3 className="text-sm font-semibold text-gray-700 mb-4">
@@ -317,11 +329,11 @@ function TemplateSelector({ options, selectedId, onSelect }: TemplateSelectorPro
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {options.map((option) => {
-          const isSelected = selectedId === option.id;
+          const isSelected = selectedId === String(option.id);
           return (
             <button
-              key={option.id}
-              onClick={() => onSelect(option.id)}
+              key={String(option.id)}
+              onClick={() => onSelect(String(option.id))}
               className={`
                 relative flex items-center p-3 text-left text-sm rounded-md border transition-all
                 ${
@@ -360,7 +372,7 @@ function TemplateSelector({ options, selectedId, onSelect }: TemplateSelectorPro
 interface IssuanceFormProps {
   template: IssuanceTemplate;
   formData: Record<string, string>;
-  groupedFields: Record<string, FormFieldConfig[]>;
+  formSections: FormSectionType[];
   onInputChange: (key: string, value: string) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
@@ -369,20 +381,24 @@ interface IssuanceFormProps {
 function IssuanceForm({
   template,
   formData,
-  groupedFields,
+  formSections,
   onInputChange,
   onSubmit,
   isSubmitting,
 }: IssuanceFormProps) {
-  const sectionConfig = {
-    personal: { title: "Personal Information", icon: <User className="w-3 h-3" />, subtitle: "" },
-    details: { title: "Request Details", icon: <ClipboardList className="w-3 h-3" />, subtitle: "" },
-    vehicle: { title: "Vehicle Information", icon: <Car className="w-3 h-3" />, subtitle: "" },
-    payment: { title: "Payment & Administrative", icon: <Wallet className="w-3 h-3" />, subtitle: "Some fields are auto-filled" },
-    other: { title: "Additional Information", icon: <FileText className="w-3 h-3" />, subtitle: "" },
+  // Helper to get icon based on section title
+  const getSectionIcon = (title: string) => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes("personal")) return <User className="w-3 h-3" />;
+    if (lowerTitle.includes("vehicle")) return <Car className="w-3 h-3" />;
+    if (lowerTitle.includes("payment")) return <Wallet className="w-3 h-3" />;
+    if (lowerTitle.includes("owner")) return <User className="w-3 h-3" />;
+    if (lowerTitle.includes("property"))
+      return <FileText className="w-3 h-3" />;
+    if (lowerTitle.includes("permit") || lowerTitle.includes("activity"))
+      return <ClipboardList className="w-3 h-3" />;
+    return <ClipboardList className="w-3 h-3" />;
   };
-
-  const sectionOrder = ["personal", "details", "vehicle", "payment", "other"];
 
   return (
     <div className="flex flex-col bg-white rounded-lg shadow-sm border border-gray-200">
@@ -397,40 +413,45 @@ function IssuanceForm({
         </p>
       </div>
 
-      {/* Form Body - Natural Flow */}
+      {/* Form Body - Sections from API */}
       <div className="p-6 space-y-6">
-        {sectionOrder.map((sectionKey) => {
-          const fields = groupedFields[sectionKey];
-          if (!fields || fields.length === 0) return null;
-          const config = sectionConfig[sectionKey as keyof typeof sectionConfig];
-
-          return (
-            <div key={sectionKey} className="space-y-4">
-              <FormSection title={config.title} icon={config.icon} subtitle={config.subtitle} />
-              <div className="grid grid-cols-1 gap-4">
-                {fields.map((field) => (
-                  <FormField
-                    key={field.key}
-                    field={field}
-                    value={formData[field.key] || ""}
-                    onChange={(value) => onInputChange(field.key, value)}
-                  />
-                ))}
-              </div>
+        {formSections.map((section, idx) => (
+          <div key={idx} className="space-y-4">
+            <FormSection
+              title={section.title}
+              icon={getSectionIcon(section.title)}
+              subtitle=""
+            />
+            <div className="grid grid-cols-1 gap-4">
+              {section.fields.map((field) => (
+                <FormField
+                  key={field.name}
+                  field={field}
+                  value={formData[field.name] || ""}
+                  onChange={(value) => onInputChange(field.name, value)}
+                />
+              ))}
             </div>
-          );
-        })}
+          </div>
+        ))}
 
         {/* Fee Summary */}
         <div className="pt-4 border-t border-gray-200">
           <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <span className="text-sm font-medium text-gray-700">Standard Fee:</span>
-            <span className={`text-lg font-bold ${template.settings.fee === 0 ? "text-green-600" : "text-blue-600"}`}>
-              {template.settings.fee === 0 ? "FREE" : `₱${template.settings.fee.toFixed(2)}`}
+            <span className="text-sm font-medium text-gray-700">
+              Standard Fee:
+            </span>
+            <span
+              className={`text-lg font-bold ${template.settings.fee === 0 ? "text-green-600" : "text-blue-600"}`}
+            >
+              {template.settings.fee === 0
+                ? "FREE"
+                : `₱${template.settings.fee.toFixed(2)}`}
             </span>
           </div>
           <p className="text-[10px] text-gray-400 mt-2 text-center">
-            * Fee amount can be adjusted in the Payment section above if applicable
+            * Fee amount can be adjusted in the Payment section above if
+            applicable
           </p>
         </div>
       </div>
@@ -471,17 +492,19 @@ interface CertificatePreviewWrapperProps {
   formData: Record<string, string>;
 }
 
-function CertificatePreviewWrapper({ template, formData }: CertificatePreviewWrapperProps) {
+function CertificatePreviewWrapper({
+  template,
+  formData,
+}: CertificatePreviewWrapperProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-bold text-gray-800">Live Preview</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            {Object.keys(formData).length > 0 
-              ? "Form values shown in green" 
-              : "Fill the form to see your data"
-            }
+            {Object.keys(formData).length > 0
+              ? "Form values shown in green"
+              : "Fill the form to see your data"}
           </p>
         </div>
         <div className="flex space-x-2">
@@ -494,7 +517,11 @@ function CertificatePreviewWrapper({ template, formData }: CertificatePreviewWra
 
       {/* Certificate Paper */}
       <div className="p-3 md:p-5 rounded-lg bg-gray-100/50 border border-gray-200">
-        <CertificatePreview template={template} customData={formData} showHeader={false} />
+        <CertificatePreview
+          template={template}
+          customData={formData}
+          showHeader={false}
+        />
       </div>
     </div>
   );
@@ -521,8 +548,18 @@ function FormSection({ title, icon, subtitle }: FormSectionProps) {
       </div>
       {subtitle && (
         <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded flex items-center">
-          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-3 h-3 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           {subtitle}
         </span>
@@ -540,7 +577,7 @@ interface FormFieldProps {
 function FormField({ field, value, onChange }: FormFieldProps) {
   const isAutoFilled = field.autoFilled;
   const isReadOnly = field.readOnly;
-  
+
   const baseInputClass = isAutoFilled
     ? "w-full rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-700 font-medium cursor-not-allowed"
     : "w-full rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
@@ -550,12 +587,24 @@ function FormField({ field, value, onChange }: FormFieldProps) {
     <label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
       <span className="flex items-center">
         {field.label}
-        {field.required && !isAutoFilled && <span className="text-red-500 ml-1">*</span>}
+        {field.required && !isAutoFilled && (
+          <span className="text-red-500 ml-1">*</span>
+        )}
       </span>
       {isAutoFilled && (
         <span className="flex items-center text-[10px] font-medium text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
-          <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <svg
+            className="w-3 h-3 mr-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
           </svg>
           Auto
         </span>
@@ -564,9 +613,10 @@ function FormField({ field, value, onChange }: FormFieldProps) {
   );
 
   // Help text element
-  const helpTextElement = field.helpText && isAutoFilled ? (
-    <p className="text-[10px] text-gray-400 mt-0.5">{field.helpText}</p>
-  ) : null;
+  const helpTextElement =
+    field.helpText && isAutoFilled ? (
+      <p className="text-[10px] text-gray-400 mt-0.5">{field.helpText}</p>
+    ) : null;
 
   if (field.type === "select" && field.options && !isAutoFilled) {
     return (
@@ -611,7 +661,15 @@ function FormField({ field, value, onChange }: FormFieldProps) {
     <div className="space-y-1.5">
       {labelElement}
       <input
-        type={isAutoFilled ? "text" : (field.type === "number" ? "number" : field.type === "date" ? "date" : "text")}
+        type={
+          isAutoFilled
+            ? "text"
+            : field.type === "number"
+              ? "number"
+              : field.type === "date"
+                ? "date"
+                : "text"
+        }
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={field.placeholder}

@@ -32,7 +32,7 @@ export default function EditTemplate() {
           const defaultId =
             options.find((o) => o.id === "barangay-clearance")?.id ||
             options[0].id;
-          setSelectedTemplateId(defaultId);
+          setSelectedTemplateId(String(defaultId));
         }
       } catch (error) {
         console.error("Failed to load options", error);
@@ -48,7 +48,9 @@ export default function EditTemplate() {
         const data = await fetchTemplate(selectedTemplateId);
         const varsMap: Record<string, string[]> = {};
         data.bodySections.forEach((section) => {
-          varsMap[section.id] = extractVariables(section.text).map((v) => `{{${v}}}`);
+          varsMap[section.id] = extractVariables(section.text).map(
+            (v) => `{{${v}}}`,
+          );
         });
         requiredVarsMap.current = varsMap;
         const enrichedData: TemplateData = {
@@ -112,7 +114,7 @@ export default function EditTemplate() {
     };
     setTemplateData(enriched);
   };
-  
+
   const handleSave = async () => {
     if (!templateData) return;
     if (!canSave) {
@@ -151,7 +153,9 @@ export default function EditTemplate() {
       // Recompute required variables
       const varsMap: Record<string, string[]> = {};
       data.bodySections.forEach((section) => {
-        varsMap[section.id] = extractVariables(section.text).map((v) => `{{${v}}}`);
+        varsMap[section.id] = extractVariables(section.text).map(
+          (v) => `{{${v}}}`,
+        );
       });
       requiredVarsMap.current = varsMap;
       const enrichedData: TemplateData = {

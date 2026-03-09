@@ -64,7 +64,7 @@ export function ViewUserModal({ admin, isOpen, onClose }: ViewUserModalProps) {
     {
       title: 'System Information',
       fields: [
-        { key: 'isLocked',  label: 'Account Lock', value: admin.isLocked ? 'Locked 🔒' : 'Unlocked 🔓', width: 'half' as const },
+        { key: 'isLocked',  label: 'Account Lock', value: admin.isLocked ? 'Locked ' : 'Unlocked ', width: 'half' as const },
         { key: 'lockUntil', label: 'Locked Until',  value: formatDate(admin.lockUntil),                  width: 'half' as const },
         { key: 'created',   label: 'Created At',    value: formatDate(admin.createdAt),                  width: 'half' as const },
         { key: 'lastLogin', label: 'Last Login',    value: formatDate(admin.lastLoginAt),                width: 'half' as const },

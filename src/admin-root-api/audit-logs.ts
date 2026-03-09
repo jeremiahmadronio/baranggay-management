@@ -87,11 +87,98 @@ export async function getAuditTable(
   if (params.endDate) query.append("endDate", params.endDate);
 
   query.append("page", String(params.page ?? 0));
-  query.append("size", String(params.size ?? 5));
+  query.append("size", String(params.size ?? 10));
 
-  return apiFetch<PagedResponse<AuditTable>>(
+  const requestedSize = params.size ?? 10;
+
+  const response = await apiFetch<any>(
     `${ENDPOINTS.AUDIT_TABLE}?${query.toString()}`,
   );
+
+  // Debug: Log raw response to check structure
+  console.log(
+    "RAW API Response from /audit/table:",
+    JSON.stringify(response, null, 2),
+  );
+
+  let pageData: PagedResponse<AuditTable>;
+
+  if (Array.isArray(response)) {
+    // If backend returns plain array, wrap it
+    const totalElements = response.length;
+    pageData = {
+      content: response,
+      totalElements: totalElements,
+      totalPages: Math.ceil(totalElements / requestedSize) || 1,
+      size: requestedSize,
+      number: params.page ?? 0,
+      first: (params.page ?? 0) === 0,
+      last: true,
+      empty: response.length === 0,
+    };
+  } else if (response.content && response.page) {
+    // NEW: Handle { content: [...], page: { totalElements, totalPages, ... } } format
+    const contentArray = response.content || [];
+    const pageInfo = response.page;
+    const totalElements = pageInfo.totalElements ?? contentArray.length;
+    const totalPages =
+      (pageInfo.totalPages ?? Math.ceil(totalElements / requestedSize)) || 1;
+
+    pageData = {
+      content: contentArray,
+      totalElements: totalElements,
+      totalPages: totalPages,
+      size: pageInfo.size ?? requestedSize,
+      number: pageInfo.number ?? params.page ?? 0,
+      first: pageInfo.number === 0,
+      last: pageInfo.number >= totalPages - 1,
+      empty: contentArray.length === 0,
+    };
+  } else if (response.data && Array.isArray(response.data.content)) {
+    // If wrapped in "data" field
+    const totalElements =
+      response.data.totalElements ?? response.data.content.length;
+    pageData = {
+      ...response.data,
+      totalPages: Math.ceil(totalElements / requestedSize) || 1,
+    };
+  } else if (response.data && Array.isArray(response.data)) {
+    // If data field contains array directly
+    const totalElements = response.totalElements ?? response.data.length;
+    pageData = {
+      content: response.data,
+      totalElements: totalElements,
+      totalPages: Math.ceil(totalElements / requestedSize) || 1,
+      size: requestedSize,
+      number: response.number ?? params.page ?? 0,
+      first: response.first ?? (params.page ?? 0) === 0,
+      last: response.last ?? true,
+      empty: response.data.length === 0,
+    };
+  } else {
+    // Standard Spring Page response (flat structure)
+    const contentArray = response.content || [];
+    let totalElements =
+      response.totalElements ?? response.total ?? response.total_elements ?? 0;
+    if (totalElements === 0 && contentArray.length > 0) {
+      totalElements = contentArray.length;
+    }
+    const calculatedTotalPages = Math.ceil(totalElements / requestedSize) || 1;
+
+    pageData = {
+      content: contentArray,
+      totalElements: totalElements,
+      totalPages: calculatedTotalPages,
+      size: requestedSize,
+      number: response.number ?? response.pageNumber ?? params.page ?? 0,
+      first: response.first ?? (params.page ?? 0) === 0,
+      last: response.last ?? (params.page ?? 0) >= calculatedTotalPages - 1,
+      empty: contentArray.length === 0,
+    };
+  }
+
+  console.log("Normalized pageData:", pageData);
+  return pageData;
 }
 
 export async function getFilterOptions(): Promise<AuditFilterOptions> {

@@ -1,10 +1,10 @@
-import React from 'react'
-import { type TemplateOption } from './template'
-import { Check, FileText } from 'lucide-react'
+import React from "react";
+import { type TemplateOption } from "./template";
+import { Check, FileText } from "lucide-react";
 interface TemplateSelectorProps {
-  options: TemplateOption[]
-  selectedId: string
-  onSelect: (id: string) => void
+  options: TemplateOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
 }
 export function TemplateSelector({
   options,
@@ -18,18 +18,18 @@ export function TemplateSelector({
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {options.map((option) => {
-          const isSelected = selectedId === option.id
+          const isSelected = selectedId === option.id;
           return (
             <button
               key={option.id}
-              onClick={() => onSelect(option.id)}
+              onClick={() => onSelect(String(option.id))}
               className={`
                 relative flex items-center p-3 text-left text-sm rounded-md border transition-all
-                ${isSelected ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700'}
+                ${isSelected ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500" : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700"}
               `}
             >
               <FileText
-                className={`w-4 h-4 mr-2 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`}
+                className={`w-4 h-4 mr-2 ${isSelected ? "text-blue-500" : "text-gray-400"}`}
               />
               <span className="truncate flex-1">{option.name}</span>
               {option.isFree && (
@@ -43,9 +43,9 @@ export function TemplateSelector({
                 </div>
               )}
             </button>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

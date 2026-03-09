@@ -419,7 +419,6 @@ export default function UserManagement() {
           onClearClick={handleFilterClear}
         />
 
-        {/* ── Table ── */}
         <Table<UserTable>
           columns={columns}
           data={tableData}

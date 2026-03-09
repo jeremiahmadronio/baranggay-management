@@ -93,7 +93,6 @@ export interface AdminTableParams {
   page?: number;
   size?: number;
   search?: string;
-  role?: string;
   status?: string;
 }
 
@@ -139,10 +138,12 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       localStorage.removeItem("token");
       window.location.href = "/login";
+      throw new Error("Session expired. Please login again.");
     }
+    // Don't redirect on 403 - user is authenticated but not authorized
     const contentType = response.headers.get("content-type");
     const errMsg = contentType?.includes("application/json")
       ? (await response.json().catch(() => ({}))).message
@@ -170,12 +171,55 @@ export async function getAdminTable(
   query.set("page", String(params.page ?? 0));
   query.set("size", String(params.size ?? 5));
   if (params.search) query.set("search", params.search);
-  if (params.role) query.set("role", params.role);
   if (params.status) query.set("status", params.status);
 
-  return apiFetch<PageResponse<AdminTable>>(
+  const response = await apiFetch<any>(
     `${ENDPOINTS.ADMIN_TABLE}?${query.toString()}`,
   );
+
+  // Debug: Log raw response
+  console.log(
+    "RAW API Response from /admin-table:",
+    JSON.stringify(response, null, 2),
+  );
+
+  // Normalize response to handle different backend structures
+  let pageData: PageResponse<AdminTable>;
+
+  if (Array.isArray(response)) {
+    pageData = {
+      content: response,
+      totalElements: response.length,
+      totalPages: 1,
+      size: response.length,
+      number: 0,
+    };
+  } else if (response.data && Array.isArray(response.data.content)) {
+    pageData = response.data;
+  } else if (response.data && Array.isArray(response.data)) {
+    pageData = {
+      content: response.data,
+      totalElements: response.totalElements ?? response.data.length,
+      totalPages: response.totalPages ?? 1,
+      size: response.size ?? response.data.length,
+      number: response.number ?? 0,
+    };
+  } else {
+    pageData = {
+      content: response.content || [],
+      totalElements:
+        response.totalElements ??
+        response.total ??
+        response.total_elements ??
+        0,
+      totalPages: response.totalPages ?? response.total_pages ?? 1,
+      size: response.size ?? 5,
+      number: response.number ?? response.pageNumber ?? 0,
+    };
+  }
+
+  console.log("Normalized pageData:", pageData);
+  return pageData;
 }
 
 export async function getDepartmentOptions(): Promise<DepartmentOptions[]> {
