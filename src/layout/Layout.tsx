@@ -5,7 +5,7 @@ import { MobileNav } from "./MobileNav";
 import type { UserRole } from "./Nav-Items";
 import { getNavItemsByRole } from "./Nav-Items";
 import { Hexagon, ChevronDown, Calendar, Clock } from "lucide-react";
-import { useUser, getUserDisplayName } from "../context/UserContext";
+import { useUser } from "../context/UserContext";
 
 interface LayoutProps {
   userRole: UserRole;
@@ -17,8 +17,33 @@ export function Layout({ userRole }: LayoutProps) {
   const location = useLocation();
   const { user } = useUser();
 
-  // Get the display name from the backend user data
-  const userName = getUserDisplayName(user, "User");
+  // Get the display name from the backend user data, with localStorage fallback
+  const getDisplayName = () => {
+    // Try from UserContext first
+    if (user) {
+      if (user.firstName && user.lastName)
+        return `${user.firstName} ${user.lastName}`;
+      if (user.firstName) return user.firstName;
+      if (user.username) return user.username;
+    }
+    // Fallback to localStorage
+    const storedFirstName = localStorage.getItem("firstName");
+    const storedLastName = localStorage.getItem("lastName");
+    const storedUsername = localStorage.getItem("username");
+    const storedEmail = localStorage.getItem("userEmail");
+    if (storedFirstName && storedLastName)
+      return `${storedFirstName} ${storedLastName}`;
+    if (storedFirstName) return storedFirstName;
+    if (storedUsername) return storedUsername;
+    // Use email (before @) as last resort
+    if (storedEmail) return storedEmail.split("@")[0];
+    return "User";
+  };
+  const userName = getDisplayName();
+
+  // Get role display name from user context (or localStorage fallback)
+  const userRoleDisplay =
+    user?.role || localStorage.getItem("userRole") || undefined;
 
   const navItems = getNavItemsByRole(userRole);
   const currentNavItem = navItems.find(
@@ -65,7 +90,11 @@ export function Layout({ userRole }: LayoutProps) {
 
   return (
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden font-sans text-slate-900">
-      <Sidebar userRole={userRole} userName={userName} />
+      <Sidebar
+        userRole={userRole}
+        userName={userName}
+        userRoleDisplay={userRoleDisplay}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full relative overflow-hidden">
@@ -123,7 +152,9 @@ export function Layout({ userRole }: LayoutProps) {
               <p className="text-sm font-medium text-slate-700 leading-tight">
                 {userName}
               </p>
-              <p className="text-xs text-slate-400 capitalize">{userRole}</p>
+              <p className="text-xs text-slate-400 capitalize">
+                {userRoleDisplay || userRole}
+              </p>
             </div>
             <ChevronDown size={16} className="hidden md:block text-slate-400" />
           </button>

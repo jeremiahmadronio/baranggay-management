@@ -25,23 +25,23 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
         const payload = JSON.parse(atob(base64));
         const currentTime = Date.now() / 1000;
         if (payload.exp < currentTime) {
-          console.warn("Token expired, clearing session...");
-          localStorage.clear();
-          window.location.href = "/login";
+          console.warn("Token expired, but keeping session data for now...");
+          // Only remove token, not all localStorage data
+          localStorage.removeItem("token");
+          // Don't redirect immediately - let the calling code handle it
           throw new Error("Token expired. Please login again.");
         }
       } catch (e: any) {
         if (e.message === "Token expired. Please login again.") throw e;
-        // If token can't be decoded, it's invalid
-        console.warn("Invalid token, clearing session...");
-        localStorage.clear();
-        window.location.href = "/login";
+        // If token can't be decoded, it's invalid - but don't clear everything
+        console.warn("Invalid token format, removing token...");
+        localStorage.removeItem("token");
         throw new Error("Invalid token. Please login again.");
       }
       requestHeaders["Authorization"] = `Bearer ${token}`;
     } else {
-      window.location.href = "/login";
-      return;
+      // No token - don't redirect, throw error so caller can handle
+      throw new Error("No authentication token found. Please login.");
     }
   }
 
@@ -55,11 +55,15 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
         body !== undefined && body !== null ? JSON.stringify(body) : undefined,
     });
 
-    // Auto-handle Expired Token (401) or Forbidden (403)
-    if (response.status === 401 || response.status === 403) {
-      localStorage.clear();
-      window.location.href = "/login";
+    // Handle Expired Token (401) - token is invalid/expired
+    if (response.status === 401) {
+      localStorage.removeItem("token");
       throw new Error("Session expired. Please login again.");
+    }
+
+    // Handle Forbidden (403) - user doesn't have permission, but token is still valid
+    if (response.status === 403) {
+      throw new Error("You don't have permission to access this resource.");
     }
 
     if (!response.ok) {

@@ -26,6 +26,7 @@ import ChartPage from "./admin-module/chart";
 import AdminPage from "./admin-module/DashboardReusable";
 import AdminDashboard from "./admin-module/dashboard";
 import UserManagement from "./admin-module/user-management";
+import { AdminSettings } from "./admin-module/settings";
 
 
 // Root Admin
@@ -33,7 +34,6 @@ import RootAdminDashboard from "./admin-root-module/dashboard";
 import AdminManagement from "./admin-root-module/admin-management";
 import AuditLogs from "./admin-root-module/audit-logs";
 import {AccountSettings} from "./admin-root-module/account-settings";
-import RootAdminAccess from "./admin-root-module/access";
 
 // BCPC
 import BCPCDashboard from "./bcpc-module/dashboard";
@@ -112,8 +112,8 @@ export function App() {
           path="users"
           element={<PagePlaceholder title="User Management" />}
         />
-        <Route path="settings" element={<PagePlaceholder title="Settings" />} />
         <Route path="tables" element={<AdminPage />} />
+        <Route path="settings" element={<AdminSettings />} />
       </Route>
 
       {/* Root Admin */}

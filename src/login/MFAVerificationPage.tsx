@@ -187,7 +187,7 @@ export function MFAVerificationPage() {
                 }}
                 type="text"
                 inputMode="numeric"
-                maxLength={1} 
+                maxLength={1}
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}

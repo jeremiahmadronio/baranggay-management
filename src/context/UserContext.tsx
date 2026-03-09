@@ -34,8 +34,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const data = await getUserProfile();
       setUser(data);
     } catch (err: any) {
-      setError(err.message || "Failed to fetch user profile");
+      const errorMessage = err.message || "Failed to fetch user profile";
+      setError(errorMessage);
       console.error("Failed to fetch user profile:", err);
+
+      // Only redirect to login if token is truly missing or invalid
+      // Don't redirect on 403 (permission error) - user might just not have access to profile endpoint
+      if (
+        errorMessage.includes("No authentication token") ||
+        errorMessage.includes("Invalid token")
+      ) {
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 100);
+      }
+      // For "expired" or "Session expired", just log it - token was already removed
+      // User will be redirected on next protected API call if needed
     } finally {
       setLoading(false);
     }

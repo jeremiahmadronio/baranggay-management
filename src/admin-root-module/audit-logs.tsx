@@ -316,13 +316,7 @@ export default function AuditLogs() {
       header: "Module",
       render: (row) => <ModuleBadge module={row.module} />,
     },
-    {
-      key: "reason",
-      header: "Reason",
-      render: (row) => (
-        <span className="text-gray-500 text-xs line-clamp-2 max-w-[180px] block">{row.reason || "—"}</span>
-      ),
-    },
+  
     {
       key: "ipAddress",
       header: "IP Address",
@@ -412,7 +406,6 @@ export default function AuditLogs() {
         </KPIGrid>
       </div>
 
-      {/* ── TableFilter — now includes date range via dateRange prop ── */}
       <TableFilter
         searchPlaceholder="Search user, action, reason..."
         searchValue={search}
@@ -424,12 +417,7 @@ export default function AuditLogs() {
             value: module,
             options: (filterOptions?.modules ?? []).map((m) => ({ value: m, label: m })),
           },
-          {
-            label: "Action",
-            key: "action",
-            value: action,
-            options: (filterOptions?.actions ?? []).map((a) => ({ value: a, label: a })),
-          },
+        
           {
             label: "Severity",
             key: "severity",
