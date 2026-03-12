@@ -10,7 +10,7 @@ import {
   Users,
   ArrowLeft,
   Filter,
-  Bell,
+  
   Star,
   Stethoscope,
   GraduationCap,

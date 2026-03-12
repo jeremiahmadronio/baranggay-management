@@ -13,7 +13,6 @@ import {
   Scale,
   Baby,
   Building2,
-  CheckCircle2
 } from 'lucide-react';
 
 export const Services = () => {

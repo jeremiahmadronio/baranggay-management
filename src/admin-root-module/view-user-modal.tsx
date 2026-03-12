@@ -1,4 +1,3 @@
-import React from 'react'
 import { ViewModal } from '../reusable/DetailView'
 import { type AdminTable } from '../admin-root-api/admin-management'
 

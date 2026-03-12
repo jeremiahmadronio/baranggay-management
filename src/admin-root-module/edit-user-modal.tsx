@@ -259,8 +259,7 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
               )}
             </div>
 
-            {/* Password strength hints — only shown when user is typing */}
-            {passwordChanged && formData.password && (
+            { passwordFocused || passwordChanged && formData.password && (
               <ul className="mt-2 space-y-1">
                 {[
                   { ok: formData.password.length >= 8,          text: 'At least 8 characters' },

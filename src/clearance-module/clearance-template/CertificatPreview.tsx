@@ -1,4 +1,3 @@
-import React from 'react'
 import { type TemplateData } from './template'
 import { Printer } from 'lucide-react'
 import { ResidencyPreview } from './ResidencyPreview'

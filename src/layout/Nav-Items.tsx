@@ -1,14 +1,11 @@
 import {
   LayoutDashboard,
-  BarChart3,
   Users,
   Package,
   Settings,
   MapPinHouse,
-  Archive,
   Leaf,
   FileText,
-  ShieldCheck,
   ScrollText,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'

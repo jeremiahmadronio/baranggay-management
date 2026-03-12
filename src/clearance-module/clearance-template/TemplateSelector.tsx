@@ -1,4 +1,3 @@
-import React from "react";
 import { type TemplateOption } from "./template";
 import { Check, FileText } from "lucide-react";
 interface TemplateSelectorProps {

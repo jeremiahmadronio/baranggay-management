@@ -1,4 +1,3 @@
-import React from "react";
 import { type TemplateData } from "./template";
 import { SAMPLE_DATA } from "../../clearance-api/template-api";
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { type TemplateData } from "./template";
 import { renderTextWithVariables, DataValue } from "./PreviewUtils";
 import { Header, Watermark, Footer } from "./SharedComponents";

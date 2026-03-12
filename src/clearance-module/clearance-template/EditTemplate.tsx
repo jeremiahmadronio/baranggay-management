@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { TemplateSelector } from "./TemplateSelector";
 import { TemplateEditor } from "./TemplateEditor";
 import { CertificatePreview } from "./CertificatPreview";

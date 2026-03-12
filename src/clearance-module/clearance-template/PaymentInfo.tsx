@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import  { useState } from 'react'
 import { Lock, ChevronDown, ChevronUp } from 'lucide-react'
 export function PaymentInfo() {
   const [isExpanded, setIsExpanded] = useState(true)

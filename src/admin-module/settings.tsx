@@ -1,15 +1,13 @@
 
 
-import React from "react";
 import { User, ShieldCheck, Mail, AtSign, Phone } from "lucide-react";
 import { ReusableSettings, type SettingsSectionConfig } from "../reusable/Settings";
 import {
   getSettingsPreview,
   updateSettings,
-  type SettingsPreview,
+ 
 } from "../admin-root-api/admin-management";
 
-// ─── Config ───────────────────────────────────────────────────────────────────
 
 const ACCOUNT_SECTIONS: SettingsSectionConfig[] = [
   {
