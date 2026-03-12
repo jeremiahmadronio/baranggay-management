@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8080";
+const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app";
 
 interface ApiOptions {
   requiresAuth?: boolean;
@@ -18,7 +18,6 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
   if (requiresAuth) {
     const token = localStorage.getItem("token");
     if (token) {
-      // Check if token is expired BEFORE making the request
       try {
         const base64Url = token.split(".")[1];
         const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -26,21 +25,17 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
         const currentTime = Date.now() / 1000;
         if (payload.exp < currentTime) {
           console.warn("Token expired, but keeping session data for now...");
-          // Only remove token, not all localStorage data
           localStorage.removeItem("token");
-          // Don't redirect immediately - let the calling code handle it
           throw new Error("Token expired. Please login again.");
         }
       } catch (e: any) {
         if (e.message === "Token expired. Please login again.") throw e;
-        // If token can't be decoded, it's invalid - but don't clear everything
         console.warn("Invalid token format, removing token...");
         localStorage.removeItem("token");
         throw new Error("Invalid token. Please login again.");
       }
       requestHeaders["Authorization"] = `Bearer ${token}`;
     } else {
-      // No token - don't redirect, throw error so caller can handle
       throw new Error("No authentication token found. Please login.");
     }
   }
@@ -55,13 +50,11 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
         body !== undefined && body !== null ? JSON.stringify(body) : undefined,
     });
 
-    // Handle Expired Token (401) - token is invalid/expired
     if (response.status === 401) {
       localStorage.removeItem("token");
       throw new Error("Session expired. Please login again.");
     }
 
-    // Handle Forbidden (403) - user doesn't have permission, but token is still valid
     if (response.status === 403) {
       throw new Error("You don't have permission to access this resource.");
     }
@@ -73,7 +66,6 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
       );
     }
 
-    // Check content-type to determine how to parse response
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
@@ -97,7 +89,6 @@ export const api = {
     apiClient(url, { ...options, method: "DELETE" }),
 };
 
-// Paste this in browser console (F12 → Console)
 const token = localStorage.getItem("token");
 if (token) {
   const payload = JSON.parse(atob(token.split(".")[1]));

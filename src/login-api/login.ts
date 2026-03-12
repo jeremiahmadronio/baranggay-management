@@ -4,6 +4,7 @@ export interface LoginResponse {
   token: string;
   userId: string;
   role: string;
+  departments?: string[];
   username?: string;
   firstName?: string;
   lastName?: string;
@@ -33,6 +34,7 @@ export const authService = {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     localStorage.removeItem("userRole");
+    localStorage.removeItem("departments");
     localStorage.removeItem("username");
     localStorage.removeItem("firstName");
     localStorage.removeItem("lastName");
@@ -53,6 +55,9 @@ export const authService = {
     }
     if (response.lastName) {
       localStorage.setItem("lastName", response.lastName);
+    }
+    if (response.departments && response.departments.length > 0) {
+      localStorage.setItem("departments", JSON.stringify(response.departments));
     }
 
     return response;

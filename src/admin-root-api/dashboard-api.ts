@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8080/api/v1/dashboard";
+const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/dashboard";
 
 export interface DashboardStats {
   totalUser: number;

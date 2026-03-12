@@ -98,36 +98,41 @@ export function MFAVerificationPage() {
 
       // ✅ Redirect based on user role
       const role = response.role?.toUpperCase();
-      switch (role) {
-        case "ROOT_ADMIN":
-          navigate("/rootadmin/dashboard");
-          break;
-        case "ADMIN":
-          navigate("/admin/dashboard");
-          break;
-        case "CLEARANCE":
-          navigate("/clearance/dashboard");
-          break;
-        case "OFFICIAL":
-          navigate("/official/dashboard");
-          break;
-        case "BLOTTER":
-          navigate("/blotter/dashboard");
-          break;
-        case "BCPC":
-          navigate("/bcpc/dashboard");
-          break;
-        case "VAWC":
-          navigate("/vawc/dashboard");
-          break;
-        case "LUPONG_TAGAPAMAYAPA":
-          navigate("/lupong-tagapamayapa/dashboard");
-          break;
-        case "FIRST_TIME_JOB_SEEKER":
-          navigate("/first-time-job-seeker/dashboard");
-          break;
-        default:
-          navigate("/dashboard");
+
+      if (role === "ROOT_ADMIN") {
+        navigate("/rootadmin/dashboard");
+      } else if (role === "ADMIN") {
+        navigate("/admin/dashboard");
+      } else if (role === "STAFF") {
+        // For STAFF, redirect based on first department
+        const department = response.departments?.[0]?.toUpperCase();
+        switch (department) {
+          case "CLEARANCE":
+            navigate("/clearance/dashboard");
+            break;
+          case "OFFICIAL":
+            navigate("/official/dashboard");
+            break;
+          case "BLOTTER":
+            navigate("/blotter/dashboard");
+            break;
+          case "BCPC":
+            navigate("/bcpc/dashboard");
+            break;
+          case "VAWC":
+            navigate("/vawc/dashboard");
+            break;
+          case "LUPONG_TAGAPAMAYAPA":
+            navigate("/lupong-tagapamayapa/dashboard");
+            break;
+          case "FIRST_TIME_JOB_SEEKER":
+            navigate("/first-time-job-seeker/dashboard");
+            break;
+          default:
+            navigate("/dashboard");
+        }
+      } else {
+        navigate("/login");
       }
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");

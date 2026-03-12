@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8080/api/v1/audit";
+const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/audit";
 
 const ENDPOINTS = {
   AUDIT_STATS: "/stats",

@@ -44,9 +44,9 @@ export const rootAdminNavItems: NavItemType[] = [
 export const blotterNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/blotter/dashboard', icon: LayoutDashboard },
   { label: 'Docket Books', path: '/blotter/docket', icon: Package },
-  { label: 'New Complaints', path: '/blotter/new-complaints', icon: MapPinHouse },
-  { label: 'All Complaints', path: '/blotter/all-complaints', icon: FileText },
+  { label: 'New Complaints', path: '/blotter/entry-form', icon: MapPinHouse },
   { label: 'Reports', path: '/blotter/reports', icon: Settings },
+  {label: 'form', path: '/admin/inputform', icon: Settings },
 ]
 
 

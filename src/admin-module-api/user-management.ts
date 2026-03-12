@@ -1,12 +1,10 @@
-// ─── Base URLs ────────────────────────────────────────────────────────────────
 
-const BASE_URL = "http://localhost:8080/api/v1/user-management";
-const USERS_URL = "http://localhost:8080/api/v1/users";
-const PER_URL = "http://localhost:8080/api/v1/permission";
-const DEPT_URL = "http://localhost:8080/api/v1/departments";
-const ROLE_URL = "http://localhost:8080/api/v1/roles";
+const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/user-management";
+const USERS_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/users";
+const PER_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/permission";
+const DEPT_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/departments";
+const ROLE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/roles";
 
-// ─── Endpoints ────────────────────────────────────────────────────────────────
 
 const ENDPOINTS = {
   USER_STATS: "/stats",
@@ -25,7 +23,6 @@ export const Statuses = {
 
 export type Status = (typeof Statuses)[keyof typeof Statuses];
 
-// ─── Generic Fetch ────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(
   endpoint: string,

@@ -1,6 +1,6 @@
-const BASE_URL = "http://localhost:8080/api/v1/users";
-const DEPT_URL = "http://localhost:8080/api/v1/departments";
-const ROLE_URL = "http://localhost:8080/api/v1/roles";
+const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/users";
+const DEPT_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/departments";
+const ROLE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/roles";
 
 const ENDPOINTS = {
   ADMIN_STATS: "/stats",
