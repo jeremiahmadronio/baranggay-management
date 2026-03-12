@@ -1,10 +1,10 @@
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
-const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/user-management";
-const USERS_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/users";
-const PER_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/permission";
-const DEPT_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/departments";
-const ROLE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/roles";
-
+const BASE_URL  = `${BASE}/api/v1/user-management`;
+const USERS_URL = `${BASE}/api/v1/users`;
+const PER_URL   = `${BASE}/api/v1/permission`;
+const DEPT_URL  = `${BASE}/api/v1/departments`;
+const ROLE_URL  = `${BASE}/api/v1/roles`;
 
 const ENDPOINTS = {
   USER_STATS: "/stats",
@@ -22,7 +22,6 @@ export const Statuses = {
 } as const;
 
 export type Status = (typeof Statuses)[keyof typeof Statuses];
-
 
 async function apiFetch<T>(
   endpoint: string,
@@ -98,7 +97,7 @@ export interface Permission {
 }
 
 export interface UserTable {
-  id: string; // UUID → string
+  id: string;
   username: string;
   firstName: string;
   lastName: string;
@@ -116,11 +115,11 @@ export interface UserTable {
 }
 
 export interface StaffTableParams {
-  page?: number; // 0-indexed, default 0
-  size?: number; // default 5
-  search?: string; // prefix-matches firstName, lastName, username
-  roleName?: string; // exact match (case-insensitive)
-  departmentName?: string; // exact match (case-insensitive)
+  page?: number;
+  size?: number;
+  search?: string;
+  roleName?: string;
+  departmentName?: string;
 }
 
 export interface CreateUserPayload {
@@ -147,12 +146,9 @@ export interface EditUserPayload {
   password?: string;
 }
 
-// ─── Exported API ─────────────────────────────────────────────────────────────
-
 export const userManagementApi = {
   getStats: (): Promise<UserStats> => apiFetch<UserStats>(ENDPOINTS.USER_STATS),
 
-  // ── Staff Table (paginated + filtered) ────────────────────────────────────
   getStaffTable: (params: StaffTableParams = {}): Promise<Page<UserTable>> => {
     const qs = new URLSearchParams();
     qs.set("page", String(params.page ?? 0));
@@ -160,9 +156,7 @@ export const userManagementApi = {
     if (params.search) qs.set("search", params.search);
     if (params.roleName) qs.set("roleName", params.roleName);
     if (params.departmentName) qs.set("departmentName", params.departmentName);
-    return apiFetch<Page<UserTable>>(
-      `${ENDPOINTS.STAFF_TABLE}?${qs.toString()}`,
-    );
+    return apiFetch<Page<UserTable>>(`${ENDPOINTS.STAFF_TABLE}?${qs.toString()}`);
   },
 
   getDepartmentOptions: (): Promise<Department[]> =>
@@ -174,7 +168,6 @@ export const userManagementApi = {
   getPermissionOptions: (): Promise<Permission[]> =>
     apiFetch<Permission[]>("/options", {}, PER_URL),
 
-  // ── Actions ────────────────────────────────────────────────────────────────
   createUser: (payload: CreateUserPayload): Promise<string> =>
     apiFetch<string>(ENDPOINTS.CREATE_USER, {
       method: "POST",

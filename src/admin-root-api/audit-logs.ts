@@ -1,4 +1,5 @@
-const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/audit";
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const BASE_URL = `${BASE}/api/v1/audit`;
 
 const ENDPOINTS = {
   AUDIT_STATS: "/stats",

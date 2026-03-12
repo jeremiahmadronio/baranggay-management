@@ -1,4 +1,4 @@
-const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 interface ApiOptions {
   requiresAuth?: boolean;

@@ -1,77 +1,14 @@
 import { useState, useEffect } from "react"
 import { X, Eye, EyeOff, AlertTriangle, ChevronDown, Loader2 } from "lucide-react"
+import {
+  getDepartmentOptions,
+  getAdminRoleOptions,
+  createAdminAccount,
+  type DepartmentOptions,
+  type RoleOptions,
+  type CreateAdmin,
+} from "../admin-root-api/admin-management" 
 
-// ─── Types (mirrored from api file) ──────────────────────────────────────────
-
-interface DepartmentOptions {
-  id: number
-  name: string
-}
-
-interface RoleOptions {
-  id: number
-  roleName: string
-}
-
-interface CreateAdmin {
-  username: string
-  firstName: string
-  lastName: string
-  email: string
-  password: string
-  contactNumber: string
-  roleId: number
-  allDepartments: boolean
-  departmentIds: number[]
-  activateImmediately: boolean
-}
-
-// ─── API helpers (inline – swap with your imports in the real project) ────────
-
-const BASE_URL  = "http://localhost:8080/api/v1/users"
-const DEPT_URL  = "http://localhost:8080/api/v1/departments"
-const ROLE_URL  = "http://localhost:8080/api/v1/roles"
-
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {},
-  baseUrl = BASE_URL,
-): Promise<T> {
-  const token = localStorage.getItem("token")
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options.headers,
-  }
-  const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers })
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      localStorage.removeItem("token")
-      window.location.href = "/login"
-    }
-    const ct = response.headers.get("content-type")
-    const msg = ct?.includes("application/json")
-      ? (await response.json().catch(() => ({}))).message
-      : await response.text()
-    throw new Error(msg || `HTTP error! status: ${response.status}`)
-  }
-  if (response.status === 204) return {} as T
-  const ct = response.headers.get("content-type")
-  return ct?.includes("application/json")
-    ? response.json()
-    : (response.text() as unknown as T)
-}
-
-const getDepartmentOptions = () =>
-  apiFetch<DepartmentOptions[]>("/options", {}, DEPT_URL)
-
-const getAdminRoleOptions = () =>
-  apiFetch<RoleOptions[]>("/admin-options", {}, ROLE_URL)
-
-const createAdminAccount = (body: CreateAdmin) =>
-  apiFetch<string>("/create-admin", { method: "POST", body: JSON.stringify(body) })
-
-// ─── Password requirements ────────────────────────────────────────────────────
 
 interface PwReq {
   label: string
@@ -88,40 +25,38 @@ const PW_REQS: PwReq[] = [
 
 const isPasswordValid = (v: string) => PW_REQS.every((r) => r.test(v))
 
-// ─── Form state ───────────────────────────────────────────────────────────────
 
 interface FormData {
-  username:  string
-  firstName: string
-  lastName:  string
-  email:     string
-  password:  string
+  username:      string
+  firstName:     string
+  lastName:      string
+  email:         string
+  password:      string
   contactNumber: string
-  roleId:    number | ""
+  roleId:        number | ""
 }
 
 type Errors = Partial<Record<keyof FormData | "departments", string>>
 
-// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   onClose: () => void
 }
 
 export default function CreateAdminModal({ onClose }: Props) {
-  const [step, setStep]               = useState<1 | 2>(1)
-  const [showPassword, setShowPassword] = useState(false)
-  const [pwFocused, setPwFocused]     = useState(false)
-  const [accessScope, setAccessScope] = useState<"all" | "specific">("specific")
-  const [selectedDeptIds, setSelectedDeptIds] = useState<number[]>([])
+  const [step, setStep]                         = useState<1 | 2>(1)
+  const [showPassword, setShowPassword]         = useState(false)
+  const [pwFocused, setPwFocused]               = useState(false)
+  const [accessScope, setAccessScope]           = useState<"all" | "specific">("specific")
+  const [selectedDeptIds, setSelectedDeptIds]   = useState<number[]>([])
   const [activateImmediately, setActivateImmediately] = useState(true)
-  const [errors, setErrors]           = useState<Errors>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [errors, setErrors]                     = useState<Errors>({})
+  const [isSubmitting, setIsSubmitting]         = useState(false)
+  const [submitError, setSubmitError]           = useState<string | null>(null)
 
-  const [departments, setDepartments] = useState<DepartmentOptions[]>([])
-  const [roles, setRoles]             = useState<RoleOptions[]>([])
-  const [loadingOptions, setLoadingOptions] = useState(true)
+  const [departments, setDepartments]           = useState<DepartmentOptions[]>([])
+  const [roles, setRoles]                       = useState<RoleOptions[]>([])
+  const [loadingOptions, setLoadingOptions]     = useState(true)
 
   const [formData, setFormData] = useState<FormData>({
     username:      "",
@@ -133,7 +68,6 @@ export default function CreateAdminModal({ onClose }: Props) {
     roleId:        "",
   })
 
-  // Fetch roles + departments on mount
   useEffect(() => {
     Promise.all([getDepartmentOptions(), getAdminRoleOptions()])
       .then(([depts, roleList]) => {
@@ -144,7 +78,6 @@ export default function CreateAdminModal({ onClose }: Props) {
       .finally(() => setLoadingOptions(false))
   }, [])
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleChange = (field: keyof FormData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -158,7 +91,6 @@ export default function CreateAdminModal({ onClose }: Props) {
     if (errors.departments) setErrors((prev) => ({ ...prev, departments: undefined }))
   }
 
-  // ── Validation ──────────────────────────────────────────────────────────────
 
   const validateStep1 = (): boolean => {
     const e: Errors = {}
@@ -202,7 +134,6 @@ export default function CreateAdminModal({ onClose }: Props) {
     return Object.keys(e).length === 0
   }
 
-  // ── Submit ──────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
     if (!validateStep2()) return
@@ -232,7 +163,6 @@ export default function CreateAdminModal({ onClose }: Props) {
     }
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
 
   const inputClass = (field: keyof FormData) =>
     `w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition-all ${
@@ -252,13 +182,11 @@ export default function CreateAdminModal({ onClose }: Props) {
     "bg-cyan-100 text-cyan-700",
   ]
 
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl flex flex-col max-h-[95vh]">
 
-        {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-slate-900">Create Admin Account</h2>
           <button
@@ -269,10 +197,8 @@ export default function CreateAdminModal({ onClose }: Props) {
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6 overflow-y-auto">
 
-          {/* Stepper */}
           <div className="flex items-center justify-center mb-10 px-8">
             <div className="flex flex-col items-center relative">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${step >= 1 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>
@@ -293,11 +219,9 @@ export default function CreateAdminModal({ onClose }: Props) {
             </div>
           </div>
 
-          {/* ── Step 1 ── */}
           {step === 1 && (
             <div className="space-y-5">
 
-              {/* Username */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Username <span className="text-red-500">*</span>
@@ -315,7 +239,6 @@ export default function CreateAdminModal({ onClose }: Props) {
                 )}
               </div>
 
-              {/* First / Last name */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -351,7 +274,6 @@ export default function CreateAdminModal({ onClose }: Props) {
                 </div>
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Email Address <span className="text-red-500">*</span>
@@ -370,7 +292,6 @@ export default function CreateAdminModal({ onClose }: Props) {
                 )}
               </div>
 
-              {/* Password */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Password <span className="text-red-500">*</span>
@@ -394,7 +315,6 @@ export default function CreateAdminModal({ onClose }: Props) {
                   </button>
                 </div>
 
-                {/* Password requirements checklist – visible while typing or on error */}
                 {(pwFocused || formData.password.length > 0) && (
                   <ul className="mt-2 space-y-1">
                     {PW_REQS.map((req) => {
@@ -406,11 +326,7 @@ export default function CreateAdminModal({ onClose }: Props) {
                             met ? "text-green-600" : "text-gray-400"
                           }`}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              met ? "bg-green-500" : "bg-gray-300"
-                            }`}
-                          />
+                          <span className={`w-1.5 h-1.5 rounded-full ${met ? "bg-green-500" : "bg-gray-300"}`} />
                           {req.label}
                         </li>
                       )
@@ -425,7 +341,6 @@ export default function CreateAdminModal({ onClose }: Props) {
                 )}
               </div>
 
-              {/* Contact Number */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Contact Number <span className="text-red-500">*</span>

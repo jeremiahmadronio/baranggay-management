@@ -10,10 +10,7 @@ export interface UserProfile {
   role?: string;
 }
 
-/**
- * Fetches the current logged-in user's profile from the backend.
- * Uses the /api/v1/users/settings-preview endpoint.
- */
+
 export async function getUserProfile(): Promise<UserProfile> {
   return api.get("/api/v1/users/settings-preview");
 }

@@ -1,6 +1,7 @@
-const BASE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/users";
-const DEPT_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/departments";
-const ROLE_URL = "https://barangay-backend-9ep2d.ondigitalocean.app/api/v1/roles";
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const BASE_URL = `${BASE}/api/v1/users`;
+const DEPT_URL = `${BASE}/api/v1/departments`;
+const ROLE_URL = `${BASE}/api/v1/roles`;
 
 const ENDPOINTS = {
   ADMIN_STATS: "/stats",

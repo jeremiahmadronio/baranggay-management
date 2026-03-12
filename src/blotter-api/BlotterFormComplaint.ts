@@ -1,7 +1,7 @@
-const BLOTTER_FORM_URL = "http://localhost:8080/api/v1/blotter-form";
-const BLOTTER_OPTIONS_URL = "http://localhost:8080/api/v1/blotter";
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
-// ─── Option DTOs ────────────────────────────────────────────────────────────
+const BLOTTER_FORM_URL    = `${BASE}/api/v1/blotter-form`;
+const BLOTTER_OPTIONS_URL = `${BASE}/api/v1/blotter`;
 
 export interface NatureOptionDTO {
   id: number;
@@ -12,8 +12,6 @@ export interface EvidenceOptionDTO {
   id: number;
   typName: string;
 }
-
-// ─── For-The-Record DTO ─────────────────────────────────────────────────────
 
 export interface RecordBlotterEntry {
   firstName: string;
@@ -33,16 +31,14 @@ export interface RecordBlotterEntry {
   respondentAddress?: string;
 
   natureOfComplaintId: number;
-  dateOfIncident: string; // LocalDate → "YYYY-MM-DD"
-  timeOfIncident?: string; // LocalTime → "HH:mm:ss"
+  dateOfIncident: string;
+  timeOfIncident?: string;
   placeOfIncident: string;
 
   narrativeStatement: string;
 
   evidenceTypeIds?: (string | number)[];
 }
-
-// ─── Formal Complaint DTO ────────────────────────────────────────────────────
 
 export interface WitnessEntry {
   firstName: string;
@@ -67,7 +63,7 @@ export interface FormalComplaintEntry {
   respondentMiddleName?: string;
   respondentAlias?: string;
   respondentAge?: number;
-  respondentDob?: string; // "YYYY-MM-DD"
+  respondentDob?: string;
   respondentGender?: string;
   respondentCivilStatus?: string;
   respondentOccupation?: string;
@@ -77,8 +73,8 @@ export interface FormalComplaintEntry {
   livingWithComplainant?: boolean;
 
   natureOfComplaintId: number;
-  dateOfIncident: string; // "YYYY-MM-DD"
-  timeOfIncident?: string; // "HH:mm:ss"
+  dateOfIncident: string;
+  timeOfIncident?: string;
   placeOfIncident: string;
   frequencyOfIncident?: string;
   descriptionOfInjuries?: string;
@@ -91,12 +87,7 @@ export interface FormalComplaintEntry {
   certifiedTrue?: boolean;
 }
 
-// ─── Shared apiFetch helper ──────────────────────────────────────────────────
-
-async function apiFetch<T>(
-  url: string,
-  options: RequestInit = {}
-): Promise<T> {
+async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
 
   const headers: HeadersInit = {
@@ -127,34 +118,27 @@ async function apiFetch<T>(
   return response.text() as unknown as T;
 }
 
-// ─── Option Fetchers ─────────────────────────────────────────────────────────
 
+//nature of complaint options
 export async function getNatureOfComplaintOptions(): Promise<NatureOptionDTO[]> {
-  return apiFetch<NatureOptionDTO[]>(
-    `${BLOTTER_OPTIONS_URL}/nature-of-complaint-options`
-  );
+  return apiFetch<NatureOptionDTO[]>(`${BLOTTER_OPTIONS_URL}/nature-of-complaint-options`);
 }
 
+//evidence type options
 export async function getEvidenceTypeOptions(): Promise<EvidenceOptionDTO[]> {
-  return apiFetch<EvidenceOptionDTO[]>(
-    `${BLOTTER_OPTIONS_URL}/evidence-type-options`
-  );
+  return apiFetch<EvidenceOptionDTO[]>(`${BLOTTER_OPTIONS_URL}/evidence-type-options`);
 }
 
-// ─── Form Submitters ─────────────────────────────────────────────────────────
-
-export async function submitForTheRecord(
-  body: RecordBlotterEntry
-): Promise<string> {
+//for the record submission
+export async function submitForTheRecord(body: RecordBlotterEntry): Promise<string> {
   return apiFetch<string>(`${BLOTTER_FORM_URL}/for-the-record`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export async function submitFormalComplaint(
-  body: FormalComplaintEntry
-): Promise<string> {
+//for the formal complaint submission
+export async function submitFormalComplaint(body: FormalComplaintEntry): Promise<string> {
   return apiFetch<string>(`${BLOTTER_FORM_URL}/formal-complaint`, {
     method: "POST",
     body: JSON.stringify(body),
