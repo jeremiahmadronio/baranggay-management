@@ -41,6 +41,7 @@ export interface BlotterDocketViewDTO {
   daysRemaining: number;
   caseNumber: string;
   caseStatus: string;
+  caseStatusRemarks?: string;
   dateFiled: string;
 
   firstName: string;
@@ -184,6 +185,21 @@ export interface RecordMinutesRequest {
   outcome: string;
 }
 
+// stats for dashboard
+export interface BlotterStatsDTO {
+  totalEntries: number;
+  activeCases: number;
+  resolved: number;
+  pendingMediation: number;
+}
+
+// update case status request
+export interface UpdateCaseStatusRequest {
+  caseId: string | number;
+  newStatus: string;
+  reason: string;
+}
+
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
 
@@ -284,6 +300,18 @@ export async function scheduleHearing(body: ScheduleHearingRequest): Promise<str
 export async function recordHearingMinutes(body: RecordMinutesRequest): Promise<string> {
   return apiFetch<string>(`${HEARING_URL}/record-minutes`, {
     method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+
+export async function getDocketStats(): Promise<BlotterStatsDTO> {
+  return apiFetch<BlotterStatsDTO>(`${BLOTTER_URL}/docket-stats`);
+}
+
+export async function updateCaseStatus(body: UpdateCaseStatusRequest): Promise<string> {
+  return apiFetch<string>(`${BLOTTER_URL}/update-case-status`, {
+    method: "PUT",
     body: JSON.stringify(body),
   });
 }
