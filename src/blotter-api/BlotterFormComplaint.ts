@@ -26,6 +26,7 @@ export interface RecordBlotterEntry {
 
   respondentFirstName: string;
   respondentLastName: string;
+  respondentMiddleName?: string;
   respondentContact?: string;
   relationshipToComplainant?: string;
   respondentAddress?: string;
@@ -82,8 +83,8 @@ export interface FormalComplaintEntry {
   narrativeStatement: string;
 
   evidenceTypeIds?: (string | number)[];
+  
   witnesses?: WitnessEntry[];
-
   certifiedTrue?: boolean;
 }
 
@@ -118,18 +119,14 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.text() as unknown as T;
 }
 
-
-//nature of complaint options
 export async function getNatureOfComplaintOptions(): Promise<NatureOptionDTO[]> {
   return apiFetch<NatureOptionDTO[]>(`${BLOTTER_OPTIONS_URL}/nature-of-complaint-options`);
 }
 
-//evidence type options
 export async function getEvidenceTypeOptions(): Promise<EvidenceOptionDTO[]> {
   return apiFetch<EvidenceOptionDTO[]>(`${BLOTTER_OPTIONS_URL}/evidence-type-options`);
 }
 
-//for the record submission
 export async function submitForTheRecord(body: RecordBlotterEntry): Promise<string> {
   return apiFetch<string>(`${BLOTTER_FORM_URL}/for-the-record`, {
     method: "POST",
@@ -137,7 +134,6 @@ export async function submitForTheRecord(body: RecordBlotterEntry): Promise<stri
   });
 }
 
-//for the formal complaint submission
 export async function submitFormalComplaint(body: FormalComplaintEntry): Promise<string> {
   return apiFetch<string>(`${BLOTTER_FORM_URL}/formal-complaint`, {
     method: "POST",

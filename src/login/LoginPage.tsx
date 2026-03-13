@@ -37,7 +37,7 @@ export function LoginPage() {
         navigate("/mfa-verification", { state: { email } });
       }
     } catch (err: any) {
-      setError(err.message || "Login failed. Please check your credentials.");
+      setError("Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
