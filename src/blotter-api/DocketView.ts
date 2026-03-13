@@ -249,6 +249,24 @@ export async function getDocketTable(params: DocketTableParams = {}): Promise<Sp
   return apiFetch<SpringPage<BlotterSummaryDTO>>(endpoint);
 }
 
+export async function getRecordTable(params: DocketTableParams = {}): Promise<SpringPage<BlotterSummaryDTO>> {
+  const queryParams = new URLSearchParams();
+
+  if (params.search) queryParams.append("search", params.search);
+  if (params.status) queryParams.append("status", params.status);
+  if (params.natureId !== undefined) queryParams.append("natureId", params.natureId.toString());
+  if (params.start) queryParams.append("start", params.start);
+  if (params.end) queryParams.append("end", params.end);
+  if (params.page !== undefined) queryParams.append("page", params.page.toString());
+  if (params.size !== undefined) queryParams.append("size", params.size.toString());
+  if (params.sort) queryParams.append("sort", params.sort);
+
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `${BLOTTER_URL}/record-table?${queryString}` : `${BLOTTER_URL}/record-table`;
+
+  return apiFetch<SpringPage<BlotterSummaryDTO>>(endpoint);
+}
+
 export async function getFullBlotterDocket(blotterNumber: string): Promise<BlotterDocketViewDTO> {
   if (!blotterNumber) throw new Error("Blotter number is required");
   return apiFetch<BlotterDocketViewDTO>(`${BLOTTER_URL}/view-all-docket/${encodeURIComponent(blotterNumber)}`);
