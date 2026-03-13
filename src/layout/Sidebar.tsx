@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink ,useNavigate} from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut, Hexagon } from "lucide-react";
 import { getNavItemsByRole, type UserRole } from "./Nav-Items";
@@ -16,10 +16,13 @@ export function Sidebar({
   userRoleDisplay,
 }: SidebarProps) {
   const navItems = getNavItemsByRole(userRole);
+  const navigate = useNavigate();
+  
 
   // Handle logout
   const handleLogout = () => {
     authService.logout();
+    navigate("/login", { replace: true });
   };
 
   // Get role display name and brand
