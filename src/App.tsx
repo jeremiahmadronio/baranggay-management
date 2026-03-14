@@ -41,6 +41,8 @@ import BCPCDashboard from "./bcpc-module/dashboard";
 // Blotter
 import BlotterDashboard from "./blotter-module/dashboard";
 import BlotterEntryForm from "./blotter-module/BlotterFormComplaint";
+import BlotterRecordsPage from "./blotter-module/BlotterRecord";
+import BlotterViewPage from "./blotter-module/BlotterRecordView";
 
 // Clearance
 import ClearanceDashboard from "./clearance-module/Dashboard";
@@ -130,17 +132,13 @@ export function App() {
       <Route path="/blotter" element={<BlotterLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<BlotterDashboard />} />
-        <Route
-          path="docket"
-          element={<PagePlaceholder title="Docket Books" />}
-        />
+        <Route path="records" element={<BlotterRecordsPage />} />
+        <Route path="docket"element={<PagePlaceholder title="Docket Books" />} />
         <Route path="entry-form" element={<BlotterEntryForm />} />
-        <Route
-          path="all-complaints"
-          element={<PagePlaceholder title="All Complaints" />}
-        />
+        <Route path="all-complaints"element={<PagePlaceholder title="All Complaints" />}/>
         <Route path="reports" element={<PagePlaceholder title="Reports" />} />
         <Route path="settings" element={<PagePlaceholder title="Settings" />} />
+        <Route path="record-view" element={<BlotterViewPage />} />
       </Route>
 
       {/* Lupong Tagapamayapa */}

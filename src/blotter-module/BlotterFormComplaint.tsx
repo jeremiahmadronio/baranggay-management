@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
+import { useSearchParams } from "react-router-dom"; 
+import { getFullBlotterRecord } from "../blotter-api/RecordView"; 
 import type {
   ReactNode,
   ChangeEvent,
@@ -469,7 +471,9 @@ type Errors = Record<string, string>;
 
 export default function BlotterEntryForm() {
   const { user } = useUser();
-
+   
+  const [searchParams] = useSearchParams();
+  const escalateId = searchParams.get("escalate");
   const [rLastName, setRLastName] = useState("");
   const [rFirstName, setRFirstName] = useState("");
   const [rMiddleName, setRMiddleName] = useState("");
@@ -547,23 +551,85 @@ export default function BlotterEntryForm() {
   const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const formattedTime = today.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase();
 
-  useEffect(() => {
-    const fetchOptions = async () => {
+ useEffect(() => {
+    const init = async () => {
       try {
+        // 1. Fetch Options
         const [natures, evidences] = await Promise.all([
           getNatureOfComplaintOptions(),
           getEvidenceTypeOptions(),
         ]);
         setNatureOptions(natures);
         setEvidenceOptions(evidences);
+
+        // 2. KUNG MAY "ESCALATE" SA URL, MAG-AUTO FILL TAYO
+        if (escalateId) {
+          setMode("formal"); // I-auto select ang Formal Complaint
+          const record = await getFullBlotterRecord(escalateId);
+
+          // A. Mag-split ng Full Name pabalik sa First at Last Name
+          const splitName = (fullName: string) => {
+            if (!fullName) return { first: "", last: "" };
+            const parts = fullName.trim().split(" ");
+            const last = parts.length > 1 ? parts.pop() : "Unknown";
+            const first = parts.join(" ") || "Unknown";
+            return { first, last };
+          };
+
+          const cName = splitName(record.complainantFullName);
+          setCFirstName(cName.first);
+          setCLastName(cName.last || "");
+
+          const rName = splitName(record.respondentFullName);
+          setRFirstName(rName.first);
+          setRLastName(rName.last || "");
+
+          // B. I-fill ang iba pang Basic Details
+          setCContact(record.complainantContact || "");
+          setCAddress(record.complainantAddress || "");
+          setCCivilStatus(record.civilStatus || "");
+          setCAge(record.complainantAge?.toString() || "");
+          setCGender(record.complainantGender || "");
+          setCEmail(record.complainantEmail || "");
+
+          setRContact(record.respondentContact || "");
+          setRFormalContact(record.respondentContact || "");
+          setRAddress(record.respondentAddress || "");
+          setRFormalAddress(record.respondentAddress || "");
+          setRRelationship(record.relationshipToComplainant || "");
+          setRFormalRelationship(record.relationshipToComplainant || "");
+
+          // C. I-fill ang Incident Details
+          setDateOfIncident(record.dateOfIncident || "");
+          setPlaceOfIncident(record.placeOfIncident || "");
+          setNarrative(record.narrativeStatement || "");
+          
+          // Ang Time galing sa DB madalas HH:mm:ss, ang input field ay HH:mm lang
+          if (record.timeOfIncident) {
+            setTimeOfIncident(record.timeOfIncident.substring(0, 5));
+          }
+
+          const foundNature = natures.find((n) => n.natureName === record.natureOfComplaint);
+          if (foundNature) setNatureId(String(foundNature.id));
+
+          if (record.evidenceNames && record.evidenceNames.length > 0) {
+            const matchedEvidence = new Set<number>();
+            record.evidenceNames.forEach((evName) => {
+              const foundEv = evidences.find((e) => e.typName === evName);
+              if (foundEv) matchedEvidence.add(foundEv.id);
+            });
+            setSelectedEvidence(matchedEvidence);
+          }
+        }
       } catch (err) {
-        console.error("Failed to load options:", err);
+        console.error("Failed to load initialization data:", err);
       } finally {
         setOptionsLoading(false);
       }
     };
-    fetchOptions();
-  }, []);
+
+    init();
+  }, [escalateId]); 
 
   const natureSelectOptions: FormSelectOption[] = natureOptions.map((n) => ({
     value: String(n.id),
@@ -737,10 +803,10 @@ export default function BlotterEntryForm() {
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <p>
-            <span className="font-semibold">Privacy Notice: </span>
-            In compliance with RA 9262 (Anti-VAWC Act) and the Data Privacy Act of 2012, all records display victim initials only. Full details are accessible only to authorized personnel.
-          </p>
+         <p>
+  <span className="font-semibold">Privacy Notice: </span>
+  In compliance with the Data Privacy Act of 2012 (R.A. 10173), all personal information collected in this blotter report shall be kept strictly confidential. Access to full details is restricted to authorized barangay personnel only.
+</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -832,7 +898,11 @@ export default function BlotterEntryForm() {
             </FormRow>
           </SectionCard>
         ) : (
-          <SectionCard letter="C" title="Respondent Information" notice='Punan ang available na impormasyon. Kung hindi kilala ang respondent, ilagay ang "Unknown".'>
+          <SectionCard 
+  letter="C" 
+  title="Respondent Information" 
+  notice='Please provide all available details. If the respondent is unidentified, enter "Unknown".'
+>
             <FormRow cols={3}>
               <FormInput id="field-rLastName" label="Last Name" required placeholder="e.g. Santos" value={rLastName} onChange={(e) => { setRLastName(e.target.value); clearErr("rLastName"); }} error={errors.rLastName} />
               <FormInput id="field-rFirstName" label="First Name" required placeholder="e.g. Pedro" value={rFirstName} onChange={(e) => { setRFirstName(e.target.value); clearErr("rFirstName"); }} error={errors.rFirstName} />

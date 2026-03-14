@@ -15,6 +15,8 @@ export interface SpringPage<T> {
   empty: boolean;
 }
 
+
+
 export interface BlotterSummaryDTO {
   id: number;
   blotterNumber: string;
