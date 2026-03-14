@@ -54,6 +54,16 @@ export interface BlotterRecordViewDTO {
   evidenceNames: string[];
 }
 
+export interface FtrSummaryStatsDTO {
+  totalFtr: number;
+  ftrTrend: number;
+  totalEscalated: number;
+  escalatedTrend: number;
+  escalationRate: number;
+  peakIncidentTime: string;
+  peakTimeCount: number;
+}
+
 export interface RecordTableParams {
   search?: string;
   status?: string;
@@ -120,4 +130,11 @@ export async function getFullBlotterRecord(blotterNumber: string): Promise<Blott
   if (!blotterNumber) throw new Error("Blotter number is required");
   
   return apiFetch<BlotterRecordViewDTO>(`${BLOTTER_URL}/view-all/${encodeURIComponent(blotterNumber)}`);
+
+  
 }
+
+export async function getRecordStats(): Promise<FtrSummaryStatsDTO> {
+  return apiFetch<FtrSummaryStatsDTO>(`${BLOTTER_URL}/records-stats`);
+}
+
