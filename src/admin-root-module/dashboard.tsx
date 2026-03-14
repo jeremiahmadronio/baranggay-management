@@ -1,54 +1,13 @@
 import { useEffect, useState } from "react"
-import { getDashboardStats } from "../admin-root-api/dashboard-api"
-import type { DashboardStats } from "../admin-root-api/dashboard-api"
+import { getDashboardStats, getActivityOverview, getRecentActions } from "../admin-root-api/dashboard-api"
+import type { ActivityOverview, DashboardStats, RecentActions } from "../admin-root-api/dashboard-api"
+import { KPIGrid, KPICard, KPIIcons } from '../reusable/KPICard'
+import { ResponsiveTable } from '../reusable/RecentSystemActions'
+import type { ColumnDef } from '../reusable/RecentSystemActions'
+import { ArrowLeft, RefreshCcw, ShieldAlert, AlertCircle } from "lucide-react"
+import { motion } from "framer-motion"
+import { useNavigate } from "react-router-dom"
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const DEPARTMENTS = [
-  { code: "VAWC",      count: 245, percent: "23.6%", shade: "from-blue-400 to-blue-500" },
-  { code: "BLOTTER",   count: 189, percent: "17.7%", shade: "from-blue-500 to-blue-600" },
-  { code: "BCPC",      count: 156, percent: "14.6%", shade: "from-blue-500 to-blue-600" },
-  { code: "ITUS",      count: 98,  percent: "9.2%",  shade: "from-blue-600 to-blue-700" },
-  { code: "CLEARANCE", count: 312, percent: "29.2%", shade: "from-blue-400 to-blue-500" },
-  { code: "LUPON",     count: 67,  percent: "6.3%",  shade: "from-blue-600 to-blue-700" },
-  { code: "KAPITANA",  count: 82,  percent: "7.7%",  shade: "from-blue-500 to-blue-600" },
-  { code: "OPS",       count: 118, percent: "11.1%", shade: "from-blue-500 to-blue-700" },
-]
-
-const TOTAL_ACTIVITY = DEPARTMENTS.reduce((sum, d) => sum + d.count, 0)
-
-const RECENT_ACTIONS = [
-  { timestamp: "2026-02-21  14:32:51", user: "Maria Santos", action: "Case #2026-001 created",               module: "VAWC",      moduleColor: "bg-blue-100 text-blue-700"   },
-  { timestamp: "2026-02-21  14:28:03", user: "Pedro Reyes",  action: "Child record #BC-445 modified",        module: "BCPC",      moduleColor: "bg-indigo-100 text-indigo-700"},
-  { timestamp: "2026-02-21  14:15:12", user: "Root Admin",   action: "New admin: juan.admin@ugong.gov.ph",   module: "System",    moduleColor: "bg-gray-100 text-gray-600"   },
-  { timestamp: "2026-02-21  13:55:11", user: "Juan Cruz",    action: "Cert #CLR-2026-089 issued",            module: "Clearance", moduleColor: "bg-green-100 text-green-700" },
-  { timestamp: "2026-02-21  13:42:07", user: "Ana Lopez",    action: "3rd failed attempt — account locked",  module: "System",    moduleColor: "bg-gray-100 text-gray-600"   },
-]
-
-// ─── Icons ────────────────────────────────────────────────────────────────────
-
-const StaffIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m6-4.13a4 4 0 10-8 0 4 4 0 008 0zm6 0a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-)
-const SessionIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-  </svg>
-)
-const AlertIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-  </svg>
-)
-const AuditIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v12a2 2 0 01-2 2z" />
-  </svg>
-)
-
-// ─── Animated Counter ─────────────────────────────────────────────────────────
 
 function AnimatedCounter({ target }: { target: number }) {
   const [count, setCount] = useState(0)
@@ -65,90 +24,216 @@ function AnimatedCounter({ target }: { target: number }) {
   return <>{count.toLocaleString()}</>
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+const DEPT_BLUE_SHADES = [
+  "from-blue-600 to-blue-700",
+  "from-blue-500 to-blue-600",
+  "from-blue-500 to-blue-600",
+  "from-blue-400 to-blue-500",
+  "from-blue-700 to-blue-800",
+  "from-blue-300 to-blue-400",
+  "from-blue-400 to-blue-500",
+  "from-blue-500 to-blue-600",
+]
+
+function mapDepartments(overview: ActivityOverview) {
+  return overview.departments.map((dept, idx) => ({
+    code:    dept.departmentName.toUpperCase(),
+    shade:   DEPT_BLUE_SHADES[idx % DEPT_BLUE_SHADES.length],
+    count:   dept.count,
+    percent: `${dept.percentage}%`,
+  }))
+}
+
+function getSeverityStyle(severity: string): string {
+  switch (severity?.toLowerCase()) {
+    case "critical": return "bg-rose-100 text-rose-700"
+    case "high":     return "bg-orange-100 text-orange-700"
+    case "medium":   return "bg-amber-100 text-amber-700"
+    case "low":      return "bg-emerald-100 text-emerald-700"
+    default:         return "bg-blue-100 text-blue-700"
+  }
+}
+
+function formatTimestamp(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("en-US", {
+      month: "short", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    })
+  } catch {
+    return iso
+  }
+}
+
+
+const recentActionsColumns: ColumnDef<RecentActions>[] = [
+  {
+    header: "Timestamp",
+    render: (row) => (
+      <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
+        {formatTimestamp(row.createdAt)}
+      </span>
+    ),
+  },
+  {
+    header: "User",
+    render: (row) => (
+      <span className="font-semibold text-gray-800 whitespace-nowrap">
+        {row.firstName} {row.lastName}
+      </span>
+    ),
+  },
+  {
+    header: "Action",
+    render: (row) => (
+      <span className="text-gray-500">{row.actionTaken}</span>
+    ),
+  },
+  {
+    header: "Module",
+    render: (row) => (
+      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
+        {row.module}
+      </span>
+    ),
+  },
+  {
+    header: "Severity",
+    render: (row) => (
+      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${getSeverityStyle(row.severity)}`}>
+        {row.severity}
+      </span>
+    ),
+  },
+]
+
 
 export default function RootAdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [stats,         setStats]         = useState<DashboardStats   | null>(null)
+  const [overview,      setOverview]      = useState<ActivityOverview | null>(null)
+  const [recentActions, setRecentActions] = useState<RecentActions[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState<string | null>(null)
+
+   const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await getDashboardStats()
-        setStats(data)
-      } catch {
-        // Fallback to mock data kung walang backend pa
-        setStats({ totalStaff: 47, activeSessions: 23, securityAlerts: 3, totalAuditEntries: 1247 })
+        setLoading(true)
+        setError(null)
+        const [statsData, overviewData, recentData] = await Promise.all([
+          getDashboardStats(),
+          getActivityOverview(),
+          getRecentActions(),
+        ])
+        setStats(statsData)
+        setOverview(overviewData)
+        setRecentActions(recentData)
+      } catch (err) {
+        setError( "Failed to load dashboard.")
+      } finally {
+        setLoading(false)
       }
     }
     fetchData()
   }, [])
 
-  if (!stats) {
-    return <div className="p-6 text-center text-gray-400">Loading dashboard...</div>
+  if (loading) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[300px] gap-3">
+        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+        <p className="text-sm text-gray-400">Loading dashboard...</p>
+      </div>
+    )
   }
 
+  if (error || !stats) {
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-
-      {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
-
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Total Staff</p>
-            <p className="text-4xl font-bold text-gray-900 leading-none">
-              <AnimatedCounter target={stats.totalStaff} />
-            </p>
-            <span className="text-xs text-gray-400 mt-1 block">Active accounts</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-400 flex items-center justify-center flex-shrink-0">
-            <StaffIcon />
-          </div>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex items-center justify-center min-h-[400px] w-full p-4"
+    >
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 text-center">
+        {/* Animated Icon Container */}
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-50 mb-6">
+          <AlertCircle className="w-8 h-8 text-rose-500" />
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Active Sessions</p>
-            <p className="text-4xl font-bold text-gray-900 leading-none">
-              <AnimatedCounter target={stats.activeSessions} />
-            </p>
-            <span className="text-xs text-gray-400 mt-1 block">Currently online</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-green-50 text-green-400 flex items-center justify-center flex-shrink-0">
-            <SessionIcon />
-          </div>
-        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">
+          Failed to load dashboard
+        </h3>
+        
+        <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+          {error || "Nagkaroon ng problema sa pagkuha ng data mula sa server. Pakisuri ang iyong koneksyon."}
+        </p>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Security Alerts</p>
-            <p className="text-4xl font-bold text-gray-900 leading-none">
-              <AnimatedCounter target={stats.securityAlerts} />
-            </p>
-            <span className="text-xs text-gray-400 mt-1 block">Require attention</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-400 flex items-center justify-center flex-shrink-0">
-            <AlertIcon />
-          </div>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center justify-center gap-2 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all active:scale-[0.98]"
+          >
+            <RefreshCcw className="w-4 h-4" />
+            Retry Connection
+          </button>
+          
+          <button
+            onClick={() => navigate('/login')}
+            className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg font-semibold transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Login
+          </button>
         </div>
-
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Total Audit Entries</p>
-            <p className="text-4xl font-bold text-gray-900 leading-none">
-              <AnimatedCounter target={stats.totalAuditEntries} />
-            </p>
-            <span className="text-xs text-gray-400 mt-1 block">This month</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-400 flex items-center justify-center flex-shrink-0">
-            <AuditIcon />
-          </div>
-        </div>
-
       </div>
+    </motion.div>
+  );
+}
 
-      {/* ── Activity Overview ── */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+  const DEPARTMENTS    = overview ? mapDepartments(overview) : []
+  const TOTAL_ACTIVITY = overview?.totalActivity ?? 0
+
+  return (
+    <div className="p-8 min-h-screen">
+
+      {/* ── KPI Cards ── */}
+      <KPIGrid columns={4}>
+        <KPICard
+          title="Total Staff"
+          value={<AnimatedCounter target={stats.totalUser} />}
+          icon={KPIIcons.users}
+          color="blue"
+          subtitle="Active accounts"
+        />
+        <KPICard
+          title="Active Sessions"
+          value={<AnimatedCounter target={stats.totalActiveUser} />}
+          icon={KPIIcons.clock}
+          color="emerald"
+          subtitle="Currently online"
+        />
+        <KPICard
+          title="Security Alerts"
+          value={<AnimatedCounter target={stats.totalCritical} />}
+          icon={<ShieldAlert className="w-6 h-6" />}
+          color="rose"
+          subtitle="Require attention"
+        />
+        <KPICard
+          title="Total Audit Entries"
+          value={<AnimatedCounter target={stats.totalAuditEntry} />}
+          icon={KPIIcons.document}
+          color="violet"
+          trend={{
+            value: `${stats.auditGrowth}%`,
+            direction: stats.auditDirection,
+            label: "from last month"
+          }}
+        />
+      </KPIGrid>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6 mt-5">
 
         <div className="flex items-start justify-between mb-1">
           <div>
@@ -163,22 +248,28 @@ export default function RootAdminDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 md:grid-cols-8 gap-3 mt-5">
-          {DEPARTMENTS.map((dept) => (
-            <div
-              key={dept.code}
-              className={`bg-gradient-to-b ${dept.shade} rounded-xl p-3.5 text-white flex flex-col gap-1 hover:scale-105 transition-transform duration-150 cursor-default`}
-            >
-              <span className="text-[10px] font-bold tracking-wider opacity-90 leading-tight">
-                {dept.code}
-              </span>
-              <span className="text-2xl font-extrabold leading-none mt-0.5">
-                {dept.count}
-              </span>
-              <span className="text-[10px] opacity-75 mt-0.5">{dept.percent}</span>
-            </div>
-          ))}
-        </div>
+        {DEPARTMENTS.length > 0 ? (
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-3 mt-5">
+            {DEPARTMENTS.map((dept) => (
+              <div
+                key={dept.code}
+                className={`bg-gradient-to-b ${dept.shade} rounded-xl p-3.5 text-white flex flex-col gap-1 hover:scale-105 transition-transform duration-150 cursor-default`}
+              >
+                <span className="text-[10px] font-bold tracking-wider opacity-90 leading-tight truncate">
+                  {dept.code}
+                </span>
+                <span className="text-2xl font-extrabold leading-none mt-0.5">
+                  {dept.count.toLocaleString()}
+                </span>
+                <span className="text-[10px] opacity-75 mt-0.5">{dept.percent}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 text-center text-sm text-gray-400 py-6">
+            No department data available.
+          </div>
+        )}
 
         <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
           <div className="flex items-center gap-2">
@@ -187,6 +278,7 @@ export default function RootAdminDashboard() {
               <div className="w-5 h-2 rounded-full bg-blue-200" />
               <div className="w-5 h-2 rounded-full bg-blue-400" />
               <div className="w-5 h-2 rounded-full bg-blue-600" />
+              <div className="w-5 h-2 rounded-full bg-blue-800" />
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
@@ -199,47 +291,12 @@ export default function RootAdminDashboard() {
 
       </div>
 
-      {/* ── Recent System Actions ── */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-base font-bold text-gray-800">Recent System Actions</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Last 5 activities across all modules</p>
-          </div>
-          <button className="text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors cursor-pointer">
-            View All
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider pb-3 pr-6">Timestamp</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider pb-3 pr-6">User</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider pb-3 pr-6">Action</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider pb-3">Module</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {RECENT_ACTIONS.map((row, i) => (
-                <tr key={i} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-3.5 pr-6 text-xs text-gray-400 font-mono whitespace-nowrap">{row.timestamp}</td>
-                  <td className="py-3.5 pr-6 font-semibold text-gray-800 whitespace-nowrap">{row.user}</td>
-                  <td className="py-3.5 pr-6 text-gray-500">{row.action}</td>
-                  <td className="py-3.5">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${row.moduleColor}`}>
-                      {row.module}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-      </div>
+      {/* ── Recent System Actions — using ResponsiveTable reusable ── */}
+      <ResponsiveTable<RecentActions>
+        title="Recent System Actions"
+        data={recentActions}
+        columns={recentActionsColumns}
+      />
 
     </div>
   )

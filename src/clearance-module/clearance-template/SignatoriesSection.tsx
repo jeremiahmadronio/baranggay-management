@@ -1,4 +1,3 @@
-import React from 'react'
 import { type Signatory } from './template'
 import { Plus, Trash2, AlertCircle } from 'lucide-react'
 

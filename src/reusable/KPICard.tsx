@@ -10,8 +10,7 @@ import {
   Clock, 
   Home, 
   FileCheck, 
-  CalendarDays, 
-  Banknote, 
+  CalendarDays,  
   Hourglass ,
   PiggyBank ,
   FileBadge ,
@@ -24,7 +23,7 @@ type KPIColor = 'blue' | 'emerald' | 'amber' | 'rose' | 'violet' | 'slate';
 
 interface KPICardProps {
   title: string;
-  value: string | number;
+  value: React.ReactNode; 
   icon?: React.ReactNode;
   trend?: {
     value: string | number;

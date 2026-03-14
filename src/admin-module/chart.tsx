@@ -1,4 +1,3 @@
-import React from 'react';
 import DonutChart from '../reusable/DonutChart';
 import BarChartComponent from '../reusable/BarChart';
 

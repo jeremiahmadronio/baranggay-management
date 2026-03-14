@@ -1,4 +1,3 @@
-import React from "react";
 import { type TemplateData } from "./template";
 import { renderTextWithVariables } from "./PreviewUtils";
 import {
@@ -9,7 +8,12 @@ import {
   PaymentDetails,
 } from "./SharedComponents";
 
-export function TricycleRegistrationPreview({ template }: { template: TemplateData }) {
+interface PreviewProps {
+  template: TemplateData;
+  customData?: Record<string, string>;
+}
+
+export function TricycleRegistrationPreview({ template, customData }: PreviewProps) {
   const hasPhoto = template.settings.requiresPhoto;
 
   return (
@@ -52,14 +56,14 @@ export function TricycleRegistrationPreview({ template }: { template: TemplateDa
                 }`}
               >
     
-                {renderTextWithVariables(section.text)}
+                {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
           </div>
         </div>
 
         <div className="mt-auto">
-          <PaymentDetails hasFee={template.settings.hasFee} />
+          <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
           <Signatories template={template} />
         </div>
       </div>

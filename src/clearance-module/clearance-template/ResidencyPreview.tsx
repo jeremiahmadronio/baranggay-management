@@ -1,4 +1,3 @@
-import React, { Component } from "react";
 import { type TemplateData } from "./template";
 import { renderTextWithVariables } from "./PreviewUtils";
 import {
@@ -8,10 +7,17 @@ import {
   Signatories,
   PaymentDetails,
 } from "./SharedComponents";
-export function ResidencyPreview({ template }: { template: TemplateData }) {
-  const hasPhoto = template.settings.requiresPhoto;
+
+interface PreviewProps {
+  template: TemplateData;
+  customData?: Record<string, string>;
+}
+
+export function ResidencyPreview({ template, customData }: PreviewProps) {
+  const hasPhoto     = template.settings.requiresPhoto;
   const hasThumbmark = template.settings.requiresThumbmark;
-  const hasFee = template.settings.hasFee;
+  const hasFee       = template.settings.hasFee;
+
   return (
     <div
       className="bg-white w-full max-w-[210mm] mx-auto shadow-xl relative flex flex-col border border-gray-200"
@@ -34,17 +40,12 @@ export function ResidencyPreview({ template }: { template: TemplateData }) {
           {hasPhoto && (
             <div className="flex-shrink-0 ml-4 absolute right-10 top-6">
               <div className="w-[72px] h-[72px] border border-gray-300 bg-blue-50/40 flex flex-col items-center justify-center">
-                <span className="text-[8px] text-gray-400 font-medium">
-                  1x1
-                </span>
-                <span className="text-[8px] text-gray-400 font-medium">
-                  PHOTO
-                </span>
+                <span className="text-[8px] text-gray-400 font-medium">1x1</span>
+                <span className="text-[8px] text-gray-400 font-medium">PHOTO</span>
               </div>
             </div>
           )}
         </div>
-        
 
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 max-h-[500px] overflow-hidden px-8 py-6">
@@ -52,17 +53,27 @@ export function ResidencyPreview({ template }: { template: TemplateData }) {
               <div
                 key={section.id}
                 className="text-[12.5px] leading-[1.6] text-gray-800 text-left mb-6 break-words whitespace-pre-wrap"
-                style={{
-                  textIndent: "2em",
-                }}
+                style={{ textIndent: "2em" }}
               >
-                {renderTextWithVariables(section.text)}
+                {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
           </div>
         </div>
 
-        <PaymentDetails hasFee={template.settings.hasFee} />
+        {hasThumbmark && (
+          <div className="flex justify-end px-8 mb-4">
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-[64px] h-[72px] border border-gray-300 bg-gray-50/60 flex flex-col items-center justify-center">
+                <span className="text-[8px] text-gray-400 font-medium">RIGHT</span>
+                <span className="text-[8px] text-gray-400 font-medium">THUMB</span>
+              </div>
+              <span className="text-[8px] text-gray-400">Thumbmark</span>
+            </div>
+          </div>
+        )}
+
+        <PaymentDetails hasFee={hasFee} customData={customData} />
         <Signatories template={template} />
       </div>
 

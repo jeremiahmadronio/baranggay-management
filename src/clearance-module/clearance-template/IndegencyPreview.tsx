@@ -1,4 +1,3 @@
-import React from 'react'
 import { type TemplateData } from './template'
 import { renderTextWithVariables } from './PreviewUtils'
 import {
@@ -9,7 +8,12 @@ import {
   PaymentDetails,
 } from './SharedComponents'
 
-export function IndigencyPreview({ template }: { template: TemplateData }) {
+interface PreviewProps {
+  template: TemplateData;
+  customData?: Record<string, string>;
+}
+
+export function IndigencyPreview({ template, customData }: PreviewProps) {
   // --- MOCK DATA LOGIC ---
   const today = new Date();
   const date = today.getDate();
@@ -59,7 +63,7 @@ export function IndigencyPreview({ template }: { template: TemplateData }) {
                   textIndent: '4em',
                 }}
               >
-                {renderTextWithVariables(section.text)}
+                {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
 
@@ -80,7 +84,7 @@ export function IndigencyPreview({ template }: { template: TemplateData }) {
         </div>
 
         
-        <PaymentDetails hasFee={template.settings.hasFee} />
+        <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
         
         <div className="flex justify-end mt-4">
             <Signatories template={template} />

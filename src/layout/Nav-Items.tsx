@@ -1,14 +1,11 @@
 import {
   LayoutDashboard,
-  BarChart3,
   Users,
   Package,
   Settings,
   MapPinHouse,
-  Archive,
   Leaf,
   FileText,
-  ShieldCheck,
   ScrollText,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -26,11 +23,7 @@ export type UserRole = 'admin' | 'blotter' | 'official' | 'lupongtagapamayapa' |
 export const adminNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'User Management', path: '/admin/user-management', icon: Users },
-  { label: 'Reusable Components', path: '/admin/reusable', icon: LayoutDashboard },
-  { label: 'reusable inputform', path: '/admin/inputform', icon: BarChart3 },
-  { label: 'Charts', path: '/admin/charts', icon: BarChart3 },
-  { label: 'Tables', path: '/admin/tables', icon: BarChart3 },
-  { label: 'Archive', path: '/admin/archive', icon: Archive },
+  
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ]
 
@@ -39,8 +32,7 @@ export const rootAdminNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/rootadmin/dashboard', icon: LayoutDashboard },
   { label: 'Admin Management',  path: "/rootadmin/admin-management",  icon: Users},
   { label: 'Audit Logs',        path: "/rootadmin/audit-logs",        icon: ScrollText},
-  { label: 'Account Settings',  path: "/rootadmin/account-settings",  icon: Settings},
-  { label: 'Root Admin Access', path: "/rootadmin/access",            icon: ShieldCheck },
+  { label: 'Settings',  path: "/rootadmin/account-settings",  icon: Settings},
 ]
 
 
@@ -49,9 +41,9 @@ export const rootAdminNavItems: NavItemType[] = [
 export const blotterNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/blotter/dashboard', icon: LayoutDashboard },
   { label: 'Docket Books', path: '/blotter/docket', icon: Package },
-  { label: 'New Complaints', path: '/blotter/new-complaints', icon: MapPinHouse },
-  { label: 'All Complaints', path: '/blotter/all-complaints', icon: FileText },
+  { label: 'New Complaints', path: '/blotter/entry-form', icon: MapPinHouse },
   { label: 'Reports', path: '/blotter/reports', icon: Settings },
+  {label: 'form', path: '/admin/inputform', icon: Settings },
 ]
 
 

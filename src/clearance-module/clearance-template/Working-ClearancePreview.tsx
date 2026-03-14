@@ -1,4 +1,3 @@
-import React, { Component } from "react";
 import { type TemplateData } from "./template";
 import { renderTextWithVariables } from "./PreviewUtils";
 import {
@@ -8,7 +7,13 @@ import {
   Signatories,
   PaymentDetails,
 } from "./SharedComponents";
-export function WorkingClearancePreview({ template }: { template: TemplateData }) {
+
+interface PreviewProps {
+  template: TemplateData;
+  customData?: Record<string, string>;
+}
+
+export function WorkingClearancePreview({ template, customData }: PreviewProps) {
   const hasPhoto = template.settings.requiresPhoto;
  
   return (
@@ -55,13 +60,13 @@ export function WorkingClearancePreview({ template }: { template: TemplateData }
                   textIndent: "2em",
                 }}
               >
-                {renderTextWithVariables(section.text)}
+                {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
           </div>
         </div>
 
-        <PaymentDetails hasFee={template.settings.hasFee} />
+        <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
         <Signatories template={template} />
       </div>
 

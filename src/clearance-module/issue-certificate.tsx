@@ -1,386 +1,685 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   FileText,
   Check,
   Printer,
-  Maximize2,
   User,
   ClipboardList,
   Wallet,
+  Car,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import { LoadingModal } from "../reusable/LoadingModal";
-import { type CertificateTemplate , fetchCertificateTemplates} from "../clearance-api/certificate-type";
+import {
+  fetchTemplateOptions,
+  getPreviewData,
+  type TemplateOption,
+} from "../clearance-api/template-api";
+import {
+  fetchIssuanceTemplate,
+  issueCertificate,
+  type IssuanceTemplate,
+  type FormFieldConfig,
+} from "../clearance-api/issue-certificate-api";
+import type { FormSection as FormSectionType } from "../clearance-api/types";
+import { CertificatePreview } from "./clearance-template/CertificatPreview";
+import { type TemplateData } from "./clearance-template/template";
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export const IssueCertificatePage = () => {
-  const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [templateData, setTemplateData] = useState<IssuanceTemplate | null>(
+    null,
+  );
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "success" | "error" | "warning";
+  } | null>(null);
 
-  const selectedTemplate = templates.find((t) => t.id === selectedId);
-
+  // Load template options on mount
   useEffect(() => {
-     const loadAllData = async () => {
-       setLoading(true);
-       try {
-         const [templates] = await Promise.all([
-          fetchCertificateTemplates(),
-         ]);
- 
-         setTemplates(templates);
+    const loadOptions = async () => {
+      try {
+        const options = await fetchTemplateOptions();
+        setTemplateOptions(options);
+        if (options.length > 0) {
+          const defaultId =
+            options.find((o) => String(o.id) === "barangay-clearance")?.id ||
+            options[0].id;
+          setSelectedTemplateId(String(defaultId));
+        }
+      } catch (error) {
+        console.error("Failed to load options", error);
+        setNotification({
+          message: "Failed to load template options",
+          type: "error",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadOptions();
+  }, []);
 
-       } catch (error) {
-         console.error("Error loading dashboard:", error);
-       } finally {
-         setLoading(false);
-       }
-     };
- 
-     loadAllData();
-   }, []);
- 
+  // Helper function to format date as "Month Day, Year" (e.g., "March 8, 2026")
+  const formatDateReadable = (date: Date): string => {
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // Helper function to get day with ordinal suffix (e.g., "8th")
+  const getDayWithOrdinal = (day: number): string => {
+    const suffixes = ["th", "st", "nd", "rd"];
+    const v = day % 100;
+    return day + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+  };
+
+  // Helper function to get month name in uppercase
+  const getMonthName = (date: Date): string => {
+    return date.toLocaleDateString("en-US", { month: "long" }).toUpperCase();
+  };
+
+  // Helper function to calculate validity date (6 months from now by default)
+  const calculateValidityDate = (months: number = 6): string => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + months);
+    return formatDateReadable(date);
+  };
+
+  // Load selected template
+  useEffect(() => {
+    if (!selectedTemplateId) return;
+    const loadTemplate = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchIssuanceTemplate(selectedTemplateId);
+        setTemplateData(data);
+
+        // Auto-fill common fields to reduce human error
+        const today = new Date();
+        const autoFilledData: Record<string, string> = {
+          // Date and time fields
+          DATE_ISSUED: formatDateReadable(today),
+          OR_DATE: formatDateReadable(today),
+          DAY: getDayWithOrdinal(today.getDate()),
+          MONTH: getMonthName(today),
+          YEAR: today.getFullYear().toString(),
+          // Location
+          ISSUED_AT: "3S Center, Barangay Ugong, Valenzuela City",
+          // Validity
+          VALID_UNTIL: calculateValidityDate(data.settings.validityMonths || 6), // Based on template validity
+        };
+
+        // Set default amount based on template fee (format as currency)
+        if (data.settings.fee > 0) {
+          autoFilledData.AMOUNT_PAID = `₱${data.settings.fee.toFixed(2)}`;
+        }
+
+        setFormData(autoFilledData);
+      } catch (error) {
+        console.error("Failed to load template", error);
+        setNotification({
+          message: "Failed to load template",
+          type: "error",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadTemplate();
+  }, [selectedTemplateId]);
+
+  // Auto-dismiss notifications
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // Generate preview template with form data
+  const previewTemplate = useMemo((): TemplateData | null => {
+    if (!templateData) return null;
+    const previewData = getPreviewData(formData);
+
+    // Replace variables in body sections with actual form values
+    const processedSections = templateData.bodySections.map((section) => ({
+      ...section,
+      text: section.text.replace(/\{\{([^}]+)\}\}/g, (match, variable) => {
+        const value = previewData[variable];
+        return value ? `{{${variable}}}` : match; // Keep variables for preview rendering
+      }),
+    }));
+
+    return {
+      ...templateData,
+      id: String(templateData.id), // Ensure id is string for TemplateData type
+      bodySections: processedSections,
+    };
+  }, [templateData, formData]);
+
   const handleInputChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  if (loading)
-    return <LoadingModal isOpen={true} message="Fetching templates..." />;
+  const handleTemplateSelect = (id: string) => {
+    setSelectedTemplateId(id);
+    setFormData({});
+  };
+
+  const handleSubmit = async () => {
+    if (!templateData) return;
+
+    // Validate required fields from all sections
+    const missingFields: string[] = [];
+    templateData.formFields.sections.forEach((section) => {
+      section.fields.forEach((field) => {
+        if (field.required && !formData[field.name]?.trim()) {
+          missingFields.push(field.label);
+        }
+      });
+    });
+
+    if (missingFields.length > 0) {
+      setNotification({
+        message: `Please fill in required fields: ${missingFields.join(", ")}`,
+        type: "warning",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await issueCertificate({
+        templateId: selectedTemplateId,
+        formData,
+        issuedBy: "Admin", // TODO: Get from auth context
+      });
+      if (result.success) {
+        setNotification({
+          message: result.message || "Certificate issued successfully!",
+          type: "success",
+        });
+        setFormData({}); // Reset form after successful submission
+      } else {
+        throw new Error(result.message || "Failed to issue certificate");
+      }
+    } catch (error) {
+      setNotification({
+        message: "Failed to issue certificate. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Form sections are already grouped in the API response
+  const formSections = templateData?.formFields?.sections || [];
+
+  if (isLoading && templateOptions.length === 0) {
+    return <LoadingModal isOpen={true} message="Loading templates..." />;
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 lg:p-10">
-      <div className="mx-auto max-w-7xl">
-        {/* HEADER & SELECTION */}
-        <section className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-500">
-            Select Certificate Template
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {templates.map((cert) => (
-              <button
-                key={cert.id}
-                onClick={() => {
-                  setSelectedId(cert.id);
-                  setFormData({});
-                }}
-                className={`group relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all 
-                  ${
-                    selectedId === cert.id
-                      ? "border-blue-600 bg-blue-50/50 ring-1 ring-blue-600 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                  }`}
-              >
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors
-                  ${selectedId === cert.id ? "border-blue-200 bg-white text-blue-600" : "border-slate-100 bg-slate-50 text-slate-400"}`}
-                >
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <p
-                    className={`text-sm font-bold ${selectedId === cert.id ? "text-blue-900" : "text-slate-700"}`}
-                  >
-                    {cert.cert_title}
-                  </p>
-                  {cert.isFree && (
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase">
-                      Free
-                    </span>
-                  )}
-                </div>
-                {selectedId === cert.id && (
-                  <div className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white ring-2 ring-white shadow-md">
-                    <Check className="h-3 w-3 stroke-[3]" />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-        </section>
+    <div className="min-h-screen font-sans text-gray-900 pb-12 bg-gray-50">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
+        {/* Template Selector */}
+        <TemplateSelector
+          options={templateOptions}
+          selectedId={selectedTemplateId}
+          onSelect={handleTemplateSelect}
+        />
 
-        {/* WORKSPACE */}
-        {selectedTemplate ? (
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="lg:col-span-5 space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 text-blue-600" />
-                    Issue {selectedTemplate.cert_title}
-                  </h3>
-                </div>
-
-                <div className="p-6 space-y-6">
-                  <div className="space-y-4">
-                    <FormSection
-                      title="Personal Information"
-                      icon={<User className="w-3 h-3" />}
-                    />
-                    <InputField
-                      label="Full Name"
-                      placeholder="Juan P. Dela Cruz"
-                      onChange={(v: string) => handleInputChange("name", v)}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                      <InputField
-                        label="Date of Birth"
-                        type="date"
-                        onChange={(v: string) => handleInputChange("dob", v)}
-                      />
-                      <InputField
-                        label="Place of Birth"
-                        placeholder="City/Municipality"
-                        onChange={(v: string) => handleInputChange("pob", v)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Dynamic Fields from JSONB */}
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <FormSection
-                      title="Request Details"
-                      icon={<ClipboardList className="w-3 h-3" />}
-                    />
-                    {selectedTemplate.cert_body.fields.map((field) =>
-                      field.type === "select" ? (
-                        <SelectField
-                          key={field.key}
-                          label={field.label}
-                          options={field.options || []}
-                          onChange={(v: string) =>
-                            handleInputChange(field.key, v)
-                          }
-                        />
-                      ) : (
-                        <InputField
-                          key={field.key}
-                          label={field.label}
-                          placeholder={field.placeholder}
-                          onChange={(v: string) =>
-                            handleInputChange(field.key, v)
-                          }
-                        />
-                      ),
-                    )}
-                  </div>
-
-                  {/* Payment Info */}
-                  <div className="pt-4 border-t border-slate-100">
-                    <FormSection
-                      title="Payment"
-                      icon={<Wallet className="w-3 h-3" />}
-                    />
-                    <div className="mt-2 flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                      <span className="text-sm text-slate-600">Total Fee:</span>
-                      <span className="text-lg font-black text-slate-900">
-                        ₱{selectedTemplate.cert_fee.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-6 border-t border-slate-100">
-                  <button className="w-full rounded-xl bg-blue-600 py-4 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 active:scale-[0.98]">
-                    Issue Certificate
-                  </button>
-                  <p className="mt-3 text-center text-[11px] text-slate-400">
-                    Ensure all data is verified before issuing.
-                  </p>
-                </div>
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* LEFT: Form Panel */}
+          <div className="w-full lg:w-5/12">
+            {isLoading ? (
+              <div className="flex items-center justify-center bg-white rounded-lg border border-gray-200 p-12">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
               </div>
-            </div>
-
-            {/* RIGHT: PREVIEW */}
-            <div className="lg:col-span-7">
-              <div className="sticky top-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                    Live Preview
-                  </h3>
-                  <div className="flex gap-2">
-                    <button className="flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                      <Maximize2 className="h-3 w-3" /> Full Screen
-                    </button>
-                    <button className="flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                      <Printer className="h-3 w-3" /> Print
-                    </button>
-                  </div>
-                </div>
-
-                {/* THE PAPER SIMULATION */}
-                {/* CONTAINER: A4 Ratio (210mm x 297mm) */}
-{/* CONTAINER: Strict A4 Size (210mm x 297mm) */}
-<div className="relative mx-auto w-full max-w-[210mm] aspect-[1.414/1] md:aspect-[1/1.414] bg-white shadow-2xl overflow-hidden print:shadow-none print:m-0 flex flex-col font-serif">
-  
-  {/* 1. COMPACT HEADER BAR (Reduced height to h-16) */}
-  <div className="absolute top-0 left-0 right-0 h-16 bg-[#1e40af] flex items-center justify-between px-8 text-white z-20 shadow-sm">
-    {/* Left Seals (Small but visible) */}
-    <div className="flex gap-2 shrink-0">
-      <div className="h-10 w-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-[6px] text-center p-1 uppercase backdrop-blur-sm">Seal 1</div>
-      <div className="h-10 w-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-[6px] text-center p-1 uppercase backdrop-blur-sm">Seal 2</div>
-    </div>
-
-    {/* Center Text (Compact Hierarchy) */}
-    <div className="text-center flex-1 px-2">
-      <p className="text-[8px] uppercase tracking-[0.2em] font-medium opacity-90 font-sans">City of Valenzuela</p>
-      <p className="text-[9px] font-bold uppercase tracking-wide font-sans">Office of the Sangguniang Barangay</p>
-      <h2 className="text-xl font-black tracking-tighter uppercase italic leading-none font-sans">Barangay Ugong</h2>
-    </div>
-
-    {/* Right Seals */}
-    <div className="flex gap-2 shrink-0">
-      <div className="h-10 w-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-[6px] text-center p-1 uppercase backdrop-blur-sm">Seal 3</div>
-      <div className="h-10 w-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-[6px] text-center p-1 uppercase backdrop-blur-sm font-bold text-yellow-400">Seal 4</div>
-    </div>
-
-    {/* Thin Diagonal Accent */}
-    <div className="absolute top-0 right-0 h-full w-[35%] bg-blue-600/40 -skew-x-[25deg] translate-x-12 pointer-events-none" />
-  </div>
-
-  {/* 2. CENTER WATERMARK (Optimized) */}
-  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03]">
-    <div className="w-[70%] aspect-square rounded-full border-[15px] border-slate-900 flex items-center justify-center">
-      <span className="text-[100px] font-black uppercase -rotate-12 tracking-tighter">UGONG</span>
-    </div>
-  </div>
-
-  {/* 3. MAIN CONTENT (Lower Padding since header is smaller) */}
-  <div className="relative h-full flex flex-col pt-24 pb-16 px-[12%] z-10 flex-1">
-    
-    {/* Document Title (Smaller but Bold) */}
-    <div className="text-center mb-8">
-      <h4 className="inline-block text-2xl font-sans font-black uppercase tracking-[0.15em] text-slate-900 italic border-b-4 border-double border-slate-900 px-6 pb-0.5">
-        {selectedTemplate.cert_title || "Certification"}
-      </h4>
-    </div>
-
-    {/* Content Area */}
-    <div className="flex-1 flex flex-col text-[13px] leading-[1.6] text-slate-900">
-      <p className="font-sans font-bold text-[11px] tracking-widest text-slate-500 mb-4 uppercase">
-        To whom it may concern;
-      </p>
-
-      <p className="text-justify mb-6">
-        This is to <span className="font-bold uppercase underline decoration-1 underline-offset-4">CERTIFY</span> that <span className="font-bold uppercase border-b-2 border-slate-900 px-2 mx-1">{formData.name || "________________________________"}</span> is a bonafide member of and the owner of <span className="italic font-bold underline underline-offset-2">motorcycle</span> with the following description:
-      </p>
-
-      {/* METADATA GRID (Compact rows) */}
-      <div className="grid grid-cols-1 gap-y-1 mb-8 pl-8 py-1 border-l-2 border-slate-100">
-        {Object.entries(formData).map(([k, v]) => 
-          !["name", "purpose", "dob", "or_no"].includes(k) && (
-            <div key={k} className="flex items-baseline gap-4 max-w-[85%] border-b border-dotted border-slate-200">
-              <span className="uppercase font-sans font-black text-[10px] w-32 shrink-0 text-slate-500 tracking-tighter">{k.replace("_", " ")}</span>
-              <span className="font-bold text-[14px]">: {v || "________________"}</span>
-            </div>
-          )
-        )}
-      </div>
-
-      <p className="text-justify indent-10 mb-10">
-        This <span className="font-bold uppercase tracking-tight">CERTIFICATION</span> is being issued upon the request of the above individual for the purpose of 
-        <span className="font-bold italic uppercase underline underline-offset-4 mx-1"> {formData.purpose || "TRICYCLE REGULATION UNIT REGISTRATION"} </span> only.
-      </p>
-
-      {/* FOOTER ELEMENTS (Payment + Signature) */}
-      <div className="mt-auto grid grid-cols-2 items-end">
-        
-        {/* Payment Info */}
-        <div className="space-y-0.5 font-sans text-[10px] font-bold text-slate-800 border-l-4 border-blue-900 pl-3">
-          <div className="flex gap-2"><span>PAID UNDER O.R. NO</span><span>: {formData.or_no || "________________"}</span></div>
-          <div className="flex gap-2 italic text-slate-500"><span>ISSUED ON</span><span className="pl-6">: (MM/DD/YYYY)</span></div>
-          <div className="flex gap-2 italic text-slate-500"><span>AMOUNT</span><span className="pl-10">: PHP 0.00</span></div>
-        </div>
-
-        {/* Signature Area (Properly Aligned) */}
-        <div className="text-center">
-          <div className="h-12 flex flex-col items-center justify-end">
-             <div className="w-56 h-[1.5px] bg-slate-900 mb-1" />
-          </div>
-          <p className="font-black uppercase text-[15px] tracking-tight leading-none mb-0.5">
-            MARICEL PINEDA - EMPERADOR
-          </p>
-          <p className="text-[11px] font-bold text-slate-700 tracking-wide font-sans leading-none">
-            Punong Barangay
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* 4. OFFICIAL FOOTER (Thinner Bar) */}
-  <div className="h-8 relative overflow-hidden shrink-0">
-    <div className="absolute right-0 bottom-0 bg-[#1e40af] h-full w-[55%] -skew-x-[25deg] translate-x-10 flex items-center justify-center pl-10 text-white">
-        <p className="text-[11px] font-bold italic tracking-tighter translate-x-2">
-            Una ang <span className="uppercase text-sky-300">KAPakanan</span> ng Mamamayan...
-        </p>
-    </div>
-    <div className="absolute right-0 bottom-0 bg-sky-400 h-[4px] w-full" />
-  </div>
-</div>
+            ) : templateData ? (
+              <IssuanceForm
+                template={templateData}
+                formData={formData}
+                formSections={formSections}
+                onInputChange={handleInputChange}
+                onSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
+              />
+            ) : (
+              <div className="flex items-center justify-center bg-white rounded-lg border border-gray-200 p-12">
+                <p className="text-gray-400">Select a template to continue</p>
               </div>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex h-[400px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center">
-            <div className="mb-4 rounded-full bg-slate-50 p-4">
-              <FileText className="h-8 w-8 text-slate-300" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-700">
-              No Template Selected
-            </h3>
-            <p className="max-w-xs text-sm text-slate-500">
-              Pumili muna ng template sa itaas para makapagsimula ng issuance.
-            </p>
+
+          {/* RIGHT: Live Preview */}
+          <div className="w-full lg:w-7/12 lg:sticky lg:top-6 lg:self-start">
+            {isLoading ? (
+              <div className="flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200 p-12">
+                <p className="text-gray-400">Loading preview...</p>
+              </div>
+            ) : previewTemplate ? (
+              <CertificatePreviewWrapper
+                template={previewTemplate}
+                formData={formData}
+              />
+            ) : null}
           </div>
-        )}
-      </div>
+        </div>
+      </main>
+
+      {/* Toast Notification */}
+      {notification && (
+        <div
+          className={`fixed bottom-6 right-6 px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium transition-all transform translate-y-0 max-w-sm flex items-center space-x-2 ${
+            notification.type === "success"
+              ? "bg-green-600"
+              : notification.type === "warning"
+                ? "bg-amber-500"
+                : "bg-red-600"
+          }`}
+        >
+          {notification.type === "success" && (
+            <CheckCircle className="w-4 h-4" />
+          )}
+          {notification.type === "warning" && (
+            <AlertCircle className="w-4 h-4" />
+          )}
+          {notification.type === "error" && <AlertCircle className="w-4 h-4" />}
+          <span>{notification.message}</span>
+        </div>
+      )}
     </div>
   );
 };
 
-// --- HELPER COMPONENTS (Para malinis ang code) ---
+// ============================================
+// TEMPLATE SELECTOR COMPONENT
+// ============================================
 
-const FormSection = ({
-  title,
-  icon,
-}: {
+interface TemplateSelectorProps {
+  options: TemplateOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}
+
+function TemplateSelector({
+  options,
+  selectedId,
+  onSelect,
+}: TemplateSelectorProps) {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+      <h3 className="text-sm font-semibold text-gray-700 mb-4">
+        Select Certificate Template to Issue:
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {options.map((option) => {
+          const isSelected = selectedId === String(option.id);
+          return (
+            <button
+              key={String(option.id)}
+              onClick={() => onSelect(String(option.id))}
+              className={`
+                relative flex items-center p-3 text-left text-sm rounded-md border transition-all
+                ${
+                  isSelected
+                    ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500"
+                    : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700"
+                }
+              `}
+            >
+              <FileText
+                className={`w-4 h-4 mr-2 ${isSelected ? "text-blue-500" : "text-gray-400"}`}
+              />
+              <span className="truncate flex-1">{option.name}</span>
+              {option.isFree && (
+                <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 rounded">
+                  Free
+                </span>
+              )}
+              {isSelected && (
+                <div className="absolute top-0 right-0 -mt-1 -mr-1 bg-blue-500 text-white rounded-full p-0.5">
+                  <Check className="w-3 h-3" />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// ISSUANCE FORM COMPONENT
+// ============================================
+
+interface IssuanceFormProps {
+  template: IssuanceTemplate;
+  formData: Record<string, string>;
+  formSections: FormSectionType[];
+  onInputChange: (key: string, value: string) => void;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+}
+
+function IssuanceForm({
+  template,
+  formData,
+  formSections,
+  onInputChange,
+  onSubmit,
+  isSubmitting,
+}: IssuanceFormProps) {
+  // Helper to get icon based on section title
+  const getSectionIcon = (title: string) => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes("personal")) return <User className="w-3 h-3" />;
+    if (lowerTitle.includes("vehicle")) return <Car className="w-3 h-3" />;
+    if (lowerTitle.includes("payment")) return <Wallet className="w-3 h-3" />;
+    if (lowerTitle.includes("owner")) return <User className="w-3 h-3" />;
+    if (lowerTitle.includes("property"))
+      return <FileText className="w-3 h-3" />;
+    if (lowerTitle.includes("permit") || lowerTitle.includes("activity"))
+      return <ClipboardList className="w-3 h-3" />;
+    return <ClipboardList className="w-3 h-3" />;
+  };
+
+  return (
+    <div className="flex flex-col bg-white rounded-lg shadow-sm border border-gray-200">
+      {/* Header */}
+      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+        <h3 className="text-sm font-bold text-gray-800 flex items-center space-x-2">
+          <ClipboardList className="w-4 h-4 text-blue-600" />
+          <span>Issue {template.title}</span>
+        </h3>
+        <p className="text-xs text-gray-500 mt-1">
+          Fill in the required information below
+        </p>
+      </div>
+
+      {/* Form Body - Sections from API */}
+      <div className="p-6 space-y-6">
+        {formSections.map((section, idx) => (
+          <div key={idx} className="space-y-4">
+            <FormSection
+              title={section.title}
+              icon={getSectionIcon(section.title)}
+              subtitle=""
+            />
+            <div className="grid grid-cols-1 gap-4">
+              {section.fields.map((field) => (
+                <FormField
+                  key={field.name}
+                  field={field}
+                  value={formData[field.name] || ""}
+                  onChange={(value) => onInputChange(field.name, value)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* Fee Summary */}
+        <div className="pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <span className="text-sm font-medium text-gray-700">
+              Standard Fee:
+            </span>
+            <span
+              className={`text-lg font-bold ${template.settings.fee === 0 ? "text-green-600" : "text-blue-600"}`}
+            >
+              {template.settings.fee === 0
+                ? "FREE"
+                : `₱${template.settings.fee.toFixed(2)}`}
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-2 text-center">
+            * Fee amount can be adjusted in the Payment section above if
+            applicable
+          </p>
+        </div>
+      </div>
+
+      {/* Footer - Submit Button */}
+      <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+        <button
+          onClick={onSubmit}
+          disabled={isSubmitting}
+          className="w-full flex items-center justify-center space-x-2 rounded-lg bg-blue-600 py-3 font-semibold text-white shadow-md transition-all hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Processing...</span>
+            </>
+          ) : (
+            <>
+              <Printer className="w-4 h-4" />
+              <span>Issue Certificate</span>
+            </>
+          )}
+        </button>
+        <p className="mt-2 text-center text-[11px] text-gray-400">
+          Ensure all data is verified before issuing.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// CERTIFICATE PREVIEW WRAPPER
+// ============================================
+
+interface CertificatePreviewWrapperProps {
+  template: TemplateData;
+  formData: Record<string, string>;
+}
+
+function CertificatePreviewWrapper({
+  template,
+  formData,
+}: CertificatePreviewWrapperProps) {
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-sm font-bold text-gray-800">Live Preview</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {Object.keys(formData).length > 0
+              ? "Form values shown in green"
+              : "Fill the form to see your data"}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <button className="flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
+            <Printer className="w-3.5 h-3.5 mr-1.5" />
+            Print
+          </button>
+        </div>
+      </div>
+
+      {/* Certificate Paper */}
+      <div className="p-3 md:p-5 rounded-lg bg-gray-100/50 border border-gray-200">
+        <CertificatePreview
+          template={template}
+          customData={formData}
+          showHeader={false}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// HELPER COMPONENTS
+// ============================================
+
+interface FormSectionProps {
   title: string;
   icon: React.ReactNode;
-}) => (
-  <div className="flex items-center gap-2 mb-1">
-    <div className="p-1 bg-blue-50 text-blue-600 rounded">{icon}</div>
-    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-      {title}
-    </h4>
-  </div>
-);
+  subtitle?: string;
+}
 
-const InputField = ({ label, type = "text", placeholder, onChange }: any) => (
-  <div className="space-y-1.5">
-    <label className="text-xs font-semibold text-slate-700">{label}</label>
-    <input
-      type={type}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-lg border border-slate-200 bg-slate-50/30 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
-    />
-  </div>
-);
+function FormSection({ title, icon, subtitle }: FormSectionProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="p-1.5 bg-blue-50 text-blue-600 rounded">{icon}</div>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          {title}
+        </h4>
+      </div>
+      {subtitle && (
+        <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded flex items-center">
+          <svg
+            className="w-3 h-3 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          {subtitle}
+        </span>
+      )}
+    </div>
+  );
+}
 
-const SelectField = ({ label, options, onChange }: any) => (
-  <div className="space-y-1.5">
-    <label className="text-xs font-semibold text-slate-700">{label}</label>
-    <select
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-lg border border-slate-200 bg-slate-50/30 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:bg-white"
-    >
-      <option value="">Select {label}...</option>
-      {options.map((opt: string) => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+interface FormFieldProps {
+  field: FormFieldConfig;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function FormField({ field, value, onChange }: FormFieldProps) {
+  const isAutoFilled = field.autoFilled;
+  const isReadOnly = field.readOnly;
+
+  const baseInputClass = isAutoFilled
+    ? "w-full rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-700 font-medium cursor-not-allowed"
+    : "w-full rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
+
+  // Label with auto-fill indicator
+  const labelElement = (
+    <label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
+      <span className="flex items-center">
+        {field.label}
+        {field.required && !isAutoFilled && (
+          <span className="text-red-500 ml-1">*</span>
+        )}
+      </span>
+      {isAutoFilled && (
+        <span className="flex items-center text-[10px] font-medium text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
+          <svg
+            className="w-3 h-3 mr-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+          Auto
+        </span>
+      )}
+    </label>
+  );
+
+  // Help text element
+  const helpTextElement =
+    field.helpText && isAutoFilled ? (
+      <p className="text-[10px] text-gray-400 mt-0.5">{field.helpText}</p>
+    ) : null;
+
+  if (field.type === "select" && field.options && !isAutoFilled) {
+    return (
+      <div className="space-y-1.5">
+        {labelElement}
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={baseInputClass}
+          disabled={isReadOnly}
+        >
+          <option value="">Select {field.label}...</option>
+          {field.options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+        {helpTextElement}
+      </div>
+    );
+  }
+
+  if (field.type === "textarea" && !isAutoFilled) {
+    return (
+      <div className="space-y-1.5">
+        {labelElement}
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          rows={3}
+          className={baseInputClass}
+          readOnly={isReadOnly}
+        />
+        {helpTextElement}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {labelElement}
+      <input
+        type={
+          isAutoFilled
+            ? "text"
+            : field.type === "number"
+              ? "number"
+              : field.type === "date"
+                ? "date"
+                : "text"
+        }
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder}
+        className={baseInputClass}
+        readOnly={isReadOnly}
+        tabIndex={isReadOnly ? -1 : 0}
+      />
+      {helpTextElement}
+    </div>
+  );
+}
 
 export default IssueCertificatePage;

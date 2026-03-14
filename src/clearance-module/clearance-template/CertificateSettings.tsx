@@ -1,4 +1,3 @@
-import React from 'react'
 import { type CertificateSettings as SettingsType } from './template'
 
 interface CertificateSettingsProps {
@@ -13,9 +12,6 @@ export function CertificateSettings({
   onBatchChange,
 }: CertificateSettingsProps) {
   
-  
-  const today = new Date().toLocaleDateString('en-CA'); 
-
   const handleHasFeeToggle = (checked: boolean) => {
     if (onBatchChange) {
       onBatchChange({
@@ -80,17 +76,18 @@ export function CertificateSettings({
 
         <div>
           <label className="block text-xs text-gray-500 mb-1 uppercase font-semibold">
-            Specific Validity Date
+            Validity Period (Months)
           </label>
           <input
-            type="date"
-            value={settings.validityDate || ''} 
-            min={today}
-            onChange={(e) => onChange('validityDate', e.target.value)}
+            type="number"
+            value={settings.validityMonths || 6} 
+            min={1}
+            max={24}
+            onChange={(e) => onChange('validityMonths', parseInt(e.target.value) || 6)}
             className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none hover:border-blue-300 transition-colors"
           />
           <p className="text-[9px] text-gray-400 mt-1 italic">
-            *Past dates are disabled.
+            *Certificate will be valid for this many months from date of issuance.
           </p>
         </div>
       </div>

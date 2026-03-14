@@ -1,4 +1,4 @@
-import { Bell, Search, Menu } from 'lucide-react'
+import { Bell, Menu } from 'lucide-react'
 
 interface HeaderProps {
   sidebarExpanded?: boolean

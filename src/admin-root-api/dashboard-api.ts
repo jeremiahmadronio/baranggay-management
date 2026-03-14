@@ -1,143 +1,83 @@
-// dashboard-api.ts
-// Root Admin Dashboard API Service
-
-// ✅ Inalis ang process.env para maiwasan ang "Cannot find name 'process'" error.
-// Palitan ng iyong actual API base URL kung kailangan.
-const BASE_URL = "/api"
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const BASE_URL = `${BASE}/api/v1/dashboard`;
 
 export interface DashboardStats {
-  totalStaff: number
-  activeSessions: number
-  securityAlerts: number
-  totalAuditEntries: number
+  totalUser: number;
+  totalActiveUser: number;
+  totalCritical: number;
+  totalAuditEntry: number;
+  auditGrowth: number;
+  auditDirection: "up" | "down" | "neutral";
 }
 
-export type ActivityType = "info" | "success" | "warning" | "danger"
+const ENDPOINTS = {
+  DASHBOARD_STATS: "/stats",
+  OVERVIEW: "/activity-overview",
+  RECENT_ACTIONS: "/recent-actions",
+};
 
-export interface ActivityLog {
-  id: string
-  user: string
-  action: string
-  time: string
-  type: ActivityType
+export interface DeptActivity {
+  departmentName: string;
+  count: number;
+  percentage: number;
 }
 
-export type AlertSeverity = "High" | "Medium" | "Low"
-
-export interface SecurityAlert {
-  id: string
-  title: string
-  description: string
-  severity: AlertSeverity
-  createdAt: string
-  resolved: boolean
+export interface ActivityOverview {
+  totalActivity: number;
+  departments: DeptActivity[];
 }
 
-export interface StaffUser {
-  id: string
-  email: string
-  name: string
-  role: string
-  isOnline: boolean
-  lastSeen: string
+export interface RecentActions {
+  firstName: string;
+  lastName: string;
+  severity: string;
+  actionTaken: string;
+  module: string;
+  createdAt: string;
 }
 
-export interface SystemAction {
-  timestamp: string
-  user: string
-  action: string
-  module: string
-}
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const token = localStorage.getItem("token");
 
-export interface DepartmentStat {
-  code: string
-  count: number
-  percent: string
-}
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-      // Authorization: `Bearer ${getToken()}`,
-    },
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
-  })
+    headers,
+  });
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(error.message ?? "API request failed")
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(
+      errorBody.message || `HTTP error! status: ${response.status}`,
+    );
   }
-
-  return res.json() as Promise<T>
+  if (response.status === 204) return {} as T;
+  return response.json();
 }
 
-// ─── Dashboard Stats ──────────────────────────────────────────────────────────
-
+//stats
 export async function getDashboardStats(): Promise<DashboardStats> {
-  return apiFetch<DashboardStats>("/admin/dashboard/stats")
+  const data = await apiFetch<DashboardStats>(ENDPOINTS.DASHBOARD_STATS);
+  if (!data) throw new Error("No dashboard data received from server.");
+  return data;
 }
 
-// ─── Activity Logs ────────────────────────────────────────────────────────────
-
-export async function getRecentActivity(limit = 20): Promise<ActivityLog[]> {
-  return apiFetch<ActivityLog[]>(`/admin/dashboard/activity?limit=${limit}`)
+export async function getActivityOverview(): Promise<ActivityOverview> {
+  return apiFetch<ActivityOverview>(ENDPOINTS.OVERVIEW);
 }
 
-// ─── Security Alerts ──────────────────────────────────────────────────────────
-
-export async function getSecurityAlerts(): Promise<SecurityAlert[]> {
-  return apiFetch<SecurityAlert[]>("/admin/dashboard/alerts")
-}
-
-export async function resolveAlert(alertId: string): Promise<SecurityAlert> {
-  return apiFetch<SecurityAlert>(`/admin/dashboard/alerts/${alertId}/resolve`, {
-    method: "PATCH",
-  })
-}
-
-
-// ─── Staff / Users ────────────────────────────────────────────────────────────
-
-export async function getStaffUsers(): Promise<StaffUser[]> {
-  return apiFetch<StaffUser[]>("/admin/users")
-}
-
-export async function getStaffUserById(userId: string): Promise<StaffUser> {
-  return apiFetch<StaffUser>(`/admin/users/${userId}`)
-}
-
-export async function createStaffUser(
-  data: Omit<StaffUser, "id" | "isOnline" | "lastSeen">
-): Promise<StaffUser> {
-  return apiFetch<StaffUser>("/admin/users", {
-    method: "POST",
-    body: JSON.stringify(data),
-  })
-}
-
-export async function updateStaffUser(
-  userId: string,
-  data: Partial<Omit<StaffUser, "id">>
-): Promise<StaffUser> {
-  return apiFetch<StaffUser>(`/admin/users/${userId}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  })
-}
-
-export async function deleteStaffUser(userId: string): Promise<void> {
-  return apiFetch<void>(`/admin/users/${userId}`, { method: "DELETE" })
-}
-
-export async function getRecentActions(): Promise<SystemAction[]> {
-  return apiFetch<SystemAction[]>("/admin/dashboard/recent-actions")
-}
-
-export async function getDepartmentStats(): Promise<DepartmentStat[]> {
-  return apiFetch<DepartmentStat[]>("/admin/dashboard/departments")
+export async function getRecentActions(): Promise<RecentActions[]> {
+  return apiFetch<RecentActions[]>(ENDPOINTS.RECENT_ACTIONS);
 }
