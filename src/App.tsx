@@ -41,6 +41,7 @@ import BCPCDashboard from "./bcpc-module/dashboard";
 // Blotter
 import BlotterDashboard from "./blotter-module/dashboard";
 import BlotterEntryForm from "./blotter-module/BlotterFormComplaint";
+import Docketview from './blotter-module/Docketview';
 
 // Clearance
 import ClearanceDashboard from "./clearance-module/Dashboard";
@@ -130,10 +131,7 @@ export function App() {
       <Route path="/blotter" element={<BlotterLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<BlotterDashboard />} />
-        <Route
-          path="docket"
-          element={<PagePlaceholder title="Docket Books" />}
-        />
+        <Route path="docket" element={<Docketview />} />
         <Route path="entry-form" element={<BlotterEntryForm />} />
         <Route
           path="all-complaints"
