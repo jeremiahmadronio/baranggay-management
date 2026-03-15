@@ -140,3 +140,13 @@ export async function submitFormalComplaint(body: FormalComplaintEntry): Promise
     body: JSON.stringify(body),
   });
 }
+
+export async function escalateToFormalComplaint(
+  blotterNumber: string, 
+  body: FormalComplaintEntry
+): Promise<string> {
+  return apiFetch<string>(`${BLOTTER_FORM_URL}/escalate/${encodeURIComponent(blotterNumber)}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

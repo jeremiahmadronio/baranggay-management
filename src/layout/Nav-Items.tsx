@@ -44,7 +44,6 @@ export const blotterNavItems: NavItemType[] = [
   { label: 'New Complaints', path: '/blotter/entry-form', icon: MapPinHouse },
   { label: 'Records', path: '/blotter/records', icon: FileText },
   { label: 'Reports', path: '/blotter/reports', icon: Settings },
-  {label: 'form', path: '/admin/inputform', icon: Settings },
 ]
 
 

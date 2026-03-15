@@ -45,7 +45,7 @@ const STATUS_CONFIG: Record<string, StatusStyle> = {
     text: "text-emerald-600",
     dot: "bg-emerald-400",
   },
-  escalated: { bg: "bg-red-50", text: "text-red-500", dot: "bg-red-400" },
+  "elevated to formal": { bg: "bg-red-50", text: "text-red-500", dot: "bg-red-400" },
   unsettled: { bg: "bg-rose-50", text: "text-rose-500", dot: "bg-rose-400" },
   summoned: { bg: "bg-amber-50", text: "text-amber-600", dot: "bg-amber-400" },
   "referred to lupon": {
