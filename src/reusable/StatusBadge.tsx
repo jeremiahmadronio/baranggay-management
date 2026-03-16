@@ -1,4 +1,4 @@
-type StatusType = 
+export type StatusType = 
   | 'success' 
   | 'warning' 
   | 'danger' 

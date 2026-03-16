@@ -16,6 +16,42 @@ export interface SpringPage<T> {
   empty: boolean;
 }
 
+//follow up note for hearing minutes
+export interface FollowUpHearingDTO {
+  notes: string;
+}
+
+
+
+// --- Hearing Full Details (Master View) ---
+
+export interface MinutesSummaryDTO {
+  complainantPresent: boolean;
+  respondentPresent: boolean;
+  hearingNotes: string;
+  outcome: string;
+  recordedBy: string;
+}
+
+export interface FollowUpSummaryDTO {
+  id: number;
+  remarks: string;
+  recordedBy: string;
+  createdAt: string;
+}
+
+//hearing details for master view
+export interface HearingFullDetailsDTO {
+  hearingId: number;
+  summonNumber: number;
+  status: string;
+  scheduledStart: string;
+  venue: string;
+  initialNotes: string;
+  minutes: MinutesSummaryDTO | null; 
+  followUps: FollowUpSummaryDTO[];
+}
+
 //docket table
 export interface BlotterSummaryDTO {
   id: number;
@@ -137,7 +173,6 @@ export interface MediationHearingViewDTO {
   caseSubject: string;
   summonTitle: string;
   participants: HearingParticipantDTO[];
-  hearingNotes?: string;
 }
 
 //calendar markers for scheule hearing
@@ -196,7 +231,7 @@ export interface BlotterStatsDTO {
 
 // update case status request
 export interface UpdateCaseStatusRequest {
-  caseId: string | number;
+  blotterNumber: string;
   newStatus: string;
   reason: string;
 }
@@ -333,4 +368,19 @@ export async function updateCaseStatus(body: UpdateCaseStatusRequest): Promise<s
     method: "PUT",
     body: JSON.stringify(body),
   });
+}
+
+
+
+export async function recordHearingFollowUp(hearingId: number, body: FollowUpHearingDTO): Promise<string> {
+  if (!hearingId) throw new Error("Hearing ID is required");
+  return apiFetch<string>(`${HEARING_URL}/follow-up/${hearingId}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getHearingFullDetails(hearingId: number): Promise<HearingFullDetailsDTO> {
+  if (!hearingId) throw new Error("Hearing ID is required");
+  return apiFetch<HearingFullDetailsDTO>(`${HEARING_URL}/hearing-details/${hearingId}`);
 }

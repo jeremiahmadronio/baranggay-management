@@ -1,64 +1,49 @@
-import BlotterDocketDetailView from './Blotterdocketdetailview';
+import {BlotterDocketDetailView} from './Blotterdocketdetailview';
 import { useState, useEffect, useCallback } from 'react';
-import { Search, X, Eye, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, AlertCircle } from 'lucide-react';
 import { KPICard, KPIGrid, KPIIcons } from '../reusable/KPICard';
+import { Table, type TableColumn } from '../reusable';
+import { TableFilter } from '../reusable/TableFilter';
 import type { DocketTableParams, BlotterSummaryDTO, BlotterStatsDTO } from '../blotter-api/DocketView';
 import { getDocketTable, getDocketStats, updateCaseStatus } from '../blotter-api/DocketView';
+import { getMyAccess, type UserSecurityProfile } from '../blotter-api/BlotterPermission';
+import { getNatureOfComplaintOptions, type NatureOptionDTO } from '../blotter-api/BlotterFormComplaint';
+import { StatusBadge, type StatusType } from '../reusable/StatusBadge';
 
-// ─── Date Formatter ───────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
 };
+
+const hasPerm = (user: UserSecurityProfile | null, perm: string) =>
+  user?.permissions.includes(perm) ?? false;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = [
-  { label: 'All Status', value: '' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Active', value: 'ACTIVE' },
-  { label: 'Resolved', value: 'RESOLVED' },
-  { label: 'Pending Mediation', value: 'PENDING_MEDIATION' },
-  { label: 'Unsettled', value: 'UNSETTLED' },
-  { label: 'Under Mediation', value: 'UNDER_MEDIATION' },
-  { label: 'Referred to Lupon', value: 'REFERRED_TO_LUPON' },
-  { label: 'Summoned', value: 'SUMMONED' },
+const PAGE_SIZE = 10;
+
+// Status options are static enums — hardcoded is correct here
+const STATUS_FILTER_OPTIONS = [
+  { label: 'Pending',           value: 'PENDING' },
+  { label: 'Settled',           value: 'SETTLED' },
+  { label: 'Dismissed',         value: 'DISMISSED' },
+  { label: 'Under Mediation',   value: 'UNDER_MEDIATION' },
+  { label: 'Escalate to Lupon', value: 'REFERRED_TO_LUPON' },
+  { label: 'Expired / Unactioned',          value: 'EXPIRED_UNACTIONED' },
 ];
 
-const NATURE_OPTIONS = [
-  { label: 'All Nature', value: '' },
-  { label: 'Physical Assault', value: '1' },
-  { label: 'Theft', value: '2' },
-  { label: 'Trespassing', value: '3' },
-];
-
-const statusConfig: Record<string, string> = {
-  UNSETTLED:         'bg-red-100 text-red-600',
-  UNDER_MEDIATION:   'bg-blue-100 text-blue-600',
-  PENDING:           'bg-gray-100 text-gray-600',
-  REFERRED_TO_LUPON: 'bg-purple-100 text-purple-600',
-  SUMMONED:          'bg-amber-100 text-amber-600',
-  RESOLVED:          'bg-emerald-100 text-emerald-600',
-  ACTIVE:            'bg-cyan-100 text-cyan-600',
-  PENDING_MEDIATION: 'bg-orange-100 text-orange-600',
-};
-
-const statusLabel: Record<string, string> = {
-  UNSETTLED:         'Unsettled',
-  UNDER_MEDIATION:   'Under Mediation',
-  PENDING:           'Pending',
-  REFERRED_TO_LUPON: 'Referred to Lupon',
-  SUMMONED:          'Summoned',
-  RESOLVED:          'Resolved',
-  ACTIVE:            'Active',
-  PENDING_MEDIATION: 'Pending Mediation',
+// Direct StatusType mapping — no middleman
+const DOCKET_STATUS_MAP: Record<string, { type: StatusType; label: string }> = {
+  DISMISSED:         { type: 'danger',  label: 'Dismissed' },
+  UNDER_MEDIATION:   { type: 'info',    label: 'Under Mediation' },
+  PENDING:           { type: 'pending', label: 'Pending' },
+  REFERRED_TO_LUPON: { type: 'info',    label: 'Referred to Lupon' },
+  EXPIRED_UNACTIONED:          { type: 'warning', label: 'Expired / Unactioned' },
+  SETTLED:           { type: 'success', label: 'Settled' },
 };
 
 // ─── Forward to Lupon Modal ───────────────────────────────────────────────────
@@ -71,128 +56,184 @@ interface ForwardModalProps {
 }
 
 const ForwardToLuponModal = ({ entry, onConfirm, onCancel, loading }: ForwardModalProps) => (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full">
       <div className="flex items-center gap-3 mb-4">
-        <div className="bg-red-100 p-2 rounded-full">
+        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
           <AlertCircle className="w-5 h-5 text-red-600" />
         </div>
-        <h2 className="text-lg font-semibold text-gray-800">Forward to Lupon</h2>
+        <div>
+          <h2 className="text-base font-semibold text-gray-800">Escalate to Lupon</h2>
+          <p className="text-xs text-gray-500">This action will escalate the case to Lupon Tagapamayapa.</p>
+        </div>
       </div>
-      <p className="text-sm text-gray-600 mb-1">
-        Are you sure you want to escalate this case to Lupon?
-      </p>
-      <div className="bg-gray-50 rounded-lg p-3 my-4 text-sm space-y-1">
-        <p><span className="text-gray-500">Case No.:</span> <span className="font-medium text-blue-600">{entry.blotterNumber}</span></p>
-        <p><span className="text-gray-500">Complainant:</span> <span className="font-medium">{entry.complainantName}</span></p>
-        <p><span className="text-gray-500">Respondent:</span> <span className="font-medium">{entry.respondentName}</span></p>
-        <p><span className="text-gray-500">Nature:</span> <span className="font-medium">{entry.natureOfComplaint}</span></p>
+
+      <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 my-4 space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-500">Case No.</span>
+          <span className="font-medium text-blue-600">{entry.blotterNumber}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Complainant</span>
+          <span className="font-medium text-gray-800">{entry.complainantName}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Respondent</span>
+          <span className="font-medium text-gray-800">{entry.respondentName}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Nature</span>
+          <span className="font-medium text-gray-800 text-right max-w-[200px]">{entry.natureOfComplaint}</span>
+        </div>
       </div>
-      <div className="flex justify-end gap-2">
-        <button onClick={onCancel} disabled={loading}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+
+      <div className="flex gap-2 justify-end">
+        <button
+          onClick={onCancel}
+          disabled={loading}
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
           Cancel
         </button>
-        <button onClick={onConfirm} disabled={loading}
-          className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 flex items-center gap-2">
-          {loading && <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-          Confirm Forward
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 flex items-center gap-2 transition-colors"
+        >
+          {loading && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+          Confirm Escalation
         </button>
       </div>
     </div>
   </div>
 );
 
-// ─── Main Docketview ──────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 const Docketview = () => {
-
-  // ── Navigation state ──
   const [selectedBlotterNumber, setSelectedBlotterNumber] = useState<string | null>(null);
 
+  // Filter state
+  const [search,    setSearch]    = useState('');
+  const [status,    setStatus]    = useState('');
+  const [natureId,  setNatureId]  = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate,   setEndDate]   = useState('');
+
+  // Query params
   const [params, setParams] = useState<DocketTableParams>({
-    search: '',
-    status: '',
-    natureId: undefined,
-    start: '',
-    end: '',
-    page: 0,
-    size: 10,
-    sort: 'createdAt,desc',
+    search: '', status: '', natureId: undefined,
+    start: '', end: '', page: 0, size: PAGE_SIZE, sort: 'createdAt,desc',
   });
 
+  // Data state
+  const [userAccess,     setUserAccess]     = useState<UserSecurityProfile | null>(null);
   const [tableData,      setTableData]      = useState<BlotterSummaryDTO[]>([]);
   const [stats,          setStats]          = useState<BlotterStatsDTO | null>(null);
+  const [natureOptions,  setNatureOptions]  = useState<NatureOptionDTO[]>([]);
   const [totalPages,     setTotalPages]     = useState(0);
   const [totalElements,  setTotalElements]  = useState(0);
+  const [currentPage,    setCurrentPage]    = useState(0);
   const [loading,        setLoading]        = useState(false);
   const [statsLoading,   setStatsLoading]   = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
+  const [fetchError,     setFetchError]     = useState<string | null>(null);
   const [selectedEntry,  setSelectedEntry]  = useState<BlotterSummaryDTO | null>(null);
   const [forwardLoading, setForwardLoading] = useState(false);
+
+  // ── Fetch ────────────────────────────────────────────────────────────────────
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const data = await getDocketStats();
-      setStats(data);
-    } catch (err) {
-      console.error('Failed to load stats:', err);
+      setStats(await getDocketStats());
+    } catch {
+      // non-critical
     } finally {
       setStatsLoading(false);
     }
   }, []);
 
-  const fetchTable = useCallback(async (currentParams: DocketTableParams) => {
+  const fetchTable = useCallback(async (p: DocketTableParams) => {
     setLoading(true);
-    setError(null);
+    setFetchError(null);
     try {
-      const data = await getDocketTable(currentParams);
+      const data = await getDocketTable(p);
       setTableData(data.content);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
+      setCurrentPage(data.number ?? 0);
     } catch (err: any) {
-      setError(err.message || 'Failed to load docket table.');
+      setFetchError(err.message || 'Failed to load records.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchStats();
-    fetchTable(params);
+    // Fetch everything in parallel on mount
+    Promise.all([
+      fetchStats(),
+      fetchTable(params),
+      getNatureOfComplaintOptions()
+        .then(setNatureOptions)
+        .catch(() => setNatureOptions([])),
+      getMyAccess()
+        .then(setUserAccess)
+        .catch(() => setUserAccess(null)),
+    ]);
   }, []);
 
-  const handleChange = (key: keyof DocketTableParams, value: string | number | undefined) => {
-    const updated = { ...params, [key]: value, page: 0 };
+  // ── Permissions ──────────────────────────────────────────────────────────────
+
+  const canView = hasPerm(userAccess, 'View Records');
+  const canEdit = hasPerm(userAccess, 'Edit Records');
+
+  // ── Nature filter options from API ───────────────────────────────────────────
+
+  const natureFilterOptions = natureOptions.map((n) => ({
+    label: n.natureName,
+    value: String(n.id),
+  }));
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  const handleApplyFilter = () => {
+    const updated: DocketTableParams = {
+      search,
+      status: status || '',
+      natureId: natureId ? Number(natureId) : undefined,
+      start: startDate,
+      end: endDate,
+      page: 0,
+      size: PAGE_SIZE,
+      sort: 'createdAt,desc',
+    };
     setParams(updated);
     fetchTable(updated);
   };
 
-  const handleReset = () => {
+  const handleClearFilter = () => {
+    setSearch(''); setStatus(''); setNatureId(''); setStartDate(''); setEndDate('');
     const reset: DocketTableParams = {
       search: '', status: '', natureId: undefined,
-      start: '', end: '', page: 0, size: 10, sort: 'createdAt,desc',
+      start: '', end: '', page: 0, size: PAGE_SIZE, sort: 'createdAt,desc',
     };
     setParams(reset);
     fetchTable(reset);
   };
 
-  const handlePageChange = (newPage: number) => {
-    const updated = { ...params, page: newPage };
+  const handlePageChange = (page: number) => {
+    const updated = { ...params, page: page - 1 };
     setParams(updated);
     fetchTable(updated);
   };
-
-  const hasActiveFilters =
-    !!params.search || !!params.status || !!params.natureId || !!params.start || !!params.end;
 
   const handleForwardConfirm = async () => {
     if (!selectedEntry) return;
     setForwardLoading(true);
     try {
       await updateCaseStatus({
-        caseId: selectedEntry.blotterNumber,
+        blotterNumber: selectedEntry.blotterNumber,
         newStatus: 'REFERRED_TO_LUPON',
         reason: 'Case escalated to Lupon Tagapamayapa',
       });
@@ -200,13 +241,111 @@ const Docketview = () => {
       fetchTable(params);
       fetchStats();
     } catch (err: any) {
-      alert(err.message || 'Failed to forward case.');
+      alert(err.message || 'Failed to escalate case.');
     } finally {
       setForwardLoading(false);
     }
   };
 
-  // ── Navigate to detail view ──
+  const activeFilterCount = [status, natureId, startDate, endDate].filter(Boolean).length;
+
+  // ── Columns ──────────────────────────────────────────────────────────────────
+
+  const columns: TableColumn<BlotterSummaryDTO>[] = [
+    {
+      key: 'blotterNumber',
+      header: 'Case / Blotter No.',
+      width: '180px',
+      render: (item) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); if (canView) setSelectedBlotterNumber(item.blotterNumber); }}
+          className="font-mono text-xs font-semibold text-blue-600 hover:underline text-left"
+        >
+          {item.blotterNumber}
+        </button>
+      ),
+    },
+    {
+      key: 'dateFiled',
+      header: 'Date Filed',
+      width: '120px',
+      render: (item) => (
+        <span className="text-sm text-gray-500 whitespace-nowrap">{formatDate(item.dateFiled)}</span>
+      ),
+    },
+    {
+      key: 'complainantName',
+      header: 'Complainant',
+      width: '175px',
+      render: (item) => <span className="text-sm font-medium text-gray-800">{item.complainantName}</span>,
+    },
+    {
+      key: 'respondentName',
+      header: 'Respondent',
+      width: '175px',
+      render: (item) => <span className="text-sm text-gray-700">{item.respondentName}</span>,
+    },
+    {
+      key: 'natureOfComplaint',
+      header: 'Nature of Complaint',
+      render: (item) => (
+        <span className="text-sm text-gray-600 truncate block max-w-[180px]">{item.natureOfComplaint}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: '160px',
+      render: (item) => {
+        const mapped = DOCKET_STATUS_MAP[item.status];
+        return (
+          <StatusBadge
+            status={mapped?.type ?? 'default'}
+            label={mapped?.label ?? item.status}
+          />
+        );
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      width: '300px',
+      render: (item) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            disabled={!canView}
+            onClick={(e) => { e.stopPropagation(); if (canView) setSelectedBlotterNumber(item.blotterNumber); }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+              !canView
+                ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed opacity-60 grayscale'
+                : 'text-gray-600 border-gray-200 bg-white hover:bg-gray-50 shadow-sm'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            View
+          </button>
+
+          {['UNSETTLED', 'PENDING', 'UNDER_MEDIATION'].includes(item.status) && (
+            <button
+              disabled={!canEdit}
+              onClick={(e) => { e.stopPropagation(); if (canEdit) setSelectedEntry(item); }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                !canEdit
+                  ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed opacity-60 grayscale'
+                  : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100'
+              }`}
+            >
+              <AlertCircle className="w-3.5 h-3.5" />
+              Escalate to Lupon
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // ── Navigate to detail ────────────────────────────────────────────────────────
+
   if (selectedBlotterNumber) {
     return (
       <BlotterDocketDetailView
@@ -220,11 +359,11 @@ const Docketview = () => {
     );
   }
 
-  // ── Table View ──
-  return (
-    <div className="w-full px-1 py-10 space-y-3">
+  // ── Render ────────────────────────────────────────────────────────────────────
 
-      {/* Forward to Lupon Modal */}
+  return (
+    <div className="w-full space-y-5">
+
       {selectedEntry && (
         <ForwardToLuponModal
           entry={selectedEntry}
@@ -262,219 +401,75 @@ const Docketview = () => {
         />
       </KPIGrid>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <div className="flex flex-wrap gap-3 items-end">
+      {/* Filters — nature options from API, status hardcoded enums */}
+      <TableFilter
+        searchPlaceholder="Search by  case no."
+        searchValue={search}
+        onSearchChange={setSearch}
+        filters={[
+          {
+            label: 'Status',
+            
+            key: 'status',
+            options: STATUS_FILTER_OPTIONS,
+            value: status,
+          },
+          {
+            label: 'Nature of Case',
+            key: 'natureId',
+            options: natureFilterOptions,
+            value: natureId,
+          },
+        ]}
+        onFilterChange={(key, value) => {
+          if (key === 'status')   setStatus(value);
+          if (key === 'natureId') setNatureId(value);
+        }}
+        dateRange={{
+          startLabel: 'Date From',
+          endLabel:   'Date To',
+          startValue: startDate,
+          endValue:   endDate,
+          onStartChange: setStartDate,
+          onEndChange:   setEndDate,
+        }}
+        onFilterClick={handleApplyFilter}
+        onClearClick={handleClearFilter}
+        filterButtonText="Apply"
+        activeFilterCount={activeFilterCount}
+      />
 
-          {/* Search */}
-          <div className="flex-1 min-w-[220px]">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by name, case no..."
-                value={params.search}
-                onChange={(e) => handleChange('search', e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Status */}
-          <div className="min-w-[160px]">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
-            <select
-              value={params.status}
-              onChange={(e) => handleChange('status', e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Nature of Case */}
-          <div className="min-w-[160px]">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Nature of Case</label>
-            <select
-              value={params.natureId ?? ''}
-              onChange={(e) => handleChange('natureId', e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {NATURE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Date From */}
-          <div className="min-w-[145px]">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Date From</label>
-            <input
-              type="date"
-              value={params.start}
-              onChange={(e) => handleChange('start', e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Date To */}
-          <div className="min-w-[145px]">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Date To</label>
-            <input
-              type="date"
-              value={params.end}
-              onChange={(e) => handleChange('end', e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Reset */}
-          {hasActiveFilters && (
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <X className="w-4 h-4" /> Reset
-            </button>
-          )}
+      {/* Error banner */}
+      {fetchError && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {fetchError}
         </div>
-      </div>
+      )}
 
-      {/* Docket Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Case/Blotter No.</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Date Filed</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Complainant</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Respondent</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nature of Complaint</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-
-              {loading && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-gray-400 text-sm">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                      Loading...
-                    </div>
-                  </td>
-                </tr>
-              )}
-
-              {!loading && error && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-red-500 text-sm">{error}</td>
-                </tr>
-              )}
-
-              {!loading && !error && tableData.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-gray-400 text-sm">No records found.</td>
-                </tr>
-              )}
-
-              {!loading && !error && tableData.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
-
-                  <td className="px-5 py-3">
-                    <button
-                      onClick={() => setSelectedBlotterNumber(entry.blotterNumber)}
-                      className="text-blue-600 font-medium hover:underline text-left"
-                    >
-                      {entry.blotterNumber}
-                    </button>
-                  </td>
-
-                  <td className="px-5 py-3 text-gray-600 whitespace-nowrap">
-                    {formatDate(entry.dateFiled)}
-                  </td>
-
-                  <td className="px-5 py-3 text-gray-800">{entry.complainantName}</td>
-                  <td className="px-5 py-3 text-gray-800">{entry.respondentName}</td>
-
-                  <td className="px-5 py-3 text-gray-600 max-w-[200px] truncate">
-                    {entry.natureOfComplaint}
-                  </td>
-
-                  <td className="px-5 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusConfig[entry.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {statusLabel[entry.status] ?? entry.status}
-                    </span>
-
-                  </td>
-
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setSelectedBlotterNumber(entry.blotterNumber)}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </button>
-
-                     {(entry.status === 'UNSETTLED' || entry.status === 'UNDER_MEDIATION') && (
-                      <button
-                    onClick={() => setSelectedEntry(entry)}
-                     className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-500 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-                     >
-                   <AlertCircle className="w-3.5 h-3.5" />
-                     Forward to Lupon
-                      </button>
-                     )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {!loading && !error && totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
-            <p className="text-xs text-gray-500">
-              Showing {(params.page! * params.size!) + 1}–{Math.min((params.page! + 1) * params.size!, totalElements)} of {totalElements} entries
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handlePageChange(params.page! - 1)}
-                disabled={params.page === 0}
-                className="p-1.5 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button key={i} onClick={() => handlePageChange(i)}
-                  className={`px-3 py-1.5 text-xs rounded-lg border ${
-                    params.page === i
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                  }`}>
-                  {i + 1}
-                </button>
-              ))}
-              <button
-                onClick={() => handlePageChange(params.page! + 1)}
-                disabled={params.page === totalPages - 1}
-                className="p-1.5 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Table */}
+      <Table<BlotterSummaryDTO>
+        columns={columns}
+        data={tableData}
+        keyExtractor={(item) => item.id}
+        loading={loading}
+        emptyMessage="No docket records found."
+        onRowClick={(item) => { if (canView) setSelectedBlotterNumber(item.blotterNumber); }}
+        hoverable
+        striped
+        minRows={PAGE_SIZE}
+        pagination={
+          totalElements > 0
+            ? {
+                currentPage: currentPage + 1,
+                totalPages,
+                totalItems: totalElements,
+                itemsPerPage: PAGE_SIZE,
+                onPageChange: handlePageChange,
+              }
+            : undefined
+        }
+      />
 
     </div>
   );
