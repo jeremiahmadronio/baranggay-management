@@ -137,6 +137,7 @@ export interface MediationHearingViewDTO {
   caseSubject: string;
   summonTitle: string;
   participants: HearingParticipantDTO[];
+  hearingNotes?: string;
 }
 
 //calendar markers for scheule hearing

@@ -2,27 +2,31 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft, Calendar, FileText, Clock, CheckCircle,
   AlertCircle, X, User, MapPin, Hash, Clipboard,
-  Plus, Send, ChevronLeft, ChevronRight, CalendarDays,
+  Plus, Send, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Timer,
 } from 'lucide-react';
 import type {
   BlotterDocketViewDTO,
   MediationProcessDTO,
   HearingViewDTO,
+  MediationHearingViewDTO,
   CaseNoteViewDTO,
   ScheduleHearingRequest,
   CalendarMarkerDTO,
   BusySlotDTO,
+  RecordMinutesRequest,
 } from '../blotter-api/DocketView';
 import {
   getFullBlotterDocket,
   getMediationProcess,
   getHearingView,
+  getMediationHearingView,
   getCaseNotes,
   addCaseNote,
   scheduleHearing,
   updateCaseStatus,
   getMarkers,
   getBusySlots,
+  recordHearingMinutes,
 } from '../blotter-api/DocketView';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -54,14 +58,23 @@ const statusConfig: Record<string, { bg: string; text: string; dot: string }> = 
   DISMISSED:         { bg: 'bg-gray-100',    text: 'text-gray-500',    dot: 'bg-gray-400' },
 };
 
-const hearingStatusConfig: Record<string, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-700',
-  COMPLETED: 'bg-emerald-100 text-emerald-700',
-  CANCELLED: 'bg-red-100 text-red-600',
-  ONGOING:   'bg-amber-100 text-amber-700',
+const hearingStatusLabel: Record<string, string> = {
+  SCHEDULED:   'SCHEDULED',
+  COMPLETED:   'SETTLED',
+  NOT_SETTLED: 'NOT SETTLED',
+  CANCELLED:   'CANCELLED',
+  ONGOING:     'ONGOING',
 };
 
-// ─── Calendar Helpers ─────────────────────────────────────────────────────────
+const hearingStatusStyle: Record<string, string> = {
+  SCHEDULED:   'bg-blue-100 text-blue-700',
+  COMPLETED:   'bg-emerald-100 text-emerald-700',
+  NOT_SETTLED: 'bg-red-100 text-red-600',
+  CANCELLED:   'bg-gray-100 text-gray-500',
+  ONGOING:     'bg-amber-100 text-amber-700',
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const DAYS   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -70,6 +83,43 @@ const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1
 const getFirstDay   = (year: number, month: number) => new Date(year, month, 1).getDay();
 const pad           = (n: number) => String(n).padStart(2, '0');
 const toDateStr     = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
+
+const getDurationLabel = (start: string, end: string): string => {
+  if (!start || !end) return '';
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const diff = (eh * 60 + em) - (sh * 60 + sm);
+  if (diff <= 0) return '';
+  const hrs = Math.floor(diff / 60), mins = diff % 60;
+  if (hrs === 0) return `${mins} min`;
+  if (mins === 0) return `${hrs} hr`;
+  return `${hrs} hr ${mins} min`;
+};
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+};
+
+// ─── Parse saved hearingNotes string ─────────────────────────────────────────
+// Stored format:
+//   "Actual meeting time: HH:MM – HH:MM (Xhr)\n\n{hearingNotes}\n\n[Agreement/Extra Notes]: {agreementNotes}"
+
+const parseHearingNotes = (raw: string | undefined): { notes: string; agreement: string } => {
+  if (!raw) return { notes: '', agreement: '' };
+  const MARKER = '[Agreement/Extra Notes]:';
+  const markerIdx = raw.indexOf(MARKER);
+  const agreement = markerIdx !== -1 ? raw.slice(markerIdx + MARKER.length).trim() : '';
+  const withoutAgreement = markerIdx !== -1 ? raw.slice(0, markerIdx) : raw;
+  const parts = withoutAgreement.split('\n\n');
+  const notesOnly = parts
+    .filter(p => !p.trim().startsWith('Actual meeting time:'))
+    .join('\n\n')
+    .trim();
+  return { notes: notesOnly, agreement };
+};
 
 // ─── Reusable UI ──────────────────────────────────────────────────────────────
 
@@ -91,7 +141,7 @@ const InfoRow = ({ label, value }: { label: string; value?: string | number | nu
 );
 
 const SectionCard = ({ title, icon, children, action }: {
-  title: string; icon?: React.ReactNode; children: React.ReactNode; action?: React.ReactNode
+  title: string; icon?: React.ReactNode; children: React.ReactNode; action?: React.ReactNode;
 }) => (
   <div className="bg-white border border-gray-200 rounded-xl p-5">
     <div className="flex items-center justify-between mb-4">
@@ -102,7 +152,7 @@ const SectionCard = ({ title, icon, children, action }: {
   </div>
 );
 
-// ─── Generic Confirm Modal (Settle / Dismiss) ─────────────────────────────────
+// ─── Generic Confirm Modal ────────────────────────────────────────────────────
 
 interface ConfirmModalProps {
   title: string; description: string; confirmLabel: string;
@@ -117,9 +167,7 @@ const ConfirmModal = ({ title, description, confirmLabel, confirmClass, icon, lo
       <p className="text-sm text-gray-500 mb-5">{description}</p>
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} disabled={loading}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-          Cancel
-        </button>
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
         <button onClick={onConfirm} disabled={loading}
           className={`px-4 py-2 text-sm text-white rounded-lg flex items-center gap-2 disabled:opacity-50 ${confirmClass}`}>
           {loading && <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
@@ -130,7 +178,7 @@ const ConfirmModal = ({ title, description, confirmLabel, confirmClass, icon, lo
   </div>
 );
 
-// ─── Refer to Lupon Modal (with Pangkat Members) ──────────────────────────────
+// ─── Refer to Lupon Modal ─────────────────────────────────────────────────────
 
 const POSITION_OPTIONS = [
   { label: 'Select position...', value: '' },
@@ -140,18 +188,11 @@ const POSITION_OPTIONS = [
   { label: 'Barangay Secretary', value: 'BARANGAY_SECRETARY' },
 ];
 
-interface PangkatMember {
-  firstName: string;
-  lastName: string;
-  position: string;
-}
+interface PangkatMember { firstName: string; lastName: string; position: string; }
 
 interface ReferToLuponModalProps {
-  blotterNumber: string;
-  complainantName: string;
-  loading: boolean;
-  onConfirm: (members: PangkatMember[]) => void;
-  onCancel: () => void;
+  blotterNumber: string; complainantName: string; loading: boolean;
+  onConfirm: (members: PangkatMember[]) => void; onCancel: () => void;
 }
 
 const ReferToLuponModal = ({ blotterNumber, complainantName, loading, onConfirm, onCancel }: ReferToLuponModalProps) => {
@@ -161,93 +202,56 @@ const ReferToLuponModal = ({ blotterNumber, complainantName, loading, onConfirm,
     { firstName: '', lastName: '', position: '' },
   ]);
   const [error, setError] = useState('');
-
-  const updateMember = (idx: number, field: keyof PangkatMember, value: string) => {
+  const updateMember = (idx: number, field: keyof PangkatMember, value: string) =>
     setMembers((prev) => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
-  };
-
   const handleConfirm = () => {
-    const incomplete = members.some((m) => !m.firstName.trim() || !m.lastName.trim() || !m.position);
-    if (incomplete) {
-      setError('Please complete all Pangkat Member fields.');
-      return;
+    if (members.some((m) => !m.firstName.trim() || !m.lastName.trim() || !m.position)) {
+      setError('Please complete all Pangkat Member fields.'); return;
     }
-    setError('');
-    onConfirm(members);
+    setError(''); onConfirm(members);
   };
-
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
-
-        {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
           <div>
             <h3 className="text-base font-semibold text-gray-800">Refer to Lupon</h3>
             <p className="text-xs text-gray-400 mt-0.5">{blotterNumber} • {complainantName}</p>
           </div>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 mt-0.5">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
-
-        {/* Body */}
         <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-
-          {/* Info Banner */}
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
             <p className="text-xs text-blue-700 leading-relaxed">
-              Ang case ayililipat sa Lupong Tagapamayapa. Ang 30-day mediation period ay
-              magsisimula pagkatapos ma-assign ang Pangkat members.
+              Ang case ay ilililpat sa Lupong Tagapamayapa. Ang 30-day mediation period ay magsisimula pagkatapos ma-assign ang Pangkat members.
             </p>
           </div>
-
-          {/* Pangkat Members */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Pangkat Members (3 Required)
-            </p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Pangkat Members (3 Required)</p>
             <div className="space-y-3">
               {members.map((member, idx) => (
                 <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                      {idx + 1}
-                    </div>
+                    <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{idx + 1}</div>
                     <span className="text-sm font-semibold text-gray-700">Member {idx + 1}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
                       <label className="text-xs text-gray-400 mb-1 block">First name</label>
-                      <input
-                        type="text"
-                        value={member.firstName}
-                        onChange={(e) => updateMember(idx, 'firstName', e.target.value)}
-                        placeholder="Juan"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-                      />
+                      <input type="text" value={member.firstName} onChange={(e) => updateMember(idx, 'firstName', e.target.value)} placeholder="Juan"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
                     </div>
                     <div>
                       <label className="text-xs text-gray-400 mb-1 block">Last name</label>
-                      <input
-                        type="text"
-                        value={member.lastName}
-                        onChange={(e) => updateMember(idx, 'lastName', e.target.value)}
-                        placeholder="Dela Cruz"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-                      />
+                      <input type="text" value={member.lastName} onChange={(e) => updateMember(idx, 'lastName', e.target.value)} placeholder="Dela Cruz"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 mb-1 block">Position</label>
-                    <select
-                      value={member.position}
-                      onChange={(e) => updateMember(idx, 'position', e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-                    >
-                      {POSITION_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
+                    <select value={member.position} onChange={(e) => updateMember(idx, 'position', e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                      {POSITION_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
                   </div>
                 </div>
@@ -256,13 +260,8 @@ const ReferToLuponModal = ({ blotterNumber, complainantName, loading, onConfirm,
             {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
           </div>
         </div>
-
-        {/* Footer */}
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 shrink-0">
-          <button onClick={onCancel} disabled={loading}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-            Cancel
-          </button>
+          <button onClick={onCancel} disabled={loading} className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
           <button onClick={handleConfirm} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
             {loading && <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
@@ -274,13 +273,256 @@ const ReferToLuponModal = ({ blotterNumber, complainantName, loading, onConfirm,
   );
 };
 
-// ─── Schedule Hearing Modal (Calendar UI) ─────────────────────────────────────
+// ─── Record Hearing Minutes Modal ─────────────────────────────────────────────
+
+interface RecordMinutesModalProps {
+  hearing: HearingViewDTO; blotterNumber: string;
+  complainantName: string; respondentName: string;
+  onSuccess: () => void; onCancel: () => void;
+}
+
+const getAttendanceWarning = (c: boolean, r: boolean) => {
+  if (!c && !r) return { color: 'bg-red-50 border-red-200 text-red-700', message: 'Both parties failed to appear. The hearing will be automatically postponed and both parties will be re-summoned.' };
+  if (c && !r)  return { color: 'bg-amber-50 border-amber-200 text-amber-700', message: 'Respondent failed to appear despite proper summons. This will be noted in the record. A second summon will be issued with a warning of default.' };
+  if (!c && r)  return { color: 'bg-amber-50 border-amber-200 text-amber-700', message: 'Complainant failed to appear. The case may be dismissed or postponed at the discretion of the Punong Barangay. If the complainant fails to appear without valid reason, the complaint may be considered withdrawn.' };
+  return null;
+};
+
+const RecordMinutesModal = ({ hearing, blotterNumber, complainantName, respondentName, onSuccess, onCancel }: RecordMinutesModalProps) => {
+  const [complainantPresent, setComplainantPresent] = useState(true);
+  const [respondentPresent,  setRespondentPresent]  = useState(true);
+  const [hearingNotes,       setHearingNotes]       = useState('');
+  const [agreementNotes,     setAgreementNotes]     = useState('');
+  const [outcome,            setOutcome]            = useState<'SETTLED' | 'NOT_SETTLED' | ''>('');
+  const [actualStart,        setActualStart]        = useState(hearing.startTime);
+  const [actualEnd,          setActualEnd]          = useState(hearing.endTime);
+  const [loading,            setLoading]            = useState(false);
+  const [error,              setError]              = useState('');
+
+  const duration = getDurationLabel(actualStart, actualEnd);
+  const warning  = getAttendanceWarning(complainantPresent, respondentPresent);
+
+  const handleSubmit = async () => {
+    if (!outcome) { setError('Please select an outcome.'); return; }
+    setLoading(true); setError('');
+    try {
+      // Combine all into one hearingNotes string — parsed back by parseHearingNotes() on display
+      const timeNote = `Actual meeting time: ${actualStart} – ${actualEnd}${duration ? ` (${duration})` : ''}`;
+      const withNotes = hearingNotes.trim() ? `${timeNote}\n\n${hearingNotes.trim()}` : timeNote;
+      const fullNotes = agreementNotes.trim()
+        ? `${withNotes}\n\n[Agreement/Extra Notes]: ${agreementNotes.trim()}`
+        : withNotes;
+
+      const body: RecordMinutesRequest = {
+        hearingId: hearing.hearingId,
+        complainantPresent,
+        respondentPresent,
+        hearingNotes: fullNotes,
+        outcome,
+      };
+      await recordHearingMinutes(body);
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to save minutes.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-6">
+        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Record Hearing Minutes — Hearing {hearing.hearingNumber}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{blotterNumber} · {complainantName} vs {respondentName}</p>
+          </div>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+
+          {/* Hearing Info */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Hearing Information</p>
+            </div>
+            <div className="grid grid-cols-4 gap-4 px-4 py-4">
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Summon</p>
+                <p className="text-sm font-semibold text-indigo-600">Summon {hearing.hearingNumber}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Date</p>
+                <p className="text-sm font-medium text-gray-800 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />{formatDate(hearing.date)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Scheduled Time</p>
+                <p className="text-sm font-medium text-gray-800 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" />{hearing.startTime} – {hearing.endTime}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Venue</p>
+                <p className="text-sm font-medium text-gray-800 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400" />{hearing.venue}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 1. Actual Meeting Time */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">1 — Actual Meeting Time</p>
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-xs text-gray-500 mb-3">Record the actual time the hearing started and ended.</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-400 mb-1 block">Start Time</label>
+                  <input type="time" value={actualStart} onChange={(e) => setActualStart(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                </div>
+                <div className="pt-4 text-gray-400 text-sm">—</div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-400 mb-1 block">End Time</label>
+                  <input type="time" value={actualEnd} onChange={(e) => setActualEnd(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                </div>
+                {duration && (
+                  <div className="pt-4 shrink-0">
+                    <div className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg">
+                      <Timer className="w-3.5 h-3.5 text-indigo-500" />
+                      <span className="text-xs font-semibold text-indigo-600">{duration}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Attendance */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">2 — Attendance</p>
+            </div>
+            <div className="px-4 py-4 space-y-4">
+              {[
+                { label: 'Complainant', name: complainantName, present: complainantPresent, setPresent: setComplainantPresent },
+                { label: 'Respondent',  name: respondentName,  present: respondentPresent,  setPresent: setRespondentPresent },
+              ].map((party) => (
+                <div key={party.label} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{party.label}</p>
+                    <p className="text-xs text-gray-400">{party.name}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => party.setPresent(true)}
+                      className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${party.present ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                      Present
+                    </button>
+                    <button onClick={() => party.setPresent(false)}
+                      className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${!party.present ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                      Absent
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {warning && (
+                <div className={`flex items-start gap-2.5 px-3 py-3 rounded-lg border text-xs ${warning.color}`}>
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p>{warning.message}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 3. Hearing Notes */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">3 — Hearing Notes</p>
+            </div>
+            <div className="px-4 py-4">
+              <textarea
+                placeholder="Brief summary of what transpired during the hearing..."
+                value={hearingNotes}
+                onChange={(e) => setHearingNotes(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+              />
+            </div>
+          </div>
+
+          {/* 4. Agreement / Extra Notes */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">4 — Agreement / Extra Notes</p>
+            </div>
+            <div className="px-4 py-4">
+              <textarea
+                placeholder="Any agreements reached, conditions, or additional notes..."
+                value={agreementNotes}
+                onChange={(e) => setAgreementNotes(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+              />
+            </div>
+          </div>
+
+          {/* 5. Outcome */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">5 — Outcome</p>
+            </div>
+            <div className="px-4 py-4 space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="radio" name="outcome" checked={outcome === 'SETTLED'} onChange={() => setOutcome('SETTLED')} className="w-4 h-4 accent-indigo-600" />
+                <div>
+                  <span className="text-sm font-medium text-gray-800">Settled</span>
+                  <span className="text-xs text-gray-400 ml-2">(proceed to close case)</span>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="radio" name="outcome" checked={outcome === 'NOT_SETTLED'} onChange={() => setOutcome('NOT_SETTLED')} className="w-4 h-4 accent-indigo-600" />
+                <div>
+                  <span className="text-sm font-medium text-gray-800">Not Settled</span>
+                  <span className="text-xs text-gray-400 ml-2">(mark unsettled — forward to Lupon)</span>
+                </div>
+              </label>
+              {outcome === 'NOT_SETTLED' && (
+                <div className="flex items-start gap-2.5 px-3 py-3 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p>This will mark the case as <strong>Unsettled</strong> and forward to the Lupon Tagapamayapa for further proceedings.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
+
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+          <button onClick={onCancel} disabled={loading}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+          <button onClick={handleSubmit} disabled={loading || !outcome}
+            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+            {loading && <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+            Save Minutes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Schedule Hearing Modal ───────────────────────────────────────────────────
 
 interface ScheduleModalProps {
-  blotterNumber: string;
-  hearingNumber: number;
-  onSuccess: () => void;
-  onCancel: () => void;
+  blotterNumber: string; hearingNumber: number;
+  onSuccess: () => void; onCancel: () => void;
 }
 
 const ScheduleHearingModal = ({ blotterNumber, hearingNumber, onSuccess, onCancel }: ScheduleModalProps) => {
@@ -297,52 +539,26 @@ const ScheduleHearingModal = ({ blotterNumber, hearingNumber, onSuccess, onCance
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
 
-  useEffect(() => {
-    getMarkers(viewYear, viewMonth + 1).then(setMarkers).catch(() => {});
-  }, [viewYear, viewMonth]);
+  useEffect(() => { getMarkers(viewYear, viewMonth + 1).then(setMarkers).catch(() => {}); }, [viewYear, viewMonth]);
+  useEffect(() => { if (!selectedDate) return; getBusySlots(selectedDate).then(setBusySlots).catch(() => {}); }, [selectedDate]);
 
-  useEffect(() => {
-    if (!selectedDate) return;
-    getBusySlots(selectedDate).then(setBusySlots).catch(() => {});
-  }, [selectedDate]);
-
-  const markerMap = markers.reduce<Record<string, number>>((acc, m) => {
-    acc[m.date] = m.totalHearings; return acc;
-  }, {});
-
+  const markerMap   = markers.reduce<Record<string, number>>((acc, m) => { acc[m.date] = m.totalHearings; return acc; }, {});
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay    = getFirstDay(viewYear, viewMonth);
   const todayStr    = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
-    else setViewMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
-    else setViewMonth(m => m + 1);
-  };
+  const prevMonth = () => { if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); } else setViewMonth(m => m - 1); };
+  const nextMonth = () => { if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); } else setViewMonth(m => m + 1); };
 
   const handleSubmit = async () => {
-    if (!selectedDate || !startTime || !endTime || !venue) {
-      setError('Please fill in all required fields.'); return;
-    }
+    if (!selectedDate || !startTime || !endTime || !venue) { setError('Please fill in all required fields.'); return; }
     setLoading(true); setError('');
     try {
-      const body: ScheduleHearingRequest = {
-        blotterNumber,
-        scheduledStart: `${selectedDate}T${startTime}`,
-        scheduledEnd:   `${selectedDate}T${endTime}`,
-        venue,
-        notes: notes || undefined,
-      };
+      const body: ScheduleHearingRequest = { blotterNumber, scheduledStart: `${selectedDate}T${startTime}`, scheduledEnd: `${selectedDate}T${endTime}`, venue, notes: notes || undefined };
       await scheduleHearing(body);
       onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Failed to schedule hearing.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) { setError(err.message || 'Failed to schedule hearing.'); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -356,7 +572,6 @@ const ScheduleHearingModal = ({ blotterNumber, hearingNumber, onSuccess, onCance
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
         <div className="flex flex-col md:flex-row">
-          {/* Calendar */}
           <div className="flex-1 p-5 border-r border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronLeft className="w-4 h-4 text-gray-500" /></button>
@@ -369,73 +584,56 @@ const ScheduleHearingModal = ({ blotterNumber, hearingNumber, onSuccess, onCance
             <div className="grid grid-cols-7 gap-y-1">
               {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-                const dateStr    = toDateStr(viewYear, viewMonth, day);
-                const isToday    = dateStr === todayStr;
-                const isSelected = dateStr === selectedDate;
-                const hasMarker  = markerMap[dateStr] > 0;
-                const isPast     = dateStr < todayStr;
+                const dateStr = toDateStr(viewYear, viewMonth, day);
+                const isToday = dateStr === todayStr, isSelected = dateStr === selectedDate;
+                const hasMarker = markerMap[dateStr] > 0, isPast = dateStr < todayStr;
                 return (
                   <button key={day} disabled={isPast} onClick={() => setSelectedDate(dateStr)}
                     className={`relative mx-auto w-8 h-8 rounded-full text-xs font-medium flex items-center justify-center transition-colors
                       ${isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-indigo-50 cursor-pointer'}
                       ${isSelected ? 'bg-indigo-600 text-white hover:bg-indigo-600' : ''}
                       ${isToday && !isSelected ? 'border border-indigo-400 text-indigo-600' : ''}
-                      ${!isSelected && !isToday && !isPast ? 'text-gray-700' : ''}
-                    `}>
+                      ${!isSelected && !isToday && !isPast ? 'text-gray-700' : ''}`}>
                     {day}
-                    {hasMarker && !isSelected && (
-                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-400" />
-                    )}
+                    {hasMarker && !isSelected && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-400" />}
                   </button>
                 );
               })}
             </div>
           </div>
-          {/* Form */}
           <div className="w-full md:w-72 p-5 space-y-4">
             {selectedDate ? (
               <div className="bg-indigo-50 rounded-lg p-3">
                 <p className="text-xs text-indigo-400 font-medium mb-0.5">Selected Date</p>
-                <p className="text-sm font-semibold text-indigo-700">
-                  {new Date(selectedDate + 'T00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                </p>
+                <p className="text-sm font-semibold text-indigo-700">{formatDate(selectedDate)}</p>
               </div>
-            ) : (
-              <div className="bg-gray-50 rounded-lg p-3 text-center text-xs text-gray-400">No date selected</div>
-            )}
+            ) : <div className="bg-gray-50 rounded-lg p-3 text-center text-xs text-gray-400">No date selected</div>}
             {busySlots.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1.5">Busy Time Slots</p>
-                <div className="space-y-1.5">
-                  {busySlots.map((slot, i) => (
-                    <div key={i} className="bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5">
-                      <p className="text-xs font-semibold text-red-600">{slot.startTime} – {slot.endTime}</p>
-                      <p className="text-xs text-red-400 truncate">{slot.caseNumber} • {slot.natureOfComplaint}</p>
-                    </div>
-                  ))}
-                </div>
+                {busySlots.map((slot, i) => (
+                  <div key={i} className="bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5 mb-1.5">
+                    <p className="text-xs font-semibold text-red-600">{slot.startTime} – {slot.endTime}</p>
+                    <p className="text-xs text-red-400 truncate">{slot.caseNumber} • {slot.natureOfComplaint}</p>
+                  </div>
+                ))}
               </div>
             )}
             <div>
               <p className="text-xs font-medium text-gray-500 mb-1.5">Start Time — End Time</p>
               <div className="flex items-center gap-2">
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
-                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                 <span className="text-gray-400 text-xs">—</span>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
-                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               </div>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 mb-1.5">Venue *</p>
-              <input type="text" placeholder="Barangay Hall" value={venue} onChange={(e) => setVenue(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <input type="text" placeholder="Barangay Hall" value={venue} onChange={(e) => setVenue(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 mb-1.5">Notes (optional)</p>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-                placeholder="Additional instructions..."
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Additional instructions..." className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
             </div>
             {error && <p className="text-xs text-red-500">{error}</p>}
             <button onClick={handleSubmit} disabled={loading || !selectedDate}
@@ -464,19 +662,21 @@ const MEDIATION_STEPS = [
 const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
-  const [docket,    setDocket]    = useState<BlotterDocketViewDTO | null>(null);
-  const [mediation, setMediation] = useState<MediationProcessDTO | null>(null);
-  const [hearings,  setHearings]  = useState<HearingViewDTO[]>([]);
-  const [notes,     setNotes]     = useState<CaseNoteViewDTO[]>([]);
-  const [timeline]                = useState<CaseTimelineDTO[]>([]);
+  const [docket,         setDocket]         = useState<BlotterDocketViewDTO | null>(null);
+  const [mediation,      setMediation]      = useState<MediationProcessDTO | null>(null);
+  const [hearings,       setHearings]       = useState<HearingViewDTO[]>([]);
+  const [hearingDetails, setHearingDetails] = useState<Record<number, MediationHearingViewDTO>>({});
+  const [notes,          setNotes]          = useState<CaseNoteViewDTO[]>([]);
+  const [timeline]                          = useState<CaseTimelineDTO[]>([]);
 
   const [loading,         setLoading]         = useState(true);
   const [hearingsLoading, setHearingsLoading] = useState(false);
   const [notesLoading,    setNotesLoading]    = useState(false);
   const [error,           setError]           = useState<string | null>(null);
 
-  const [modal,         setModal]         = useState<'refer' | 'settle' | 'dismiss' | 'schedule' | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [modal,           setModal]           = useState<'refer' | 'settle' | 'dismiss' | 'schedule' | null>(null);
+  const [actionLoading,   setActionLoading]   = useState(false);
+  const [selectedHearing, setSelectedHearing] = useState<HearingViewDTO | null>(null);
 
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteText,      setNoteText]      = useState('');
@@ -488,26 +688,34 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
     const load = async () => {
       setLoading(true); setError(null);
       try {
-        const [d, m] = await Promise.all([
-          getFullBlotterDocket(blotterNumber),
-          getMediationProcess(blotterNumber),
-        ]);
+        const [d, m] = await Promise.all([getFullBlotterDocket(blotterNumber), getMediationProcess(blotterNumber)]);
         setDocket(d); setMediation(m);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load case details.');
-      } finally {
-        setLoading(false);
-      }
+      } catch (err: any) { setError(err.message || 'Failed to load case details.'); }
+      finally { setLoading(false); }
     };
     load();
   }, [blotterNumber]);
 
-  // ── Hearings tab ──
-  useEffect(() => {
-    if (activeTab !== 'hearings') return;
+  // ── Hearings tab — also fetches minutes for completed hearings ──
+  const loadHearings = useCallback(async () => {
     setHearingsLoading(true);
-    getHearingView(blotterNumber).then(setHearings).catch(console.error).finally(() => setHearingsLoading(false));
-  }, [activeTab, blotterNumber]);
+    try {
+      const data = await getHearingView(blotterNumber);
+      setHearings(data);
+      const completed = data.filter(h => h.status !== 'SCHEDULED');
+      if (completed.length > 0) {
+        const details = await Promise.all(
+          completed.map(h => getMediationHearingView(h.hearingId).catch(() => null))
+        );
+        const detailMap: Record<number, MediationHearingViewDTO> = {};
+        completed.forEach((h, i) => { if (details[i]) detailMap[h.hearingId] = details[i]!; });
+        setHearingDetails(detailMap);
+      }
+    } catch (err) { console.error(err); }
+    finally { setHearingsLoading(false); }
+  }, [blotterNumber]);
+
+  useEffect(() => { if (activeTab !== 'hearings') return; loadHearings(); }, [activeTab, loadHearings]);
 
   // ── Notes tab ──
   const loadNotes = useCallback(async () => {
@@ -517,12 +725,9 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
     finally { setNotesLoading(false); }
   }, [blotterNumber]);
 
-  useEffect(() => {
-    if (activeTab !== 'notes') return;
-    loadNotes();
-  }, [activeTab, loadNotes]);
+  useEffect(() => { if (activeTab !== 'notes') return; loadNotes(); }, [activeTab, loadNotes]);
 
-  // ── Generic status action (settle / dismiss) ──
+  // ── Status actions ──
   const handleAction = async (newStatus: string, reason: string) => {
     setActionLoading(true);
     try {
@@ -534,8 +739,7 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
     finally { setActionLoading(false); }
   };
 
-  // ── Refer to Lupon with Pangkat Members ──
-  const handleReferConfirm = async (members: { firstName: string; lastName: string; position: string }[]) => {
+  const handleReferConfirm = async (members: PangkatMember[]) => {
     setActionLoading(true);
     try {
       await updateCaseStatus({
@@ -567,81 +771,71 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
     : [false, false, false, false];
 
   const tabDefs: { key: TabKey; label: string; count?: number }[] = [
-    { key: 'overview',  label: 'Overview' },
-    { key: 'hearings',  label: 'Hearings',   count: hearings.length },
-    { key: 'notes',     label: 'Case Notes', count: notes.length },
-    { key: 'timeline',  label: 'Timeline' },
+    { key: 'overview', label: 'Overview' },
+    { key: 'hearings', label: 'Hearings',   count: hearings.length },
+    { key: 'notes',    label: 'Case Notes', count: notes.length },
+    { key: 'timeline', label: 'Timeline' },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <span className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-400">Loading case details...</p>
-        </div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3">
+        <span className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-gray-400">Loading case details...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (error || !docket) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <AlertCircle className="w-8 h-8 text-red-400" />
-        <p className="text-sm text-red-500">{error ?? 'Case not found.'}</p>
-        <button onClick={onBack} className="text-sm text-indigo-500 hover:underline">Go Back</button>
-      </div>
-    );
-  }
+  if (error || !docket) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-3">
+      <AlertCircle className="w-8 h-8 text-red-400" />
+      <p className="text-sm text-red-500">{error ?? 'Case not found.'}</p>
+      <button onClick={onBack} className="text-sm text-indigo-500 hover:underline">Go Back</button>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-4">
 
-        {/* ── Refer to Lupon Modal (with Pangkat Members) ── */}
+        {/* ── Modals ── */}
         {modal === 'refer' && (
-          <ReferToLuponModal
-            blotterNumber={blotterNumber}
-            complainantName={`${docket.firstName} ${docket.lastName}`}
-            loading={actionLoading}
-            onConfirm={handleReferConfirm}
-            onCancel={() => setModal(null)}
-          />
+          <ReferToLuponModal blotterNumber={blotterNumber} complainantName={`${docket.firstName} ${docket.lastName}`}
+            loading={actionLoading} onConfirm={handleReferConfirm} onCancel={() => setModal(null)} />
         )}
-
-        {/* ── Settle Modal ── */}
         {modal === 'settle' && (
-          <ConfirmModal title="Mark as Settled"
-            description="Are you sure you want to mark this case as settled? This will close the case."
+          <ConfirmModal title="Mark as Settled" description="Are you sure you want to mark this case as settled? This will close the case."
             confirmLabel="Mark as Settled" confirmClass="bg-emerald-600 hover:bg-emerald-700"
             icon={<div className="bg-emerald-100 p-2 rounded-full"><CheckCircle className="w-4 h-4 text-emerald-600" /></div>}
-            loading={actionLoading}
-            onConfirm={() => handleAction('RESOLVED', 'Case marked as settled')}
-            onCancel={() => setModal(null)} />
+            loading={actionLoading} onConfirm={() => handleAction('RESOLVED', 'Case marked as settled')} onCancel={() => setModal(null)} />
         )}
-
-        {/* ── Dismiss Modal ── */}
         {modal === 'dismiss' && (
-          <ConfirmModal title="Dismiss Case"
-            description="Are you sure you want to dismiss this case? This action cannot be undone."
+          <ConfirmModal title="Dismiss Case" description="Are you sure you want to dismiss this case? This action cannot be undone."
             confirmLabel="Dismiss Case" confirmClass="bg-gray-600 hover:bg-gray-700"
             icon={<div className="bg-gray-100 p-2 rounded-full"><X className="w-4 h-4 text-gray-600" /></div>}
-            loading={actionLoading}
-            onConfirm={() => handleAction('DISMISSED', 'Case dismissed')}
-            onCancel={() => setModal(null)} />
+            loading={actionLoading} onConfirm={() => handleAction('DISMISSED', 'Case dismissed')} onCancel={() => setModal(null)} />
         )}
-
-        {/* ── Schedule Hearing Modal ── */}
         {modal === 'schedule' && (
-          <ScheduleHearingModal
-            blotterNumber={blotterNumber}
-            hearingNumber={hearings.length + 1}
+          <ScheduleHearingModal blotterNumber={blotterNumber} hearingNumber={hearings.length + 1}
             onSuccess={async () => {
               setModal(null); setActiveTab('hearings');
               const [h, m] = await Promise.all([getHearingView(blotterNumber), getMediationProcess(blotterNumber)]);
               setHearings(h); setMediation(m);
             }}
             onCancel={() => setModal(null)} />
+        )}
+        {selectedHearing && docket && (
+          <RecordMinutesModal
+            hearing={selectedHearing} blotterNumber={blotterNumber}
+            complainantName={`${docket.firstName} ${docket.lastName}`}
+            respondentName={`${docket.respondentFirstName} ${docket.respondentLastName}`}
+            onSuccess={async () => {
+              setSelectedHearing(null);
+              const [_, m] = await Promise.all([loadHearings(), getMediationProcess(blotterNumber)]);
+              setMediation(m);
+            }}
+            onCancel={() => setSelectedHearing(null)}
+          />
         )}
 
         {/* ── Header ── */}
@@ -661,9 +855,7 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
           {tabDefs.map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === tab.key
-                  ? 'border-indigo-600 text-indigo-600 bg-white rounded-t-lg'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === tab.key ? 'border-indigo-600 text-indigo-600 bg-white rounded-t-lg' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}>
               {tab.label}
               {tab.count !== undefined && (
@@ -678,8 +870,6 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
         {/* ══════════ OVERVIEW TAB ══════════ */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
-
-            {/* Mediation Period */}
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -691,8 +881,7 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
                 </span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
-                <div className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, ((15 - docket.daysRemaining) / 15) * 100)}%` }} />
+                <div className="bg-indigo-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, ((15 - docket.daysRemaining) / 15) * 100)}%` }} />
               </div>
               <div className="flex justify-between text-xs text-gray-400">
                 <span>Filed: {docket.dateFiled}</span>
@@ -700,18 +889,17 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
               </div>
             </div>
 
-            {/* Quick Actions */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Quick Actions</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: 'Schedule Hearing', sub: 'Set mediation date',  icon: <Calendar className="w-4 h-4 text-indigo-600" />,    iconBg: 'bg-indigo-100',  textColor: 'text-indigo-600',  hover: 'hover:border-indigo-300 hover:bg-indigo-50',    onClick: () => setModal('schedule') },
-                  { label: 'Mark as Settled',  sub: 'Close this case',     icon: <CheckCircle className="w-4 h-4 text-emerald-600" />, iconBg: 'bg-emerald-100', textColor: 'text-emerald-600', hover: 'hover:border-emerald-300 hover:bg-emerald-50',  onClick: () => setModal('settle') },
-                  { label: 'Refer to Lupon',   sub: 'Escalate case',       icon: <AlertCircle className="w-4 h-4 text-red-500" />,    iconBg: 'bg-red-100',     textColor: 'text-red-500',     hover: 'hover:border-red-300 hover:bg-red-50',          onClick: () => setModal('refer') },
-                  { label: 'Dismiss Case',     sub: 'Case without action',  icon: <X className="w-4 h-4 text-gray-500" />,            iconBg: 'bg-gray-100',    textColor: 'text-gray-600',    hover: 'hover:border-gray-400 hover:bg-gray-50',        onClick: () => setModal('dismiss') },
+                  { label: 'Schedule Hearing', sub: 'Set mediation date',  icon: <Calendar className="w-4 h-4 text-indigo-600" />,    iconBg: 'bg-indigo-100',  textColor: 'text-indigo-600',  hover: 'hover:border-indigo-300 hover:bg-indigo-50',   onClick: () => setModal('schedule') },
+                  { label: 'Mark as Settled',  sub: 'Close this case',     icon: <CheckCircle className="w-4 h-4 text-emerald-600" />, iconBg: 'bg-emerald-100', textColor: 'text-emerald-600', hover: 'hover:border-emerald-300 hover:bg-emerald-50', onClick: () => setModal('settle') },
+                  { label: 'Refer to Lupon',   sub: 'Escalate case',       icon: <AlertCircle className="w-4 h-4 text-red-500" />,    iconBg: 'bg-red-100',     textColor: 'text-red-500',     hover: 'hover:border-red-300 hover:bg-red-50',         onClick: () => setModal('refer') },
+                  { label: 'Dismiss Case',     sub: 'Case without action',  icon: <X className="w-4 h-4 text-gray-500" />,            iconBg: 'bg-gray-100',    textColor: 'text-gray-600',    hover: 'hover:border-gray-400 hover:bg-gray-50',       onClick: () => setModal('dismiss') },
                 ].map((a) => (
                   <button key={a.label} onClick={a.onClick}
-                    className={`flex flex-col items-start gap-1.5 p-4 bg-white border border-gray-200 rounded-xl transition-all group text-left ${a.hover}`}>
+                    className={`flex flex-col items-start gap-1.5 p-4 bg-white border border-gray-200 rounded-xl transition-all text-left ${a.hover}`}>
                     <div className={`p-2 rounded-lg ${a.iconBg}`}>{a.icon}</div>
                     <span className={`text-sm font-semibold ${a.textColor}`}>{a.label}</span>
                     <span className="text-xs text-gray-400">{a.sub}</span>
@@ -720,7 +908,6 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
               </div>
             </div>
 
-            {/* Client + Case Info */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2 space-y-4">
                 <SectionCard title="Client Information" icon={<User className="w-4 h-4 text-gray-400" />}>
@@ -734,7 +921,6 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
                     <div className="col-span-2"><InfoRow label="Current Address" value={docket.completeAddress} /></div>
                   </div>
                 </SectionCard>
-
                 <SectionCard title="Respondent Information" icon={<User className="w-4 h-4 text-gray-400" />}>
                   <div className="grid grid-cols-2 gap-4">
                     <InfoRow label="Name" value={`${docket.respondentFirstName}${docket.respondentMiddleName ? ' ' + docket.respondentMiddleName : ''} ${docket.respondentLastName}`} />
@@ -755,12 +941,8 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
                   </div>
                 </SectionCard>
               </div>
-
-              {/* Case Info */}
               <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 h-fit">
-                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <Clipboard className="w-4 h-4 text-gray-400" /> Case Information
-                </h3>
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Clipboard className="w-4 h-4 text-gray-400" /> Case Information</h3>
                 <InfoRow label="Case Number" value={docket.caseNumber} />
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Status</p>
@@ -776,7 +958,6 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
               </div>
             </div>
 
-            {/* Incident Narrative */}
             <SectionCard title="Incident Narrative" icon={<FileText className="w-4 h-4 text-gray-400" />}>
               <p className="text-sm text-gray-600 leading-relaxed">{docket.narrative}</p>
               {docket.descriptionOfInjuries && (
@@ -787,7 +968,6 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
               )}
             </SectionCard>
 
-            {/* Witnesses */}
             {docket.witnesses?.length > 0 && (
               <SectionCard title={`Witnesses (${docket.witnesses.length})`} icon={<User className="w-4 h-4 text-gray-400" />}>
                 <div className="space-y-3">
@@ -805,13 +985,11 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
               </SectionCard>
             )}
 
-            {/* Mediation Process */}
             {mediation && (
               <SectionCard title="Mediation Process" icon={<Hash className="w-4 h-4 text-gray-400" />}>
                 <div className="space-y-0">
                   {MEDIATION_STEPS.map((step, idx) => {
-                    const done   = mediationProgress[idx];
-                    const isLast = idx === MEDIATION_STEPS.length - 1;
+                    const done = mediationProgress[idx], isLast = idx === MEDIATION_STEPS.length - 1;
                     return (
                       <div key={step.key} className="flex gap-4">
                         <div className="flex flex-col items-center">
@@ -840,45 +1018,114 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
 
         {/* ══════════ HEARINGS TAB ══════════ */}
         {activeTab === 'hearings' && (
-          <div className="space-y-3">
-            <SectionCard title="Mediation Hearings" icon={<CalendarDays className="w-4 h-4 text-gray-400" />}
-              action={
-                <button onClick={() => setModal('schedule')}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                  <Plus className="w-4 h-4" /> Schedule New Hearing
-                </button>
-              }>
-              {hearingsLoading && (
-                <div className="flex items-center justify-center py-10">
-                  <span className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-              {!hearingsLoading && hearings.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
-                  <CalendarDays className="w-8 h-8 text-gray-300" />
-                  <p className="text-sm">No hearings scheduled yet.</p>
-                </div>
-              )}
-              {!hearingsLoading && hearings.length > 0 && (
-                <div className="space-y-3">
-                  {hearings.map((h) => (
-                    <div key={h.hearingId} className="flex items-start justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-semibold text-gray-800">Hearing #{h.hearingNumber}</span>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${hearingStatusConfig[h.status] ?? 'bg-gray-100 text-gray-600'}`}>{h.status}</span>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-800">Mediation Hearings</h2>
+              <button onClick={() => setModal('schedule')}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                <Plus className="w-4 h-4" /> Schedule New Hearing
+              </button>
+            </div>
+
+            {hearingsLoading && (
+              <div className="flex items-center justify-center py-10">
+                <span className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            {!hearingsLoading && hearings.length === 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
+                <CalendarDays className="w-8 h-8 text-gray-300" />
+                <p className="text-sm">No hearings scheduled yet.</p>
+              </div>
+            )}
+
+            {!hearingsLoading && hearings.map((h) => {
+              const detail = hearingDetails[h.hearingId];
+              // Parse notes saved from RecordMinutesModal
+              const { notes: parsedNotes, agreement: parsedAgreement } = parseHearingNotes(detail?.hearingNotes);
+
+              return (
+                <div key={h.hearingId} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+
+                  {/* Card Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold text-gray-800">Hearing {h.hearingNumber}</span>
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${hearingStatusStyle[h.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {hearingStatusLabel[h.status] ?? h.status}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                      <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatDate(h.date)}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{h.startTime} – {h.endTime}</span>
+                      <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{h.venue}</span>
+                      {getDurationLabel(h.startTime, h.endTime) && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">
+                          <Timer className="w-3 h-3" />{getDurationLabel(h.startTime, h.endTime)}
+                        </span>
+                      )}
+                    </div>
+                    {h.status === 'SCHEDULED' && (
+                      <button onClick={() => setSelectedHearing(h)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 border border-indigo-200 bg-indigo-50 rounded-lg hover:bg-indigo-100 whitespace-nowrap">
+                        Update Hearing <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Card Body — completed hearings */}
+                  {h.status !== 'SCHEDULED' && (
+                    <div className="px-5 py-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        {/* Attendance */}
+                        <div>
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Attendance</p>
+                          <div className="space-y-0">
+                            <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                              <div>
+                                <p className="text-sm font-medium text-gray-700">Complainant</p>
+                                <p className="text-xs text-gray-400">{docket.firstName} {docket.lastName}</p>
+                              </div>
+                              <span className="px-3 py-1 text-xs font-bold rounded bg-emerald-500 text-white">PRESENT</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2">
+                              <div>
+                                <p className="text-sm font-medium text-gray-700">Respondent</p>
+                                <p className="text-xs text-gray-400">{docket.respondentFirstName} {docket.respondentLastName}</p>
+                              </div>
+                              <span className="px-3 py-1 text-xs font-bold rounded bg-emerald-500 text-white">PRESENT</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{h.date}</span>
-                          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{h.startTime} – {h.endTime}</span>
-                          <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{h.venue}</span>
+
+                        {/* Hearing Notes + Agreement */}
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Hearing Notes</p>
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 min-h-[52px]">
+                              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                                {parsedNotes || '—'}
+                              </p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Agreement / Extra Notes</p>
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2.5 min-h-[36px]">
+                              <p className="text-sm text-gray-600">
+                                {parsedAgreement || '—'}
+                              </p>
+                            </div>
+                          </div>
                         </div>
+
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </SectionCard>
+              );
+            })}
           </div>
         )}
 
@@ -896,8 +1143,8 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
               }>
               {showNoteInput && (
                 <div className="mb-4 space-y-2">
-                  <textarea autoFocus placeholder="Type your note here..."
-                    value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={3}
+                  <textarea autoFocus placeholder="Type your note here..." value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)} rows={3}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
                   {noteError && <p className="text-xs text-red-500">{noteError}</p>}
                   <div className="flex justify-end gap-2">
@@ -911,11 +1158,7 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
                   </div>
                 </div>
               )}
-              {notesLoading && (
-                <div className="flex items-center justify-center py-10">
-                  <span className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
+              {notesLoading && <div className="flex items-center justify-center py-10"><span className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>}
               {!notesLoading && notes.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
                   <FileText className="w-8 h-8 text-gray-300" />
@@ -943,7 +1186,7 @@ const BlotterDocketDetailView = ({ blotterNumber, onBack }: Props) => {
             {timeline.length === 0 && mediation ? (
               <div className="space-y-0">
                 {[
-                  { date: docket.dateFiled, description: `Case filed`, color: 'bg-red-400', icon: '📋' },
+                  { date: docket.dateFiled, description: 'Case filed', color: 'bg-red-400', icon: '📋' },
                   ...(mediation.stepSummonIssued ? [{ date: mediation.caseReceivedDate ?? '', description: mediation.summonStatus ?? 'Summon issued', color: 'bg-gray-400', icon: '📄' }] : []),
                   ...((mediation.hearingsConducted ?? 0) > 0 ? [{ date: '', description: `${mediation.hearingsConducted} hearing(s) conducted`, color: 'bg-indigo-400', icon: '🔷' }] : []),
                 ].filter(t => t.date || t.description).map((item, idx, arr) => (

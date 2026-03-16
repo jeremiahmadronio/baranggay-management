@@ -354,7 +354,7 @@ const Docketview = () => {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Complainant</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Respondent</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nature of Complaint</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
@@ -407,9 +407,10 @@ const Docketview = () => {
                   </td>
 
                   <td className="px-5 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[entry.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {statusLabel[entry.status] ?? entry.status}
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusConfig[entry.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {statusLabel[entry.status] ?? entry.status}
                     </span>
+
                   </td>
 
                   <td className="px-5 py-3">
@@ -422,15 +423,15 @@ const Docketview = () => {
                         View
                       </button>
 
-                      {entry.status === 'UNSETTLED' && (
-                        <button
-                          onClick={() => setSelectedEntry(entry)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-500 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-                        >
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          Forward to Lupon
-                        </button>
-                      )}
+                     {(entry.status === 'UNSETTLED' || entry.status === 'UNDER_MEDIATION') && (
+                      <button
+                    onClick={() => setSelectedEntry(entry)}
+                     className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-500 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                     >
+                   <AlertCircle className="w-3.5 h-3.5" />
+                     Forward to Lupon
+                      </button>
+                     )}
                     </div>
                   </td>
                 </tr>
