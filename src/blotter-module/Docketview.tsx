@@ -255,11 +255,11 @@ const Docketview = () => {
     {
       key: 'blotterNumber',
       header: 'Case / Blotter No.',
-      width: '180px',
+      width: '250px',
       render: (item) => (
         <button
           onClick={(e) => { e.stopPropagation(); if (canView) setSelectedBlotterNumber(item.blotterNumber); }}
-          className="font-mono text-xs font-semibold text-blue-600 hover:underline text-left"
+          className="font-mono text-sm font-semibold text-blue-600 hover:underline text-left"
         >
           {item.blotterNumber}
         </button>

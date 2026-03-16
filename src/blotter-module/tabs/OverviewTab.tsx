@@ -100,37 +100,118 @@ export function OverviewTab({
     : [false, false, false, false]
   return (
     <div className="space-y-5">
-      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <ClockIcon className="w-4 h-4 text-blue-500" />
-            <span className="font-medium text-gray-900">
-              15-Day Mediation Period
+      {isTerminal ? (
+        <div
+          className={`border shadow-sm rounded-xl p-4 flex items-start gap-3 ${
+            status === 'SETTLED'
+              ? 'bg-emerald-50 border-emerald-200'
+              : status === 'DISMISSED'
+                ? 'bg-red-50 border-red-200'
+                : status === 'REFERRED_TO_LUPON'
+                  ? 'bg-violet-50 border-violet-200'
+                  : 'bg-amber-50 border-amber-200'
+          }`}
+        >
+          <div
+            className={`mt-0.5 shrink-0 ${
+              status === 'SETTLED'
+                ? 'text-emerald-500'
+                : status === 'DISMISSED'
+                  ? 'text-red-500'
+                  : status === 'REFERRED_TO_LUPON'
+                    ? 'text-violet-500'
+                    : 'text-amber-500'
+            }`}
+          >
+            {status === 'SETTLED' ? (
+              <CheckCircleIcon className="w-5 h-5" />
+            ) : status === 'DISMISSED' ? (
+              <XIcon className="w-5 h-5" />
+            ) : (
+              <AlertCircleIcon className="w-5 h-5" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p
+                className={`text-sm font-bold ${
+                  status === 'SETTLED'
+                    ? 'text-emerald-700'
+                    : status === 'DISMISSED'
+                      ? 'text-red-700'
+                      : status === 'REFERRED_TO_LUPON'
+                        ? 'text-violet-700'
+                        : 'text-amber-700'
+                }`}
+              >
+                {status === 'SETTLED'
+                  ? 'Case Settled'
+                  : status === 'DISMISSED'
+                    ? 'Case Dismissed'
+                    : status === 'REFERRED_TO_LUPON'
+                      ? 'Referred to Lupon / Pangkat'
+                      : 'Case Closed'}
+              </p>
+              
+            </div>
+            <div className="mt-2 flex flex-wrap items-baseline gap-2">
+  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+    Reason:
+  </span>
+  
+  {docket.caseStatusRemarks ? (
+    <span
+      className={`text-sm font-medium ${
+        status === 'SETTLED'
+          ? 'text-emerald-700'
+          : status === 'DISMISSED'
+          ? 'text-red-700'
+          : status === 'REFERRED_TO_LUPON'
+          ? 'text-violet-700'
+          : 'text-amber-700'
+      }`}
+    >
+      {docket.caseStatusRemarks}
+    </span>
+  ) : (
+    <span className="text-sm text-gray-400 italic">
+      No remarks provided.
+    </span>
+  )}
+</div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <ClockIcon className="w-4 h-4 text-blue-500" />
+              <span className="font-medium text-gray-900">
+                15-Day Mediation Period
+              </span>
+            </div>
+            <span
+              className={`text-sm font-semibold ${isUrgent ? 'text-red-500' : 'text-blue-600'}`}
+            >
+              {docket.daysRemaining <= 0
+                ? 'Overdue'
+                : `${docket.daysRemaining} day${docket.daysRemaining === 1 ? '' : 's'} remaining`}
             </span>
           </div>
-          <span
-            className={`text-sm font-semibold ${isUrgent ? 'text-red-500' : 'text-blue-600'}`}
-          >
-            {docket.daysRemaining <= 0
-              ? 'Overdue'
-              : `${docket.daysRemaining} day${docket.daysRemaining === 1 ? '' : 's'} remaining`}
-          </span>
-        </div>
 
-        <div className="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden">
-          <div
-            className={`h-2 rounded-full transition-all duration-700 ${isUrgent ? 'bg-red-500' : 'bg-blue-500'}`}
-            style={{
-              width: `${percent}%`,
-            }}
-          />
-        </div>
+          <div className="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden">
+            <div
+              className={`h-2 rounded-full transition-all duration-700 ${isUrgent ? 'bg-red-500' : 'bg-blue-500'}`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
 
-        <div className="flex justify-between text-xs text-gray-500">
-          <span>Filed: {formatDate(docket.dateFiled)}</span>
-          <span>Deadline: {formatDate(docket.mediationDeadline)}</span>
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Filed: {formatDate(docket.dateFiled)}</span>
+            <span>Deadline: {formatDate(docket.mediationDeadline)}</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {!isTerminal && (
         <div>

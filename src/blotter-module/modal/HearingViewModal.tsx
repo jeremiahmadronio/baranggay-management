@@ -65,7 +65,7 @@ export function HearingMinutesModal({
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h3 className="text-lg font-bold text-gray-900">
-                  Hearing Minutes — Patawag #{hearing.summonNumber}
+                  Hearing Minutes {hearing.summonNumber}
                 </h3>
                 <span
                   className={`text-xs font-bold px-2.5 py-1 rounded-full ${hearing.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}

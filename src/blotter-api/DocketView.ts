@@ -21,8 +21,6 @@ export interface FollowUpHearingDTO {
   notes: string;
 }
 
-
-
 // --- Hearing Full Details (Master View) ---
 
 export interface MinutesSummaryDTO {
@@ -48,7 +46,7 @@ export interface HearingFullDetailsDTO {
   scheduledStart: string;
   venue: string;
   initialNotes: string;
-  minutes: MinutesSummaryDTO | null; 
+  minutes: MinutesSummaryDTO | null;
   followUps: FollowUpSummaryDTO[];
 }
 
@@ -245,7 +243,28 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     ...options.headers,
   };
 
-  const response = await fetch(url, { ...options, headers });
+  // Debug log the full request
+  console.log("[DEBUG][apiFetch] URL:", url);
+  console.log("[DEBUG][apiFetch] Method:", options.method || "GET");
+  console.log("[DEBUG][apiFetch] Headers:", headers);
+  if (options.body) {
+    try {
+      console.log(
+        "[DEBUG][apiFetch] Body:",
+        JSON.parse(options.body as string),
+      );
+    } catch {
+      console.log("[DEBUG][apiFetch] Body (raw):", options.body);
+    }
+  }
+
+  let response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (fetchErr) {
+    console.error("[DEBUG][apiFetch] FETCH ERROR:", fetchErr);
+    throw fetchErr;
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -257,6 +276,7 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     const errMsg = contentType?.includes("application/json")
       ? (await response.json().catch(() => ({}))).message
       : await response.text();
+    console.error("[DEBUG][apiFetch] BAD RESPONSE:", response.status, errMsg);
     throw new Error(errMsg || `HTTP error! status: ${response.status}`);
   }
 
@@ -267,74 +287,115 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.text() as unknown as T;
 }
 
-export async function getDocketTable(params: DocketTableParams = {}): Promise<SpringPage<BlotterSummaryDTO>> {
+export async function getDocketTable(
+  params: DocketTableParams = {},
+): Promise<SpringPage<BlotterSummaryDTO>> {
   const queryParams = new URLSearchParams();
 
   if (params.search) queryParams.append("search", params.search);
   if (params.status) queryParams.append("status", params.status);
-  if (params.natureId !== undefined) queryParams.append("natureId", params.natureId.toString());
+  if (params.natureId !== undefined)
+    queryParams.append("natureId", params.natureId.toString());
   if (params.start) queryParams.append("start", params.start);
   if (params.end) queryParams.append("end", params.end);
-  if (params.page !== undefined) queryParams.append("page", params.page.toString());
-  if (params.size !== undefined) queryParams.append("size", params.size.toString());
+  if (params.page !== undefined)
+    queryParams.append("page", params.page.toString());
+  if (params.size !== undefined)
+    queryParams.append("size", params.size.toString());
   if (params.sort) queryParams.append("sort", params.sort);
 
   const queryString = queryParams.toString();
-  const endpoint = queryString ? `${BLOTTER_URL}/docket-table?${queryString}` : `${BLOTTER_URL}/docket-table`;
+  const endpoint = queryString
+    ? `${BLOTTER_URL}/docket-table?${queryString}`
+    : `${BLOTTER_URL}/docket-table`;
 
   return apiFetch<SpringPage<BlotterSummaryDTO>>(endpoint);
 }
 
-export async function getRecordTable(params: DocketTableParams = {}): Promise<SpringPage<BlotterSummaryDTO>> {
+export async function getRecordTable(
+  params: DocketTableParams = {},
+): Promise<SpringPage<BlotterSummaryDTO>> {
   const queryParams = new URLSearchParams();
 
   if (params.search) queryParams.append("search", params.search);
   if (params.status) queryParams.append("status", params.status);
-  if (params.natureId !== undefined) queryParams.append("natureId", params.natureId.toString());
+  if (params.natureId !== undefined)
+    queryParams.append("natureId", params.natureId.toString());
   if (params.start) queryParams.append("start", params.start);
   if (params.end) queryParams.append("end", params.end);
-  if (params.page !== undefined) queryParams.append("page", params.page.toString());
-  if (params.size !== undefined) queryParams.append("size", params.size.toString());
+  if (params.page !== undefined)
+    queryParams.append("page", params.page.toString());
+  if (params.size !== undefined)
+    queryParams.append("size", params.size.toString());
   if (params.sort) queryParams.append("sort", params.sort);
 
   const queryString = queryParams.toString();
-  const endpoint = queryString ? `${BLOTTER_URL}/record-table?${queryString}` : `${BLOTTER_URL}/record-table`;
+  const endpoint = queryString
+    ? `${BLOTTER_URL}/record-table?${queryString}`
+    : `${BLOTTER_URL}/record-table`;
 
   return apiFetch<SpringPage<BlotterSummaryDTO>>(endpoint);
 }
 
-export async function getFullBlotterDocket(blotterNumber: string): Promise<BlotterDocketViewDTO> {
+export async function getFullBlotterDocket(
+  blotterNumber: string,
+): Promise<BlotterDocketViewDTO> {
   if (!blotterNumber) throw new Error("Blotter number is required");
-  return apiFetch<BlotterDocketViewDTO>(`${BLOTTER_URL}/view-all-docket/${encodeURIComponent(blotterNumber)}`);
+  return apiFetch<BlotterDocketViewDTO>(
+    `${BLOTTER_URL}/view-all-docket/${encodeURIComponent(blotterNumber)}`,
+  );
 }
 
-export async function getMediationProcess(blotterNumber: string): Promise<MediationProcessDTO> {
+export async function getMediationProcess(
+  blotterNumber: string,
+): Promise<MediationProcessDTO> {
   if (!blotterNumber) throw new Error("Blotter number is required");
-  return apiFetch<MediationProcessDTO>(`${BLOTTER_URL}/mediation-process/${encodeURIComponent(blotterNumber)}`);
+  return apiFetch<MediationProcessDTO>(
+    `${BLOTTER_URL}/mediation-process/${encodeURIComponent(blotterNumber)}`,
+  );
 }
 
-export async function getHearingView(blotterNumber: string): Promise<HearingViewDTO[]> {
+export async function getHearingView(
+  blotterNumber: string,
+): Promise<HearingViewDTO[]> {
   if (!blotterNumber) throw new Error("Blotter number is required");
-  return apiFetch<HearingViewDTO[]>(`${BLOTTER_URL}/hearing-view/${encodeURIComponent(blotterNumber)}`);
+  return apiFetch<HearingViewDTO[]>(
+    `${BLOTTER_URL}/hearing-view/${encodeURIComponent(blotterNumber)}`,
+  );
 }
 
-export async function getMarkers(year: number, month: number): Promise<CalendarMarkerDTO[]> {
-  return apiFetch<CalendarMarkerDTO[]>(`${BLOTTER_URL}/markers?year=${year}&month=${month}`);
+export async function getMarkers(
+  year: number,
+  month: number,
+): Promise<CalendarMarkerDTO[]> {
+  return apiFetch<CalendarMarkerDTO[]>(
+    `${BLOTTER_URL}/markers?year=${year}&month=${month}`,
+  );
 }
 
 export async function getBusySlots(date: string): Promise<BusySlotDTO[]> {
   if (!date) throw new Error("Date is required");
-  return apiFetch<BusySlotDTO[]>(`${BLOTTER_URL}/busy-slots?date=${encodeURIComponent(date)}`);
+  return apiFetch<BusySlotDTO[]>(
+    `${BLOTTER_URL}/busy-slots?date=${encodeURIComponent(date)}`,
+  );
 }
 
-export async function getMediationHearingView(hearingId: number): Promise<MediationHearingViewDTO> {
+export async function getMediationHearingView(
+  hearingId: number,
+): Promise<MediationHearingViewDTO> {
   if (!hearingId) throw new Error("Hearing ID is required");
-  return apiFetch<MediationHearingViewDTO>(`${BLOTTER_URL}/hearing-minutes-view/${hearingId}`);
+  return apiFetch<MediationHearingViewDTO>(
+    `${BLOTTER_URL}/hearing-minutes-view/${hearingId}`,
+  );
 }
 
-export async function getCaseNotes(blotterNumber: string): Promise<CaseNoteViewDTO[]> {
+export async function getCaseNotes(
+  blotterNumber: string,
+): Promise<CaseNoteViewDTO[]> {
   if (!blotterNumber) throw new Error("Blotter number is required");
-  return apiFetch<CaseNoteViewDTO[]>(`${BLOTTER_URL}/${encodeURIComponent(blotterNumber)}/notes`);
+  return apiFetch<CaseNoteViewDTO[]>(
+    `${BLOTTER_URL}/${encodeURIComponent(blotterNumber)}/notes`,
+  );
 }
 
 export async function addCaseNote(body: AddCaseNoteRequest): Promise<string> {
@@ -344,35 +405,50 @@ export async function addCaseNote(body: AddCaseNoteRequest): Promise<string> {
   });
 }
 
-export async function scheduleHearing(body: ScheduleHearingRequest): Promise<string> {
+export async function scheduleHearing(
+  body: ScheduleHearingRequest,
+): Promise<string> {
   return apiFetch<string>(`${HEARING_URL}/schedule-hearing`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export async function recordHearingMinutes(body: RecordMinutesRequest): Promise<string> {
+export async function recordHearingMinutes(
+  body: RecordMinutesRequest,
+): Promise<string> {
   return apiFetch<string>(`${HEARING_URL}/record-minutes`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-
 export async function getDocketStats(): Promise<BlotterStatsDTO> {
   return apiFetch<BlotterStatsDTO>(`${BLOTTER_URL}/docket-stats`);
 }
 
-export async function updateCaseStatus(body: UpdateCaseStatusRequest): Promise<string> {
+export async function updateCaseStatus(
+  body: UpdateCaseStatusRequest,
+): Promise<string> {
+  console.log("[DEBUG] updateCaseStatus request:", body);
   return apiFetch<string>(`${BLOTTER_URL}/update-case-status`, {
     method: "PUT",
     body: JSON.stringify(body),
-  });
+  })
+    .then((res) => {
+      console.log("[DEBUG] updateCaseStatus response:", res);
+      return res;
+    })
+    .catch((err) => {
+      console.error("[DEBUG] updateCaseStatus error:", err);
+      throw err;
+    });
 }
 
-
-
-export async function recordHearingFollowUp(hearingId: number, body: FollowUpHearingDTO): Promise<string> {
+export async function recordHearingFollowUp(
+  hearingId: number,
+  body: FollowUpHearingDTO,
+): Promise<string> {
   if (!hearingId) throw new Error("Hearing ID is required");
   return apiFetch<string>(`${HEARING_URL}/follow-up/${hearingId}`, {
     method: "POST",
@@ -380,7 +456,11 @@ export async function recordHearingFollowUp(hearingId: number, body: FollowUpHea
   });
 }
 
-export async function getHearingFullDetails(hearingId: number): Promise<HearingFullDetailsDTO> {
+export async function getHearingFullDetails(
+  hearingId: number,
+): Promise<HearingFullDetailsDTO> {
   if (!hearingId) throw new Error("Hearing ID is required");
-  return apiFetch<HearingFullDetailsDTO>(`${HEARING_URL}/hearing-details/${hearingId}`);
+  return apiFetch<HearingFullDetailsDTO>(
+    `${HEARING_URL}/hearing-details/${hearingId}`,
+  );
 }
