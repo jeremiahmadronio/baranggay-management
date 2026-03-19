@@ -160,37 +160,47 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     permissionIds: [],
   });
 
-  // ── Fetch departments, roles, permissions on mount ───────────────────────────
+  // ── Fetch departments, roles, and permissions on mount ───────────────────────────
   useEffect(() => {
     const fetchOptions = async () => {
       try {
         setLoadingOptions(true);
         setOptionsError(null);
-        const [depts, roles, perms] = await Promise.all([
+        const departmentFromStorage = localStorage.getItem("department");
+        const [depts, roles] = await Promise.all([
           userManagementApi.getDepartmentOptions(),
           userManagementApi.getRoleOptions(),
-          userManagementApi.getPermissionOptions(),
         ]);
         setDepartments(depts);
         setAllRoles(roles);
-        setPermissions(perms);
 
         const currentDept = depts.find((d) => d.name === user.departmentName);
         const currentRole = roles.find((r) => r.roleName === user.roleName);
-        const currentPermIds = perms
-          .filter((p) => user.permissions?.includes(p.permissionName))
-          .map((p) => p.id);
 
         setForm((prev) => ({
           ...prev,
           departmentId: currentDept?.id ?? null,
           roleId: currentRole?.id ?? null,
+        }));
+
+        // Always use department from localStorage for initial permissions fetch
+        const departmentId = currentDept?.id ?? null;
+        const perms = await userManagementApi.getPermissionOptions(
+          departmentId ?? undefined,
+        );
+        setPermissions(perms);
+
+        const currentPermIds = perms
+          .filter((p) => user.permissions?.includes(p.permissionName))
+          .map((p) => p.id);
+        setForm((prev) => ({
+          ...prev,
           permissionIds: currentPermIds,
         }));
       } catch (err) {
         setOptionsError(
           err instanceof Error
-            ? err.message
+            ? "Failed to load options. Please try again."
             : "Failed to load options. Please try again.",
         );
       } finally {
@@ -199,6 +209,30 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     };
     fetchOptions();
   }, [user]);
+
+  // ── Refetch permissions when department changes ───────────────────────────
+  useEffect(() => {
+    if (form.departmentId) {
+      setLoadingOptions(true);
+      setOptionsError(null);
+      userManagementApi
+        .getPermissionOptions(form.departmentId)
+        .then((perms) => {
+          setPermissions(perms);
+          setForm((prev) => ({
+            ...prev,
+            permissionIds: prev.permissionIds.filter((id) =>
+              perms.some((p) => p.id === id),
+            ),
+          }));
+        })
+        .catch(() => {
+          setOptionsError("Failed to load permissions for department.");
+        })
+        .finally(() => setLoadingOptions(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.departmentId]);
 
   // ── Reset role when department changes ───────────────────────────────────────
   useEffect(() => {
@@ -677,7 +711,9 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                   {/* ── Select All checkbox row ── */}
                   <label
                     className={`flex items-center gap-2 text-sm px-3 py-2.5 border-b border-gray-200 cursor-pointer transition-colors font-semibold text-slate-700 ${
-                      allSelected ? "bg-blue-50" : "bg-gray-100 hover:bg-gray-200"
+                      allSelected
+                        ? "bg-blue-50"
+                        : "bg-gray-100 hover:bg-gray-200"
                     }`}
                   >
                     <input
@@ -692,7 +728,8 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                     <span>All Permissions</span>
                     {someSelected && (
                       <span className="ml-auto text-xs font-normal text-gray-400">
-                        {form.permissionIds.length} of {displayPerms.length} selected
+                        {form.permissionIds.length} of {displayPerms.length}{" "}
+                        selected
                       </span>
                     )}
                   </label>

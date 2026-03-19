@@ -185,8 +185,8 @@ const Docketview = () => {
 
   // ── Permissions ──────────────────────────────────────────────────────────────
 
-  const canView = hasPerm(userAccess, 'View Records');
-  const canEdit = hasPerm(userAccess, 'Edit Records');
+  const canView = hasPerm(userAccess, 'View Blotter Records');
+  const canEdit = hasPerm(userAccess, 'Update Case Status');
 
   // ── Nature filter options from API ───────────────────────────────────────────
 

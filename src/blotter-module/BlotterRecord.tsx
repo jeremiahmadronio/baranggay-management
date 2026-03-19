@@ -169,12 +169,7 @@ const BlotterRecordsPage: React.FC = () => {
     );
   };
 
-  const handleEscalate = (item: BlotterSummaryDTO, e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigate(
-      `/blotter/entry-form?escalate=${encodeURIComponent(item.blotterNumber)}`,
-    );
-  };
+ 
 
   const activeFilterCount = [
     appliedParams.status,
@@ -240,7 +235,7 @@ const BlotterRecordsPage: React.FC = () => {
     {
       key: "actions",
       header: "Actions",
-      width: "240px",
+      width: "100px",
       render: (item) => (
         <div className="flex items-center gap-2 flex-wrap">
           {/* View — always shown, passes blotterNumber to view page */}
@@ -273,27 +268,7 @@ const BlotterRecordsPage: React.FC = () => {
             View
           </button>
 
-          {normalizeStatus(item.status) === "recorded" && (
-            <button
-              onClick={(e) => handleEscalate(item, e)}
-              className="inline-flex items-center gap-1.4 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg ring-1 ring-blue-200 transition-colors whitespace-nowrap"
-            >
-              <svg
-                className="w-3.5 h-3.5 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 11l7-7 7 7M5 19l7-7 7 7"
-                />
-              </svg>
-              Escalate to Case
-            </button>
-          )}
+        
         </div>
       ),
     },

@@ -40,6 +40,7 @@ export const rootAdminNavItems: NavItemType[] = [
 // Blotter navigation items
 export const blotterNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/blotter/dashboard', icon: LayoutDashboard },
+  { label : 'Residents', path: '/blotter/residents', icon: Users},
   { label: 'Docket Books', path: '/blotter/docket', icon: Package },
   { label: 'New Complaints', path: '/blotter/entry-form', icon: MapPinHouse },
   { label: 'Records', path: '/blotter/records', icon: FileText },

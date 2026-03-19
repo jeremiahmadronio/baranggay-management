@@ -1,10 +1,10 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
-const BASE_URL  = `${BASE}/api/v1/user-management`;
+const BASE_URL = `${BASE}/api/v1/user-management`;
 const USERS_URL = `${BASE}/api/v1/users`;
-const PER_URL   = `${BASE}/api/v1/permission`;
-const DEPT_URL  = `${BASE}/api/v1/departments`;
-const ROLE_URL  = `${BASE}/api/v1/roles`;
+const PER_URL = `${BASE}/api/v1/permission`;
+const DEPT_URL = `${BASE}/api/v1/departments`;
+const ROLE_URL = `${BASE}/api/v1/roles`;
 
 const ENDPOINTS = {
   USER_STATS: "/stats",
@@ -156,7 +156,9 @@ export const userManagementApi = {
     if (params.search) qs.set("search", params.search);
     if (params.roleName) qs.set("roleName", params.roleName);
     if (params.departmentName) qs.set("departmentName", params.departmentName);
-    return apiFetch<Page<UserTable>>(`${ENDPOINTS.STAFF_TABLE}?${qs.toString()}`);
+    return apiFetch<Page<UserTable>>(
+      `${ENDPOINTS.STAFF_TABLE}?${qs.toString()}`,
+    );
   },
 
   getDepartmentOptions: (): Promise<Department[]> =>
@@ -165,8 +167,15 @@ export const userManagementApi = {
   getRoleOptions: (): Promise<Role[]> =>
     apiFetch<Role[]>("/staff-options", {}, ROLE_URL),
 
-  getPermissionOptions: (): Promise<Permission[]> =>
-    apiFetch<Permission[]>("/options", {}, PER_URL),
+  getPermissionOptions: (
+    departmentId?: string | number,
+  ): Promise<Permission[]> => {
+    const endpoint =
+      departmentId !== undefined && departmentId !== null
+        ? `/options?departmentId=${encodeURIComponent(String(departmentId))}`
+        : "/options";
+    return apiFetch<Permission[]>(endpoint, {}, PER_URL);
+  },
 
   createUser: (payload: CreateUserPayload): Promise<string> =>
     apiFetch<string>(ENDPOINTS.CREATE_USER, {

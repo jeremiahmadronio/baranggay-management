@@ -179,6 +179,11 @@ export interface CalendarMarkerDTO {
   totalHearings: number;
 }
 
+export interface IncidentOptionDTO{
+  id: number;
+  label: string;
+}
+
 //hearing busy slots for scheduling hearing
 export interface BusySlotDTO {
   startTime: string;
@@ -463,4 +468,9 @@ export async function getHearingFullDetails(
   return apiFetch<HearingFullDetailsDTO>(
     `${HEARING_URL}/hearing-details/${hearingId}`,
   );
+}
+
+
+export async function getFrequencyOptions(): Promise<IncidentOptionDTO[]> {
+  return apiFetch<IncidentOptionDTO[]>(`${BLOTTER_URL}/frequencies`);
 }

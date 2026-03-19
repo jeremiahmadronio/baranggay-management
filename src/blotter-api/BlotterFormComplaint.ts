@@ -14,6 +14,8 @@ export interface EvidenceOptionDTO {
 }
 
 export interface RecordBlotterEntry {
+  complainantId ?: number; 
+    respondentId ?: number;
   firstName: string;
   lastName: string;
   middleName?: string;
@@ -42,13 +44,17 @@ export interface RecordBlotterEntry {
 }
 
 export interface WitnessEntry {
-  firstName: string;
-  lastName: string;
+  personId: number;
+  fullName: string;
   contactNumber?: string;
   address?: string;
 }
 
 export interface FormalComplaintEntry {
+
+  complainantId ?: number;
+  respondentId ?: number;
+
   complainantLastName: string;
   complainantFirstName: string;
   complainantMiddleName?: string;
@@ -77,7 +83,7 @@ export interface FormalComplaintEntry {
   dateOfIncident: string;
   timeOfIncident?: string;
   placeOfIncident: string;
-  frequencyOfIncident?: string;
+  frequencyOfIncident?: number;
   descriptionOfInjuries?: string;
 
   narrativeStatement: string;

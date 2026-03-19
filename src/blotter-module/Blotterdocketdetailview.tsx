@@ -21,6 +21,7 @@ import {
   updateCaseStatus,
   getHearingFullDetails,
 } from "../blotter-api/DocketView";
+import { getMyAccess } from "../blotter-api/BlotterPermission";
 import { StatusBadge } from "../blotter-module/shared/StatusBadge";
 import { OverviewTab } from "../blotter-module/tabs/OverviewTab";
 import { HearingsTab } from "../blotter-module/tabs/HearingTab";
@@ -52,6 +53,9 @@ type ModalKey =
   | "changeStatus"
   | null;
 
+const HEARING_PERMISSION = "Manage Hearings & Mediation";
+const STATUS_PERMISSION = "Update Case Status";
+
 export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [docket, setDocket] = useState<BlotterDocketViewDTO | null>(null);
@@ -68,6 +72,22 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
   const [followUpHearing, setFollowUpHearing] = useState<HearingViewDTO | null>(null);
   const [fullHearing, setFullHearing] = useState<HearingFullDetailsDTO | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // ── Permissions — single fetch for all ──
+  const [hasHearingPerm, setHasHearingPerm] = useState(false);
+  const [hasStatusPerm, setHasStatusPerm] = useState(false);
+
+  useEffect(() => {
+    getMyAccess()
+      .then((access) => {
+        setHasHearingPerm(access.permissions.includes(HEARING_PERMISSION));
+        setHasStatusPerm(access.permissions.includes(STATUS_PERMISSION));
+      })
+      .catch(() => {
+        setHasHearingPerm(false);
+        setHasStatusPerm(false);
+      });
+  }, []);
 
   // ── Refresh data ──
   const refreshData = async () => {
@@ -94,7 +114,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
     setActionLoading(true);
     try {
       await updateCaseStatus({
-        blotterNumber: blotterNumber,
+        blotterNumber,
         newStatus: statusToSend,
         reason: reasonToSend,
       });
@@ -175,9 +195,11 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
     setActionLoading(true);
     try {
       await updateCaseStatus({
-        blotterNumber: blotterNumber,
+        blotterNumber,
         newStatus: "REFERRED_TO_LUPON",
-        reason: `Referred to Lupon. Pangkat: ${members.map((m) => `${m.firstName} ${m.lastName} (${m.position})`).join(", ")}`,
+        reason: `Referred to Lupon. Pangkat: ${members
+          .map((m) => `${m.firstName} ${m.lastName} (${m.position})`)
+          .join(", ")}`,
       });
       setModal(null);
       await refreshData();
@@ -236,17 +258,16 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           />
         )}
 
-        {/* ── CHANGE STATUS MODAL (single, uses ChangeStatusModal component) ── */}
         {modal === "changeStatus" && (
           <ChangeStatusModal
-            currentStatus={docket?.caseStatus || ""}
+            currentStatus={docket.caseStatus}
             loading={actionLoading}
+            hasPermission={hasStatusPerm}
             onConfirm={handleUpdateStatus}
             onCancel={() => setModal(null)}
           />
         )}
 
-        {/* ── SETTLE MODAL ── */}
         {modal === "settle" && (
           <ConfirmModal
             title="Mark as Settled"
@@ -265,7 +286,6 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           />
         )}
 
-        {/* ── DISMISS MODAL ── */}
         {modal === "dismiss" && (
           <ConfirmModal
             title="Dismiss Case"
@@ -284,7 +304,6 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           />
         )}
 
-        {/* ── ISSUE CFA MODAL ── */}
         {modal === "issueCFA" && (
           <ConfirmModal
             title="Issue CFA"
@@ -338,6 +357,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           <HearingMinutesModal
             hearing={fullHearing}
             isViewOnly={true}
+            hasPermission={hasHearingPerm}
             onClose={() => {
               setModal(null);
               setFullHearing(null);
@@ -354,6 +374,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           <FollowUpModal
             hearingId={followUpHearing.hearingId}
             caseNumber={blotterNumber}
+            hasPermission={hasHearingPerm}
             onSuccess={async () => {
               await refreshData();
               if (activeTab === "notes") loadNotes();
@@ -437,6 +458,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
             hearings={hearings}
             hearingsLoading={hearingsLoading}
             caseStatus={docket.caseStatus}
+            hasPermission={hasHearingPerm}
             onScheduleHearing={() => setModal("schedule")}
             onUpdateHearing={(h) => {
               setSelectedHearing(h);

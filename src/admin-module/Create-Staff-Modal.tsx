@@ -19,7 +19,6 @@ import {
 } from "../admin-module-api/user-management";
 import { ActionModal } from "../reusable/SuccessModal";
 
-// ─── Password Requirements ────────────────────────────────────────────────────
 
 interface PwReq {
   label: string;
@@ -259,11 +258,26 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     setErrors((prev) => ({ ...prev, permissionIds: undefined }));
   };
 
-  // ── Filter out "All Access" since we have "All Permissions" select-all ────────
-  const getDisplayPermissions = () =>
-    permissions.filter(
-      (p) => !p.permissionName.toLowerCase().includes("all access"),
+  // ── Filter permissions for BLOTTER department ────────
+  const BLOTTER_PERMISSIONS = [
+    "View Records",
+    "Create Records",
+    "Edit Records",
+    "Delete Records",
+    "Generate Report"
+  ];
+
+  const getDisplayPermissions = () => {
+    const selectedDept = departments.find((d) => d.id === form.departmentId);
+    if (selectedDept && selectedDept.name.toUpperCase() === "BLOTTER") {
+      return permissions.filter(
+        (p) => BLOTTER_PERMISSIONS.includes(p.permissionName)
+      );
+    }
+    return permissions.filter(
+      (p) => !p.permissionName.toLowerCase().includes("all access")
     );
+  };
 
   // ── Select All ────────────────────────────────────────────────────────────────
 

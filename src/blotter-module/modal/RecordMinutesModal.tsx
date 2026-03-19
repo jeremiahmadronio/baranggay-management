@@ -243,7 +243,7 @@ export function RecordMinutesModal({
                     (schedule next hearing)
                   </span>
                 </div>
-              </label>
+              </label>  
             </div>
           </div>
 

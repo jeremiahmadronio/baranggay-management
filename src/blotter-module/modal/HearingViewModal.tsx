@@ -1,4 +1,4 @@
-import  { useState } from 'react'
+import { useState } from "react";
 import {
   X,
   Send,
@@ -10,19 +10,20 @@ import {
   CheckCircle2,
   FileTextIcon,
   UserIcon,
-} from 'lucide-react'
+} from "lucide-react";
 import {
   recordHearingFollowUp,
   getHearingFullDetails,
   type HearingFullDetailsDTO,
   type FollowUpSummaryDTO,
-} from '../../blotter-api/DocketView'
-import { formatDateTime } from '../shared/utils'
+} from "../../blotter-api/DocketView";
+import { formatDateTime } from "../shared/utils";
 interface Props {
-  hearing: HearingFullDetailsDTO
-  isViewOnly: boolean
-  onClose: () => void
-  onSave: (data: any) => void
+  hearing: HearingFullDetailsDTO;
+  isViewOnly: boolean;
+  hasPermission: boolean;
+  onClose: () => void;
+  onSave: (data: any) => void;
 }
 export function HearingMinutesModal({
   hearing,
@@ -30,32 +31,32 @@ export function HearingMinutesModal({
   onClose,
   onSave,
 }: Props) {
-  const [notes, setNotes] = useState(hearing.minutes?.hearingNotes || '')
-  const [outcome, setOutcome] = useState(hearing.minutes?.outcome || '')
-  const [compPresent] = useState(hearing.minutes?.complainantPresent ?? true)
-  const [respPresent] = useState(hearing.minutes?.respondentPresent ?? true)
+  const [notes, setNotes] = useState(hearing.minutes?.hearingNotes || "");
+  const [outcome, setOutcome] = useState(hearing.minutes?.outcome || "");
+  const [compPresent] = useState(hearing.minutes?.complainantPresent ?? true);
+  const [respPresent] = useState(hearing.minutes?.respondentPresent ?? true);
   const [followUps, setFollowUps] = useState<FollowUpSummaryDTO[]>(
     hearing.followUps,
-  )
-  const [newFollowUp, setNewFollowUp] = useState('')
-  const [savingFollowUp, setSavingFollowUp] = useState(false)
+  );
+  const [newFollowUp, setNewFollowUp] = useState("");
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
   const handlePostFollowUp = async () => {
-    if (!newFollowUp.trim()) return
-    setSavingFollowUp(true)
+    if (!newFollowUp.trim()) return;
+    setSavingFollowUp(true);
     try {
       await recordHearingFollowUp(hearing.hearingId, {
         notes: newFollowUp.trim(),
-      })
-      setNewFollowUp('')
+      });
+      setNewFollowUp("");
       // toast.success('Follow-up posted successfully')
-      const updated = await getHearingFullDetails(hearing.hearingId)
-      setFollowUps(updated.followUps)
+      const updated = await getHearingFullDetails(hearing.hearingId);
+      setFollowUps(updated.followUps);
     } catch (err: any) {
       // toast.error(err.message || 'Failed to post follow-up')
     } finally {
-      setSavingFollowUp(false)
+      setSavingFollowUp(false);
     }
-  }
+  };
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden">
@@ -68,7 +69,7 @@ export function HearingMinutesModal({
                   Hearing Minutes {hearing.summonNumber}
                 </h3>
                 <span
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${hearing.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${hearing.status === "COMPLETED" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
                 >
                   {hearing.status}
                 </span>
@@ -78,10 +79,10 @@ export function HearingMinutesModal({
                   <MapPin className="w-4 h-4 text-blue-400" /> {hearing.venue}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-blue-400" />{' '}
+                  <Clock className="w-4 h-4 text-blue-400" />{" "}
                   {formatDateTime(
-                    hearing.scheduledStart.split('T')[0],
-                    hearing.scheduledStart.split('T')[1],
+                    hearing.scheduledStart.split("T")[0],
+                    hearing.scheduledStart.split("T")[1],
                   )}
                 </span>
               </div>
@@ -107,15 +108,15 @@ export function HearingMinutesModal({
             <div className="p-5">
               {isViewOnly ? (
                 <div
-                  className={`flex items-center gap-3 p-4 rounded-lg border-l-4 bg-gray-50 ${outcome === 'SETTLED' ? 'border-l-emerald-500' : outcome === 'NOT_SETTLED' ? 'border-l-red-400' : 'border-l-gray-300'}`}
+                  className={`flex items-center gap-3 p-4 rounded-lg border-l-4 bg-gray-50 ${outcome === "SETTLED" ? "border-l-emerald-500" : outcome === "NOT_SETTLED" ? "border-l-red-400" : "border-l-gray-300"}`}
                 >
-                  {outcome === 'SETTLED' ? (
+                  {outcome === "SETTLED" ? (
                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                   ) : (
                     <AlertCircle className="w-5 h-5 text-red-400" />
                   )}
                   <span className="text-sm font-bold text-gray-900 uppercase tracking-wide">
-                    {outcome || 'PENDING'}
+                    {outcome || "PENDING"}
                   </span>
                 </div>
               ) : (
@@ -138,7 +139,7 @@ export function HearingMinutesModal({
               <Info className="w-4 h-4" /> Initial Context
             </p>
             <p className="text-sm text-gray-700 leading-relaxed">
-              {hearing.initialNotes || 'No initial notes provided.'}
+              {hearing.initialNotes || "No initial notes provided."}
             </p>
           </div>
 
@@ -155,12 +156,12 @@ export function HearingMinutesModal({
                   Complainant
                 </p>
                 <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${compPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${compPresent ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
                 >
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${compPresent ? 'bg-emerald-500' : 'bg-red-500'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${compPresent ? "bg-emerald-500" : "bg-red-500"}`}
                   />
-                  {compPresent ? 'Present' : 'Absent'}
+                  {compPresent ? "Present" : "Absent"}
                 </span>
               </div>
               <div className="p-4 text-center">
@@ -168,12 +169,12 @@ export function HearingMinutesModal({
                   Respondent
                 </p>
                 <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${respPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${respPresent ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
                 >
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${respPresent ? 'bg-emerald-500' : 'bg-red-500'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${respPresent ? "bg-emerald-500" : "bg-red-500"}`}
                   />
-                  {respPresent ? 'Present' : 'Absent'}
+                  {respPresent ? "Present" : "Absent"}
                 </span>
               </div>
             </div>
@@ -234,8 +235,8 @@ export function HearingMinutesModal({
                         <span>•</span>
                         <span className="font-medium">
                           {formatDateTime(
-                            f.createdAt.split('T')[0],
-                            f.createdAt.split('T')[1],
+                            f.createdAt.split("T")[0],
+                            f.createdAt.split("T")[1],
                           )}
                         </span>
                       </div>
@@ -274,7 +275,7 @@ export function HearingMinutesModal({
             onClick={onClose}
             className="px-5 py-2.5 text-sm font-semibold border border-gray-200 rounded-lg text-gray-600 bg-white hover:bg-gray-50 transition-colors"
           >
-            {isViewOnly ? 'Close' : 'Cancel'}
+            {isViewOnly ? "Close" : "Cancel"}
           </button>
           {!isViewOnly && (
             <button
@@ -295,5 +296,5 @@ export function HearingMinutesModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
