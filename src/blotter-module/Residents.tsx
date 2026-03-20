@@ -6,8 +6,8 @@ import { ResidentProfilePage } from "./ResidentView";
 import {
   getResidentTable,
   getResidentProfile,
-} from "../blotter-api/resident";
-import type { ResidentSummary } from "../blotter-api/resident";
+} from "../blotter-api/Resident";
+import type { ResidentSummary } from "../blotter-api/Resident";
 
 function useDebounce<T>(value: T, delay = 400): T {
   const [debounced, setDebounced] = useState(value);

@@ -8,21 +8,28 @@ import {
   LockIcon,
   MessageSquarePlus,
   ShieldOffIcon,
-} from 'lucide-react'
-import type { HearingViewDTO } from '../../blotter-api/DocketView'
-import { HEARING_STATUS_CONFIG, isTerminalStatus } from '../shared/StatusBadge'
-import { SectionCard } from '../shared/SectionCard'
-import { formatDate, formatTime } from '../shared/utils'
+  PrinterIcon,
+} from "lucide-react";
+import type { HearingViewDTO } from "../../blotter-api/DocketView";
+import { HEARING_STATUS_CONFIG, isTerminalStatus } from "../shared/StatusBadge";
+import { SectionCard } from "../shared/SectionCard";
+import { formatDate, formatTime } from "../shared/utils";
+import { generatePaanyaya } from "../modal/GeneratePaanyaya";
 
 interface HearingsTabProps {
-  hearings: HearingViewDTO[]
-  hearingsLoading: boolean
-  caseStatus: string
-  hasPermission: boolean // "Manage Hearings & Mediation"
-  onScheduleHearing: () => void
-  onUpdateHearing: (hearing: HearingViewDTO) => void
-  onAddFollowUp: (hearing: HearingViewDTO) => void
-  onViewMinutes: (hearing: HearingViewDTO) => void
+  hearings: HearingViewDTO[];
+  hearingsLoading: boolean;
+  caseStatus: string;
+  hasPermission: boolean;
+  blotterNumber: string;
+  caseNumber: string;
+  natureOfComplaint: string;
+  complainantName: string;
+  respondentName: string;
+  onScheduleHearing: () => void;
+  onUpdateHearing: (hearing: HearingViewDTO) => void;
+  onAddFollowUp: (hearing: HearingViewDTO) => void;
+  onViewMinutes: (hearing: HearingViewDTO) => void;
 }
 
 export function HearingsTab({
@@ -30,20 +37,52 @@ export function HearingsTab({
   hearingsLoading,
   caseStatus,
   hasPermission,
+  blotterNumber,
+  caseNumber,
+  natureOfComplaint,
+  complainantName,
+  respondentName,
   onScheduleHearing,
   onUpdateHearing,
   onViewMinutes,
   onAddFollowUp,
 }: HearingsTabProps) {
-  const isTerminal = isTerminalStatus(caseStatus)
+  const isTerminal = isTerminalStatus(caseStatus);
+
   const isHearingInFuture = (dateStr: string, timeStr: string) => {
-    const scheduledDateTime = new Date(`${dateStr}T${timeStr}`)
-    return scheduledDateTime > new Date()
-  }
+    const scheduledDateTime = new Date(`${dateStr}T${timeStr}`);
+    return scheduledDateTime > new Date();
+  };
+
+  const handlePrintPaanyaya = (h: HearingViewDTO) => {
+    generatePaanyaya({
+      blotterNumber,
+      caseNumber,
+      natureOfComplaint,
+      complainantName,
+      respondentName,
+      hearingNumber: h.hearingNumber,
+      date: h.date,
+      startTime: h.startTime,
+      endTime: h.endTime,
+      venue: h.venue,
+    });
+  };
+
+  // Check department from localStorage
+  let userDepartment = "";
+  try {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      userDepartment = user?.department || "";
+    }
+  } catch {}
+  const isBlotterDept = userDepartment.toUpperCase() === "BLOTTER";
+  const isUnderConciliation = caseStatus === "UNDER_CONCILIATION";
 
   return (
     <div className="space-y-3">
-      {/* Permission warning banner */}
       {!hasPermission && (
         <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
           <ShieldOffIcon className="w-4 h-4 shrink-0" />
@@ -58,13 +97,13 @@ export function HearingsTab({
         title="Mediation Hearings"
         icon={<CalendarDaysIcon className="w-4 h-4 text-gray-400" />}
         action={
-          !isTerminal ? (
+          !isTerminal && !(isUnderConciliation && isBlotterDept) ? (
             <button
               onClick={onScheduleHearing}
               disabled={!hasPermission}
               title={
                 !hasPermission
-                  ? 'You do not have permission to manage hearings'
+                  ? "You do not have permission to manage hearings"
                   : undefined
               }
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
@@ -90,21 +129,22 @@ export function HearingsTab({
         {!hearingsLoading && hearings.length > 0 && (
           <div className="space-y-3">
             {hearings.map((h) => {
-              const isCompleted = h.status === 'COMPLETED'
-              const isTimeLocked = isHearingInFuture(h.date, h.startTime)
+              const isCompleted = h.status === "COMPLETED";
+              const isTimeLocked = isHearingInFuture(h.date, h.startTime);
 
               return (
                 <div
                   key={h.hearingId}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100 gap-4"
                 >
+                  {/* ── Left: Hearing info ── */}
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-base font-bold text-gray-900">
                         Hearing {h.hearingNumber}
                       </span>
                       <span
-                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-tight ${HEARING_STATUS_CONFIG[h.status] ?? 'bg-gray-100 text-gray-600'}`}
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-tight ${HEARING_STATUS_CONFIG[h.status] ?? "bg-gray-100 text-gray-600"}`}
                       >
                         {h.status}
                       </span>
@@ -125,33 +165,47 @@ export function HearingsTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100">
+                  <div className="flex items-center gap-3 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 flex-wrap">
+                    {!isTerminal && (
+                      <>
+                        <button
+                          onClick={() => handlePrintPaanyaya(h)}
+                          title="I-print ang Paanyaya (Summon Letter)"
+                          className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors"
+                        >
+                          <PrinterIcon className="w-3.5 h-3.5" /> Paanyaya
+                        </button>
+
+                        <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+                      </>
+                    )}
+
                     {isCompleted ? (
-                      <div className="flex items-center gap-4">
-                        {/* View Minutes — always visible, read-only is fine */}
+                      <div className="flex items-center gap-3">
                         <button
                           onClick={() => onViewMinutes(h)}
                           className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
                         >
                           View Minutes <ChevronRightIcon className="w-4 h-4" />
                         </button>
-
-                        <div className="w-px h-4 bg-gray-300 hidden sm:block" />
-
-                        {/* Follow-up — needs permission */}
-                        <button
-                          onClick={() => onAddFollowUp(h)}
-                          disabled={!hasPermission}
-                          title={
-                            !hasPermission
-                              ? 'You do not have permission to manage hearings'
-                              : undefined
-                          }
-                          className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <MessageSquarePlus className="w-3.5 h-3.5" />{' '}
-                          Follow-up
-                        </button>
+                        {!isTerminal && (
+                          <>
+                            <div className="w-px h-4 bg-gray-300 hidden sm:block" />
+                            <button
+                              onClick={() => onAddFollowUp(h)}
+                              disabled={!hasPermission}
+                              title={
+                                !hasPermission
+                                  ? "You do not have permission to manage hearings"
+                                  : undefined
+                              }
+                              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <MessageSquarePlus className="w-3.5 h-3.5" />{" "}
+                              Follow-up
+                            </button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       !isTerminal && (
@@ -160,15 +214,15 @@ export function HearingsTab({
                           onClick={() => onUpdateHearing(h)}
                           title={
                             !hasPermission
-                              ? 'You do not have permission to manage hearings'
+                              ? "You do not have permission to manage hearings"
                               : isTimeLocked
-                              ? 'Cannot update until scheduled time arrives'
-                              : undefined
+                                ? "Cannot update until scheduled time arrives"
+                                : undefined
                           }
                           className={`flex items-center gap-1 text-sm font-medium transition-colors ${
                             isTimeLocked || !hasPermission
-                              ? 'text-gray-400 cursor-not-allowed'
-                              : 'text-blue-600 hover:text-blue-700'
+                              ? "text-gray-400 cursor-not-allowed"
+                              : "text-blue-600 hover:text-blue-700"
                           }`}
                         >
                           {isTimeLocked ? (
@@ -177,7 +231,7 @@ export function HearingsTab({
                             </>
                           ) : (
                             <>
-                              Update Hearing{' '}
+                              Update Hearing{" "}
                               <ChevronRightIcon className="w-4 h-4" />
                             </>
                           )}
@@ -186,11 +240,11 @@ export function HearingsTab({
                     )}
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         )}
       </SectionCard>
     </div>
-  )
+  );
 }

@@ -15,6 +15,7 @@ import type {
   BusySlotDTO,
 } from '../../blotter-api/DocketView'
 import { scheduleHearing, getMarkers, getBusySlots } from '../../blotter-api/DocketView'
+import { generatePaanyaya } from '../modal/GeneratePaanyaya'
 
 // ── Constants ──
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -36,6 +37,14 @@ const VENUE_OPTIONS = [
   'Lupong Tagapamayapa Office',
   'Other (specify)',
 ]
+
+// ── Barangay config — i-edit mo ito ──
+const BARANGAY_CONFIG = {
+  barangayName: 'Barangay [Pangalan]',
+  cityMunicipality: '[Lungsod/Munisipalidad]',
+  province: '[Lalawigan]',
+  punongBarangay: '[Punong Barangay]',
+}
 
 // ── Helpers ──
 const getDaysInMonth = (year: number, month: number) =>
@@ -75,11 +84,25 @@ const TIME_MESSAGES: Record<Exclude<TimeStatus, null | 'valid'>, string> = {
 interface Props {
   blotterNumber: string
   hearingNumber: number
+  // ← Para sa paanyaya PDF
+  caseNumber: string
+  natureOfComplaint: string
+  complainantName: string
+  respondentName: string
   onSuccess: () => void
   onCancel: () => void
 }
 
-export function ScheduleHearingModal({ blotterNumber, hearingNumber, onSuccess, onCancel }: Props) {
+export function ScheduleHearingModal({
+  blotterNumber,
+  hearingNumber,
+  caseNumber,
+  natureOfComplaint,
+  complainantName,
+  respondentName,
+  onSuccess,
+  onCancel,
+}: Props) {
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
@@ -157,6 +180,22 @@ export function ScheduleHearingModal({ blotterNumber, hearingNumber, onSuccess, 
         notes: notes.trim() || undefined,
       }
       await scheduleHearing(body)
+
+      // ── Auto-generate Paanyaya PDF after successful schedule ──
+      generatePaanyaya({
+        blotterNumber,
+        caseNumber,
+        natureOfComplaint,
+        complainantName,
+        respondentName,
+        hearingNumber,
+        date: selectedDate,
+        startTime,
+        endTime,
+        venue: finalVenue,
+        ...BARANGAY_CONFIG,
+      })
+
       onSuccess()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to schedule hearing.')
@@ -183,7 +222,10 @@ export function ScheduleHearingModal({ blotterNumber, hearingNumber, onSuccess, 
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h3 className="text-base font-bold text-gray-900">Schedule Summon #{hearingNumber}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Pick a date, set a time within office hours, then confirm.</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Pick a date, set a time within office hours, then confirm.
+              A summon letter (Paanyaya) will be generated automatically.
+            </p>
           </div>
           <button
             onClick={onCancel}
@@ -391,8 +433,13 @@ export function ScheduleHearingModal({ blotterNumber, hearingNumber, onSuccess, 
               {loading && (
                 <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               )}
-              Confirm & Schedule
+                Schedule Hearing & Generate Paanyaya
             </button>
+
+            {/* PDF notice */}
+            <p className="text-[10px] text-gray-400 text-center leading-relaxed">
+              Ang Paanyaya (summon letter) ay awtomatikong magbubukas pagkatapos mag-schedule.
+            </p>
           </div>
         </div>
       </div>

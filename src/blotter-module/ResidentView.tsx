@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ResidentProfileViewDTO } from "../blotter-api/resident";
+import type { ResidentProfileViewDTO } from "../blotter-api/Resident";
 
 interface ResidentProfilePageProps {
   residentId: number;
@@ -32,10 +32,10 @@ function InfoField({
     value === null || value === undefined || value === ""
       ? "—"
       : typeof value === "boolean"
-      ? value
-        ? "Yes"
-        : "No"
-      : String(value);
+        ? value
+          ? "Yes"
+          : "No"
+        : String(value);
 
   return (
     <div>
@@ -109,14 +109,22 @@ export function ResidentProfilePage({
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
-
         {/* Back + Header */}
         <div>
           <button
             onClick={onBack}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-4"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             Back to Residents
@@ -141,7 +149,16 @@ export function ResidentProfilePage({
                   )}
                   {profile?.isVoter && (
                     <span className="text-xs font-medium bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       Registered Voter
@@ -154,8 +171,8 @@ export function ResidentProfilePage({
                   )}
                 </div>
                 <p className="text-sm text-gray-500 mt-1.5">
-                  {profile?.occupation || "No occupation listed"} •{" "}
-                  Household No. {profile?.householdNumber || "N/A"}
+                  {profile?.occupation || "No occupation listed"} • Household
+                  No. {profile?.householdNumber || "N/A"}
                 </p>
               </div>
             </div>
@@ -165,7 +182,14 @@ export function ResidentProfilePage({
         {/* Error state */}
         {error && (
           <div className="flex flex-col items-center justify-center py-24 text-red-500 gap-3 bg-white rounded-xl border border-gray-200">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -214,7 +238,10 @@ export function ResidentProfilePage({
               {loading && (
                 <div className="flex flex-col gap-5">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+                    <div
+                      key={i}
+                      className="border border-gray-200 rounded-xl p-6 flex flex-col gap-4"
+                    >
                       <SkeletonBlock className="h-4 w-32" />
                       <div className="grid grid-cols-2 gap-4">
                         {[...Array(6)].map((_, j) => (
@@ -235,7 +262,16 @@ export function ResidentProfilePage({
                   <SectionCard
                     title="Personal Information"
                     icon={
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                         <circle cx="12" cy="7" r="4" />
                       </svg>
@@ -244,13 +280,30 @@ export function ResidentProfilePage({
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-5">
                       <InfoField label="Full Name" value={profile.fullName} />
                       <InfoField label="Gender" value={profile.gender} />
-                      <InfoField label="Date of Birth" value={formatDate(profile.birthDate)} />
-                      <InfoField label="Age" value={profile.age ? `${profile.age} years old` : undefined} />
-                      <InfoField label="Civil Status" value={profile.civilStatus} />
+                      <InfoField
+                        label="Date of Birth"
+                        value={formatDate(profile.birthDate)}
+                      />
+                      <InfoField
+                        label="Age"
+                        value={
+                          profile.age ? `${profile.age} years old` : undefined
+                        }
+                      />
+                      <InfoField
+                        label="Civil Status"
+                        value={profile.civilStatus}
+                      />
                       <InfoField label="Blood Type" value={profile.bloodType} />
-                      <InfoField label="Citizenship" value={profile.citizenship} />
+                      <InfoField
+                        label="Citizenship"
+                        value={profile.citizenship}
+                      />
                       <InfoField label="Religion" value={profile.religion} />
-                      <InfoField label="Occupation" value={profile.occupation} />
+                      <InfoField
+                        label="Occupation"
+                        value={profile.occupation}
+                      />
                     </div>
                   </SectionCard>
 
@@ -260,15 +313,30 @@ export function ResidentProfilePage({
                     <SectionCard
                       title="Contact & Address"
                       icon={
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .99h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.09a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0121 15l-.08 1.92z" />
                         </svg>
                       }
                     >
                       <div className="flex flex-col gap-5">
-                        <InfoField label="Contact Number" value={profile.contactNumber} />
+                        <InfoField
+                          label="Contact Number"
+                          value={profile.contactNumber}
+                        />
                         <InfoField label="Email" value={profile.email} />
-                        <InfoField label="Complete Address" value={profile.completeAddress} />
+                        <InfoField
+                          label="Complete Address"
+                          value={profile.completeAddress}
+                        />
                       </div>
                     </SectionCard>
 
@@ -276,19 +344,46 @@ export function ResidentProfilePage({
                     <SectionCard
                       title="Barangay Records"
                       icon={
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <rect x="2" y="3" width="20" height="14" rx="2" />
                           <path d="M8 21h8M12 17v4" />
                         </svg>
                       }
                     >
                       <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-                        <InfoField label="Barangay ID" value={profile.barangayIdNumber} />
-                        <InfoField label="Household No." value={profile.householdNumber} />
-                        <InfoField label="Precinct No." value={profile.precinctNumber} />
-                        <InfoField label="Date of Residency" value={formatDate(profile.dateOfResidency)} />
-                        <InfoField label="Registered Voter" value={profile.isVoter} />
-                        <InfoField label="Head of Family" value={profile.isHeadOfFamily} />
+                        <InfoField
+                          label="Barangay ID"
+                          value={profile.barangayIdNumber}
+                        />
+                        <InfoField
+                          label="Household No."
+                          value={profile.householdNumber}
+                        />
+                        <InfoField
+                          label="Precinct No."
+                          value={profile.precinctNumber}
+                        />
+                        <InfoField
+                          label="Date of Residency"
+                          value={formatDate(profile.dateOfResidency)}
+                        />
+                        <InfoField
+                          label="Registered Voter"
+                          value={profile.isVoter}
+                        />
+                        <InfoField
+                          label="Head of Family"
+                          value={profile.isHeadOfFamily}
+                        />
                       </div>
                     </SectionCard>
                   </div>
@@ -299,10 +394,20 @@ export function ResidentProfilePage({
                 <>
                   {!profile.cases || profile.cases.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="mb-3">
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.2"
+                        className="mb-3"
+                      >
                         <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <p className="text-sm font-medium text-gray-500">No case history found</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        No case history found
+                      </p>
                       <p className="text-xs mt-1 text-gray-400">
                         This resident has no recorded blotter entries.
                       </p>
@@ -311,11 +416,21 @@ export function ResidentProfilePage({
                     <div className="flex flex-col gap-3">
                       {/* Case list header */}
                       <div className="grid grid-cols-12 gap-4 px-4 py-2">
-                        <p className="col-span-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Blotter No.</p>
-                        <p className="col-span-4 text-xs font-semibold uppercase tracking-wider text-gray-400">Nature of Complaint</p>
-                        <p className="col-span-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Date Filed</p>
-                        <p className="col-span-2 text-xs font-semibold uppercase tracking-wider text-gray-400 text-right">Status</p>
-                        <p className="col-span-1 text-xs font-semibold uppercase tracking-wider text-gray-400 text-right">Role</p>
+                        <p className="col-span-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                          Blotter No.
+                        </p>
+                        <p className="col-span-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                          Nature of Complaint
+                        </p>
+                        <p className="col-span-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                          Date Filed
+                        </p>
+                        <p className="col-span-2 text-xs font-semibold uppercase tracking-wider text-gray-400 text-right">
+                          Status
+                        </p>
+                        <p className="col-span-1 text-xs font-semibold uppercase tracking-wider text-gray-400 text-right">
+                          Role
+                        </p>
                       </div>
 
                       {profile.cases.map((c, i) => (
@@ -332,10 +447,11 @@ export function ResidentProfilePage({
                           <p className="col-span-2 text-xs text-gray-400">
                             {formatDate(c.dateFiled)}
                           </p>
-                          <div className="col-span-2 flex justify-end">
+                          <div className="col-span-2 flex justify-end min-w-[130px]">
                             <span
-                              className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                                STATUS_COLORS[c.status] ?? "bg-gray-100 text-gray-600"
+                              className={`text-xs px-5 py-1 rounded-full font-medium ${
+                                STATUS_COLORS[c.status] ??
+                                "bg-gray-100 text-gray-600"
                               }`}
                             >
                               {c.status}

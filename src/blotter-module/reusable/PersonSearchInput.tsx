@@ -2,7 +2,7 @@ import  { useEffect, useState, useRef } from 'react'
 import {
   searchPeople,
 type  PersonSearchResponseDTO,
-} from '../../blotter-api/resident'
+} from '../../blotter-api/Resident'
 import { Search, Loader2 } from 'lucide-react'
 interface PersonSearchInputProps {
   label?: string

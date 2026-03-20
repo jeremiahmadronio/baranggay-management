@@ -1,42 +1,15 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
-const PERMISSION_URL = `${BASE}/api/v1/permission`;
+const LUPON_URL = `${BASE}/api/v1/lupon`;
 
-// --- DTOs ---
-
-export interface PermissionOptions {
-  id: number;
-  name: string;
-  description?: string;
-  module?: string;
+export interface PangkatMemberDTO {
+  firstName: string;
+  lastName: string;
+  position: string;
 }
 
-export interface UserAccessPermission {
-  userId: string; // UUID sa Java is string sa TS
-  username: string;
-  role: string;
-  department: string;
-  permissions: string[];
+export interface ReferToLuponRequest {
+  members: PangkatMemberDTO[];
 }
-export interface UserSecurityProfile {
-  userId: string;
-  username: string;
-  role: string;
-  department: string;
-  permissions: string[]; // Ito ang tinitignan ng hasPerm helper mo
-}
-
-
-
-export async function getPermissionOptions(): Promise<PermissionOptions[]> {
-  return apiFetch<PermissionOptions[]>(`${PERMISSION_URL}/options`);
-}
-
-
-        export async function getMyAccess(): Promise<UserAccessPermission> {
-        return apiFetch<UserAccessPermission>(`${PERMISSION_URL}/my-access`);
-        }
-
-// --- Reusable Fetch Logic (Kung hiwalay na file ito, i-import mo na lang) ---
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
@@ -67,4 +40,14 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/json")) return response.json();
   return response.text() as unknown as T;
+}
+
+export async function referToLupon(
+  caseId: number, 
+  body: ReferToLuponRequest
+): Promise<string> {
+  return apiFetch<string>(`${LUPON_URL}/refer-to-lupon/${caseId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 }

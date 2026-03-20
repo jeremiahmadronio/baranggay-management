@@ -1,176 +1,132 @@
-import {BlotterDocketDetailView} from './Blotterdocketdetailview';
-import { useState, useEffect, useCallback } from 'react';
-import { Eye, AlertCircle } from 'lucide-react';
-import { KPICard, KPIGrid, KPIIcons } from '../reusable/KPICard';
-import { Table, type TableColumn } from '../reusable';
-import { TableFilter } from '../reusable/TableFilter';
-import type { DocketTableParams, BlotterSummaryDTO, BlotterStatsDTO } from '../blotter-api/DocketView';
-import { getDocketTable, getDocketStats, updateCaseStatus } from '../blotter-api/DocketView';
-import { getMyAccess, type UserSecurityProfile } from '../blotter-api/BlotterPermission';
-import { getNatureOfComplaintOptions, type NatureOptionDTO } from '../blotter-api/BlotterFormComplaint';
-import { StatusBadge, type StatusType } from '../reusable/StatusBadge';
+import { BlotterDocketDetailView } from './Blotterdocketdetailview'
+import { useState, useEffect, useCallback } from 'react'
+import { Eye, AlertCircle } from 'lucide-react'
+import { KPICard, KPIGrid, KPIIcons } from '../reusable/KPICard'
+import { Table, type TableColumn } from '../reusable'
+import { TableFilter } from '../reusable/TableFilter'
+import type {
+  DocketTableParams,
+  BlotterSummaryDTO,
+  BlotterStatsDTO,
+} from '../blotter-api/DocketView'
+import {
+  getDocketTable,
+  getDocketStats,
+  
+} from '../blotter-api/DocketView'
+import { getMyAccess, type UserSecurityProfile } from '../blotter-api/BlotterPermission'
+import {
+  getNatureOfComplaintOptions,
+  type NatureOptionDTO,
+} from '../blotter-api/BlotterFormComplaint'
+import { StatusBadge, type StatusType } from '../reusable/StatusBadge'
+import {
+  ReferToLuponModal,
+  type PangkatMember,
+} from './modal/ReferToLuponModal' // ← adjust path to wherever you put it
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatDate = (dateStr: string) => {
-  if (!dateStr) return '—';
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
-};
+  if (!dateStr) return '—'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
+  return date.toLocaleDateString('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
 
 const hasPerm = (user: UserSecurityProfile | null, perm: string) =>
-  user?.permissions.includes(perm) ?? false;
+  user?.permissions.includes(perm) ?? false
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 10
 
-// Status options are static enums — hardcoded is correct here
 const STATUS_FILTER_OPTIONS = [
-  { label: 'Pending',           value: 'PENDING' },
-  { label: 'Settled',           value: 'SETTLED' },
-  { label: 'Dismissed',         value: 'DISMISSED' },
-  { label: 'Under Mediation',   value: 'UNDER_MEDIATION' },
-  { label: 'Escalate to Lupon', value: 'REFERRED_TO_LUPON' },
-  { label: 'Expired / Unactioned',          value: 'EXPIRED_UNACTIONED' },
-];
+  { label: 'Pending',              value: 'PENDING' },
+  { label: 'Settled',              value: 'SETTLED' },
+  { label: 'Dismissed',            value: 'DISMISSED' },
+  { label: 'Under Mediation',      value: 'UNDER_MEDIATION' },
+  { label: 'Escalate to Lupon',    value: 'REFERRED_TO_LUPON' },
+  { label: 'Expired / Unactioned', value: 'EXPIRED_UNACTIONED' },
+]
 
-// Direct StatusType mapping — no middleman
 const DOCKET_STATUS_MAP: Record<string, { type: StatusType; label: string }> = {
-  DISMISSED:         { type: 'danger',  label: 'Dismissed' },
-  UNDER_MEDIATION:   { type: 'info',    label: 'Under Mediation' },
-  PENDING:           { type: 'pending', label: 'Pending' },
-  REFERRED_TO_LUPON: { type: 'info',    label: 'Referred to Lupon' },
-  EXPIRED_UNACTIONED:          { type: 'warning', label: 'Expired / Unactioned' },
-  SETTLED:           { type: 'success', label: 'Settled' },
-};
-
-// ─── Forward to Lupon Modal ───────────────────────────────────────────────────
-
-interface ForwardModalProps {
-  entry: BlotterSummaryDTO;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading: boolean;
+  DISMISSED:          { type: 'danger',  label: 'Dismissed' },
+  UNDER_MEDIATION:    { type: 'info',    label: 'Under Mediation' },
+  PENDING:            { type: 'pending', label: 'Pending' },
+  REFERRED_TO_LUPON:  { type: 'info',    label: 'Referred to Lupon' },
+  EXPIRED_UNACTIONED: { type: 'warning', label: 'Expired / Unactioned' },
+  SETTLED:            { type: 'success', label: 'Settled' },
 }
-
-const ForwardToLuponModal = ({ entry, onConfirm, onCancel, loading }: ForwardModalProps) => (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-gray-800">Escalate to Lupon</h2>
-          <p className="text-xs text-gray-500">This action will escalate the case to Lupon Tagapamayapa.</p>
-        </div>
-      </div>
-
-      <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 my-4 space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-gray-500">Case No.</span>
-          <span className="font-medium text-blue-600">{entry.blotterNumber}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Complainant</span>
-          <span className="font-medium text-gray-800">{entry.complainantName}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Respondent</span>
-          <span className="font-medium text-gray-800">{entry.respondentName}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Nature</span>
-          <span className="font-medium text-gray-800 text-right max-w-[200px]">{entry.natureOfComplaint}</span>
-        </div>
-      </div>
-
-      <div className="flex gap-2 justify-end">
-        <button
-          onClick={onCancel}
-          disabled={loading}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={loading}
-          className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 flex items-center gap-2 transition-colors"
-        >
-          {loading && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-          Confirm Escalation
-        </button>
-      </div>
-    </div>
-  </div>
-);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const Docketview = () => {
-  const [selectedBlotterNumber, setSelectedBlotterNumber] = useState<string | null>(null);
+  const [selectedBlotterNumber, setSelectedBlotterNumber] = useState<string | null>(null)
 
   // Filter state
-  const [search,    setSearch]    = useState('');
-  const [status,    setStatus]    = useState('');
-  const [natureId,  setNatureId]  = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate,   setEndDate]   = useState('');
+  const [search,    setSearch]    = useState('')
+  const [status,    setStatus]    = useState('')
+  const [natureId,  setNatureId]  = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate,   setEndDate]   = useState('')
 
   // Query params
   const [params, setParams] = useState<DocketTableParams>({
     search: '', status: '', natureId: undefined,
     start: '', end: '', page: 0, size: PAGE_SIZE, sort: 'createdAt,desc',
-  });
+  })
 
   // Data state
-  const [userAccess,     setUserAccess]     = useState<UserSecurityProfile | null>(null);
-  const [tableData,      setTableData]      = useState<BlotterSummaryDTO[]>([]);
-  const [stats,          setStats]          = useState<BlotterStatsDTO | null>(null);
-  const [natureOptions,  setNatureOptions]  = useState<NatureOptionDTO[]>([]);
-  const [totalPages,     setTotalPages]     = useState(0);
-  const [totalElements,  setTotalElements]  = useState(0);
-  const [currentPage,    setCurrentPage]    = useState(0);
-  const [loading,        setLoading]        = useState(false);
-  const [statsLoading,   setStatsLoading]   = useState(false);
-  const [fetchError,     setFetchError]     = useState<string | null>(null);
-  const [selectedEntry,  setSelectedEntry]  = useState<BlotterSummaryDTO | null>(null);
-  const [forwardLoading, setForwardLoading] = useState(false);
+  const [userAccess,    setUserAccess]    = useState<UserSecurityProfile | null>(null)
+  const [tableData,     setTableData]     = useState<BlotterSummaryDTO[]>([])
+  const [stats,         setStats]         = useState<BlotterStatsDTO | null>(null)
+  const [natureOptions, setNatureOptions] = useState<NatureOptionDTO[]>([])
+  const [totalPages,    setTotalPages]    = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [currentPage,   setCurrentPage]   = useState(0)
+  const [loading,       setLoading]       = useState(false)
+  const [statsLoading,  setStatsLoading]  = useState(false)
+  const [fetchError,    setFetchError]    = useState<string | null>(null)
 
-  // ── Fetch ────────────────────────────────────────────────────────────────────
+  // Refer to Lupon modal state
+  const [referEntry,   setReferEntry]   = useState<BlotterSummaryDTO | null>(null)
+  const [referLoading, setReferLoading] = useState(false)
+
+  // ── Fetch ─────────────────────────────────────────────────────────────────
 
   const fetchStats = useCallback(async () => {
-    setStatsLoading(true);
+    setStatsLoading(true)
     try {
-      setStats(await getDocketStats());
+      setStats(await getDocketStats())
     } catch {
       // non-critical
     } finally {
-      setStatsLoading(false);
+      setStatsLoading(false)
     }
-  }, []);
+  }, [])
 
   const fetchTable = useCallback(async (p: DocketTableParams) => {
-    setLoading(true);
-    setFetchError(null);
+    setLoading(true)
+    setFetchError(null)
     try {
-      const data = await getDocketTable(p);
-      setTableData(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
-      setCurrentPage(data.number ?? 0);
-    } catch (err: any) {
-      setFetchError(err.message || 'Failed to load records.');
+      const data = await getDocketTable(p)
+      setTableData(data.content)
+      setTotalPages(data.totalPages)
+      setTotalElements(data.totalElements)
+      setCurrentPage(data.number ?? 0)
+    } catch {
+      setFetchError('Failed to load records.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    // Fetch everything in parallel on mount
     Promise.all([
       fetchStats(),
       fetchTable(params),
@@ -180,22 +136,22 @@ const Docketview = () => {
       getMyAccess()
         .then(setUserAccess)
         .catch(() => setUserAccess(null)),
-    ]);
-  }, []);
+    ])
+  }, [])
 
-  // ── Permissions ──────────────────────────────────────────────────────────────
+  // ── Permissions ───────────────────────────────────────────────────────────
 
-  const canView = hasPerm(userAccess, 'View Blotter Records');
-  const canEdit = hasPerm(userAccess, 'Update Case Status');
+  const canView = hasPerm(userAccess, 'View Blotter Records')
+  const canEdit = hasPerm(userAccess, 'Update Case Status')
 
-  // ── Nature filter options from API ───────────────────────────────────────────
+  // ── Nature filter options ─────────────────────────────────────────────────
 
   const natureFilterOptions = natureOptions.map((n) => ({
     label: n.natureName,
     value: String(n.id),
-  }));
+  }))
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleApplyFilter = () => {
     const updated: DocketTableParams = {
@@ -207,49 +163,59 @@ const Docketview = () => {
       page: 0,
       size: PAGE_SIZE,
       sort: 'createdAt,desc',
-    };
-    setParams(updated);
-    fetchTable(updated);
-  };
+    }
+    setParams(updated)
+    fetchTable(updated)
+  }
 
   const handleClearFilter = () => {
-    setSearch(''); setStatus(''); setNatureId(''); setStartDate(''); setEndDate('');
+    setSearch(''); setStatus(''); setNatureId(''); setStartDate(''); setEndDate('')
     const reset: DocketTableParams = {
       search: '', status: '', natureId: undefined,
       start: '', end: '', page: 0, size: PAGE_SIZE, sort: 'createdAt,desc',
-    };
-    setParams(reset);
-    fetchTable(reset);
-  };
+    }
+    setParams(reset)
+    fetchTable(reset)
+  }
 
   const handlePageChange = (page: number) => {
-    const updated = { ...params, page: page - 1 };
-    setParams(updated);
-    fetchTable(updated);
-  };
+    const updated = { ...params, page: page - 1 }
+    setParams(updated)
+    fetchTable(updated)
+  }
 
-  const handleForwardConfirm = async () => {
-    if (!selectedEntry) return;
-    setForwardLoading(true);
+  /**
+   * Called when the user confirms inside ReferToLuponModal.
+   * `members` contains the Pangkat composition they filled in.
+   *
+   * Current backend endpoint (updateCaseStatus) only accepts
+   * blotterNumber / newStatus / reason.
+   *
+   * TODO: If your backend adds a dedicated /refer-to-lupon endpoint
+   * that accepts pangkat members, replace the updateCaseStatus call
+   * below with the proper API call and pass `members` in the body.
+   */
+  const handleReferConfirm = async (members: PangkatMember[]) => {
+    if (!referEntry) return;
+    setReferLoading(true);
     try {
-      await updateCaseStatus({
-        blotterNumber: selectedEntry.blotterNumber,
-        newStatus: 'REFERRED_TO_LUPON',
-        reason: 'Case escalated to Lupon Tagapamayapa',
-      });
-      setSelectedEntry(null);
+      // Use the referToLupon API from ForwardToLupon
+      const { referToLupon } = await import('../blotter-api/ForwardToLupon');
+      await referToLupon(referEntry.id, { members });
+
+      setReferEntry(null);
       fetchTable(params);
       fetchStats();
     } catch (err: any) {
-      alert(err.message || 'Failed to escalate case.');
+      alert(err.message || 'Failed to refer case to Lupon.');
     } finally {
-      setForwardLoading(false);
+      setReferLoading(false);
     }
-  };
+  }
 
-  const activeFilterCount = [status, natureId, startDate, endDate].filter(Boolean).length;
+  const activeFilterCount = [status, natureId, startDate, endDate].filter(Boolean).length
 
-  // ── Columns ──────────────────────────────────────────────────────────────────
+  // ── Columns ───────────────────────────────────────────────────────────────
 
   const columns: TableColumn<BlotterSummaryDTO>[] = [
     {
@@ -258,7 +224,10 @@ const Docketview = () => {
       width: '250px',
       render: (item) => (
         <button
-          onClick={(e) => { e.stopPropagation(); if (canView) setSelectedBlotterNumber(item.blotterNumber); }}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (canView) setSelectedBlotterNumber(item.blotterNumber)
+          }}
           className="font-mono text-sm font-semibold text-blue-600 hover:underline text-left"
         >
           {item.blotterNumber}
@@ -270,26 +239,34 @@ const Docketview = () => {
       header: 'Date Filed',
       width: '120px',
       render: (item) => (
-        <span className="text-sm text-gray-500 whitespace-nowrap">{formatDate(item.dateFiled)}</span>
+        <span className="text-sm text-gray-500 whitespace-nowrap">
+          {formatDate(item.dateFiled)}
+        </span>
       ),
     },
     {
       key: 'complainantName',
       header: 'Complainant',
       width: '175px',
-      render: (item) => <span className="text-sm font-medium text-gray-800">{item.complainantName}</span>,
+      render: (item) => (
+        <span className="text-sm font-medium text-gray-800">{item.complainantName}</span>
+      ),
     },
     {
       key: 'respondentName',
       header: 'Respondent',
       width: '175px',
-      render: (item) => <span className="text-sm text-gray-700">{item.respondentName}</span>,
+      render: (item) => (
+        <span className="text-sm text-gray-700">{item.respondentName}</span>
+      ),
     },
     {
       key: 'natureOfComplaint',
       header: 'Nature of Complaint',
       render: (item) => (
-        <span className="text-sm text-gray-600 truncate block max-w-[180px]">{item.natureOfComplaint}</span>
+        <span className="text-sm text-gray-600 truncate block max-w-[180px]">
+          {item.natureOfComplaint}
+        </span>
       ),
     },
     {
@@ -297,13 +274,13 @@ const Docketview = () => {
       header: 'Status',
       width: '160px',
       render: (item) => {
-        const mapped = DOCKET_STATUS_MAP[item.status];
+        const mapped = DOCKET_STATUS_MAP[item.status]
         return (
           <StatusBadge
             status={mapped?.type ?? 'default'}
             label={mapped?.label ?? item.status}
           />
-        );
+        )
       },
     },
     {
@@ -312,12 +289,16 @@ const Docketview = () => {
       width: '300px',
       render: (item) => (
         <div className="flex items-center gap-2 flex-wrap">
+          {/* View */}
           <button
             disabled={!canView}
-            onClick={(e) => { e.stopPropagation(); if (canView) setSelectedBlotterNumber(item.blotterNumber); }}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (canView) setSelectedBlotterNumber(item.blotterNumber)
+            }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
               !canView
-                ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed opacity-60 grayscale'
+                ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
                 : 'text-gray-600 border-gray-200 bg-white hover:bg-gray-50 shadow-sm'
             }`}
           >
@@ -325,51 +306,57 @@ const Docketview = () => {
             View
           </button>
 
+          {/* Refer to Pangkat — only for active/mediation cases */}
           {['UNSETTLED', 'PENDING', 'UNDER_MEDIATION'].includes(item.status) && (
             <button
               disabled={!canEdit}
-              onClick={(e) => { e.stopPropagation(); if (canEdit) setSelectedEntry(item); }}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (canEdit) setReferEntry(item)
+              }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
                 !canEdit
-                  ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed opacity-60 grayscale'
-                  : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100'
+                  ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                  : 'text-violet-600 border-violet-200 bg-violet-50 hover:bg-violet-100'
               }`}
             >
               <AlertCircle className="w-3.5 h-3.5" />
-              Escalate to Lupon
+              Refer to Pangkat
             </button>
           )}
         </div>
       ),
     },
-  ];
+  ]
 
-  // ── Navigate to detail ────────────────────────────────────────────────────────
+  // ── Navigate to detail ────────────────────────────────────────────────────
 
   if (selectedBlotterNumber) {
     return (
       <BlotterDocketDetailView
         blotterNumber={selectedBlotterNumber}
         onBack={() => {
-          setSelectedBlotterNumber(null);
-          fetchTable(params);
-          fetchStats();
+          setSelectedBlotterNumber(null)
+          fetchTable(params)
+          fetchStats()
         }}
       />
-    );
+    )
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="w-full space-y-5">
 
-      {selectedEntry && (
-        <ForwardToLuponModal
-          entry={selectedEntry}
-          onConfirm={handleForwardConfirm}
-          onCancel={() => setSelectedEntry(null)}
-          loading={forwardLoading}
+      {/* ReferToLuponModal — shown when user clicks "Refer to Pangkat" */}
+      {referEntry && (
+        <ReferToLuponModal
+          blotterNumber={referEntry.blotterNumber}
+          complainantName={referEntry.complainantName}
+          loading={referLoading}
+          onConfirm={handleReferConfirm}
+          onCancel={() => setReferEntry(null)}
         />
       )}
 
@@ -401,15 +388,14 @@ const Docketview = () => {
         />
       </KPIGrid>
 
-      {/* Filters — nature options from API, status hardcoded enums */}
+      {/* Filters */}
       <TableFilter
-        searchPlaceholder="Search by  case no."
+        searchPlaceholder="Search by case no."
         searchValue={search}
         onSearchChange={setSearch}
         filters={[
           {
             label: 'Status',
-            
             key: 'status',
             options: STATUS_FILTER_OPTIONS,
             value: status,
@@ -422,14 +408,14 @@ const Docketview = () => {
           },
         ]}
         onFilterChange={(key, value) => {
-          if (key === 'status')   setStatus(value);
-          if (key === 'natureId') setNatureId(value);
+          if (key === 'status')   setStatus(value)
+          if (key === 'natureId') setNatureId(value)
         }}
         dateRange={{
-          startLabel: 'Date From',
-          endLabel:   'Date To',
-          startValue: startDate,
-          endValue:   endDate,
+          startLabel:    'Date From',
+          endLabel:      'Date To',
+          startValue:    startDate,
+          endValue:      endDate,
           onStartChange: setStartDate,
           onEndChange:   setEndDate,
         }}
@@ -439,7 +425,7 @@ const Docketview = () => {
         activeFilterCount={activeFilterCount}
       />
 
-      {/* Error banner */}
+      {/* Error */}
       {fetchError && (
         <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           <AlertCircle className="w-4 h-4 shrink-0" />
@@ -454,7 +440,9 @@ const Docketview = () => {
         keyExtractor={(item) => item.id}
         loading={loading}
         emptyMessage="No docket records found."
-        onRowClick={(item) => { if (canView) setSelectedBlotterNumber(item.blotterNumber); }}
+        onRowClick={(item) => {
+          if (canView) setSelectedBlotterNumber(item.blotterNumber)
+        }}
         hoverable
         striped
         minRows={PAGE_SIZE}
@@ -470,9 +458,8 @@ const Docketview = () => {
             : undefined
         }
       />
-
     </div>
-  );
-};
+  )
+}
 
-export default Docketview;
+export default Docketview

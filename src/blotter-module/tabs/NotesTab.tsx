@@ -1,16 +1,16 @@
-import  { useState } from 'react'
-import { FileTextIcon, PlusIcon, SendIcon, UserIcon } from 'lucide-react'
-import type { CaseNoteViewDTO } from '../../blotter-api/DocketView'
-import { addCaseNote } from '../../blotter-api/DocketView'
-import { isTerminalStatus } from '../shared/StatusBadge'
-import { SectionCard } from '../shared/SectionCard'
-import { formatDateTime } from '../shared/utils'
+import { useState } from "react";
+import { FileTextIcon, PlusIcon, SendIcon, UserIcon } from "lucide-react";
+import type { CaseNoteViewDTO } from "../../blotter-api/DocketView";
+import { addCaseNote } from "../../blotter-api/DocketView";
+import { isTerminalStatus } from "../shared/StatusBadge";
+import { SectionCard } from "../shared/SectionCard";
+import { formatDateTime } from "../shared/utils";
 interface NotesTabProps {
-  notes: CaseNoteViewDTO[]
-  notesLoading: boolean
-  blotterNumber: string
-  caseStatus: string
-  onNoteAdded: () => void
+  notes: CaseNoteViewDTO[];
+  notesLoading: boolean;
+  blotterNumber: string;
+  caseStatus: string;
+  onNoteAdded: () => void;
 }
 export function NotesTab({
   notes,
@@ -19,39 +19,52 @@ export function NotesTab({
   caseStatus,
   onNoteAdded,
 }: NotesTabProps) {
-  const isTerminal = isTerminalStatus(caseStatus)
-  const [showNoteInput, setShowNoteInput] = useState(false)
-  const [noteText, setNoteText] = useState('')
-  const [noteLoading, setNoteLoading] = useState(false)
-  const [noteError, setNoteError] = useState('')
+  const isTerminal = isTerminalStatus(caseStatus);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [noteLoading, setNoteLoading] = useState(false);
+  const [noteError, setNoteError] = useState("");
   const handleAddNote = async () => {
-    if (!noteText.trim()) return
-    setNoteLoading(true)
-    setNoteError('')
+    if (!noteText.trim()) return;
+    setNoteLoading(true);
+    setNoteError("");
     try {
       await addCaseNote({
         blotterNumber,
         note: noteText.trim(),
-      })
-      setNoteText('')
-      setShowNoteInput(false)
-      // toast.success('Note added successfully')
-      onNoteAdded()
+      });
+      setNoteText("");
+      setShowNoteInput(false);
+      onNoteAdded();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to add note.'
-      setNoteError(message)
-      // toast.error('Failed to add note')
+      const message =
+        err instanceof Error ? err.message : "Failed to add note.";
+      setNoteError(message);
     } finally {
-      setNoteLoading(false)
+      setNoteLoading(false);
     }
-  }
+  };
+  // Check department from localStorage
+  let userDepartment = "";
+  try {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      userDepartment = user?.department || "";
+    }
+  } catch {}
+  const isBlotterDept = userDepartment.toUpperCase() === "BLOTTER";
+  const isUnderConciliation = caseStatus === "UNDER_CONCILIATION";
+
   return (
     <div className="space-y-3">
       <SectionCard
         title="Case Notes"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
         action={
-          !isTerminal && !showNoteInput ? (
+          !isTerminal &&
+          !showNoteInput &&
+          !(isUnderConciliation && isBlotterDept) ? (
             <button
               onClick={() => setShowNoteInput(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -75,9 +88,9 @@ export function NotesTab({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
-                  setShowNoteInput(false)
-                  setNoteText('')
-                  setNoteError('')
+                  setShowNoteInput(false);
+                  setNoteText("");
+                  setNoteError("");
                 }}
                 className="px-4 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
               >
@@ -128,8 +141,8 @@ export function NotesTab({
                   <span>•</span>
                   <span>
                     {formatDateTime(
-                      note.createdAt.split('T')[0],
-                      note.createdAt.split('T')[1],
+                      note.createdAt.split("T")[0],
+                      note.createdAt.split("T")[1],
                     )}
                   </span>
                 </div>
@@ -139,5 +152,5 @@ export function NotesTab({
         )}
       </SectionCard>
     </div>
-  )
+  );
 }

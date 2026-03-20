@@ -4,7 +4,6 @@ import {
   AlertCircleIcon,
   CheckCircleIcon,
   XIcon,
-  SlidersHorizontalIcon,
 } from "lucide-react";
 import type {
   BlotterDocketViewDTO,
@@ -22,7 +21,6 @@ import {
   getHearingFullDetails,
 } from "../blotter-api/DocketView";
 import { getMyAccess } from "../blotter-api/BlotterPermission";
-import { StatusBadge } from "../blotter-module/shared/StatusBadge";
 import { OverviewTab } from "../blotter-module/tabs/OverviewTab";
 import { HearingsTab } from "../blotter-module/tabs/HearingTab";
 import { NotesTab } from "../blotter-module/tabs/NotesTab";
@@ -68,9 +66,15 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalKey>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [selectedHearing, setSelectedHearing] = useState<HearingViewDTO | null>(null);
-  const [followUpHearing, setFollowUpHearing] = useState<HearingViewDTO | null>(null);
-  const [fullHearing, setFullHearing] = useState<HearingFullDetailsDTO | null>(null);
+  const [selectedHearing, setSelectedHearing] = useState<HearingViewDTO | null>(
+    null,
+  );
+  const [followUpHearing, setFollowUpHearing] = useState<HearingViewDTO | null>(
+    null,
+  );
+  const [fullHearing, setFullHearing] = useState<HearingFullDetailsDTO | null>(
+    null,
+  );
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   // ── Permissions — single fetch for all ──
@@ -106,7 +110,10 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
   };
 
   // ── Shared status update handler ──
-  const handleUpdateStatus = async (statusToSend: string, reasonToSend: string) => {
+  const handleUpdateStatus = async (
+    statusToSend: string,
+    reasonToSend: string,
+  ) => {
     if (!statusToSend || !reasonToSend?.trim()) {
       alert("Status and reason are required.");
       return;
@@ -156,7 +163,9 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
         setDocket(d);
         setMediation(m);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to load case details.");
+        setError(
+          err instanceof Error ? err.message : "Failed to load case details.",
+        );
       } finally {
         setLoading(false);
       }
@@ -229,7 +238,10 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <AlertCircleIcon className="w-8 h-8 text-red-400" />
         <p className="text-sm text-red-500">{error ?? "Case not found."}</p>
-        <button onClick={onBack} className="text-sm text-blue-500 hover:underline">
+        <button
+          onClick={onBack}
+          className="text-sm text-blue-500 hover:underline"
+        >
           Go Back
         </button>
       </div>
@@ -238,7 +250,6 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
   return (
     <div className="min-h-screen">
       <div className="mx-auto px-6 py-6 space-y-5">
-
         {/* ── LOADING OVERLAY ── */}
         {detailsLoading && (
           <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
@@ -317,7 +328,9 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
             }
             loading={actionLoading}
             reasonLabel="Grounds for Certification *"
-            onConfirm={(reason) => handleUpdateStatus("CERTIFIED_TO_FILE_ACTION", reason)}
+            onConfirm={(reason) =>
+              handleUpdateStatus("CERTIFIED_TO_FILE_ACTION", reason)
+            }
             onCancel={() => setModal(null)}
           />
         )}
@@ -326,6 +339,10 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           <ScheduleHearingModal
             blotterNumber={blotterNumber}
             hearingNumber={hearings.length + 1}
+            caseNumber={docket.caseNumber}
+            natureOfComplaint={docket.natureOfComplaint}
+            complainantName={`${docket.firstName} ${docket.lastName}`}
+            respondentName={`${docket.respondentFirstName} ${docket.respondentLastName}`}
             onSuccess={async () => {
               setModal(null);
               await refreshData();
@@ -356,16 +373,9 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
         {modal === "viewMinutes" && fullHearing && (
           <HearingMinutesModal
             hearing={fullHearing}
-            isViewOnly={true}
-            hasPermission={hasHearingPerm}
             onClose={() => {
               setModal(null);
               setFullHearing(null);
-            }}
-            onSave={async () => {
-              setModal(null);
-              setFullHearing(null);
-              await refreshData();
             }}
           />
         )}
@@ -398,14 +408,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               {docket.caseNumber}
             </h1>
-            <StatusBadge status={docket.caseStatus} />
-            <button
-              onClick={() => setModal("changeStatus")}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
-            >
-              <SlidersHorizontalIcon className="w-3.5 h-3.5" />
-              Change Status
-            </button>
+            
           </div>
           <p className="text-sm text-gray-500">
             {docket.firstName} {docket.lastName} • {docket.natureOfComplaint}
@@ -445,6 +448,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           <OverviewTab
             docket={docket}
             mediation={mediation}
+            hasStatusPerm={hasStatusPerm}
             onScheduleHearing={() => setModal("schedule")}
             onMarkSettled={() => setModal("settle")}
             onReferToLupon={() => setModal("refer")}
@@ -459,6 +463,11 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
             hearingsLoading={hearingsLoading}
             caseStatus={docket.caseStatus}
             hasPermission={hasHearingPerm}
+            blotterNumber={blotterNumber}
+            caseNumber={docket.caseNumber}
+            natureOfComplaint={docket.natureOfComplaint}
+            complainantName={`${docket.firstName} ${docket.lastName}`}
+            respondentName={`${docket.respondentFirstName} ${docket.respondentLastName}`}
             onScheduleHearing={() => setModal("schedule")}
             onUpdateHearing={(h) => {
               setSelectedHearing(h);

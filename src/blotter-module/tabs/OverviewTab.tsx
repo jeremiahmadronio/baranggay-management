@@ -9,87 +9,89 @@ import {
   FileTextIcon,
   HashIcon,
   FileUpIcon,
-} from 'lucide-react'
+} from "lucide-react";
 import type {
   BlotterDocketViewDTO,
   MediationProcessDTO,
-} from '../../blotter-api/DocketView'
-import { StatusBadge, isTerminalStatus } from '../shared/StatusBadge'
-import { InfoRow } from '../shared/InfoRow'
-import { SectionCard } from '../shared/SectionCard'
-import { formatDate, formatTime } from '../shared/utils'
+} from "../../blotter-api/DocketView";
+import { StatusBadge, isTerminalStatus } from "../shared/StatusBadge";
+import { InfoRow } from "../shared/InfoRow";
+import { SectionCard } from "../shared/SectionCard";
+import { formatDate, formatTime } from "../shared/utils";
 // ── Helpers ──
 const getMediationProgress = (
   dateFiled: string,
   mediationDeadline: string,
   daysRemaining: number,
 ) => {
-  const filed = new Date(dateFiled)
-  const deadline = new Date(mediationDeadline)
-  const today = new Date()
-  const totalMs = deadline.getTime() - filed.getTime()
-  const elapsedMs = today.getTime() - filed.getTime()
-  const percent = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100))
-  const isUrgent = daysRemaining <= 3
+  const filed = new Date(dateFiled);
+  const deadline = new Date(mediationDeadline);
+  const today = new Date();
+  const totalMs = deadline.getTime() - filed.getTime();
+  const elapsedMs = today.getTime() - filed.getTime();
+  const percent = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
+  const isUrgent = daysRemaining <= 3;
   return {
     percent,
     isUrgent,
-  }
-}
+  };
+};
 // ── Types ──
 interface OverviewTabProps {
-  docket: BlotterDocketViewDTO
-  mediation: MediationProcessDTO | null
-  onScheduleHearing: () => void
-  onMarkSettled: () => void
-  onReferToLupon: () => void
-  onDismissCase: () => void
-  onIssueCFA: () => void
+  docket: BlotterDocketViewDTO;
+  mediation: MediationProcessDTO | null;
+  hasStatusPerm: boolean;
+  onScheduleHearing: () => void;
+  onMarkSettled: () => void;
+  onReferToLupon: () => void;
+  onDismissCase: () => void;
+  onIssueCFA: () => void;
 }
 const MEDIATION_STEPS = [
   {
-    key: 'stepCaseReceived',
-    label: 'Case Received',
+    key: "stepCaseReceived",
+    label: "Case Received",
     sub: (p: MediationProcessDTO) =>
       p.caseReceivedDate
         ? `Received from Barangay Blotter on ${formatDate(p.caseReceivedDate)}`
-        : 'Awaiting receipt',
+        : "Awaiting receipt",
   },
   {
-    key: 'stepSummonIssued',
-    label: 'Pangkat Assignment / Summon Issued',
-    sub: (p: MediationProcessDTO) => p.summonStatus ?? 'Awaiting first summon',
+    key: "stepSummonIssued",
+    label: "Pangkat Assignment / Summon Issued",
+    sub: (p: MediationProcessDTO) => p.summonStatus ?? "Awaiting first summon",
   },
   {
-    key: 'stepMediationOngoing',
-    label: 'Mediation Hearings',
+    key: "stepMediationOngoing",
+    label: "Mediation Hearings",
     sub: (p: MediationProcessDTO) =>
       `${p.hearingsConducted} hearing(s) conducted`,
   },
   {
-    key: 'stepResolved',
-    label: 'Case Resolution',
+    key: "stepResolved",
+    label: "Case Resolution",
     sub: (p: MediationProcessDTO) =>
-      p.resolutionStatus ?? 'Awaiting resolution',
+      p.resolutionStatus ?? "Awaiting resolution",
   },
-]
+];
 // ── Component ──
 export function OverviewTab({
   docket,
   mediation,
+  hasStatusPerm,
   onScheduleHearing,
   onMarkSettled,
   onReferToLupon,
   onDismissCase,
   onIssueCFA,
 }: OverviewTabProps) {
-  const isTerminal = isTerminalStatus(docket.caseStatus)
-  const status = docket.caseStatus
+  const isTerminal = isTerminalStatus(docket.caseStatus);
+  const status = docket.caseStatus;
   const { percent, isUrgent } = getMediationProgress(
     docket.dateFiled,
     docket.mediationDeadline,
     docket.daysRemaining,
-  )
+  );
   const mediationProgress = mediation
     ? [
         mediation.stepCaseReceived,
@@ -97,35 +99,42 @@ export function OverviewTab({
         mediation.stepMediationOngoing,
         mediation.stepResolved,
       ]
-    : [false, false, false, false]
+    : [false, false, false, false];
+  // Debug log for settlement agreement fields
+  console.log(
+    "[OverviewTab] agreementsTerm:",
+    docket.agreementsTerm,
+    "agreementDate:",
+    docket.agreementDate,
+  );
   return (
     <div className="space-y-5">
       {isTerminal ? (
         <div
           className={`border shadow-sm rounded-xl p-4 flex items-start gap-3 ${
-            status === 'SETTLED'
-              ? 'bg-emerald-50 border-emerald-200'
-              : status === 'DISMISSED'
-                ? 'bg-red-50 border-red-200'
-                : status === 'REFERRED_TO_LUPON'
-                  ? 'bg-violet-50 border-violet-200'
-                  : 'bg-amber-50 border-amber-200'
+            status === "SETTLED"
+              ? "bg-emerald-50 border-emerald-200"
+              : status === "DISMISSED"
+                ? "bg-red-50 border-red-200"
+                : status === "REFERRED_TO_LUPON"
+                  ? "bg-violet-50 border-violet-200"
+                  : "bg-amber-50 border-amber-200"
           }`}
         >
           <div
             className={`mt-0.5 shrink-0 ${
-              status === 'SETTLED'
-                ? 'text-emerald-500'
-                : status === 'DISMISSED'
-                  ? 'text-red-500'
-                  : status === 'REFERRED_TO_LUPON'
-                    ? 'text-violet-500'
-                    : 'text-amber-500'
+              status === "SETTLED"
+                ? "text-emerald-500"
+                : status === "DISMISSED"
+                  ? "text-red-500"
+                  : status === "REFERRED_TO_LUPON"
+                    ? "text-violet-500"
+                    : "text-amber-500"
             }`}
           >
-            {status === 'SETTLED' ? (
+            {status === "SETTLED" ? (
               <CheckCircleIcon className="w-5 h-5" />
-            ) : status === 'DISMISSED' ? (
+            ) : status === "DISMISSED" ? (
               <XIcon className="w-5 h-5" />
             ) : (
               <AlertCircleIcon className="w-5 h-5" />
@@ -135,50 +144,53 @@ export function OverviewTab({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p
                 className={`text-sm font-bold ${
-                  status === 'SETTLED'
-                    ? 'text-emerald-700'
-                    : status === 'DISMISSED'
-                      ? 'text-red-700'
-                      : status === 'REFERRED_TO_LUPON'
-                        ? 'text-violet-700'
-                        : 'text-amber-700'
+                  status === "SETTLED"
+                    ? "text-emerald-700"
+                    : status === "DISMISSED"
+                      ? "text-red-700"
+                      : status === "REFERRED_TO_LUPON"
+                        ? "text-violet-700"
+                        : "text-amber-700"
                 }`}
               >
-                {status === 'SETTLED'
-                  ? 'Case Settled'
-                  : status === 'DISMISSED'
-                    ? 'Case Dismissed'
-                    : status === 'REFERRED_TO_LUPON'
-                      ? 'Referred to Lupon / Pangkat'
-                      : 'Case Closed'}
+                {status === "SETTLED"
+                  ? docket.agreementsTerm
+                    ? "Case Settled – Both parties have an agreement"
+                    : "Case Settled"
+                  : status === "DISMISSED"
+                    ? "Case Dismissed"
+                    : status === "REFERRED_TO_LUPON"
+                      ? "Referred to Lupon / Pangkat"
+                      : "Case Closed"}
               </p>
-              
             </div>
             <div className="mt-2 flex flex-wrap items-baseline gap-2">
-  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-    Reason:
-  </span>
-  
-  {docket.caseStatusRemarks ? (
-    <span
-      className={`text-sm font-medium ${
-        status === 'SETTLED'
-          ? 'text-emerald-700'
-          : status === 'DISMISSED'
-          ? 'text-red-700'
-          : status === 'REFERRED_TO_LUPON'
-          ? 'text-violet-700'
-          : 'text-amber-700'
-      }`}
-    >
-      {docket.caseStatusRemarks}
-    </span>
-  ) : (
-    <span className="text-sm text-gray-400 italic">
-      No remarks provided.
-    </span>
-  )}
-</div>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Reason:
+              </span>
+
+              {docket.caseStatusRemarks ? (
+                <span
+                  className={`text-sm font-medium ${
+                    status === "SETTLED"
+                      ? "text-emerald-700"
+                      : status === "DISMISSED"
+                        ? "text-red-700"
+                        : "text-violet-700"
+                  }`}
+                >
+                  {docket.caseStatusRemarks}
+                </span>
+              ) : docket.agreementsTerm && status === "SETTLED" ? (
+                <span className="text-sm text-emerald-700 font-medium">
+                  Both parties have an agreement.
+                </span>
+              ) : (
+                <span className="text-sm text-gray-400 italic">
+                  No remarks provided.
+                </span>
+              )}
+            </div>
           </div>
         </div>
       ) : (
@@ -191,17 +203,17 @@ export function OverviewTab({
               </span>
             </div>
             <span
-              className={`text-sm font-semibold ${isUrgent ? 'text-red-500' : 'text-blue-600'}`}
+              className={`text-sm font-semibold ${isUrgent ? "text-red-500" : "text-blue-600"}`}
             >
               {docket.daysRemaining <= 0
-                ? 'Overdue'
-                : `${docket.daysRemaining} day${docket.daysRemaining === 1 ? '' : 's'} remaining`}
+                ? "Overdue"
+                : `${docket.daysRemaining} day${docket.daysRemaining === 1 ? "" : "s"} remaining`}
             </span>
           </div>
 
           <div className="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden">
             <div
-              className={`h-2 rounded-full transition-all duration-700 ${isUrgent ? 'bg-red-500' : 'bg-blue-500'}`}
+              className={`h-2 rounded-full transition-all duration-700 ${isUrgent ? "bg-red-500" : "bg-blue-500"}`}
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -234,7 +246,8 @@ export function OverviewTab({
 
             <button
               onClick={onMarkSettled}
-              className="flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-emerald-300 hover:shadow-md"
+              disabled={!hasStatusPerm}
+              className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-emerald-300 hover:shadow-md ${!hasStatusPerm ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <div className="p-2.5 rounded-lg bg-emerald-50">
                 <CheckCircleIcon className="w-5 h-5 text-emerald-600" />
@@ -245,13 +258,14 @@ export function OverviewTab({
               <span className="text-xs text-gray-500">Amicable settlement</span>
             </button>
 
-            {(status === 'UNDER_MEDIATION' ||
-              status === 'MEDIATION' ||
-              status === 'PENDING' ||
-              status === 'ACTIVE') && (
+            {(status === "UNDER_MEDIATION" ||
+              status === "MEDIATION" ||
+              status === "PENDING" ||
+              status === "ACTIVE") && (
               <button
                 onClick={onReferToLupon}
-                className="flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-violet-300 hover:shadow-md"
+                disabled={!hasStatusPerm}
+                className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-violet-300 hover:shadow-md ${!hasStatusPerm ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <div className="p-2.5 rounded-lg bg-violet-50">
                   <AlertCircleIcon className="w-5 h-5 text-violet-600" />
@@ -263,7 +277,7 @@ export function OverviewTab({
               </button>
             )}
 
-            {status === 'REFERRED_TO_LUPON' && (
+            {status === "REFERRED_TO_LUPON" && (
               <button
                 onClick={onIssueCFA}
                 className="flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-amber-300 hover:shadow-md"
@@ -282,7 +296,8 @@ export function OverviewTab({
 
             <button
               onClick={onDismissCase}
-              className="flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-gray-400 hover:shadow-md"
+              disabled={!hasStatusPerm}
+              className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-gray-400 hover:shadow-md ${!hasStatusPerm ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <div className="p-2.5 rounded-lg bg-gray-100">
                 <XIcon className="w-5 h-5 text-gray-600" />
@@ -307,7 +322,7 @@ export function OverviewTab({
             <div className="grid grid-cols-2 gap-4">
               <InfoRow
                 label="Full Name"
-                value={`${docket.firstName}${docket.middleName ? ' ' + docket.middleName : ''} ${docket.lastName}`}
+                value={`${docket.firstName}${docket.middleName ? " " + docket.middleName : ""} ${docket.lastName}`}
               />
               <InfoRow label="Contact Number" value={docket.contactNumber} />
               <InfoRow label="Age" value={docket.age} />
@@ -330,7 +345,7 @@ export function OverviewTab({
             <div className="grid grid-cols-2 gap-4">
               <InfoRow
                 label="Name"
-                value={`${docket.respondentFirstName}${docket.respondentMiddleName ? ' ' + docket.respondentMiddleName : ''} ${docket.respondentLastName}`}
+                value={`${docket.respondentFirstName}${docket.respondentMiddleName ? " " + docket.respondentMiddleName : ""} ${docket.respondentLastName}`}
               />
               <InfoRow label="Alias" value={docket.respondentAlias} />
               <InfoRow
@@ -356,9 +371,9 @@ export function OverviewTab({
                   Living with Complainant
                 </p>
                 <span
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${docket.livingWithComplainant ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'}`}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${docket.livingWithComplainant ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-600"}`}
                 >
-                  {docket.livingWithComplainant ? 'Yes' : 'No'}
+                  {docket.livingWithComplainant ? "Yes" : "No"}
                 </span>
               </div>
             </div>
@@ -437,6 +452,25 @@ export function OverviewTab({
         )}
       </SectionCard>
 
+      {docket.agreementsTerm && (
+        <SectionCard
+          title="Settlement Agreement"
+          icon={<CheckCircleIcon className="w-4 h-4 text-emerald-400" />}
+        >
+          <p className="text-sm text-gray-900 whitespace-pre-line">
+            {docket.agreementsTerm}
+          </p>
+          {docket.agreementDate && (
+            <p className="text-xs text-gray-500 mt-2">
+              Date of Agreement:{" "}
+              <span className="font-semibold">
+                {formatDate(docket.agreementDate)}
+              </span>
+            </p>
+          )}
+        </SectionCard>
+      )}
+
       <SectionCard
         title={`Witnesses (${docket.witnesses?.length ?? 0})`}
         icon={<UserIcon className="w-4 h-4 text-gray-400" />}
@@ -459,7 +493,7 @@ export function OverviewTab({
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 flex-1">
                   <InfoRow
                     label="Name"
-                    value={`${w.firstName} ${w.lastName}`}
+                    value={`${w.fullName}`}
                   />
                   <InfoRow label="Contact" value={w.contactNumber} />
                   {w.address && (
@@ -481,19 +515,19 @@ export function OverviewTab({
         >
           <div className="space-y-0">
             {MEDIATION_STEPS.map((step, idx) => {
-              const done = mediationProgress[idx]
-              const isLast = idx === MEDIATION_STEPS.length - 1
+              const done = mediationProgress[idx];
+              const isLast = idx === MEDIATION_STEPS.length - 1;
               return (
                 <div key={step.key} className="flex gap-4">
                   <div className="flex flex-col items-center">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${done ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400 border-2 border-gray-200'}`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${done ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-400 border-2 border-gray-200"}`}
                     >
                       {done ? <CheckCircleIcon className="w-4 h-4" /> : idx + 1}
                     </div>
                     {!isLast && (
                       <div
-                        className={`w-0.5 flex-1 my-1 ${done ? 'bg-emerald-300' : 'bg-gray-200'}`}
+                        className={`w-0.5 flex-1 my-1 ${done ? "bg-emerald-300" : "bg-gray-200"}`}
                       />
                     )}
                   </div>
@@ -507,17 +541,17 @@ export function OverviewTab({
                       </p>
                     </div>
                     <span
-                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-4 ${done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-4 ${done ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
                     >
-                      {done ? 'COMPLETED' : 'PENDING'}
+                      {done ? "COMPLETED" : "PENDING"}
                     </span>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </SectionCard>
       )}
     </div>
-  )
+  );
 }

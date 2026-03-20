@@ -28,6 +28,7 @@ export interface MinutesSummaryDTO {
   respondentPresent: boolean;
   hearingNotes: string;
   outcome: string;
+  
   recordedBy: string;
 }
 
@@ -63,8 +64,8 @@ export interface BlotterSummaryDTO {
 
 //witness for docket view
 export interface WitnessDTO {
-  firstName: string;
-  lastName: string;
+  fullName: string;
+  
   contactNumber?: string;
   address?: string;
 }
@@ -112,6 +113,8 @@ export interface BlotterDocketViewDTO {
 
   evidenceTypeIds: string[];
   witnesses: WitnessDTO[];
+  agreementsTerm?: string;
+  agreementDate?: string;
 }
 
 //mediation process
@@ -222,6 +225,7 @@ export interface RecordMinutesRequest {
   respondentPresent: boolean;
   hearingNotes?: string;
   outcome: string;
+  settlementTerms: string;
 }
 
 // stats for dashboard
