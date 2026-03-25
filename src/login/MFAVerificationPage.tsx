@@ -123,7 +123,7 @@ export function MFAVerificationPage() {
             navigate("/vawc/dashboard");
             break;
           case "LUPONG_TAGAPAMAYAPA":
-            navigate("/lupong-tagapamayapa/dashboard");
+            navigate("/lupongtagapamayapa/dashboard");
             break;
           case "FIRST_TIME_JOB_SEEKER":
             navigate("/first-time-job-seeker/dashboard");

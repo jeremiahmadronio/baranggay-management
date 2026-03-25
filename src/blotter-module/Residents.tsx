@@ -6,8 +6,10 @@ import { ResidentProfilePage } from "./ResidentView";
 import {
   getResidentTable,
   getResidentProfile,
+  getResidentStats,
 } from "../blotter-api/Resident";
-import type { ResidentSummary } from "../blotter-api/Resident";
+import type { ResidentSummary, ResidentStatsDTO } from "../blotter-api/Resident";
+import { KPICard, KPIGrid, KPIIcons } from "../reusable/KPICard";
 
 function useDebounce<T>(value: T, delay = 400): T {
   const [debounced, setDebounced] = useState(value);
@@ -38,6 +40,9 @@ export default function ResidentListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  const [stats, setStats] = useState<ResidentStatsDTO | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   const fetchData = useCallback(
     async (params: { search: string; gender: string; isVoter: string }) => {
       setLoading(true);
@@ -62,6 +67,13 @@ export default function ResidentListPage() {
 
   useEffect(() => {
     fetchData(appliedFilters);
+  }, []);
+
+  useEffect(() => {
+    getResidentStats()
+      .then(setStats)
+      .catch((e) => console.error("Failed to fetch resident stats:", e))
+      .finally(() => setStatsLoading(false));
   }, []);
 
   const isFirstRender = useRef(true);
@@ -98,7 +110,6 @@ export default function ResidentListPage() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
-  const voterCount = data.filter((r) => r.isVoter).length;
 
   const COLUMNS: TableColumn<ResidentSummary>[] = [
     {
@@ -175,7 +186,6 @@ export default function ResidentListPage() {
     },
   ];
 
-  // ── Switch to full-page profile view ──
   if (selectedId !== null) {
     return (
       <ResidentProfilePage
@@ -190,63 +200,39 @@ export default function ResidentListPage() {
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
 
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Residents</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Manage and view all registered residents in the barangay.
-          </p>
-        </div>
+        
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {[
-            {
-              label: "Total Residents",
-              value: loading ? "—" : totalItems.toLocaleString(),
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-                </svg>
-              ),
-              color: "text-blue-600 bg-blue-50",
-            },
-            {
-              label: "Registered Voters",
-              value: loading ? "—" : voterCount.toLocaleString(),
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 11 12 14 22 4" />
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-                </svg>
-              ),
-              color: "text-green-600 bg-green-50",
-            },
-            {
-              label: "Non-voters",
-              value: loading ? "—" : (totalItems - voterCount).toLocaleString(),
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                </svg>
-              ),
-              color: "text-gray-500 bg-gray-100",
-            },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4 flex items-center gap-4"
-            >
-              <div className={`p-2 rounded-lg ${stat.color}`}>{stat.icon}</div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">{stat.label}</p>
-                <p className="text-xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Stats — KPI Cards */}
+        <KPIGrid columns={4}>
+          <KPICard
+            title="Total Residents"
+            value={statsLoading ? "—" : (stats?.totalResidents ?? 0).toLocaleString()}
+            icon={KPIIcons["users"]}
+            color="blue"
+            subtitle="All registered residents"
+          />
+          <KPICard
+            title="Registered Voters"
+            value={statsLoading ? "—" : (stats?.totalVoters ?? 0).toLocaleString()}
+            icon={KPIIcons["issued"]}
+            color="emerald"
+            subtitle="Active voter registrants"
+          />
+          <KPICard
+            title="Senior Citizens"
+            value={statsLoading ? "—" : (stats?.totalSeniorCitizen ?? 0).toLocaleString()}
+            icon={KPIIcons["gift"]}
+            color="amber"
+            subtitle="Residents aged 60 and above"
+          />
+          <KPICard
+            title="Heads of Family"
+            value={statsLoading ? "—" : (stats?.headsOfTheFamily ?? 0).toLocaleString()}
+            icon={KPIIcons["home"]}
+            color="violet"
+            subtitle="Registered household heads"
+          />
+        </KPIGrid>
 
         {/* Filters */}
         <TableFilter

@@ -72,7 +72,7 @@ export function ReferToLuponModal({
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">
-                  Refer to Pangkat ng Tagapagkasundo
+                  Refer to Lupong Tagapamayapa
                 </h3>
                 <p className="text-sm text-gray-400 mt-0.5">
                   {blotterNumber} · {complainantName}
@@ -92,7 +92,7 @@ export function ReferToLuponModal({
         <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
           <p className="text-sm text-gray-500 leading-relaxed">
             Mediation by the Punong Barangay was unsuccessful. Assign the three
-            Pangkat members who will handle conciliation for this case.
+            Lupon members who will handle conciliation for this case.
           </p>
 
           {members.map((member, idx) => (
@@ -173,7 +173,7 @@ export function ReferToLuponModal({
               {loading && (
                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               )}
-              Refer to Pangkat
+              Escalate to Lupon
             </button>
           </div>
         </div>

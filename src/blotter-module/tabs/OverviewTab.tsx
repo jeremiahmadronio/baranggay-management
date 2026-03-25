@@ -8,8 +8,8 @@ import {
   ClipboardIcon,
   FileTextIcon,
   HashIcon,
-  FileUpIcon,
 } from "lucide-react";
+
 import type {
   BlotterDocketViewDTO,
   MediationProcessDTO,
@@ -83,10 +83,11 @@ export function OverviewTab({
   onMarkSettled,
   onReferToLupon,
   onDismissCase,
-  onIssueCFA,
 }: OverviewTabProps) {
-  const isTerminal = isTerminalStatus(docket.caseStatus);
   const status = docket.caseStatus;
+  const isTerminal =
+    isTerminalStatus(docket.caseStatus) || status === "UNDER_CONCILIATION";
+
   const { percent, isUrgent } = getMediationProgress(
     docket.dateFiled,
     docket.mediationDeadline,
@@ -116,8 +117,8 @@ export function OverviewTab({
               ? "bg-emerald-50 border-emerald-200"
               : status === "DISMISSED"
                 ? "bg-red-50 border-red-200"
-                : status === "REFERRED_TO_LUPON"
-                  ? "bg-violet-50 border-violet-200"
+                : status === "UNDER_CONCILIATION"
+                  ? "bg-blue-50 border-blue-200"
                   : "bg-amber-50 border-amber-200"
           }`}
         >
@@ -127,8 +128,8 @@ export function OverviewTab({
                 ? "text-emerald-500"
                 : status === "DISMISSED"
                   ? "text-red-500"
-                  : status === "REFERRED_TO_LUPON"
-                    ? "text-violet-500"
+                  : status === "UNDER_CONCILIATION"
+                    ? "text-blue-500"
                     : "text-amber-500"
             }`}
           >
@@ -148,8 +149,8 @@ export function OverviewTab({
                     ? "text-emerald-700"
                     : status === "DISMISSED"
                       ? "text-red-700"
-                      : status === "REFERRED_TO_LUPON"
-                        ? "text-violet-700"
+                      : status === "UNDER_CONCILIATION"
+                        ? "text-blue-700"
                         : "text-amber-700"
                 }`}
               >
@@ -159,8 +160,8 @@ export function OverviewTab({
                     : "Case Settled"
                   : status === "DISMISSED"
                     ? "Case Dismissed"
-                    : status === "REFERRED_TO_LUPON"
-                      ? "Referred to Lupon / Pangkat"
+                    : status === "UNDER_CONCILIATION"
+                      ? "Under Conciliation"
                       : "Case Closed"}
               </p>
             </div>
@@ -176,7 +177,7 @@ export function OverviewTab({
                       ? "text-emerald-700"
                       : status === "DISMISSED"
                         ? "text-red-700"
-                        : "text-violet-700"
+                        : "text-blue-700"
                   }`}
                 >
                   {docket.caseStatusRemarks}
@@ -277,22 +278,7 @@ export function OverviewTab({
               </button>
             )}
 
-            {status === "REFERRED_TO_LUPON" && (
-              <button
-                onClick={onIssueCFA}
-                className="flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-all text-left hover:border-amber-300 hover:shadow-md"
-              >
-                <div className="p-2.5 rounded-lg bg-amber-50">
-                  <FileUpIcon className="w-5 h-5 text-amber-600" />
-                </div>
-                <span className="text-sm font-bold text-amber-600">
-                  Issue CFA
-                </span>
-                <span className="text-xs text-gray-500">
-                  Certificate to File Action
-                </span>
-              </button>
-            )}
+            {/* Issue CFA button removed as requested */}
 
             <button
               onClick={onDismissCase}
@@ -491,10 +477,7 @@ export function OverviewTab({
                   {i + 1}
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 flex-1">
-                  <InfoRow
-                    label="Name"
-                    value={`${w.fullName}`}
-                  />
+                  <InfoRow label="Name" value={`${w.fullName}`} />
                   <InfoRow label="Contact" value={w.contactNumber} />
                   {w.address && (
                     <div className="col-span-2">
@@ -507,6 +490,31 @@ export function OverviewTab({
           </div>
         )}
       </SectionCard>
+
+      {/* Lupon Management Section - display if may laman */}
+      {Array.isArray(docket.luponManagement) &&
+        docket.luponManagement.length > 0 && (
+          <SectionCard
+            title={`Case Handled By (${docket.luponManagement.length})`}
+            icon={<UserIcon className="w-4 h-4 text-gray-400" />}
+          >
+            <div className="space-y-2">
+              {docket.luponManagement.map((lupon, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-lg border border-gray-100"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800 truncate">
+                      {lupon.firstName} {lupon.lastName}
+                    </p>
+                    <p className="text-xs text-gray-500">{lupon.position}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
 
       {mediation && (
         <SectionCard

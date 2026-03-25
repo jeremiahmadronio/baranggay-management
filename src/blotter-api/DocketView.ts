@@ -16,6 +16,15 @@ export interface SpringPage<T> {
   empty: boolean;
 }
 
+export interface CaseTimelineDTO {
+  id: number;
+  eventType: string;
+  title: string;
+  description: string;
+  performedBy: string;
+  eventDate: string;
+}
+
 //follow up note for hearing minutes
 export interface FollowUpHearingDTO {
   notes: string;
@@ -115,6 +124,13 @@ export interface BlotterDocketViewDTO {
   witnesses: WitnessDTO[];
   agreementsTerm?: string;
   agreementDate?: string;
+  luponManagement: CaseHandleByDTO[];
+}
+
+export interface CaseHandleByDTO {
+  firstName: string;
+  lastName: string;
+  position: string; 
 }
 
 //mediation process
@@ -477,4 +493,14 @@ export async function getHearingFullDetails(
 
 export async function getFrequencyOptions(): Promise<IncidentOptionDTO[]> {
   return apiFetch<IncidentOptionDTO[]>(`${BLOTTER_URL}/frequencies`);
+}
+
+
+export async function getCaseTimeline(
+  blotterNumber: string
+): Promise<CaseTimelineDTO[]> {
+  if (!blotterNumber) throw new Error("Blotter number is required");
+  return apiFetch<CaseTimelineDTO[]>(
+    `${BLOTTER_URL}/timeline/${encodeURIComponent(blotterNumber)}`
+  );
 }

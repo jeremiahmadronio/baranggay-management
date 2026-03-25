@@ -45,7 +45,11 @@ const STATUS_CONFIG: Record<string, StatusStyle> = {
     text: "text-emerald-600",
     dot: "bg-emerald-400",
   },
-  "elevated to formal": { bg: "bg-red-50", text: "text-red-500", dot: "bg-red-400" },
+  "elevated to formal": {
+    bg: "bg-red-50",
+    text: "text-red-500",
+    dot: "bg-red-400",
+  },
   unsettled: { bg: "bg-rose-50", text: "text-rose-500", dot: "bg-rose-400" },
   summoned: { bg: "bg-amber-50", text: "text-amber-600", dot: "bg-amber-400" },
   "referred to lupon": {
@@ -122,7 +126,7 @@ const BlotterRecordsPage: React.FC = () => {
       setTotalItems(page.totalElements);
       setCurrentPage(page.number);
     } catch (err: any) {
-      setError( "Failed to load blotter records.");
+      setError("Failed to load blotter records.");
     } finally {
       setLoading(false);
     }
@@ -168,8 +172,6 @@ const BlotterRecordsPage: React.FC = () => {
       `/blotter/record-view?blotterNumber=${encodeURIComponent(item.blotterNumber)}`,
     );
   };
-
- 
 
   const activeFilterCount = [
     appliedParams.status,
@@ -267,8 +269,6 @@ const BlotterRecordsPage: React.FC = () => {
             </svg>
             View
           </button>
-
-        
         </div>
       ),
     },
@@ -279,71 +279,37 @@ const BlotterRecordsPage: React.FC = () => {
     <div className="mb-4 ">
       <KPIGrid columns={4}>
         <KPICard
-          title="Total Entries"
+          title="Total FTR Records"
           value={statsLoading ? "..." : (stats?.totalFtr ?? 0)}
           icon={KPIIcons.document}
           color="blue"
-          trend={
-            stats
-              ? {
-                  value: stats.ftrTrend,
-                  direction:
-                    stats.ftrTrend > 0
-                      ? "up"
-                      : stats.ftrTrend < 0
-                        ? "down"
-                        : "neutral",
-                  label: "vs last month",
-                }
-              : undefined
+          subtitle={
+            statsLoading ? "..." : `${stats?.ftrTrend ?? 0}% vs last month`
           }
         />
 
         <KPICard
-          title="Formal Complaints"
-          value={statsLoading ? "..." : (stats?.totalEscalated ?? 0)}
-          icon={KPIIcons.check}
-          color="rose"
-          trend={
-            stats
-              ? {
-                  value: stats.escalatedTrend,
-                  direction:
-                    stats.escalatedTrend > 0
-                      ? "up"
-                      : stats.escalatedTrend < 0
-                        ? "down"
-                        : "neutral",
-                  label: "vs last month",
-                }
-              : undefined
-          }
-        />
-
-        <KPICard
-          title="Escalation Rate"
-          value={
-            statsLoading ? "..." : `${stats?.escalationRate?.toFixed(1) ?? 0}%`
-          }
-          icon={KPIIcons.chart}
+          title="Repeat Respondents"
+          value={statsLoading ? "..." : (stats?.frequentSubjectsCount ?? 0)}
+          icon={KPIIcons.alert}
           color="amber"
-          subtitle="of total entries"
+          subtitle="Residents with 2+ reports filed against them"
         />
 
         <KPICard
-          title="Peak Incident Time"
-          value={
-            statsLoading
-              ? "..."
-              : (stats?.peakIncidentTime?.split(" (")[0] ?? "N/A")
-          }
+          title="Top Incident Nature"
+          value={statsLoading ? "..." : (stats?.mostReportedIssue ?? "N/A")}
+          icon={KPIIcons.chart}
+          color="violet"
+          subtitle="Most frequent category"
+        />
+
+        <KPICard
+          title="Peak Reporting Time"
+          value={statsLoading ? "..." : (stats?.peakIncidentTime ?? "N/A")}
           icon={KPIIcons.clock}
           color="emerald"
-          subtitle={
-            stats && stats.peakIncidentTime !== "No Data Yet"
-              ? `${stats.peakIncidentTime.substring(stats.peakIncidentTime.indexOf("("))} • ${stats.peakTimeCount} ${stats.peakTimeCount === 1 ? "case" : "cases"}`
-              : "No cases recorded"
-          }
+          subtitle="Based on incident logs"
         />
       </KPIGrid>
       <br />

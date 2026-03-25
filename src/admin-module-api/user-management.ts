@@ -167,14 +167,9 @@ export const userManagementApi = {
   getRoleOptions: (): Promise<Role[]> =>
     apiFetch<Role[]>("/staff-options", {}, ROLE_URL),
 
-  getPermissionOptions: (
-    departmentId?: string | number,
-  ): Promise<Permission[]> => {
-    const endpoint =
-      departmentId !== undefined && departmentId !== null
-        ? `/options?departmentId=${encodeURIComponent(String(departmentId))}`
-        : "/options";
-    return apiFetch<Permission[]>(endpoint, {}, PER_URL);
+  getPermissionOptions: (): Promise<Permission[]> => {
+    // Always fetch all permissions, no departmentId
+    return apiFetch<Permission[]>("/options", {}, PER_URL);
   },
 
   createUser: (payload: CreateUserPayload): Promise<string> =>

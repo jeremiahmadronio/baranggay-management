@@ -7,7 +7,7 @@ import {
   SectionDivider,
 } from '../reusable/FormComponents'
 import { PersonSearchInput } from '../reusable/PersonSearchInput'
-import {type PersonSearchResponseDTO } from '../../blotter-api/resident'
+import {type PersonSearchResponseDTO } from '../../blotter-api/Resident'
 import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS } from './ComplaintSection'
 export const RELATIONSHIP_OPTIONS = [
   {
@@ -52,7 +52,6 @@ export interface RespondentState {
   dob: string
   gender: string
   civilStatus: string
-  occupation: string
   livingWith: 'true' | 'false' | ''
 }
 interface RespondentSectionProps {
@@ -87,8 +86,7 @@ export const RespondentSection = ({
       <SectionCard
         letter="C"
         title="Respondent Information"
-        notice='Punan ang available na impormasyon. Kung hindi kilala ang respondent, ilagay ang "Unknown".'
-      >
+notice='Provide all available information. If the respondent is unidentified, enter "Unknown".'      >
         <PersonSearchInput
           label="Search Respondent (Auto-fill)"
           placeholder="Search by name..."
@@ -252,12 +250,7 @@ export const RespondentSection = ({
           value={data.civilStatus}
           onChange={(e) => onChange('civilStatus', e.target.value)}
         />
-        <FormInput
-          label="Occupation"
-          placeholder="e.g. Farmer, Teacher"
-          value={data.occupation}
-          onChange={(e) => onChange('occupation', e.target.value)}
-        />
+       
         <FormInput
           label="Contact Number"
           placeholder="09XX XXX XXXX (if known)"

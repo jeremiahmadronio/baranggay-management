@@ -160,19 +160,20 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     permissionIds: [],
   });
 
-  // ── Fetch departments, roles, and permissions on mount ───────────────────────────
+  // ── Fetch departments, roles, and all permissions on mount ───────────────────────────
   useEffect(() => {
     const fetchOptions = async () => {
       try {
         setLoadingOptions(true);
         setOptionsError(null);
-        const departmentFromStorage = localStorage.getItem("department");
-        const [depts, roles] = await Promise.all([
+        const [depts, roles, perms] = await Promise.all([
           userManagementApi.getDepartmentOptions(),
           userManagementApi.getRoleOptions(),
+          userManagementApi.getPermissionOptions(), // always loads all permissions
         ]);
         setDepartments(depts);
         setAllRoles(roles);
+        setPermissions(perms);
 
         const currentDept = depts.find((d) => d.name === user.departmentName);
         const currentRole = roles.find((r) => r.roleName === user.roleName);
@@ -182,13 +183,6 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
           departmentId: currentDept?.id ?? null,
           roleId: currentRole?.id ?? null,
         }));
-
-        // Always use department from localStorage for initial permissions fetch
-        const departmentId = currentDept?.id ?? null;
-        const perms = await userManagementApi.getPermissionOptions(
-          departmentId ?? undefined,
-        );
-        setPermissions(perms);
 
         const currentPermIds = perms
           .filter((p) => user.permissions?.includes(p.permissionName))
@@ -210,29 +204,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     fetchOptions();
   }, [user]);
 
-  // ── Refetch permissions when department changes ───────────────────────────
-  useEffect(() => {
-    if (form.departmentId) {
-      setLoadingOptions(true);
-      setOptionsError(null);
-      userManagementApi
-        .getPermissionOptions(form.departmentId)
-        .then((perms) => {
-          setPermissions(perms);
-          setForm((prev) => ({
-            ...prev,
-            permissionIds: prev.permissionIds.filter((id) =>
-              perms.some((p) => p.id === id),
-            ),
-          }));
-        })
-        .catch(() => {
-          setOptionsError("Failed to load permissions for department.");
-        })
-        .finally(() => setLoadingOptions(false));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.departmentId]);
+  // ── No need to refetch permissions on department change; always show all permissions
 
   // ── Reset role when department changes ───────────────────────────────────────
   useEffect(() => {
@@ -301,10 +273,37 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     setErrors((prev) => ({ ...prev, permissionIds: undefined }));
   };
 
-  const getDisplayPermissions = () =>
-    permissions.filter(
+  // ── Department-based permission filtering ────────
+  const getDisplayPermissions = () => {
+    const selectedDept = departments
+      .find((d) => d.id === form.departmentId)
+      ?.name?.toUpperCase();
+    if (selectedDept === "BLOTTER") {
+      const allowed = [
+        "VIEW BLOTTER RECORDS",
+        "CREATE BLOTTER ENTRY",
+        "MANAGE HEARINGS & MEDIATION",
+        "UPDATE CASE STATUS",
+      ];
+      return permissions.filter((p) =>
+        allowed.includes(p.permissionName.toUpperCase()),
+      );
+    }
+    if (selectedDept === "LUPONG_TAGAPAMAYAPA") {
+      const allowed = [
+        "VIEW BLOTTER RECORDS",
+        "MANAGE HEARINGS & MEDIATION",
+        "UPDATE CASE STATUS",
+      ];
+      return permissions.filter((p) =>
+        allowed.includes(p.permissionName.toUpperCase()),
+      );
+    }
+    // Default: show all except 'all access'
+    return permissions.filter(
       (p) => !p.permissionName.toLowerCase().includes("all access"),
     );
+  };
 
   const displayPerms = getDisplayPermissions();
 
@@ -315,13 +314,23 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
   const someSelected =
     !allSelected && displayPerms.some((p) => form.permissionIds.includes(p.id));
 
+  // 'All Permissions' only affects currently displayed permissions
   const toggleSelectAll = () => {
     if (allSelected) {
-      setForm((prev) => ({ ...prev, permissionIds: [] }));
-    } else {
+      // Remove only the displayed permissions from selection
       setForm((prev) => ({
         ...prev,
-        permissionIds: displayPerms.map((p) => p.id),
+        permissionIds: prev.permissionIds.filter(
+          (id) => !displayPerms.some((p) => p.id === id),
+        ),
+      }));
+    } else {
+      // Add all displayed permissions to selection (avoid duplicates)
+      setForm((prev) => ({
+        ...prev,
+        permissionIds: Array.from(
+          new Set([...prev.permissionIds, ...displayPerms.map((p) => p.id)]),
+        ),
       }));
     }
     setErrors((prev) => ({ ...prev, permissionIds: undefined }));

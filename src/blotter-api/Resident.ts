@@ -17,6 +17,13 @@ export interface PersonSearchResponseDTO {
   barangayIdNumber: string | null; 
 }
 
+export interface ResidentStatsDTO {
+  totalResidents: number;
+  totalVoters: number;
+  totalSeniorCitizen: number;
+  headsOfTheFamily: number;
+}
+
 export interface ResidentSummary {
   residentId: number;
   barangayIdNumber: string;
@@ -117,4 +124,8 @@ export async function getResidentTable(params: ResidentTableParams = {}): Promis
 
 export async function getResidentProfile(residentId: number): Promise<ResidentProfileViewDTO> {
   return apiFetch<ResidentProfileViewDTO>(`${PEOPLE_URL}/resident-profile/${residentId}`);
+}
+
+export async function getResidentStats(): Promise<ResidentStatsDTO> {
+  return apiFetch<ResidentStatsDTO>(`${PEOPLE_URL}/stats`);
 }

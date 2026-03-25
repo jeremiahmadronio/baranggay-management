@@ -1,21 +1,20 @@
-import { useState } from 'react'
-import { XIcon, RefreshCwIcon, ShieldOffIcon } from 'lucide-react'
+import { useState } from "react";
+import { XIcon, RefreshCwIcon, ShieldOffIcon } from "lucide-react";
 
 const AVAILABLE_STATUSES = [
-  { value: 'UNDER_MEDIATION', label: 'Under Mediation' },
-  { value: 'EXPIRED_UNACTIONED', label: 'Expired / Unactioned' },
-  { value: 'REFERRED_TO_LUPON', label: 'Referred to Lupon' },
-  { value: 'CERTIFIED_TO_FILE_ACTION', label: 'Certified to File Action' },
-  { value: 'DISMISSED', label: 'Dismissed' },
-  { value: 'SETTLED', label: 'Settled' },
-]
+  { value: "UNDER_MEDIATION", label: "Under Mediation" },
+  { value: "EXPIRED_UNACTIONED", label: "Expired / Unactioned" },
+  { value: "UNDER_CONCILIATION", label: "Referred to Lupon" },
+  { value: "DISMISSED", label: "Dismissed" },
+  { value: "SETTLED", label: "Settled" },
+];
 
 interface ChangeStatusModalProps {
-  currentStatus: string
-  loading: boolean
-  hasPermission: boolean // "Update Case Status"
-  onConfirm: (newStatus: string, reason: string) => void
-  onCancel: () => void
+  currentStatus: string;
+  loading: boolean;
+  hasPermission: boolean; // "Update Case Status"
+  onConfirm: (newStatus: string, reason: string) => void;
+  onCancel: () => void;
 }
 
 export function ChangeStatusModal({
@@ -25,26 +24,26 @@ export function ChangeStatusModal({
   onConfirm,
   onCancel,
 }: ChangeStatusModalProps) {
-  const [newStatus, setNewStatus] = useState('')
-  const [reason, setReason] = useState('')
-  const [error, setError] = useState('')
+  const [newStatus, setNewStatus] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
 
   const filteredStatuses = AVAILABLE_STATUSES.filter(
     (s) => s.value !== currentStatus,
-  )
+  );
 
   const handleSubmit = () => {
     if (!newStatus) {
-      setError('Please select a new status.')
-      return
+      setError("Please select a new status.");
+      return;
     }
     if (!reason.trim()) {
-      setError('Please provide a reason for the status change.')
-      return
+      setError("Please provide a reason for the status change.");
+      return;
     }
-    setError('')
-    onConfirm(newStatus, reason.trim())
-  }
+    setError("");
+    onConfirm(newStatus, reason.trim());
+  };
 
   return (
     <div
@@ -53,7 +52,6 @@ export function ChangeStatusModal({
       aria-modal="true"
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <div className="flex items-center gap-4">
@@ -65,7 +63,7 @@ export function ChangeStatusModal({
                 Change Case Status
               </h3>
               <p className="text-sm text-gray-500 mt-0.5">
-                Current: {currentStatus.replace(/_/g, ' ')}
+                Current: {currentStatus.replace(/_/g, " ")}
               </p>
             </div>
           </div>
@@ -79,7 +77,6 @@ export function ChangeStatusModal({
 
         {/* Body */}
         <div className="px-6 py-6 space-y-5">
-
           {/* Permission warning */}
           {!hasPermission && (
             <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
@@ -118,16 +115,14 @@ export function ChangeStatusModal({
               disabled={!hasPermission}
               placeholder={
                 hasPermission
-                  ? 'Provide a reason for this status change...'
-                  : 'You do not have permission to update the case status.'
+                  ? "Provide a reason for this status change..."
+                  : "You do not have permission to update the case status."
               }
               className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none text-gray-900 shadow-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             />
           </div>
 
-          {error && (
-            <p className="text-sm font-medium text-red-500">{error}</p>
-          )}
+          {error && <p className="text-sm font-medium text-red-500">{error}</p>}
         </div>
 
         {/* Footer */}
@@ -152,5 +147,5 @@ export function ChangeStatusModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

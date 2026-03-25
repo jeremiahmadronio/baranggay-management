@@ -19,7 +19,6 @@ import {
 } from "../admin-module-api/user-management";
 import { ActionModal } from "../reusable/SuccessModal";
 
-
 interface PwReq {
   label: string;
   test: (v: string) => boolean;
@@ -167,16 +166,15 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
         const [depts, roles, perms] = await Promise.all([
           userManagementApi.getDepartmentOptions(),
           userManagementApi.getRoleOptions(),
-          userManagementApi.getPermissionOptions(),
+          userManagementApi.getPermissionOptions(), // always loads all permissions
         ]);
         setDepartments(depts);
         setAllRoles(roles);
         setPermissions(perms);
       } catch (err) {
         setOptionsError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load options. Please try again.",
+          
+              "Failed to load options. Please try again.",
         );
       } finally {
         setLoadingOptions(false);
@@ -258,24 +256,35 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     setErrors((prev) => ({ ...prev, permissionIds: undefined }));
   };
 
-  // ── Filter permissions for BLOTTER department ────────
-  const BLOTTER_PERMISSIONS = [
-    "View Records",
-    "Create Records",
-    "Edit Records",
-    "Delete Records",
-    "Generate Report"
-  ];
-
+  // ── Department-based permission filtering ────────
   const getDisplayPermissions = () => {
-    const selectedDept = departments.find((d) => d.id === form.departmentId);
-    if (selectedDept && selectedDept.name.toUpperCase() === "BLOTTER") {
-      return permissions.filter(
-        (p) => BLOTTER_PERMISSIONS.includes(p.permissionName)
+    const selectedDept = departments
+      .find((d) => d.id === form.departmentId)
+      ?.name?.toUpperCase();
+    if (selectedDept === "BLOTTER") {
+      const allowed = [
+        "VIEW BLOTTER RECORDS",
+        "CREATE BLOTTER ENTRY",
+        "MANAGE HEARINGS & MEDIATION",
+        "UPDATE CASE STATUS",
+      ];
+      return permissions.filter((p) =>
+        allowed.includes(p.permissionName.toUpperCase()),
       );
     }
+    if (selectedDept === "LUPONG_TAGAPAMAYAPA") {
+      const allowed = [
+        "VIEW BLOTTER RECORDS",
+        "MANAGE HEARINGS & MEDIATION",
+        "UPDATE CASE STATUS",
+      ];
+      return permissions.filter((p) =>
+        allowed.includes(p.permissionName.toUpperCase()),
+      );
+    }
+    // Default: show all except 'all access'
     return permissions.filter(
-      (p) => !p.permissionName.toLowerCase().includes("all access")
+      (p) => !p.permissionName.toLowerCase().includes("all access"),
     );
   };
 
@@ -289,13 +298,23 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
 
   const someSelected = form.permissionIds.length > 0 && !allSelected;
 
+  // 'All Permissions' only affects currently displayed permissions
   const toggleSelectAll = () => {
     if (allSelected) {
-      setForm((prev) => ({ ...prev, permissionIds: [] }));
-    } else {
+      // Remove only the displayed permissions from selection
       setForm((prev) => ({
         ...prev,
-        permissionIds: displayPerms.map((p) => p.id),
+        permissionIds: prev.permissionIds.filter(
+          (id) => !displayPerms.some((p) => p.id === id),
+        ),
+      }));
+    } else {
+      // Add all displayed permissions to selection (avoid duplicates)
+      setForm((prev) => ({
+        ...prev,
+        permissionIds: Array.from(
+          new Set([...prev.permissionIds, ...displayPerms.map((p) => p.id)]),
+        ),
       }));
     }
     setErrors((prev) => ({ ...prev, permissionIds: undefined }));

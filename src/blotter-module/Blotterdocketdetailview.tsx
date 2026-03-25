@@ -1,3 +1,4 @@
+import { referToLupon } from "../blotter-api/ForwardToLupon";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeftIcon,
@@ -203,17 +204,11 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
   const handleReferConfirm = async (members: any[]) => {
     setActionLoading(true);
     try {
-      await updateCaseStatus({
-        blotterNumber,
-        newStatus: "REFERRED_TO_LUPON",
-        reason: `Referred to Lupon. Pangkat: ${members
-          .map((m) => `${m.firstName} ${m.lastName} (${m.position})`)
-          .join(", ")}`,
-      });
+      await referToLupon(blotterNumber, { members });
       setModal(null);
       await refreshData();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to refer case.");
+    } catch (err: any) {
+      alert(err.message || "Failed to refer case.");
     } finally {
       setActionLoading(false);
     }
@@ -408,7 +403,6 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               {docket.caseNumber}
             </h1>
-            
           </div>
           <p className="text-sm text-gray-500">
             {docket.firstName} {docket.lastName} • {docket.natureOfComplaint}
@@ -494,12 +488,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
         )}
 
         {activeTab === "timeline" && (
-          <TimelineTab
-            docket={docket}
-            mediation={mediation}
-            hearings={hearings}
-            notes={notes}
-          />
+          <TimelineTab blotterNumber={blotterNumber} />
         )}
       </div>
     </div>

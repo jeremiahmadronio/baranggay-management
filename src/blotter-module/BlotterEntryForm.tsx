@@ -107,7 +107,7 @@ export default function BlotterEntryForm() {
     dob: "",
     gender: "",
     civilStatus: "",
-    occupation: "",
+
     livingWith: "",
   });
   const [incident, setIncident] = useState<IncidentState>({
@@ -198,10 +198,8 @@ export default function BlotterEntryForm() {
           : wit,
       ),
     );
-  const buildEvidenceIds = (): string[] => [
-    ...Array.from(selectedEvidence).map(String),
-    ...(customEvidence.trim() ? [customEvidence.trim()] : []),
-  ];
+  // Only pass evidence IDs (number) for checked evidence
+  const buildEvidenceIds = (): number[] => Array.from(selectedEvidence);
   const resetForm = () => {
     setComplainant({
       id: undefined,
@@ -228,7 +226,7 @@ export default function BlotterEntryForm() {
       dob: "",
       gender: "",
       civilStatus: "",
-      occupation: "",
+
       livingWith: "",
     });
     setIncident({
@@ -273,7 +271,9 @@ export default function BlotterEntryForm() {
         e.rFormalRelationship = "Relationship is required.";
       // Witness fullName validation for formal complaints
       witnesses.forEach((w, idx) => {
-        if ((w.fullName ?? "").trim() === "") {
+        // Only require fullName if at least one other field is filled (not all blank)
+        const hasOtherInfo = w.contactNumber || w.address || w.personId;
+        if (hasOtherInfo && (w.fullName ?? "").trim() === "") {
           e[`witnessFullName${idx}`] =
             `Witness ${idx + 1} full name is required.`;
         }
@@ -310,7 +310,7 @@ export default function BlotterEntryForm() {
     try {
       let resultBlotterNo: string;
       if (mode === "record") {
-        const payload = {
+        const payload: any = {
           complainantId: complainant.id,
           respondentId: respondent.id,
           firstName: complainant.firstName,
@@ -335,10 +335,11 @@ export default function BlotterEntryForm() {
             : undefined,
           placeOfIncident: incident.placeOfIncident,
           narrativeStatement: narrative,
-          evidenceTypeIds: buildEvidenceIds().length
-            ? buildEvidenceIds()
-            : undefined,
         };
+        const evidenceIds = buildEvidenceIds();
+        if (evidenceIds.length) payload.evidenceTypeIds = evidenceIds;
+        if (customEvidence.trim())
+          payload.customEvidence = customEvidence.trim();
         resultBlotterNo = await submitForTheRecord(payload);
       } else {
         const payload = {
@@ -363,7 +364,6 @@ export default function BlotterEntryForm() {
           respondentDob: respondent.dob || undefined,
           respondentGender: respondent.gender || undefined,
           respondentCivilStatus: respondent.civilStatus || undefined,
-          respondentOccupation: respondent.occupation || undefined,
           respondentContact: respondent.contact || undefined,
           respondentAddress: respondent.address || undefined,
           relationshipTypeName: respondent.relationship || undefined,
@@ -574,8 +574,6 @@ export default function BlotterEntryForm() {
           setCustomEvidence={setCustomEvidence}
         />
 
-      
-
         {mode === "formal" && (
           <WitnessSection
             witnesses={witnesses}
@@ -585,7 +583,7 @@ export default function BlotterEntryForm() {
           />
         )}
 
-          <CertificationSection
+        <CertificationSection
           certified={certified}
           onChange={setCertified}
           error={errors.certified}

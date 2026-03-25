@@ -7,6 +7,8 @@ import {
   Leaf,
   FileText,
   ScrollText,
+  CalendarIcon,
+  ChartNoAxesCombined,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -44,14 +46,20 @@ export const blotterNavItems: NavItemType[] = [
   { label: 'Docket Books', path: '/blotter/docket', icon: Package },
   { label: 'New Complaints', path: '/blotter/entry-form', icon: MapPinHouse },
   { label: 'Records', path: '/blotter/records', icon: FileText },
-  { label: 'Reports', path: '/blotter/reports', icon: Settings },
+  { label: 'Reports', path: '/blotter/reports', icon: ChartNoAxesCombined  },
+  { label: 'settings', path: '/blotter/account-settings', icon: Settings },
 ]
 
 
 // Lupong Tagapamayapa navigation items
 export const lupongTagapamayapaNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/lupongtagapamayapa/dashboard', icon: LayoutDashboard },
-  { label: 'Reports', path: '/lupongtagapamayapa/reports', icon: Settings },
+  { label: 'Residents', path: '/lupongtagapamayapa/residents', icon: Users },
+  { label: 'Cases', path: '/lupongtagapamayapa/cases', icon: FileText },
+  { label: 'View All Hearings', path: '/lupongtagapamayapa/view-all-hearings', icon: CalendarIcon },
+    { label: 'settings', path: '/lupongtagapamayapa/account-settings', icon: Settings },
+
+
 ]
 
 // DCPC navigation items

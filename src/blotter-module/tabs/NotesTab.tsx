@@ -53,7 +53,6 @@ export function NotesTab({
       userDepartment = user?.department || "";
     }
   } catch {}
-  const isBlotterDept = userDepartment.toUpperCase() === "BLOTTER";
   const isUnderConciliation = caseStatus === "UNDER_CONCILIATION";
 
   return (
@@ -64,8 +63,9 @@ export function NotesTab({
         action={
           !isTerminal &&
           !showNoteInput &&
-          !(isUnderConciliation && isBlotterDept) ? (
+          !(isUnderConciliation) ? (
             <button
+            disabled={isUnderConciliation}
               onClick={() => setShowNoteInput(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
             >
@@ -73,7 +73,9 @@ export function NotesTab({
             </button>
           ) : undefined
         }
+        
       >
+        
         {showNoteInput && (
           <div className="mb-4 space-y-2">
             <textarea

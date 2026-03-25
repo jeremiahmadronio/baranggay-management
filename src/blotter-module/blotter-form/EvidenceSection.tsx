@@ -1,13 +1,13 @@
-import  { useState,  } from 'react'
-import { SectionCard, FormInput } from '../reusable/FormComponents'
-import {type  EvidenceOptionDTO } from '../../blotter-api/Complaint'
+import { useState } from "react";
+import { SectionCard, FormInput } from "../reusable/FormComponents";
+import { type EvidenceOptionDTO } from "../../blotter-api/Complaint";
 interface EvidenceSectionProps {
-  optionsLoading: boolean
-  evidenceOptions: EvidenceOptionDTO[]
-  selectedEvidence: Set<number>
-  toggleEvidence: (id: number) => void
-  customEvidence: string
-  setCustomEvidence: (val: string) => void
+  optionsLoading: boolean;
+  evidenceOptions: EvidenceOptionDTO[];
+  selectedEvidence: Set<number>;
+  toggleEvidence: (id: number) => void;
+  customEvidence: string;
+  setCustomEvidence: (val: string) => void;
 }
 export const EvidenceSection = ({
   optionsLoading,
@@ -17,7 +17,7 @@ export const EvidenceSection = ({
   customEvidence,
   setCustomEvidence,
 }: EvidenceSectionProps) => {
-  const [showAllEvidence, setShowAllEvidence] = useState(false)
+  const [showAllEvidence, setShowAllEvidence] = useState(false);
   return (
     <SectionCard letter="F" title="Other Documents or Evidence Provided">
       <p className="text-xs text-gray-500 -mt-1">
@@ -34,13 +34,14 @@ export const EvidenceSection = ({
             ).map((ev) => (
               <label
                 key={ev.id}
-                className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer text-sm transition-all ${selectedEvidence.has(ev.id) ? 'border-blue-400 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer text-sm transition-all ${selectedEvidence.has(ev.id) ? "border-blue-400 bg-blue-50 text-blue-700 font-medium" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"}`}
               >
                 <input
                   type="checkbox"
                   checked={selectedEvidence.has(ev.id)}
                   onChange={() => toggleEvidence(ev.id)}
                   className="accent-blue-600 shrink-0"
+                  value={ev.id}
                 />
                 {ev.typName}
               </label>
@@ -53,7 +54,7 @@ export const EvidenceSection = ({
               onClick={() => setShowAllEvidence((s) => !s)}
             >
               {showAllEvidence
-                ? 'Show less'
+                ? "Show less"
                 : `Show ${evidenceOptions.length - 8} more...`}
             </button>
           )}
@@ -71,5 +72,5 @@ export const EvidenceSection = ({
         hint="You may type a custom evidence description here."
       />
     </SectionCard>
-  )
-}
+  );
+};

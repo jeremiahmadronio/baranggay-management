@@ -59,9 +59,8 @@ export interface BlotterRecordViewDTO {
 export interface FtrSummaryStatsDTO {
   totalFtr: number;
   ftrTrend: number;
-  totalEscalated: number;
-  escalatedTrend: number;
-  escalationRate: number;
+  frequentSubjectsCount: number;
+  mostReportedIssue: string;
   peakIncidentTime: string;
   peakTimeCount: number;
 }

@@ -40,7 +40,7 @@ export interface RecordBlotterEntry {
 
   narrativeStatement: string;
 
-  evidenceTypeIds?: (string | number)[];
+  evidenceTypeIds?: number[];
 }
 
 export interface WitnessEntry {
@@ -73,7 +73,6 @@ export interface FormalComplaintEntry {
   respondentDob?: string;
   respondentGender?: string;
   respondentCivilStatus?: string;
-  respondentOccupation?: string;
   respondentContact?: string;
   respondentAddress?: string;
   relationshipTypeName?: string;

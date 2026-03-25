@@ -43,10 +43,10 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
 }
 
 export async function referToLupon(
-  caseId: number, 
+  blotterNumber: string, 
   body: ReferToLuponRequest
 ): Promise<string> {
-  return apiFetch<string>(`${LUPON_URL}/refer-to-lupon/${caseId}`, {
+  return apiFetch<string>(`${LUPON_URL}/refer-to-lupon/${blotterNumber}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   });

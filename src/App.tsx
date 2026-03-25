@@ -62,8 +62,11 @@ import FirstTimeJobSeekerDashboard from "./first-time-job-seeker-module/dashboar
 
 //LUPON
 import LupongTagapamayapaDashboard from "./lupong-tagapamayapa-module/dashboard";
+import LuponCases from "./lupong-tagapamayapa-module/Cases";
+import { ViewAllHearings } from "./lupong-tagapamayapa-module/ViewAllHearing";
 
-// Official
+
+  import LuponCaseDetailViewWrapper from "./lupong-tagapamayapa-module/LuponCaseDetailViewWrapper";
 import OfficialDashboard from "./official-module/dashboard";
 
 //VAWC
@@ -142,21 +145,24 @@ export function App() {
         <Route path="records" element={<BlotterRecordsPage />} />
         <Route path="docket"element={<PagePlaceholder title="Docket Books" />} />
         <Route path="entry-form" element={<BlotterEntryForm />} />
-        <Route path="all-complaints"element={<PagePlaceholder title="All Complaints" />}/>
-        <Route path="settings" element={<PagePlaceholder title="Settings" />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="record-view" element={<BlotterViewPage />} />
         <Route path="residents" element={<ResidentListPage />} />
+        <Route path="account-settings" element={<AccountSettings />} />
       </Route>
 
-      {/* Lupong Tagapamayapa */}
+
+        {/* Lupong Tagapamayapa */}
       <Route path="/lupongtagapamayapa" element={<LupongTagapamayapaLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<LupongTagapamayapaDashboard />} />
-        <Route
-          path="reports"
-          element={<PagePlaceholder title="Lupon Reports" />}
-        />
+        <Route path="cases" element={<LuponCases />} />
+        <Route path="residents" element={<ResidentListPage />} />
+        <Route path="cases/:blotterNumber" element={<LuponCaseDetailViewWrapper />} />
+        <Route path="view-all-hearings" element={<ViewAllHearings />} />
+        <Route path="account-settings" element={<AccountSettings />} />
+         
+        
       </Route>
 
       {/* BCPC */}

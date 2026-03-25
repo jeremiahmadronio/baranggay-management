@@ -22,7 +22,7 @@ export interface UserSecurityProfile {
   username: string;
   role: string;
   department: string;
-  permissions: string[]; // Ito ang tinitignan ng hasPerm helper mo
+  permissions: string[]; 
 }
 
 
@@ -36,7 +36,6 @@ export async function getPermissionOptions(): Promise<PermissionOptions[]> {
         return apiFetch<UserAccessPermission>(`${PERMISSION_URL}/my-access`);
         }
 
-// --- Reusable Fetch Logic (Kung hiwalay na file ito, i-import mo na lang) ---
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
