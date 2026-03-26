@@ -6,8 +6,6 @@ import {
   SearchIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
- 
-  HashIcon,
 } from "lucide-react";
 import { Badge } from "../lupong-tagapamayapa-module/ui/Badge";
 import { Button } from "../lupong-tagapamayapa-module/ui/Button";
@@ -31,10 +29,7 @@ const TABS = [
     id: "Completed",
     label: "Completed",
   },
-  {
-    id: "Postponed",
-    label: "Postponed",
-  },
+
   {
     id: "Cancelled",
     label: "Cancelled",
@@ -223,71 +218,102 @@ export function ViewAllHearings() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
-            {data?.content.map((hearing) => (
-              <div
-                key={hearing.hearingId}
-                className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-all group flex flex-col sm:flex-row sm:items-center justify-between gap-6"
-              >
-                {/* Date & Time */}
-                <div className="flex flex-col sm:w-48 flex-shrink-0 gap-2">
-                  <div className="flex items-center text-gray-900 font-semibold">
-                    <CalendarIcon className="h-4 w-4 mr-2.5 text-blue-600 flex-shrink-0" />
-                    {formatDate(hearing.scheduledStart)}
+            {(() => {
+              if (!data?.content) return null;
+              let hearings = [...data.content];
+              // Custom sort for 'All' tab: scheduled first, then by soonest date
+              if (activeTab === "All") {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0); // Only compare date part
+                hearings.sort((a, b) => {
+                  const aDate = new Date(a.scheduledStart);
+                  const bDate = new Date(b.scheduledStart);
+                  const aIsFutureOrToday = aDate >= now;
+                  const bIsFutureOrToday = bDate >= now;
+                  // Future/today hearings first
+                  if (aIsFutureOrToday && !bIsFutureOrToday) return -1;
+                  if (!aIsFutureOrToday && bIsFutureOrToday) return 1;
+                  // Within future/today, scheduled status first
+                  const aIsScheduled = a.status === "SCHEDULED";
+                  const bIsScheduled = b.status === "SCHEDULED";
+                  if (aIsScheduled && !bIsScheduled) return -1;
+                  if (!aIsScheduled && bIsScheduled) return 1;
+                  // Then by soonest date
+                  return aDate.getTime() - bDate.getTime();
+                });
+              } else {
+                // For other tabs, just sort by soonest date
+                hearings.sort(
+                  (a, b) =>
+                    new Date(a.scheduledStart).getTime() -
+                    new Date(b.scheduledStart).getTime(),
+                );
+              }
+              return hearings.map((hearing) => (
+                <div
+                  key={hearing.hearingId}
+                  className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-all group flex flex-col sm:flex-row sm:items-center justify-between gap-6"
+                >
+                  {/* Date & Time */}
+                  <div className="flex flex-col sm:w-48 flex-shrink-0 gap-2">
+                    <div className="flex items-center text-gray-900 font-semibold">
+                      <CalendarIcon className="h-4 w-4 mr-2.5 text-blue-600 flex-shrink-0" />
+                      {formatDate(hearing.scheduledStart)}
+                    </div>
+                    <div className="flex items-center text-gray-500 text-sm">
+                      <ClockIcon className="h-4 w-4 mr-2.5 flex-shrink-0 text-gray-400" />
+                      {formatTime(hearing.scheduledStart)}
+                      {hearing.scheduledEnd && (
+                        <span className="ml-1 text-gray-400">
+                          – {formatTime(hearing.scheduledEnd)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center text-gray-500 text-sm">
-                    <ClockIcon className="h-4 w-4 mr-2.5 flex-shrink-0 text-gray-400" />
-                    {formatTime(hearing.scheduledStart)}
-                    {hearing.scheduledEnd && (
-                      <span className="ml-1 text-gray-400">
-                        – {formatTime(hearing.scheduledEnd)}
-                      </span>
-                    )}
-                  </div>
-                </div>
 
-                {/* Case Info */}
-                <div className="flex-1 min-w-0 border-t sm:border-t-0 sm:border-l border-gray-100 pt-4 sm:pt-0 sm:pl-6">
-                  <div className="flex items-center flex-wrap gap-2.5 mb-2">
-                    <h3 className="text-lg font-bold text-gray-900 truncate">
-                      {hearing.complainantName}{" "}
-                      <span className="text-gray-400 font-normal text-sm mx-1">
-                        vs
-                      </span>{" "}
-                      {hearing.respondentName}
-                    </h3>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                      {hearing.casePhase}
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <HashIcon className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
-                      Ref:{" "}
-                      <span className="font-medium text-gray-700 ml-1">
-                        {hearing.blotterNumber}
+                  {/* Case Info */}
+                  <div className="flex-1 min-w-0 border-t sm:border-t-0 sm:border-l border-gray-100 pt-4 sm:pt-0 sm:pl-6">
+                    <div className="flex items-center flex-wrap gap-2.5 mb-2">
+                      <h3 className="text-lg font-bold text-gray-900 truncate">
+                        {hearing.complainantName}{" "}
+                        <span className="text-gray-400 font-normal text-sm mx-1">
+                          vs
+                        </span>{" "}
+                        {hearing.respondentName}
+                      </h3>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                        {hearing.casePhase}
                       </span>
                     </div>
-                    <div className="flex items-center">
-                      <MapPinIcon className="h-3.5 w-3.5 mr-1.5 text-gray-400 flex-shrink-0" />
-                      <span className="truncate">{hearing.venue}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-gray-500">
+                      <div className="flex items-center">
+                        Case:{" "}
+                        <span className="font-medium text-gray-700 ml-1">
+                          {hearing.blotterNumber}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <MapPinIcon className="h-3.5 w-3.5 mr-1.5 text-gray-400 flex-shrink-0" />
+                        <span className="truncate">{hearing.venue}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Status + Actions */}
-                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 sm:w-40 flex-shrink-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-gray-100">
-                  <Badge status={hearing.status} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDetailHearing(hearing)}
-                    className="w-full sm:w-auto"
-                  >
-                    View Details
-                  </Button>
+                  {/* Status + Actions */}
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 sm:w-40 flex-shrink-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                    <Badge status={hearing.status} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDetailHearing(hearing)}
+                      className="w-full sm:w-auto"
+                    >
+                      View Details
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         )}
       </div>

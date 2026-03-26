@@ -1,169 +1,169 @@
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+  const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
-const LUPON_URL = `${BASE}/api/v1/lupon`;
-
-
-//pagination
-export interface PageResponse<T> {
-  content: T[];
-  page: {
-    size: number;
-    number: number;
-    totalElements: number;
-    totalPages: number;
-  };
-}
-
-//hearing view 
-export interface HearingScheduleDTO {
-  hearingId: number;
-  blotterNumber: string;
-  createdAt: string;
-  complainantName: string;
-  respondentName: string;
-  summonNumber: number;
-  scheduledStart: string;
-  scheduledEnd: string;
-  status: string;
-  notes: string | null;
-  createdBy: string | null;
-  venue: string;
-  casePhase: string;
-  complainantPresent: boolean | null;
-  respondentPresent: boolean | null;
-  hearingNotes: string | null;
-  outcome: string | null;
-  recordedByMinutes: string | null;
-}
-
-//hearing schedule filtering params
-export interface HearingScheduleParams {
-  search?: string;
-  tab?: string;
-  page?: number;
-  size?: number;
-}
-
-//update hearing status 
-export interface UpdateHearingStatusRequest {
-  newStatus: string;
-  remarks: string;
-}
+  const LUPON_URL = `${BASE}/api/v1/lupon`;
 
 
-export interface PangkatAttendanceDTO {
-  pangkatMemberId: number;
-  isPresent: boolean;
-}
-
-export interface RecordHearingMinutesRequest {
-  hearingNotes: string;
-  outcome: string; 
-  complainantPresent: boolean;
-  respondentPresent: boolean;
-  settlementTerms?: string; 
-  pangkatAttendance: PangkatAttendanceDTO[];
-}
-
-
-export interface AssignedPangkatDTO {
-  memberId: number;
-  fullName: string;
-  position: string;
-}
-
-export interface HearingDetailViewDTO {
-  hearingId: number;
-  hearingNumber: number; 
-  status: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  venue: string;
-  caseNumber: string;
-  caseTitle: string;
-  assignedPangkat: AssignedPangkatDTO[];
-}
-
-
-//shared fetch helper
-async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("token");
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options.headers,
-  };
-
-  const response = await fetch(url, { ...options, headers });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-      throw new Error("Session expired. Please login again.");
-    }
-    const contentType = response.headers.get("content-type");
-    const errMsg = contentType?.includes("application/json")
-      ? (await response.json().catch(() => ({}))).message
-      : await response.text();
-    throw new Error(errMsg || `HTTP error! status: ${response.status}`);
+  //pagination
+  export interface PageResponse<T> {
+    content: T[];
+    page: {
+      size: number;
+      number: number;
+      totalElements: number;
+      totalPages: number;
+    };
   }
 
-  if (response.status === 204) return {} as T;
+  //hearing view 
+  export interface HearingScheduleDTO {
+    hearingId: number;
+    blotterNumber: string;
+    createdAt: string;
+    complainantName: string;
+    respondentName: string;
+    summonNumber: number;
+    scheduledStart: string;
+    scheduledEnd: string;
+    status: string;
+    notes: string | null;
+    createdBy: string | null;
+    venue: string;
+    casePhase: string;
+    complainantPresent: boolean | null;
+    respondentPresent: boolean | null;
+    hearingNotes: string | null;
+    outcome: string | null;
+    recordedByMinutes: string | null;
+  }
 
-  const contentType = response.headers.get("content-type");
-  if (contentType?.includes("application/json")) return response.json();
-  return response.text() as unknown as T;
-}
+  //hearing schedule filtering params
+  export interface HearingScheduleParams {
+    search?: string;
+    tab?: string;
+    page?: number;
+    size?: number;
+  }
+
+  //update hearing status 
+  export interface UpdateHearingStatusRequest {
+    newStatus: string;
+    remarks: string;
+  }
 
 
-//get hearing schedules with pagination and search
-export async function getHearingSchedules(
-  params: HearingScheduleParams = {}
-): Promise<PageResponse<HearingScheduleDTO>> {
-  const { search, tab = "ALL", page = 1, size = 10 } = params;
+  export interface PangkatAttendanceDTO {
+    pangkatMemberId: number;
+    isPresent: boolean;
+  }
 
-  const query = new URLSearchParams();
+  export interface RecordHearingMinutesRequest {
+    hearingNotes: string;
+    outcome: string; 
+    complainantPresent: boolean;
+    respondentPresent: boolean;
+    settlementTerms?: string; 
+    pangkatAttendance: PangkatAttendanceDTO[];
+  }
 
-  if (search) query.set("search", search);
-  if (tab) query.set("tab", tab);
+
+  export interface AssignedPangkatDTO {
+    memberId: number;
+    fullName: string;
+    position: string;
+  }
+
+  export interface HearingDetailViewDTO {
+    hearingId: number;
+    hearingNumber: number; 
+    status: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    venue: string;
+    caseNumber: string;
+    caseTitle: string;
+    assignedPangkat: AssignedPangkatDTO[];
+  }
+
+
+  //shared fetch helper
+  async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+    const token = localStorage.getItem("token");
+
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    };
+
+    const response = await fetch(url, { ...options, headers });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        throw new Error("Session expired. Please login again.");
+      }
+      const contentType = response.headers.get("content-type");
+      const errMsg = contentType?.includes("application/json")
+        ? (await response.json().catch(() => ({}))).message
+        : await response.text();
+      throw new Error(errMsg || `HTTP error! status: ${response.status}`);
+    }
+
+    if (response.status === 204) return {} as T;
+
+    const contentType = response.headers.get("content-type");
+    if (contentType?.includes("application/json")) return response.json();
+    return response.text() as unknown as T;
+  }
+
+
+  //get hearing schedules with pagination and search
+  export async function getHearingSchedules(
+    params: HearingScheduleParams = {}
+  ): Promise<PageResponse<HearingScheduleDTO>> {
+    const { search, tab = "ALL", page = 1, size = 10 } = params;
+
+    const query = new URLSearchParams();
+
+    if (search) query.set("search", search);
+    if (tab) query.set("tab", tab);
+    
+    query.set("page", String(page));
+    query.set("size", String(size));
+
+    return apiFetch<PageResponse<HearingScheduleDTO>>(
+      `${LUPON_URL}/hearing-view?${query.toString()}`
+    );
+  }
+
+  //update hearing status
+  export async function updateHearingStatus(
+    hearingId: number,
+    body: UpdateHearingStatusRequest
+  ): Promise<string> {
+    return apiFetch<string>(`${LUPON_URL}/new-status/${hearingId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  }
+
+
+  export async function recordHearingMinutes(
+    hearingId: number,
+    body: RecordHearingMinutesRequest
+  ): Promise<string> {
+    return apiFetch<string>(`${LUPON_URL}/${hearingId}/record-minutes`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+
+  export async function getHearingFullDetails(
+    hearingId: number
+  ): Promise<HearingDetailViewDTO> {
   
-  query.set("page", String(page));
-  query.set("size", String(size));
-
-  return apiFetch<PageResponse<HearingScheduleDTO>>(
-    `${LUPON_URL}/hearing-view?${query.toString()}`
-  );
-}
-
-//update hearing status
-export async function updateHearingStatus(
-  hearingId: number,
-  body: UpdateHearingStatusRequest
-): Promise<string> {
-  return apiFetch<string>(`${LUPON_URL}/new-status/${hearingId}`, {
-    method: "PUT",
-    body: JSON.stringify(body),
-  });
-}
-
-
-export async function recordHearingMinutes(
-  hearingId: number,
-  body: RecordHearingMinutesRequest
-): Promise<string> {
-  return apiFetch<string>(`${LUPON_URL}/${hearingId}/record-minutes`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
-
-export async function getHearingFullDetails(
-  hearingId: number
-): Promise<HearingDetailViewDTO> {
- 
-  return apiFetch<HearingDetailViewDTO>(`${LUPON_URL}/details/${hearingId}`);
-}
+    return apiFetch<HearingDetailViewDTO>(`${LUPON_URL}/details/${hearingId}`);
+  }
