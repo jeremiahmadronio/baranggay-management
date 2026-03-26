@@ -57,6 +57,7 @@ export const lupongTagapamayapaNavItems: NavItemType[] = [
   { label: 'Residents', path: '/lupongtagapamayapa/residents', icon: Users },
   { label: 'Cases', path: '/lupongtagapamayapa/cases', icon: FileText },
   { label: 'View All Hearings', path: '/lupongtagapamayapa/view-all-hearings', icon: CalendarIcon },
+  { label: 'Reports', path: '/lupongtagapamayapa/reports', icon: ChartNoAxesCombined },
     { label: 'settings', path: '/lupongtagapamayapa/account-settings', icon: Settings },
 
 

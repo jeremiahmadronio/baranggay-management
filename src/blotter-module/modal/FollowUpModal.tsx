@@ -54,7 +54,7 @@ export function FollowUpModal({
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100 bg-white">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Hearing Follow-up</h3>
+            <h3 className="text-lg font-bold text-gray-900">Mediation Follow-up</h3>
             <p className="text-sm text-gray-500 mt-1">
               Case: <span className="font-bold text-blue-600">{caseNumber}</span>
             </p>
@@ -86,7 +86,7 @@ export function FollowUpModal({
               onChange={(e) => setText(e.target.value)}
               placeholder={
                 hasPermission
-                  ? 'What happened? (e.g., Respondent promised to settle next week...)'
+                  ? 'Add any important notes or remarks regarding this mediation. This will be visible in the case timeline.'
                   : 'You do not have permission to add follow-ups.'
               }
               rows={5}

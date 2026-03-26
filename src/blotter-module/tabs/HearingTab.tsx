@@ -55,10 +55,10 @@ export function HearingsTab({
 }: HearingsTabProps) {
   const isUnderConciliation = caseStatus === "UNDER_CONCILIATION";
   const isTerminal = isTerminalStatus(caseStatus) || isUnderConciliation;
+  const hasScheduledHearing = hearings.some((h) => h.status === "SCHEDULED");
 
-  // --- Modal States ---
-  const [showCancelInput, setShowCancelInput] = useState(false); // Modal para sa reason
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // Success Modal
+  const [showCancelInput, setShowCancelInput] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedHearingId, setSelectedHearingId] = useState<number | null>(
     null,
   );
@@ -85,7 +85,6 @@ export function HearingsTab({
     });
   };
 
-  // --- Handle Cancellation Logic ---
   const handleConfirmCancel = async () => {
     if (!selectedHearingId || !cancelRemarks.trim()) return;
 
@@ -95,10 +94,8 @@ export function HearingsTab({
       setShowCancelInput(false);
       setCancelRemarks("");
 
-      // I-trigger ang success modal
       setShowSuccessModal(true);
 
-      // Automatic update ng UI
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error(error);
@@ -132,13 +129,13 @@ export function HearingsTab({
         title="Mediation Hearings"
         icon={<CalendarDaysIcon className="w-4 h-4 text-gray-400" />}
         action={
-          !isTerminal ? (
+          !isTerminal && !hasScheduledHearing ? (
             <button
               onClick={onScheduleHearing}
               disabled={!hasPermission}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <PlusIcon className="w-4 h-4" /> Schedule New Hearing
+              <PlusIcon className="w-4 h-4" /> Schedule New Mediation
             </button>
           ) : undefined
         }
@@ -158,124 +155,140 @@ export function HearingsTab({
 
         {!hearingsLoading && hearings.length > 0 && (
           <div className="space-y-3">
-            {hearings.map((h) => {
-              const isCompleted = h.status === "COMPLETED";
-              const isCancelled = h.status === "CANCELLED";
-              const isTimeLocked = isHearingInFuture(h.date, h.startTime);
+            {hearings
+              .slice()
+              .sort((a, b) => (b.hearingNumber ?? 0) - (a.hearingNumber ?? 0))
+              .map((h) => {
+                const isCompleted = h.status === "COMPLETED";
+                const isCancelled = h.status === "CANCELLED";
+                const isTimeLocked = isHearingInFuture(h.date, h.startTime);
 
-              return (
-                <div
-                  key={h.hearingId}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100 gap-4 ${isCancelled ? "opacity-60 grayscale" : ""}`}
-                >
-                  {/* Hearing Info Section */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-base font-bold text-gray-900">
-                        Hearing {h.hearingNumber}
-                      </span>
-                      <span
-                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-tight ${HEARING_STATUS_CONFIG[h.status] ?? "bg-gray-100 text-gray-600"}`}
-                      >
-                        {h.status}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <CalendarIcon className="w-3.5 h-3.5 text-blue-400" />
-                        {formatDate(h.date)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ClockIcon className="w-3.5 h-3.5 text-blue-400" />
-                        {formatTime(h.startTime)} – {formatTime(h.endTime)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPinIcon className="w-3.5 h-3.5 text-blue-400" />
-                        {h.venue}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions Section */}
-                  <div className="flex items-center gap-3 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 flex-wrap">
-                    {!isTerminal && !isCancelled && (
-                      <>
-                        <button
-                          onClick={() => handlePrintPaanyaya(h)}
-                          className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors"
+                return (
+                  <div
+                    key={h.hearingId}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100 gap-4${
+                      isCancelled ? "" : ""
+                    }`}
+                  >
+                    {/* Hearing Info Section */}
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-base font-bold text-gray-900">
+                          Mediation {h.hearingNumber}
+                        </span>
+                        <span
+                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-tight
+                            ${
+                              h.status === "CANCELLED"
+                                ? "bg-red-600 text-white border border-red-600"
+                                : h.status === "PENDING_MINUTES"
+                                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                  : (HEARING_STATUS_CONFIG[h.status] ??
+                                    "bg-gray-100 text-gray-600")
+                            }
+                          `}
                         >
-                          <PrinterIcon className="w-3.5 h-3.5" /> Paanyaya
-                        </button>
-
-                        <div className="w-px h-4 bg-gray-200 hidden sm:block" />
-
-                        {/* CANCEL BUTTON */}
-                        <button
-                          onClick={() => {
-                            setSelectedHearingId(h.hearingId);
-                            setShowCancelInput(true);
-                          }}
-                          disabled={!hasPermission}
-                          className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
-                        >
-                          <XCircleIcon className="w-3.5 h-3.5" /> Cancel Hearing
-                        </button>
-
-                        <div className="w-px h-4 bg-gray-200 hidden sm:block" />
-                      </>
-                    )}
-
-                    {isCompleted ? (
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => onViewMinutes(h)}
-                          className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-                        >
-                          View Minutes <ChevronRightIcon className="w-4 h-4" />
-                        </button>
-                        {!isTerminal && (
-                          <>
-                            <div className="w-px h-4 bg-gray-300 hidden sm:block" />
-                            <button
-                              onClick={() => handleAddFollowUp(h)}
-                              disabled={!hasPermission}
-                              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40"
-                            >
-                              <MessageSquarePlus className="w-3.5 h-3.5" />{" "}
-                              Follow-up
-                            </button>
-                          </>
-                        )}
+                          {h.status}
+                        </span>
                       </div>
-                    ) : (
-                      !isTerminal &&
-                      !isCancelled && (
-                        <button
-                          disabled={isTimeLocked || !hasPermission}
-                          onClick={() => handleUpdateHearing(h)}
-                          className={`flex items-center gap-1 text-sm font-medium transition-colors ${
-                            isTimeLocked || !hasPermission
-                              ? "text-gray-400 cursor-not-allowed"
-                              : "text-blue-600 hover:text-blue-700"
-                          }`}
-                        >
-                          {isTimeLocked ? (
+                      <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <CalendarIcon className="w-3.5 h-3.5 text-blue-400" />
+                          {formatDate(h.date)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ClockIcon className="w-3.5 h-3.5 text-blue-400" />
+                          {formatTime(h.startTime)} – {formatTime(h.endTime)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPinIcon className="w-3.5 h-3.5 text-blue-400" />
+                          {h.venue}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions Section */}
+                    <div className="flex items-center gap-3 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 flex-wrap">
+                      {!isTerminal && !isCancelled && !isCompleted && (
+                        <>
+                          <button
+                            onClick={() => handlePrintPaanyaya(h)}
+                            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors"
+                          >
+                            <PrinterIcon className="w-3.5 h-3.5" /> Paanyaya
+                          </button>
+
+                          <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+
+                          {/* CANCEL BUTTON */}
+                          <button
+                            onClick={() => {
+                              setSelectedHearingId(h.hearingId);
+                              setShowCancelInput(true);
+                            }}
+                            disabled={!hasPermission}
+                            className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
+                          >
+                            <XCircleIcon className="w-3.5 h-3.5" /> Cancel
+                            Mediation
+                          </button>
+
+                          <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+                        </>
+                      )}
+
+                      {isCompleted ? (
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => onViewMinutes(h)}
+                            className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                          >
+                            View Minutes{" "}
+                            <ChevronRightIcon className="w-4 h-4" />
+                          </button>
+                          {!isTerminal && (
                             <>
-                              <LockIcon className="w-3.5 h-3.5" /> Scheduled
-                            </>
-                          ) : (
-                            <>
-                              Update Hearing{" "}
-                              <ChevronRightIcon className="w-4 h-4" />
+                              <div className="w-px h-4 bg-gray-300 hidden sm:block" />
+                              <button
+                                onClick={() => handleAddFollowUp(h)}
+                                disabled={!hasPermission}
+                                className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40"
+                              >
+                                <MessageSquarePlus className="w-3.5 h-3.5" />{" "}
+                                Follow-up
+                              </button>
                             </>
                           )}
-                        </button>
-                      )
-                    )}
+                        </div>
+                      ) : (
+                        !isTerminal &&
+                        !isCancelled && (
+                          <button
+                            disabled={isTimeLocked || !hasPermission}
+                            onClick={() => handleUpdateHearing(h)}
+                            className={`flex items-center gap-1 text-sm font-medium transition-colors ${
+                              isTimeLocked || !hasPermission
+                                ? "text-gray-400 cursor-not-allowed"
+                                : "text-blue-600 hover:text-blue-700"
+                            }`}
+                          >
+                            {isTimeLocked ? (
+                              <>
+                                <LockIcon className="w-3.5 h-3.5" /> Scheduled
+                              </>
+                            ) : (
+                              <>
+                                Record Minutes{" "}
+                                <ChevronRightIcon className="w-4 h-4" />
+                              </>
+                            )}
+                          </button>
+                        )
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         )}
       </SectionCard>
@@ -286,11 +299,12 @@ export function HearingsTab({
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-2 mb-4 text-red-600">
               <XCircleIcon className="w-6 h-6" />
-              <h3 className="text-xl font-bold">Cancel Mediation Hearing</h3>
+              <h3 className="text-xl font-bold">Cancel Mediation</h3>
             </div>
 
             <p className="text-sm text-gray-600 mb-4">
-              Please provide a reason for cancelling this hearing. This will be recorded in the system for future reference.
+              Please provide a reason for cancelling this mediation. This will
+              be recorded in the system for future reference.
             </p>
 
             <textarea
@@ -298,8 +312,28 @@ export function HearingsTab({
               className="w-full p-3 border-2 border-gray-100 rounded-lg text-sm focus:border-red-500 outline-none resize-none h-32 transition-all"
               placeholder="Enter cancellation reason here..."
               value={cancelRemarks}
-              onChange={(e) => setCancelRemarks(e.target.value)}
+              onChange={(e) => {
+                // Limit to 250 words
+                const words = e.target.value.split(/\s+/).filter(Boolean);
+                if (words.length <= 250) {
+                  setCancelRemarks(e.target.value);
+                } else {
+                  setCancelRemarks(words.slice(0, 250).join(" "));
+                }
+              }}
             />
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-xs text-gray-400">
+                {cancelRemarks.trim().split(/\s+/).filter(Boolean).length} / 250
+                words
+              </span>
+              {cancelRemarks.trim().split(/\s+/).filter(Boolean).length >=
+                250 && (
+                <span className="text-xs text-red-500 font-semibold">
+                  Word limit reached
+                </span>
+              )}
+            </div>
 
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -324,16 +358,15 @@ export function HearingsTab({
         </div>
       )}
 
-      {/* --- MODAL 2: Success Notification (Using your ActionModal) --- */}
       <ActionModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         title="Cancelled Successfully"
         type="success"
       >
-        Ang hearing status ay matagumpay na nailagay sa{" "}
-        <strong>CANCELLED</strong>. Ang schedule na ito ay hindi na aktibo sa
-        system.
+        Mediation has been successfully
+        <strong> CANCELLED</strong>. This hearing will no longer appear in the
+        schedule.
       </ActionModal>
     </div>
   );

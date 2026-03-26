@@ -64,8 +64,8 @@ import FirstTimeJobSeekerDashboard from "./first-time-job-seeker-module/dashboar
 import LupongTagapamayapaDashboard from "./lupong-tagapamayapa-module/dashboard";
 import LuponCases from "./lupong-tagapamayapa-module/Cases";
 import { ViewAllHearings } from "./lupong-tagapamayapa-module/ViewAllHearing";
-
-
+import { LuponReportsPage } from "./lupong-tagapamayapa-module/LuponReports";
+import{ MonthlyReportPage} from "./lupong-tagapamayapa-module/ReportsDILG";
   import LuponCaseDetailViewWrapper from "./lupong-tagapamayapa-module/LuponCaseDetailViewWrapper";
 import OfficialDashboard from "./official-module/dashboard";
 
@@ -160,6 +160,8 @@ export function App() {
         <Route path="residents" element={<ResidentListPage />} />
         <Route path="cases/:blotterNumber" element={<LuponCaseDetailViewWrapper />} />
         <Route path="view-all-hearings" element={<ViewAllHearings />} />
+        <Route path="reports" element={<LuponReportsPage />} />
+        <Route path="monthly-report" element={<MonthlyReportPage />} />
         <Route path="account-settings" element={<AccountSettings />} />
          
         

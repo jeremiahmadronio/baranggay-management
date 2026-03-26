@@ -61,11 +61,9 @@ export function NotesTab({
         title="Case Notes"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
         action={
-          !isTerminal &&
-          !showNoteInput &&
-          !(isUnderConciliation) ? (
+          !isTerminal && !showNoteInput && !isUnderConciliation ? (
             <button
-            disabled={isUnderConciliation}
+              disabled={isUnderConciliation}
               onClick={() => setShowNoteInput(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
             >
@@ -73,19 +71,36 @@ export function NotesTab({
             </button>
           ) : undefined
         }
-        
       >
-        
         {showNoteInput && (
           <div className="mb-4 space-y-2">
             <textarea
               autoFocus
               placeholder="Type your note here..."
               value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
+              onChange={(e) => {
+                // Limit to 1000 words
+                const words = e.target.value.split(/\s+/).filter(Boolean);
+                if (words.length <= 1500) {
+                  setNoteText(e.target.value);
+                } else {
+                  setNoteText(words.slice(0, 1500).join(" "));
+                }
+              }}
               rows={3}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none text-gray-900"
             />
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-xs text-gray-400">
+                {noteText.trim().split(/\s+/).filter(Boolean).length} / 1000
+                words
+              </span>
+              {noteText.trim().split(/\s+/).filter(Boolean).length >= 1000 && (
+                <span className="text-xs text-red-500 font-semibold">
+                  Word limit reached
+                </span>
+              )}
+            </div>
             {noteError && <p className="text-xs text-red-500">{noteError}</p>}
             <div className="flex justify-end gap-2">
               <button

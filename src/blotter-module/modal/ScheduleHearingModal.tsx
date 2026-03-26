@@ -285,7 +285,7 @@ export function ScheduleHearingModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h3 className="text-base font-bold text-gray-900">
-              Schedule Summon #{hearingNumber}
+              Schedule Mediation #{hearingNumber}
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">
               Pick a date, set a time within office hours, then confirm. A

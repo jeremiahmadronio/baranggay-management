@@ -76,7 +76,7 @@ export function HearingMinutesModal({ hearing, onClose }: Props) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 mb-2 flex-wrap">
                 <h3 className="text-base font-bold text-gray-900">
-                  Hearing {hearing.summonNumber} — Minutes
+                  Mediation {hearing.summonNumber} — Minutes
                 </h3>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-tight">
                   {hearing.status}
@@ -161,7 +161,6 @@ export function HearingMinutesModal({ hearing, onClose }: Props) {
             )}
           </div>
 
-          {/* Follow-up Records — view only */}
           {followUps.length > 0 && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
@@ -180,8 +179,9 @@ export function HearingMinutesModal({ hearing, onClose }: Props) {
                       {f.remarks}
                     </p>
                     <div className="flex items-center gap-2 mt-2.5 text-xs text-gray-400">
+                      Recorded by:
                       <span className="font-bold text-blue-600 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" /> {f.recordedBy}
+                        {f.recordedBy}
                       </span>
                       <span>·</span>
                       <span>

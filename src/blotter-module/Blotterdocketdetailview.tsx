@@ -216,7 +216,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
 
   const tabDefs: { key: TabKey; label: string; count?: number }[] = [
     { key: "overview", label: "Overview" },
-    { key: "hearings", label: "Hearings", count: hearings.length },
+    { key: "hearings", label: "Mediation", count: hearings.length },
     { key: "notes", label: "Case Notes", count: notes.length },
     { key: "timeline", label: "Timeline" },
   ];

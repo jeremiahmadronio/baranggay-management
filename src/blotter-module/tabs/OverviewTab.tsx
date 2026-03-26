@@ -58,14 +58,14 @@ const MEDIATION_STEPS = [
   },
   {
     key: "stepSummonIssued",
-    label: "Pangkat Assignment / Summon Issued",
+    label: "Pangkat Assignment / Mediation Issued",
     sub: (p: MediationProcessDTO) => p.summonStatus ?? "Awaiting first summon",
   },
   {
     key: "stepMediationOngoing",
-    label: "Mediation Hearings",
+    label: "Mediation Process",
     sub: (p: MediationProcessDTO) =>
-      `${p.hearingsConducted} hearing(s) conducted`,
+      `${p.hearingsConducted} mediation(s) conducted`,
   },
   {
     key: "stepResolved",
@@ -272,9 +272,9 @@ export function OverviewTab({
                   <AlertCircleIcon className="w-5 h-5 text-violet-600" />
                 </div>
                 <span className="text-sm font-bold text-violet-600">
-                  Refer to Pangkat
+                  Escalate to Lupon
                 </span>
-                <span className="text-xs text-gray-500">Escalate to Lupon</span>
+                <span className="text-xs text-gray-500"> escalation process</span>
               </button>
             )}
 
