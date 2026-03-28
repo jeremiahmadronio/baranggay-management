@@ -4,6 +4,7 @@ import { recordHearingFollowUp } from '../../blotter-api/DocketView'
 
 export interface Props {
   hearingId: number
+  hearingNumber: number
   caseNumber: string
   hasPermission: boolean // "Manage Hearings & Mediation"
   onSuccess: () => void
@@ -12,7 +13,8 @@ export interface Props {
 
 export function FollowUpModal({
   hearingId,
-  caseNumber,
+  hearingNumber,
+ 
   hasPermission,
   onSuccess,
   onClose,
@@ -44,7 +46,7 @@ export function FollowUpModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-sm"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
@@ -56,7 +58,7 @@ export function FollowUpModal({
           <div>
             <h3 className="text-lg font-bold text-gray-900">Mediation Follow-up</h3>
             <p className="text-sm text-gray-500 mt-1">
-              Case: <span className="font-bold text-blue-600">{caseNumber}</span>
+              Mediation : <span className="font-bold text-blue-600">{hearingNumber}</span>
             </p>
           </div>
           <button

@@ -128,6 +128,7 @@ export interface BlotterDocketViewDTO {
 }
 
 export interface CaseHandleByDTO {
+  
   firstName: string;
   lastName: string;
   position: string; 

@@ -139,7 +139,6 @@ const LuponCases: React.FC = () => {
 
   const activeFilterCount = [search, startDate, endDate].filter(Boolean).length;
 
-  // ─── Table columns ────────────────────────────────────────────────────────
 
   const columns: TableColumn<LuponSummaryDTO>[] = [
     {
@@ -147,7 +146,7 @@ const LuponCases: React.FC = () => {
       header: "Blotter No.",
       width: "140px",
       render: (item) => (
-        <span className="font-mono text-xs font-medium text-gray-700">
+        <span className="font-mono text-xs font-medium text-blue-600 font-semibold tracking-wide whitespace-nowrap">
           {item.blotterNumber}
         </span>
       ),
@@ -255,11 +254,8 @@ const LuponCases: React.FC = () => {
           </KPIGrid>
         </section>
 
-        {/* ── Case Summary Table ─────────────────────────────────────────── */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Case Summary
-          </h2>
+         
 
           <TableFilter
             searchPlaceholder="Search blotter no., complainant, respondent, nature…"

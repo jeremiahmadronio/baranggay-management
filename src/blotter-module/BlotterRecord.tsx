@@ -78,8 +78,8 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 const STATUS_OPTIONS = [
-  { value: "recorded", label: "Recorded" },
-  { value: "elevated_to_formal", label: "Escalated to Case" },
+  { value: "recorded", label: "Recorded" }
+  
 ];
 
 const PAGE_SIZE = 10;
@@ -186,7 +186,7 @@ const BlotterRecordsPage: React.FC = () => {
       header: "Blotter No.",
       width: "180px",
       render: (item) => (
-        <span className="font-mono text-xxs font-semibold text-slate-800 tracking-wide whitespace-nowrap">
+        <span className="font-mono text-xxs font-semibold text-blue-600 tracking-wide whitespace-nowrap">
           {" "}
           {item.blotterNumber}
         </span>
@@ -279,12 +279,12 @@ const BlotterRecordsPage: React.FC = () => {
     <div className="mb-4 ">
       <KPIGrid columns={4}>
         <KPICard
-          title="Total FTR Records"
+          title="Total Records"
           value={statsLoading ? "..." : (stats?.totalFtr ?? 0)}
           icon={KPIIcons.document}
           color="blue"
           subtitle={
-            statsLoading ? "..." : `${stats?.ftrTrend ?? 0}% vs last month`
+          "Total of all blotter records."
           }
         />
 
@@ -315,7 +315,7 @@ const BlotterRecordsPage: React.FC = () => {
       <br />
 
       <TableFilter
-        searchPlaceholder="Search by name, blotter no., or complaint…"
+        searchPlaceholder="Search by blotter number"
         searchValue={search}
         onSearchChange={setSearch}
         filters={[

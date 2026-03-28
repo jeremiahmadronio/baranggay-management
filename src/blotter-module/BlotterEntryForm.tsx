@@ -109,6 +109,7 @@ export default function BlotterEntryForm() {
     civilStatus: "",
 
     livingWith: "",
+    email: "",
   });
   const [incident, setIncident] = useState<IncidentState>({
     natureId: "",
@@ -228,6 +229,7 @@ export default function BlotterEntryForm() {
       civilStatus: "",
 
       livingWith: "",
+      email: "",
     });
     setIncident({
       natureId: "",

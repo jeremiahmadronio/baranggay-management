@@ -24,7 +24,7 @@ export function ExtendMediationModal({
                 <CalendarClockIcon className="w-5 h-5 text-blue-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Extend Mediation Period
+                Extend Conciliation Period
               </h3>
             </div>
             <button

@@ -5,7 +5,7 @@ import {
   FormSelect,
 } from "../reusable/FormComponents";
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
-import { type PersonSearchResponseDTO } from "../../blotter-api/resident";
+import { type PersonSearchResponseDTO } from "../../blotter-api/Resident";
 
 export const GENDER_OPTIONS = [
   { value: "Male", label: "Male" },
@@ -40,37 +40,40 @@ interface ComplainantSectionProps {
   clearErr: (key: string) => void;
 }
 
+const CharCounter = ({ current, max }: { current: number; max: number }) => (
+  <div className="flex justify-end pr-1">
+    <span
+      className={`text-[10px] ${current >= max ? "text-red-500 font-bold" : "text-slate-400"}`}
+    >
+      {current}/{max}
+    </span>
+  </div>
+);
+
 export const ComplainantSection = ({
   data,
   onChange,
   errors,
   clearErr,
 }: ComplainantSectionProps) => {
+  const NAME_LIMIT = 50;
+  const ADDRESS_LIMIT = 200;
+
   const handleSelectPerson = (person: PersonSearchResponseDTO) => {
     onChange("id", person.id);
-    onChange("firstName", person.firstName);
-    onChange("lastName", person.lastName);
-    onChange("middleName", person.middleName || "");
+    onChange("firstName", person.firstName.substring(0, NAME_LIMIT));
+    onChange("lastName", person.lastName.substring(0, NAME_LIMIT));
+    onChange("middleName", (person.middleName || "").substring(0, NAME_LIMIT));
     onChange("contact", person.contactNumber || "");
     onChange("age", person.age ? String(person.age) : "");
     onChange("gender", person.gender || "");
     onChange("civilStatus", person.civilStatus || "");
     onChange("email", person.email || "");
-    onChange("address", person.completeAddress || "");
+    onChange(
+      "address",
+      (person.completeAddress || "").substring(0, ADDRESS_LIMIT),
+    );
     ["cLastName", "cFirstName", "cContact", "cAddress"].forEach(clearErr);
-  };
-
-  // Helper Function: Pinapayagan lang ang Letters, Spaces, Hyphen (-), at Period (.)
-  const handleNameChange = (
-    field: keyof ComplainantState,
-    value: string,
-    errorKey: string
-  ) => {
-    const validNameRegex = /^[A-Za-z\s.-]*$/;
-    if (validNameRegex.test(value)) {
-      onChange(field, value);
-      if (errorKey) clearErr(errorKey);
-    }
   };
 
   return (
@@ -82,40 +85,54 @@ export const ComplainantSection = ({
       />
 
       <FormRow cols={3}>
-        <FormInput
-          id="field-cLastName"
-          label="Last Name"
-          required
-          placeholder="e.g. Dela Cruz"
-          maxLength={20}
-          value={data.lastName}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleNameChange("lastName", e.target.value, "cLastName")
-          }
-          error={errors.cLastName}
-        />
-        <FormInput
-          id="field-cFirstName"
-          label="First Name"
-          required
-          placeholder="e.g. Juan"
-          maxLength={20}
-          value={data.firstName}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleNameChange("firstName", e.target.value, "cFirstName")
-          }
-          error={errors.cFirstName}
-        />
-        <FormInput
-          label="Middle Name"
-          placeholder="e.g. Santos"
-          maxLength={20}
-          value={data.middleName}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleNameChange("middleName", e.target.value, "")
-          }
-        />
+        <div>
+          <FormInput
+            id="field-cLastName"
+            label="Last Name"
+            required
+            placeholder="e.g. Dela Cruz"
+            value={data.lastName}
+            maxLength={NAME_LIMIT}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              onChange("lastName", e.target.value);
+              clearErr("cLastName");
+            }}
+            error={errors.cLastName}
+          />
+          <CharCounter current={data.lastName.length} max={NAME_LIMIT} />
+        </div>
+
+        <div>
+          <FormInput
+            id="field-cFirstName"
+            label="First Name"
+            required
+            placeholder="e.g. Juan"
+            value={data.firstName}
+            maxLength={NAME_LIMIT}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              onChange("firstName", e.target.value);
+              clearErr("cFirstName");
+            }}
+            error={errors.cFirstName}
+          />
+          <CharCounter current={data.firstName.length} max={NAME_LIMIT} />
+        </div>
+
+        <div>
+          <FormInput
+            label="Middle Name"
+            placeholder="e.g. Santos"
+            value={data.middleName}
+            maxLength={NAME_LIMIT}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              onChange("middleName", e.target.value)
+            }
+          />
+          <CharCounter current={data.middleName.length} max={NAME_LIMIT} />
+        </div>
       </FormRow>
+
       <FormRow cols={3}>
         <FormInput
           id="field-cContact"
@@ -126,36 +143,28 @@ export const ComplainantSection = ({
           maxLength={11}
           value={data.contact}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            // Pinapayagan lang ang numbers
             const v = e.target.value.replace(/\D/g, "");
             onChange("contact", v);
-            
-            // Real-time validation para sa 09 start and 11 digits
-            if (v.length > 0 && !v.startsWith("09")) {
-              errors.cContact = "Must start with 09";
-            } else if (v.length > 0 && v.length < 11) {
-              errors.cContact = "Must be 11 digits";
-            } else {
-              clearErr("cContact");
-            }
+            clearErr("cContact");
           }}
           error={errors.cContact}
         />
-        <FormInput
-          label="Age"
-          type="text" // Gamitin ang text tapos numeric regex para walang up/down arrows
-          inputMode="numeric"
-          placeholder="e.g. 35"
-          maxLength={3}
-          value={data.age}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            // Allow numbers only, max age 150
-            const v = e.target.value.replace(/\D/g, "");
-            if (v === "" || parseInt(v) <= 150) {
+        <div>
+          <FormInput
+            label="Age"
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 35"
+            maxLength={3}
+            value={data.age}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              // Allow numbers only, max 3 digits
+              const v = e.target.value.replace(/\D/g, "").slice(0, 3);
               onChange("age", v);
-            }
-          }}
-        />
+            }}
+          />
+          <CharCounter current={data.age.length} max={3} />
+        </div>
         <FormSelect
           label="Gender"
           options={GENDER_OPTIONS}
@@ -166,6 +175,7 @@ export const ComplainantSection = ({
           }
         />
       </FormRow>
+
       <FormRow cols={2}>
         <FormSelect
           label="Civil Status"
@@ -176,30 +186,45 @@ export const ComplainantSection = ({
             onChange("civilStatus", e.target.value)
           }
         />
-        <FormInput
-          label="Email Address"
-          type="email"
-          placeholder="email@example.com"
-          maxLength={50}
-          value={data.email}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            onChange("email", e.target.value)
-          }
-        />
+        <div>
+          <FormInput
+            label="Email Address"
+            type="email"
+            placeholder="email@example.com"
+            maxLength={50}
+            value={data.email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const v = e.target.value;
+              onChange("email", v);
+              // Real-time validation: must contain '@'
+              if (v && !v.includes("@")) {
+                errors.email = "Email must contain '@'";
+              } else {
+                errors.email = "";
+              }
+            }}
+            error={errors.email}
+          />
+          <CharCounter current={data.email.length} max={50} />
+        </div>
       </FormRow>
-      <FormInput
-        id="field-cAddress"
-        label="Complete Address"
-        required
-        placeholder="House No., Street, Barangay, Municipality/City"
-        maxLength={150}
-        value={data.address}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-          onChange("address", e.target.value);
-          clearErr("cAddress");
-        }}
-        error={errors.cAddress}
-      />
+
+      <div>
+        <FormInput
+          id="field-cAddress"
+          label="Complete Address"
+          required
+          placeholder="House No., Street, Barangay, Municipality/City"
+          value={data.address}
+          maxLength={ADDRESS_LIMIT}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            onChange("address", e.target.value);
+            clearErr("cAddress");
+          }}
+          error={errors.cAddress}
+        />
+        <CharCounter current={data.address.length} max={ADDRESS_LIMIT} />
+      </div>
     </SectionCard>
   );
 };

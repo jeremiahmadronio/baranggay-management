@@ -1,213 +1,178 @@
 import {
-  X,
-  Clock,
-  MapPin,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  Users,
-  MessageSquare,
-  CalendarCheck,
-  ShieldCheck,
-} from "lucide-react";
-import type {
-  HearingFullDetailsDTO,
-  FollowUpSummaryDTO,
-} from "../../blotter-api/DocketView";
-import { formatDateTime } from "../shared/utils";
+  XIcon,
+  CalendarIcon,
+  ClockIcon,
+  MapPinIcon,
+  FileTextIcon,
+  UsersIcon,
+  MessageSquareIcon,
+  CheckCircle2Icon,
+  AlertCircleIcon,
+  
+} from 'lucide-react'
+import type { HearingFullDetailsDTO, FollowUpSummaryDTO } from '../../lupong-tagapamayapa-api/LuponCaseManagement-view-api-v2'
+import { formatDate, formatTime } from '../shared/utils'
 
 interface Props {
-  hearing: HearingFullDetailsDTO;
-  onClose: () => void;
+  hearing: HearingFullDetailsDTO
+  onClose: () => void
 }
 
-const OutcomeBadge = ({ outcome }: { outcome: string }) => {
-  if (outcome === "SETTLED") {
-    return (
-      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold">
-        <CheckCircle2 className="w-4 h-4" /> Settled
-      </span>
-    );
-  }
-  if (outcome === "NOT_SETTLED") {
-    return (
-      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-200 text-red-600 text-sm font-bold">
-        <AlertCircle className="w-4 h-4" /> Not Settled
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 border border-gray-200 text-gray-500 text-sm font-semibold">
-      Pending
-    </span>
-  );
-};
+export function HearingViewModal({ hearing, onClose }: Props) {
+  const compPresent = hearing.minutes?.complainantPresent ?? true
+  const respPresent = hearing.minutes?.respondentPresent ?? true
+  const notes       = hearing.minutes?.hearingNotes || ''
+  const outcome     = hearing.minutes?.outcome || ''
+  const followUps: FollowUpSummaryDTO[] = hearing.followUps ?? []
 
-const AttendancePill = ({ present, label }: { present: boolean; label: string }) => (
-  <div className="flex flex-col items-center gap-2 px-6 py-4 rounded-xl bg-gray-50 border border-gray-100 flex-1">
-    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{label}</p>
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-        present
-          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-          : "bg-red-50 text-red-600 border border-red-200"
-      }`}
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${present ? "bg-emerald-500" : "bg-red-500"}`} />
-      {present ? "Present" : "Absent"}
-    </span>
-  </div>
-);
-
-export function HearingMinutesModal({ hearing, onClose }: Props) {
-  const compPresent = hearing.minutes?.complainantPresent ?? true;
-  const respPresent = hearing.minutes?.respondentPresent ?? true;
-  const notes = hearing.minutes?.hearingNotes || "";
-  const outcome = hearing.minutes?.outcome || "";
-  const followUps: FollowUpSummaryDTO[] = hearing.followUps ?? [];
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-
-        {/* ── Header ── */}
-        <div className="px-6 py-5 border-b border-gray-100 bg-white shrink-0">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 mb-2 flex-wrap">
-                <h3 className="text-base font-bold text-gray-900">
-                  Mediation {hearing.summonNumber} — Minutes
-                </h3>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-tight">
-                  {hearing.status}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  <span className="truncate">{hearing.venue}</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  {formatDateTime(
-                    hearing.scheduledStart.split("T")[0],
-                    hearing.scheduledStart.split("T")[1],
-                  )}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 transition-colors shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        
+        {/* --- Header (Matching Record Style) --- */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">
+              Mediation Minutes — Mediation {hearing.summonNumber}
+            </h3>
+            <p className="text-sm text-gray-500 mt-0.5">
+               Status: <span className="font-medium text-blue-600">{hearing.status}</span>
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* ── Body ── */}
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-
-          {/* Outcome */}
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-              <CalendarCheck className="w-3.5 h-3.5" /> Outcome
+        <div className="px-6 py-5 space-y-6">
+          
+          {/* --- Mediation Information Box --- */}
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              Mediation Information
             </p>
-            <OutcomeBadge outcome={outcome} />
-          </div>
-
-          {/* Attendance */}
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5" /> Attendance
-            </p>
-            <div className="flex gap-3">
-              <AttendancePill present={compPresent} label="Complainant" />
-              <AttendancePill present={respPresent} label="Respondent" />
-            </div>
-          </div>
-
-          {/* Initial Context */}
-          {hearing.initialNotes && (
-            <div className="rounded-xl bg-blue-50/60 border border-blue-100 px-4 py-3.5">
-              <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1.5">
-                Initial Notes
-              </p>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {hearing.initialNotes}
-              </p>
-            </div>
-          )}
-
-          {/* Mediation Narrative */}
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Mediation Narrative
-            </p>
-            {notes ? (
-              <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3.5">
-                {hearing.minutes?.recordedBy && (
-                  <p className="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-blue-400" />
-                    Recorded by {hearing.minutes.recordedBy}
-                  </p>
-                )}
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {notes}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Summon</p>
+                <p className="text-sm font-semibold text-blue-600">Summon {hearing.summonNumber}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Date</p>
+                <p className="text-sm text-gray-700 flex items-center gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
+                  {formatDate(hearing.scheduledStart.split('T')[0])}
                 </p>
               </div>
-            ) : (
-              <p className="text-sm text-gray-400 italic">No narrative recorded.</p>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Time</p>
+                <p className="text-sm text-gray-700 flex items-center gap-1.5">
+                  <ClockIcon className="w-3.5 h-3.5 text-gray-400" />
+                  {formatTime(hearing.scheduledStart.split('T')[1])}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Venue</p>
+                <p className="text-sm text-gray-700 flex items-center gap-1.5">
+                  <MapPinIcon className="w-3.5 h-3.5 text-gray-400" />
+                  {hearing.venue}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* --- 1. Attendance --- */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <UsersIcon className="w-3.5 h-3.5" /> 1 Attendance
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { label: 'Complainant', present: compPresent },
+                { label: 'Respondent', present: respPresent },
+              ].map(({ label, present }) => (
+                <div key={label} className={`flex items-center justify-between px-4 py-3 border rounded-lg ${present ? 'bg-emerald-50/50 border-emerald-100' : 'bg-red-50/50 border-red-100'}`}>
+                  <span className="text-sm font-medium text-gray-700">{label}</span>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase ${present ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                    {present ? 'Present' : 'Absent'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* --- 2. Mediation Narrative --- */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <FileTextIcon className="w-3.5 h-3.5" /> 2 Mediation Narrative
+            </p>
+            <div className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 leading-relaxed min-h-[100px] whitespace-pre-wrap">
+              {notes || <span className="text-gray-400 italic">No narrative recorded for this session.</span>}
+            </div>
+            {hearing.minutes?.recordedBy && (
+              <p className="text-[12px] text-blue-600 capitalize   font-medium mt-2 flex items-center gap-1">
+                    Recorded by:  {hearing.minutes.recordedBy}
+              </p>
             )}
+          </div>
+
+          {/* --- 3. Outcome --- */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <CheckCircle2Icon className="w-3.5 h-3.5" /> 3 Outcome
+            </p>
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
+              outcome === 'SETTLED' ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/50'
+            }`}>
+              {outcome === 'SETTLED' ? (
+                <CheckCircle2Icon className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <AlertCircleIcon className="w-4 h-4 text-red-600" />
+              )}
+              <span className="text-sm font-bold text-gray-900 uppercase tracking-tight">
+                {outcome?.replace('_', ' ') || 'PENDING'}
+              </span>
+            </div>
           </div>
 
           {followUps.length > 0 && (
             <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5" /> Follow-up Records
-                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-gray-100 text-gray-500 rounded-full">
-                  {followUps.length}
-                </span>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <MessageSquareIcon className="w-3.5 h-3.5" /> 4 Follow-up Records
               </p>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {followUps.map((f) => (
-                  <div
-                    key={f.id}
-                    className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3.5"
-                  >
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {f.remarks}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2.5 text-xs text-gray-400">
-                      Recorded by:
-                      <span className="font-bold text-blue-600 flex items-center gap-1">
-                        {f.recordedBy}
-                      </span>
-                      <span>·</span>
-                      <span>
-                        {formatDateTime(
-                          f.createdAt.split("T")[0],
-                          f.createdAt.split("T")[1],
-                        )}
-                      </span>
+                  <div key={f.id} className="p-4 rounded-lg border border-gray-100 bg-gray-50/50">
+                    <p className="text-sm text-gray-700 mb-2 leading-relaxed">{f.remarks}</p>
+                    <div className="flex items-center gap-2 text-[12px] text-gray-400 font-medium">
+                      <span className="text-blue-600 capitalize">By {f.recordedBy}</span>
+                      <span>•</span>
+                      <span>{formatDate(f.createdAt.split('T')[0])}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
         </div>
 
-        {/* ── Footer ── */}
-        <div className="px-6 py-4 bg-white border-t border-gray-100 shrink-0 flex justify-end">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
+            className="px-6 py-2 text-sm font-medium border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 transition-colors"
           >
             Close
           </button>
         </div>
+
       </div>
     </div>
-  );
+  )
 }

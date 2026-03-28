@@ -29,7 +29,7 @@ import { TimelineTab } from "../blotter-module/tabs/TimeLineTab";
 import { ConfirmModal } from "../blotter-module/modal/ConfirmModal";
 import { ReferToLuponModal } from "../blotter-module/modal/ReferToLuponModal";
 import { ScheduleHearingModal } from "../blotter-module/modal/ScheduleHearingModal";
-import { HearingMinutesModal } from "./modal/HearingViewModal";
+import { HearingViewModal } from "./modal/HearingViewModal";
 import { RecordMinutesModal } from "./modal/RecordMinutesModal";
 import { FollowUpModal } from "./modal/FollowUpModal";
 import { ChangeStatusModal } from "./modal/ChangeStatusModal";
@@ -366,7 +366,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
         )}
 
         {modal === "viewMinutes" && fullHearing && (
-          <HearingMinutesModal
+          <HearingViewModal
             hearing={fullHearing}
             onClose={() => {
               setModal(null);
@@ -378,6 +378,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
         {modal === "addFollowUp" && followUpHearing && (
           <FollowUpModal
             hearingId={followUpHearing.hearingId}
+            hearingNumber={followUpHearing.hearingNumber}
             caseNumber={blotterNumber}
             hasPermission={hasHearingPerm}
             onSuccess={async () => {
@@ -466,9 +467,6 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
             onUpdateHearing={(h) => {
               setSelectedHearing(h);
               setModal("recordMinutes");
-            }}
-            onViewMinutes={(h) => {
-              handleOpenHearingDetails(h.hearingId, "viewMinutes");
             }}
             onAddFollowUp={(h) => {
               setFollowUpHearing(h);

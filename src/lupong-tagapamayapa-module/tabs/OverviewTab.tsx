@@ -43,9 +43,9 @@ const MEDIATION_STEPS = [
   },
   {
     key: 'stepMediationOngoing',
-    label: 'Mediation Hearings',
+    label: 'Conciliation Ongoing',
     sub: (p: MediationProcessDTO) =>
-      `${p.hearingsConducted} hearing(s) conducted`,
+      `${p.hearingsConducted} conciliation(s) conducted`,
   },
   {
     key: 'stepResolved',
@@ -131,7 +131,7 @@ export function OverviewTab({
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <ClockIcon className="w-4 h-4 text-blue-500" />
               <span className="font-medium text-gray-900">
-                15-Day Lupon Mediation Period
+                15-Day Lupon Conciliation Period
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -168,7 +168,7 @@ export function OverviewTab({
             <div className="mt-3 pt-3 border-t border-gray-100 flex items-start gap-2 text-xs text-gray-600">
               <CheckCircleIcon className="w-4 h-4 text-emerald-500 shrink-0" />
               <p>
-                Mediation period was extended on{' '}
+                Conciliation period was extended on{' '}
                 <span className="font-semibold">
                   {formatDate(luponData.mediationInfo.extensionDate)}
                 </span>
@@ -193,9 +193,9 @@ export function OverviewTab({
                 <CalendarIcon className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-sm font-bold text-blue-600">
-                Schedule Hearing
+                Schedule Conciliation
               </span>
-              <span className="text-xs text-gray-500">Set mediation date</span>
+              <span className="text-xs text-gray-500">Set conciliation date</span>
             </button>
 
             <button
@@ -470,7 +470,7 @@ export function OverviewTab({
 
       {mediation && (
         <SectionCard
-          title="Mediation Process"
+          title="Conciliation Process"
           icon={<HashIcon className="w-4 h-4 text-gray-400" />}
         >
           <div className="space-y-0">

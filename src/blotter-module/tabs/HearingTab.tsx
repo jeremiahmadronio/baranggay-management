@@ -19,6 +19,11 @@ import { formatDate, formatTime } from "../shared/utils";
 import { generatePaanyaya } from "../modal/GeneratePaanyaya";
 import { updateHearingStatus } from "../../blotter-api/HearingUpdate";
 import { ActionModal } from "../../reusable/SuccessModal";
+import {
+  getHearingFullDetails,
+  type HearingFullDetailsDTO,
+} from "../../lupong-tagapamayapa-api/LuponCaseManagement-view-api-v2";
+import { HearingViewModal } from "../modal/HearingViewModal";
 
 interface HearingsTabProps {
   hearings: HearingViewDTO[];
@@ -33,7 +38,6 @@ interface HearingsTabProps {
   onScheduleHearing: () => void;
   onUpdateHearing: (hearing: HearingViewDTO) => void;
   onAddFollowUp: (hearing: HearingViewDTO) => void;
-  onViewMinutes: (hearing: HearingViewDTO) => void;
   onRefresh?: () => void;
 }
 
@@ -49,7 +53,6 @@ export function HearingsTab({
   respondentName,
   onScheduleHearing,
   onUpdateHearing,
-  onViewMinutes,
   onAddFollowUp,
   onRefresh,
 }: HearingsTabProps) {
@@ -57,17 +60,32 @@ export function HearingsTab({
   const isTerminal = isTerminalStatus(caseStatus) || isUnderConciliation;
   const hasScheduledHearing = hearings.some((h) => h.status === "SCHEDULED");
 
+  // ── View Minutes state ──
+  const [viewingHearing, setViewingHearing] = useState<HearingFullDetailsDTO | null>(null);
+  const [isFetchingMinutes, setIsFetchingMinutes] = useState<number | null>(null);
+
+  // ── Cancel state ──
   const [showCancelInput, setShowCancelInput] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [selectedHearingId, setSelectedHearingId] = useState<number | null>(
-    null,
-  );
+  const [selectedHearingId, setSelectedHearingId] = useState<number | null>(null);
   const [cancelRemarks, setCancelRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isHearingInFuture = (dateStr: string, timeStr: string) => {
-    const scheduledDateTime = new Date(`${dateStr}T${timeStr}`);
-    return scheduledDateTime > new Date();
+    return new Date(`${dateStr}T${timeStr}`) > new Date();
+  };
+
+  const handleViewMinutes = async (h: HearingViewDTO) => {
+    setIsFetchingMinutes(h.hearingId);
+    try {
+      const full = await getHearingFullDetails(h.hearingId);
+      setViewingHearing(full);
+    } catch (err) {
+      console.error("Error loading minutes:", err);
+      alert("Failed to load hearing minutes.");
+    } finally {
+      setIsFetchingMinutes(null);
+    }
   };
 
   const handlePrintPaanyaya = (h: HearingViewDTO) => {
@@ -87,21 +105,16 @@ export function HearingsTab({
 
   const handleConfirmCancel = async () => {
     if (!selectedHearingId || !cancelRemarks.trim()) return;
-
     setIsSubmitting(true);
     try {
       await updateHearingStatus(selectedHearingId, "CANCELLED", cancelRemarks);
       setShowCancelInput(false);
       setCancelRemarks("");
-
       setShowSuccessModal(true);
-
-      if (onRefresh) onRefresh();
+      onRefresh?.();
     } catch (error) {
       console.error(error);
-      alert(
-        error instanceof Error ? error.message : "Failed to cancel hearing",
-      );
+      alert(error instanceof Error ? error.message : "Failed to cancel hearing");
     } finally {
       setIsSubmitting(false);
     }
@@ -109,15 +122,25 @@ export function HearingsTab({
 
   const handleUpdateHearing = (h: HearingViewDTO) => {
     onUpdateHearing(h);
-    if (onRefresh) onRefresh();
+    onRefresh?.();
   };
+
   const handleAddFollowUp = (h: HearingViewDTO) => {
     onAddFollowUp(h);
-    if (onRefresh) onRefresh();
+    onRefresh?.();
   };
 
   return (
     <div className="space-y-3">
+
+      {/* View Minutes Modal */}
+      {viewingHearing && (
+        <HearingViewModal
+          hearing={viewingHearing}
+          onClose={() => setViewingHearing(null)}
+        />
+      )}
+
       {!hasPermission && (
         <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
           <ShieldOffIcon className="w-4 h-4 shrink-0" />
@@ -162,31 +185,27 @@ export function HearingsTab({
                 const isCompleted = h.status === "COMPLETED";
                 const isCancelled = h.status === "CANCELLED";
                 const isTimeLocked = isHearingInFuture(h.date, h.startTime);
+                const isFetchingThis = isFetchingMinutes === h.hearingId;
 
                 return (
                   <div
                     key={h.hearingId}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100 gap-4${
-                      isCancelled ? "" : ""
-                    }`}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100 gap-4"
                   >
-                    {/* Hearing Info Section */}
+                    {/* Hearing Info */}
                     <div>
                       <div className="flex items-center gap-3 mb-2">
                         <span className="text-base font-bold text-gray-900">
                           Mediation {h.hearingNumber}
                         </span>
                         <span
-                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-tight
-                            ${
-                              h.status === "CANCELLED"
-                                ? "bg-red-600 text-white border border-red-600"
-                                : h.status === "PENDING_MINUTES"
-                                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                  : (HEARING_STATUS_CONFIG[h.status] ??
-                                    "bg-gray-100 text-gray-600")
-                            }
-                          `}
+                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-tight ${
+                            h.status === "CANCELLED"
+                              ? "bg-red-50 text-red-600 border border-red-200"
+                              : h.status === "PENDING_MINUTES"
+                                ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                : (HEARING_STATUS_CONFIG[h.status] ?? "bg-gray-100 text-gray-600")
+                          }`}
                         >
                           {h.status}
                         </span>
@@ -207,7 +226,7 @@ export function HearingsTab({
                       </div>
                     </div>
 
-                    {/* Actions Section */}
+                    {/* Actions */}
                     <div className="flex items-center gap-3 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 flex-wrap">
                       {!isTerminal && !isCancelled && !isCompleted && (
                         <>
@@ -217,10 +236,7 @@ export function HearingsTab({
                           >
                             <PrinterIcon className="w-3.5 h-3.5" /> Paanyaya
                           </button>
-
                           <div className="w-px h-4 bg-gray-200 hidden sm:block" />
-
-                          {/* CANCEL BUTTON */}
                           <button
                             onClick={() => {
                               setSelectedHearingId(h.hearingId);
@@ -229,10 +245,8 @@ export function HearingsTab({
                             disabled={!hasPermission}
                             className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
                           >
-                            <XCircleIcon className="w-3.5 h-3.5" /> Cancel
-                            Mediation
+                            <XCircleIcon className="w-3.5 h-3.5" /> Cancel Mediation
                           </button>
-
                           <div className="w-px h-4 bg-gray-200 hidden sm:block" />
                         </>
                       )}
@@ -240,11 +254,14 @@ export function HearingsTab({
                       {isCompleted ? (
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() => onViewMinutes(h)}
-                            className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                            onClick={() => handleViewMinutes(h)}
+                            disabled={isFetchingThis}
+                            className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-60"
                           >
-                            View Minutes{" "}
-                            <ChevronRightIcon className="w-4 h-4" />
+                            {isFetchingThis ? (
+                              <span className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                            ) : null}
+                            View Minutes <ChevronRightIcon className="w-4 h-4" />
                           </button>
                           {!isTerminal && (
                             <>
@@ -254,15 +271,13 @@ export function HearingsTab({
                                 disabled={!hasPermission}
                                 className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40"
                               >
-                                <MessageSquarePlus className="w-3.5 h-3.5" />{" "}
-                                Follow-up
+                                <MessageSquarePlus className="w-3.5 h-3.5" /> Follow-up
                               </button>
                             </>
                           )}
                         </div>
                       ) : (
-                        !isTerminal &&
-                        !isCancelled && (
+                        !isTerminal && !isCancelled && (
                           <button
                             disabled={isTimeLocked || !hasPermission}
                             onClick={() => handleUpdateHearing(h)}
@@ -273,14 +288,9 @@ export function HearingsTab({
                             }`}
                           >
                             {isTimeLocked ? (
-                              <>
-                                <LockIcon className="w-3.5 h-3.5" /> Scheduled
-                              </>
+                              <><LockIcon className="w-3.5 h-3.5" /> Scheduled</>
                             ) : (
-                              <>
-                                Record Minutes{" "}
-                                <ChevronRightIcon className="w-4 h-4" />
-                              </>
+                              <>Record Minutes <ChevronRightIcon className="w-4 h-4" /></>
                             )}
                           </button>
                         )
@@ -293,7 +303,7 @@ export function HearingsTab({
         )}
       </SectionCard>
 
-      {/* --- MODAL 1: Reason Input (Danger Type Visuals) --- */}
+      {/* Cancel Modal */}
       {showCancelInput && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
@@ -301,19 +311,15 @@ export function HearingsTab({
               <XCircleIcon className="w-6 h-6" />
               <h3 className="text-xl font-bold">Cancel Mediation</h3>
             </div>
-
             <p className="text-sm text-gray-600 mb-4">
-              Please provide a reason for cancelling this mediation. This will
-              be recorded in the system for future reference.
+              Please provide a reason for cancelling this mediation. This will be recorded in the system for future reference.
             </p>
-
             <textarea
               autoFocus
               className="w-full p-3 border-2 border-gray-100 rounded-lg text-sm focus:border-red-500 outline-none resize-none h-32 transition-all"
               placeholder="Enter cancellation reason here..."
               value={cancelRemarks}
               onChange={(e) => {
-                // Limit to 250 words
                 const words = e.target.value.split(/\s+/).filter(Boolean);
                 if (words.length <= 250) {
                   setCancelRemarks(e.target.value);
@@ -324,24 +330,16 @@ export function HearingsTab({
             />
             <div className="flex justify-between items-center mt-1">
               <span className="text-xs text-gray-400">
-                {cancelRemarks.trim().split(/\s+/).filter(Boolean).length} / 250
-                words
+                {cancelRemarks.trim().split(/\s+/).filter(Boolean).length} / 250 words
               </span>
-              {cancelRemarks.trim().split(/\s+/).filter(Boolean).length >=
-                250 && (
-                <span className="text-xs text-red-500 font-semibold">
-                  Word limit reached
-                </span>
+              {cancelRemarks.trim().split(/\s+/).filter(Boolean).length >= 250 && (
+                <span className="text-xs text-red-500 font-semibold">Word limit reached</span>
               )}
             </div>
-
             <div className="flex justify-end gap-3 mt-6">
               <button
                 disabled={isSubmitting}
-                onClick={() => {
-                  setShowCancelInput(false);
-                  setCancelRemarks("");
-                }}
+                onClick={() => { setShowCancelInput(false); setCancelRemarks(""); }}
                 className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800"
               >
                 Go Back
@@ -351,7 +349,9 @@ export function HearingsTab({
                 onClick={handleConfirmCancel}
                 className="px-6 py-2 text-sm font-bold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
               >
-                {isSubmitting ? "Processing..." : "Confirm Cancellation"}
+                {isSubmitting ? (
+                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
+                ) : "Confirm Cancellation"}
               </button>
             </div>
           </div>
@@ -364,9 +364,7 @@ export function HearingsTab({
         title="Cancelled Successfully"
         type="success"
       >
-        Mediation has been successfully
-        <strong> CANCELLED</strong>. This hearing will no longer appear in the
-        schedule.
+        Mediation has been successfully <strong>CANCELLED</strong>. This hearing will no longer appear in the schedule.
       </ActionModal>
     </div>
   );

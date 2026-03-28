@@ -1,10 +1,11 @@
+import { CFATab } from "./tabs/CFATab";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeftIcon, AlertCircleIcon } from "lucide-react";
+// Removed unused imports
 import {
   type MediationProcessDTO,
   type HearingViewDTO,
   type CaseNoteViewDTO,
-  type HearingFullDetailsDTO,
 } from "../lupong-tagapamayapa-api/LuponCaseManagement-view-api-v2";
 import { type LuponViewDTO } from "../lupong-tagapamayapa-api/Lupong-tagapamayapa-view-api";
 import {
@@ -12,7 +13,6 @@ import {
   getHearingView,
   getCaseNotes,
   updateCaseStatus,
-  getHearingFullDetails,
 } from "../lupong-tagapamayapa-api/LuponCaseManagement-view-api-v2";
 import { getLuponCaseView } from "../lupong-tagapamayapa-api/Lupong-tagapamayapa-view-api";
 import { extendCasePeriod } from "../lupong-tagapamayapa-api/LuponCaseManagement-api";
@@ -32,7 +32,7 @@ interface Props {
   blotterNumber: string;
   onBack: () => void;
 }
-type TabKey = "overview" | "hearings" | "notes" | "timeline";
+type TabKey = "overview" | "hearings" | "notes" | "timeline" | "CFA";
 type ModalKey =
   | "settle"
   | "dismiss"
@@ -61,13 +61,10 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
   const [hasHearingPerm, setHasHearingPerm] = useState(false);
   const [hasStatusPerm, setHasStatusPerm] = useState(false);
   // New state for hearing detail modals
-  const [selectedHearing, setSelectedHearing] = useState<HearingViewDTO | null>(
+  const [selectedHearingId, setSelectedHearingId] = useState<number | null>(
     null,
   );
-  const [fullHearing, setFullHearing] = useState<HearingFullDetailsDTO | null>(
-    null,
-  );
-  const [detailsLoading, setDetailsLoading] = useState(false);
+  // const [detailsLoading, setDetailsLoading] = useState(false); // removed unused
   useEffect(() => {
     getMyAccess()
       .then((access) => {
@@ -146,28 +143,12 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
     }
   };
   // Open hearing details (view minutes)
-  const handleViewMinutes = async (h: HearingViewDTO) => {
-    setSelectedHearing(h);
-    setDetailsLoading(true);
-    try {
-      const details = await getHearingFullDetails(h.hearingId);
-      setFullHearing(details);
-      setModal("viewMinutes");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load hearing details.");
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
+
   // Open record minutes
-  const handleRecordMinutes = (h: HearingViewDTO) => {
-    setSelectedHearing(h);
-    setModal("recordMinutes");
-  };
+  // Removed unused handleRecordMinutes
   // Open follow-up
   const handleAddFollowUp = (h: HearingViewDTO) => {
-    setSelectedHearing(h);
+    setSelectedHearingId(h.hearingId);
     setModal("addFollowUp");
   };
   useEffect(() => {
@@ -244,6 +225,10 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
       key: "timeline",
       label: "Timeline",
     },
+    {
+      key: "CFA",
+      label: "CFA (Certified to File Action)",
+    },
   ];
   if (loading)
     return (
@@ -268,16 +253,7 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-5">
         {/* --- LOADING OVERLAY --- */}
-        {detailsLoading && (
-          <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[90] backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-lg px-6 py-4 flex items-center gap-3">
-              <span className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-medium text-gray-700">
-                Loading hearing details...
-              </span>
-            </div>
-          </div>
-        )}
+        {/* Removed detailsLoading overlay (unused) */}
 
         {/* --- MODALS --- */}
         {modal === "settle" && (
@@ -359,39 +335,34 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
           />
         )}
 
-        {modal === "viewMinutes" && fullHearing && (
+        {modal === "viewMinutes" && selectedHearingId && (
           <HearingViewModal
-            hearing={fullHearing}
+            hearingId={selectedHearingId}
             onClose={() => {
               setModal(null);
-              setFullHearing(null);
-              setSelectedHearing(null);
+              setSelectedHearingId(null);
             }}
           />
         )}
 
-        {modal === "recordMinutes" && selectedHearing && (
+        {modal === "recordMinutes" && selectedHearingId && (
           <RecordMinutesModal
-            hearing={selectedHearing}
-            caseNumber={blotterNumber}
-            natureOfComplaint={natureOfComplaint}
-            complainantName={complainantName}
-            respondentName={respondentName}
+            hearingId={selectedHearingId}
             onSuccess={async () => {
               setModal(null);
-              setSelectedHearing(null);
+              setSelectedHearingId(null);
               await refreshData();
             }}
             onCancel={() => {
               setModal(null);
-              setSelectedHearing(null);
+              setSelectedHearingId(null);
             }}
           />
         )}
 
-        {modal === "addFollowUp" && selectedHearing && (
+        {modal === "addFollowUp" && selectedHearingId && (
           <FollowUpModal
-            hearingId={selectedHearing.hearingId}
+            hearingId={selectedHearingId}
             caseNumber={blotterNumber}
             hasPermission={hasHearingPerm}
             onSuccess={async () => {
@@ -399,7 +370,7 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
             }}
             onClose={() => {
               setModal(null);
-              setSelectedHearing(null);
+              setSelectedHearingId(null);
             }}
           />
         )}
@@ -416,9 +387,7 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               {luponData.blotterNumber}
             </h1>
-            <span className="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
-              LUPON CASE
-            </span>
+            <span className="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full"></span>
           </div>
           <p className="text-sm text-gray-500">
             {complainantName} • {natureOfComplaint}
@@ -470,8 +439,6 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
             complainantName={complainantName}
             respondentName={respondentName}
             onScheduleHearing={() => setModal("schedule")}
-            onRecordMinutes={handleRecordMinutes}
-            onViewMinutes={handleViewMinutes}
             onAddFollowUp={handleAddFollowUp}
           />
         )}
@@ -487,10 +454,10 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
         )}
 
         {activeTab === "timeline" && (
-          <TimelineTab
-            blotterNumber={blotterNumber}
-          />
+          <TimelineTab blotterNumber={blotterNumber} />
         )}
+
+        {activeTab === "CFA" && <CFATab luponData={luponData} />}
       </div>
     </div>
   );

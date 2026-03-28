@@ -86,6 +86,42 @@
   }
 
 
+
+
+
+
+  export interface RecordMinutesViewDTO {
+    hearingId: number;
+    hearingNumber: number;
+    status: string;
+    date: string;
+    venue: string;
+    endTime: string;
+    complinantPresent: boolean;
+    respondentPresent: boolean;
+    chairmanPresent: boolean;
+    secretaryPresent: boolean;
+    memberPresent: boolean;
+    narrative: string | null;
+    outcome: string | null;
+    recordedBy: string | null;
+    followUpNotes: FollowUpSummaryDTO[];
+
+  }
+
+  export interface FollowUpSummaryDTO {
+    id : number;
+    remarks: string;
+    recordedBy: string;
+    createdAt: string;
+
+  }
+
+
+
+
+
+
   //shared fetch helper
   async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     const token = localStorage.getItem("token");
@@ -166,4 +202,12 @@
   ): Promise<HearingDetailViewDTO> {
   
     return apiFetch<HearingDetailViewDTO>(`${LUPON_URL}/details/${hearingId}`);
+  }
+
+
+  export async function getRecordMinutesDetails(
+     hearingId: number
+  ): Promise<RecordMinutesViewDTO> {
+    return apiFetch<RecordMinutesViewDTO>(`${LUPON_URL}/hearing-minutes-view/${hearingId}`);
+
   }

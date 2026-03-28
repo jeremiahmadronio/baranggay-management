@@ -2,10 +2,20 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const LUPON_URL = `${BASE}/api/v1/lupon`;
 
 export interface PangkatMemberDTO {
+  employeeId: number;
   firstName: string;
   lastName: string;
   position: string;
+
 }
+
+export interface EmployeeTablDTO {
+
+    employeeId: number,
+    fullName: string,
+    position: string
+}
+
 
 export interface ReferToLuponRequest {
   members: PangkatMemberDTO[];
@@ -50,4 +60,10 @@ export async function referToLupon(
     method: "PATCH",
     body: JSON.stringify(body),
   });
+}
+
+
+
+export async function getEmployee(): Promise<EmployeeTablDTO[]> {
+    return apiFetch<EmployeeTablDTO[]>(`${LUPON_URL}/lupon-employee`);
 }

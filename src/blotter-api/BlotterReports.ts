@@ -1,7 +1,6 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const REPORTS_URL = `${BASE}/api/v1/blotter-reports`;
 
-//reports stats
 export interface ReportsStatsDTO {
   totalEntries: number;
   totalTrend: number;
@@ -13,25 +12,21 @@ export interface ReportsStatsDTO {
   luponTrend: number;
 }
 
-//cases by nature
 export interface NatureStatDTO {
   natureName: string;
   count: number;
 }
 
-//monthly trends
-export interface MonthlyTrendDTO {
-  month: string;
+export interface ChartDataDTO {
+  label: string;
   count: number;
 }
 
-//cases by status
 export interface StatusStatDTO {
   statusName: string;
   count: number;
 }
 
-//settlement efficiency
 export interface SettlementEfficiencyDTO {
   totalFormalComplaints: number;
   settledCases: number;
@@ -53,38 +48,34 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     if (response.status === 401) {
       localStorage.removeItem("token");
       window.location.href = "/login";
-      throw new Error("Session expired. Please login again.");
+      throw new Error("Session expired.");
     }
-    const contentType = response.headers.get("content-type");
-    const errMsg = contentType?.includes("application/json")
-      ? (await response.json().catch(() => ({}))).message
-      : await response.text();
-    throw new Error(errMsg || `HTTP error! status: ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Error: ${response.status}`);
   }
 
-  if (response.status === 204) return {} as T;
-
-  const contentType = response.headers.get("content-type");
-  if (contentType?.includes("application/json")) return response.json();
-  return response.text() as unknown as T;
+  return response.status === 204 ? ({} as T) : response.json();
 }
 
-export async function getReportsStats(): Promise<ReportsStatsDTO> {
-  return apiFetch<ReportsStatsDTO>(`${REPORTS_URL}/stats`);
+const getParams = (start: string, end: string) => 
+  new URLSearchParams({ startDate: start, endDate: end }).toString();
+
+export async function getReportsStats(start: string, end: string): Promise<ReportsStatsDTO> {
+  return apiFetch<ReportsStatsDTO>(`${REPORTS_URL}/stats?${getParams(start, end)}`);
 }
 
-export async function getCasesByNature(): Promise<NatureStatDTO[]> {
-  return apiFetch<NatureStatDTO[]>(`${REPORTS_URL}/cases-by-nature`);
+export async function getCasesTrend(start: string, end: string): Promise<ChartDataDTO[]> {
+  return apiFetch<ChartDataDTO[]>(`${REPORTS_URL}/cases-trend?${getParams(start, end)}`);
 }
 
-export async function getMonthlyTrends(): Promise<MonthlyTrendDTO[]> {
-  return apiFetch<MonthlyTrendDTO[]>(`${REPORTS_URL}/monthly-trends`);
+export async function getCasesByNature(start: string, end: string): Promise<NatureStatDTO[]> {
+  return apiFetch<NatureStatDTO[]>(`${REPORTS_URL}/nature?${getParams(start, end)}`);
 }
 
-export async function getCasesByStatus(): Promise<StatusStatDTO[]> {
-  return apiFetch<StatusStatDTO[]>(`${REPORTS_URL}/cases-by-status`);
+export async function getCasesByStatus(start: string, end: string): Promise<StatusStatDTO[]> {
+  return apiFetch<StatusStatDTO[]>(`${REPORTS_URL}/status?${getParams(start, end)}`);
 }
 
-export async function getSettlementEfficiency(): Promise<SettlementEfficiencyDTO> {
-  return apiFetch<SettlementEfficiencyDTO>(`${REPORTS_URL}/settlement-efficiency`);
+export async function getSettlementEfficiency(start: string, end: string): Promise<SettlementEfficiencyDTO> {
+  return apiFetch<SettlementEfficiencyDTO>(`${REPORTS_URL}/efficiency?${getParams(start, end)}`);
 }

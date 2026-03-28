@@ -1,6 +1,7 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const BLOTTER_URL = `${BASE}/api/v1/blotter`;
 const HEARING_URL = `${BASE}/api/v1/hearing`;
+const LUPON_URL = `${BASE}/api/v1/lupon`;
 
 //docket paginations
 export interface SpringPage<T> {
@@ -166,14 +167,20 @@ export interface ScheduleHearingRequest {
   notes?: string;
 }
 
-//record hearing minutes
+
+
+export interface PangkatAttendanceDTO {
+  pangkatMemberId: number;
+  isPresent: boolean;
+}
+
 export interface RecordMinutesRequest {
-  hearingId: number;
   complainantPresent: boolean;
   respondentPresent: boolean;
-  hearingNotes?: string;
-  outcome: string;
-  settlementTerms: string;
+  hearingNotes: string; 
+  outcome: "SETTLED" | "NOT_SETTLED"; 
+  settlementTerms?: string;
+  pangkatAttendance: PangkatAttendanceDTO[]; 
 }
 
 // stats for dashboard
@@ -189,6 +196,27 @@ export interface UpdateCaseStatusRequest {
   blotterNumber: string;
   newStatus: string;
   reason: string;
+}
+
+
+
+export interface AssignedPangkatDTO {
+  memberId: number;
+  fullName: string;
+  position: string;
+}
+
+export interface HearingMinutesViewingRequestDTO {
+  hearingId: number;
+  hearingNumber: number; 
+  status: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  venue: string;
+  caseNumber: string;
+  caseTitle: string;
+  assignedPangkat: AssignedPangkatDTO[]; 
 }
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -329,14 +357,7 @@ export async function getBusySlots(date: string): Promise<BusySlotDTO[]> {
   );
 }
 
-export async function getMediationHearingView(
-  hearingId: number,
-): Promise<MediationHearingViewDTO> {
-  if (!hearingId) throw new Error("Hearing ID is required");
-  return apiFetch<MediationHearingViewDTO>(
-    `${BLOTTER_URL}/hearing-minutes-view/${hearingId}`,
-  );
-}
+
 
 export async function getCaseNotes(
   blotterNumber: string,
@@ -364,9 +385,10 @@ export async function scheduleHearing(
 }
 
 export async function recordHearingMinutes(
+  hearingId: number, 
   body: RecordMinutesRequest,
 ): Promise<string> {
-  return apiFetch<string>(`${HEARING_URL}/record-minutes`, {
+  return apiFetch<string>(`${LUPON_URL}/${hearingId}/record-minutes`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -417,4 +439,16 @@ export async function getHearingFullDetails(
 
 export async function getFrequencyOptions(): Promise<IncidentOptionDTO[]> {
   return apiFetch<IncidentOptionDTO[]>(`${BLOTTER_URL}/frequencies`);
+}
+
+
+
+export async function getMediationHearingView(
+  hearingId: number
+): Promise<HearingMinutesViewingRequestDTO> {
+  if (!hearingId) throw new Error("Hearing ID is required");
+  
+  return apiFetch<HearingMinutesViewingRequestDTO>(
+    `${LUPON_URL}/details/${hearingId}`
+  );
 }

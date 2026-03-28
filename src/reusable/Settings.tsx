@@ -1,9 +1,4 @@
-/**
- * ReusableSettings.tsx (Improved UI/UX)
- *
- * Drop-in settings page builder with refined design system, better visual
- * hierarchy, smooth interactions, and production-grade aesthetics.
- */
+
 
 import React, { useState, useEffect } from "react";
 import {

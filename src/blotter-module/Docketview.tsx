@@ -23,6 +23,7 @@ import {
   ReferToLuponModal,
   type PangkatMember,
 } from "./modal/ReferToLuponModal"; // ← adjust path to wherever you put it
+import { em } from "framer-motion/client";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -203,24 +204,24 @@ const Docketview = () => {
     fetchTable(updated);
   };
 
-  /**
-   * Called when the user confirms inside ReferToLuponModal.
-   * `members` contains the Pangkat composition they filled in.
-   *
-   * Current backend endpoint (updateCaseStatus) only accepts
-   * blotterNumber / newStatus / reason.
-   *
-   * TODO: If your backend adds a dedicated /refer-to-lupon endpoint
-   * that accepts pangkat members, replace the updateCaseStatus call
-   * below with the proper API call and pass `members` in the body.
-   */
+  
   const handleReferConfirm = async (members: PangkatMember[]) => {
     if (!referEntry) return;
     setReferLoading(true);
     try {
-      // Use the referToLupon API from ForwardToLupon
+      // Map PangkatMember (from modal) to PangkatMemberDTO (for API)
+      const mappedMembers = members.map((m) => {
+        const [firstName, ...rest] = m.fullName.split(" ");
+        const lastName = rest.join(" ");
+        return {
+          employeeId: m.employeeId,
+          firstName: firstName || "",
+          lastName: lastName || "",
+          position: m.position,
+        };
+      });
       const { referToLupon } = await import("../blotter-api/ForwardToLupon");
-      await referToLupon(referEntry.blotterNumber, { members });
+      await referToLupon(referEntry.blotterNumber, { members: mappedMembers });
 
       setReferEntry(null);
       fetchTable(params);
@@ -255,16 +256,7 @@ const Docketview = () => {
         </button>
       ),
     },
-    {
-      key: "dateFiled",
-      header: "Date Filed",
-      width: "120px",
-      render: (item) => (
-        <span className="text-sm text-gray-500 whitespace-nowrap">
-          {formatDate(item.dateFiled)}
-        </span>
-      ),
-    },
+   
     {
       key: "complainantName",
       header: "Complainant",
@@ -305,6 +297,16 @@ const Docketview = () => {
           />
         );
       },
+    },
+     {
+      key: "dateFiled",
+      header: "Date Filed",
+      width: "120px",
+      render: (item) => (
+        <span className="text-sm text-gray-500 whitespace-nowrap">
+          {formatDate(item.dateFiled)}
+        </span>
+      ),
     },
     {
       key: "actions",
