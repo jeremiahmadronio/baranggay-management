@@ -27,7 +27,7 @@ import AdminPage from "./admin-module/DashboardReusable";
 import AdminDashboard from "./admin-module/dashboard";
 import UserManagement from "./admin-module/user-management";
 import { AdminSettings } from "./admin-module/settings";
-import {ResidentsPage} from "./pages/resident.tsx/ResidentsPage";
+import {ResidentsPage} from "./pages/resident/ResidentsPage";
 
 
 // Root Admin
@@ -71,7 +71,7 @@ import{ MonthlyReportPage} from "./lupong-tagapamayapa-module/ReportsDILG";
 import OfficialDashboard from "./official-module/dashboard";
 
 //VAWC
-import VAWCDashboard from "./vawc-module/dashboard";
+import VAWCDashboard from "./pages/vawc/dashboard";
 
 // Landing Page
 import { LandingPage } from "./landing-page";

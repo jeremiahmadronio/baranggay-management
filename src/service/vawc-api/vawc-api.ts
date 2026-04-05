@@ -35,6 +35,7 @@ export interface PageResponse<T> {
 
 // ─── Request DTOs ──────────────────────────────────────────────────────────
 
+//complaint
 export interface ComplaintDTO {
   complainantId?: number;
   respondentId?: number;
@@ -215,7 +216,20 @@ export interface CaseTimeLineDTO {
   eventDate: string;
 }
 
-// ─── Query params ──────────────────────────────────────────────────────────
+export interface DisplayCFADTO {
+  blotterNumber: string;
+  matterFiled: string;
+  complainantName: string;
+  complainantAddress: string;
+  respondentName: string;
+  respondentAddress: string;
+  grounds: string;
+  controlNumber: string;
+  issuedAt: string;
+  assignOfficerName: string;
+  assignOfficerPosition: string;
+}
+
 
 export interface CaseSummaryParams {
   search?: string;
@@ -256,6 +270,8 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
 
 // ─── API Functions ─────────────────────────────────────────────────────────
 
+
+// complaint form submission
 export async function fileVawcComplaint(dto: ComplaintDTO): Promise<unknown> {
   return apiFetch(`${VAWC_URL}/complaint-entry`, {
     method: "POST",
@@ -263,14 +279,17 @@ export async function fileVawcComplaint(dto: ComplaintDTO): Promise<unknown> {
   });
 }
 
+//evidence options for complaint form
 export async function getEvidenceOptions(): Promise<EvidenceOptionDTO[]> {
   return apiFetch(`${VAWC_URL}/evidence-options`);
 }
 
+//violence options for complaint form
 export async function getViolenceOptions(): Promise<ViolenceOptionDTO[]> {
   return apiFetch(`${VAWC_URL}/violence-options`);
 }
 
+//vawc case table with search and filter
 export async function getVawcCaseSummary(
   params: CaseSummaryParams = {}
 ): Promise<PageResponse<CaseSummaryDTO>> {
@@ -287,22 +306,29 @@ export async function getVawcCaseSummary(
   return apiFetch(`${VAWC_URL}/case-summary?${query.toString()}`);
 }
 
+
+//vawc stats or KPI
 export async function getVawcStats(): Promise<CaseStatsDTO> {
   return apiFetch(`${VAWC_URL}/vawc-stats`);
 }
 
+//vawc full details view
 export async function getVawcCaseDetails(id: number): Promise<CaseViewDTO> {
   return apiFetch(`${VAWC_URL}/details/${id}`);
 }
 
+
+// activate BPO for a case
 export async function activateBpo(caseId: number): Promise<string> {
   return apiFetch(`${VAWC_URL}/activate-bpo/${caseId}`, { method: "PUT" });
 }
 
+// display bpo case details
 export async function getBpoDetails(caseId: number): Promise<BpoDetails> {
   return apiFetch(`${VAWC_URL}/bpo-details/${caseId}`);
 }
 
+// add intervention for a bpo
 export async function addIntervention(
   dto: InterventionRequestDTO
 ): Promise<unknown> {
@@ -312,6 +338,7 @@ export async function addIntervention(
   });
 }
 
+// add follow-up for an intervention
 export async function addFollowUp(dto: FollowUpDTO): Promise<string> {
   return apiFetch(`${VAWC_URL}/follow-up`, {
     method: "POST",
@@ -319,16 +346,24 @@ export async function addFollowUp(dto: FollowUpDTO): Promise<string> {
   });
 }
 
+// display intervention details along with follow-ups
 export async function getInterventionDetails(
   interventionId: number
 ): Promise<InterventionViewDTO> {
   return apiFetch(`${VAWC_URL}/intervention-details/${interventionId}`);
 }
 
+// options for assign officer dropdown in intervention form
 export async function getAssignOfficerOptions(): Promise<AssignOfficerOptionDTO[]> {
   return apiFetch(`${VAWC_URL}/assign-officer-option`);
 }
 
+//options for assign officer dropdown in complaint form
+export async function getAssignOfficerComplaintOptions(): Promise<AssignOfficerOptionDTO[]> {
+  return apiFetch(`${VAWC_URL}/assign-officer-complaint`);
+}
+
+//add case note for a vawc case
 export async function addCaseNote(dto: AddCaseNoteRequest): Promise<string> {
   return apiFetch(`${VAWC_URL}/add-note`, {
     method: "POST",
@@ -336,16 +371,19 @@ export async function addCaseNote(dto: AddCaseNoteRequest): Promise<string> {
   });
 }
 
+//display case notes for a vawc case
 export async function getCaseNotes(caseId: number): Promise<CaseNoteViewDTO[]> {
   return apiFetch(`${VAWC_URL}/${caseId}/notes`);
 }
 
+//display case timeline for a vawc case
 export async function getCaseTimeline(
   caseId: string
 ): Promise<CaseTimeLineDTO[]> {
   return apiFetch(`${VAWC_URL}/timeline/${caseId}`);
 }
 
+//update case status to withdrawn with reason
 export async function withdrawVawcCase(
   id: number,
   dto: UpdateCaseStatusDTO
@@ -356,9 +394,15 @@ export async function withdrawVawcCase(
   });
 }
 
+// update case status to referral
 export async function createReferral(dto: CreateReferralDTO): Promise<string> {
   return apiFetch(`${VAWC_URL}/create-referral`, {
     method: "POST",
     body: JSON.stringify(dto),
   });
+}
+
+// display CFA details for a vawc case
+export async function getVawcCfa(caseId: number): Promise<DisplayCFADTO> {
+  return apiFetch(`${VAWC_URL}/cfa/${caseId}`);
 }

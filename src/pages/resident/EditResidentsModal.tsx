@@ -115,6 +115,7 @@ export function EditResidentsModal({
   const [photoPositionX, setPhotoPositionX] = useState(50);
   const [photoPositionY, setPhotoPositionY] = useState(50);
   const [photoZoom, setPhotoZoom] = useState(1);
+  const [hasPhotoUpdate, setHasPhotoUpdate] = useState(false);
 
   const getErrorMessage = (error: unknown) => {
     if (error instanceof Error) return error.message;
@@ -201,6 +202,20 @@ export function EditResidentsModal({
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     const blob = new Blob([bytes], { type: mime });
     return URL.createObjectURL(blob);
+  };
+
+  const toDisplayPhotoSrc = (photo?: string) => {
+    const trimmed = photo?.trim();
+    if (!trimmed) return null;
+    if (
+      trimmed.startsWith("data:") ||
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("blob:")
+    ) {
+      return trimmed;
+    }
+    return `data:image/jpeg;base64,${trimmed}`;
   };
 
   const openDocument = (doc: {
@@ -318,15 +333,19 @@ export function EditResidentsModal({
 
     setFetching(true);
     setErrors({});
+    setPhotoPreview(null);
+    setHasPhotoUpdate(false);
 
     fetchProfile(residentId)
       .then((profile) => {
+        const existingPhoto = profile.photo?.trim() || "";
         setStatus(profile.status || "");
         setExistingDocuments(profile.documents || []);
         setNewDocuments([]);
         setRemovedDocumentIds([]);
         setUpdatedDocuments([]);
         setReplaceTargetDocumentId(null);
+        setPhotoPreview(toDisplayPhotoSrc(existingPhoto));
 
         let rel = profile.religion || "";
         const isCustomRel = rel && !PHILIPPINE_RELIGIONS.includes(rel);
@@ -357,7 +376,7 @@ export function EditResidentsModal({
           gender: profile.gender,
           civilStatus: profile.civilStatus,
           email: profile.email || "",
-          photo: "",
+          photo: existingPhoto,
           householdNumber: profile.householdNumber || "",
           precinctNumber: profile.precinctNumber || "",
           isVoter: profile.isVoter,
@@ -522,6 +541,7 @@ export function EditResidentsModal({
       setPhotoPositionX(50);
       setPhotoPositionY(50);
       setPhotoZoom(1);
+      setHasPhotoUpdate(true);
     };
     reader.readAsDataURL(file);
   };
@@ -717,9 +737,10 @@ export function EditResidentsModal({
     setSubmitError("");
     try {
       const age = calculateAge(formData.birthDate);
-      const croppedPhotoPayload = photoPreview
-        ? await createCroppedPhotoPayload(photoPreview)
-        : formData.photo;
+      const croppedPhotoPayload =
+        hasPhotoUpdate && photoPreview
+          ? await createCroppedPhotoPayload(photoPreview)
+          : formData.photo;
       const updateDocuments: UpdateDocumentRequest[] = [
         ...removedDocumentIds.map((id) => ({ id, isRemoved: true })),
         ...updatedDocuments,
@@ -770,6 +791,7 @@ export function EditResidentsModal({
     setPhotoPositionX(50);
     setPhotoPositionY(50);
     setPhotoZoom(1);
+    setHasPhotoUpdate(false);
     setErrors({});
     setSubmitError("");
     onClose();
@@ -862,10 +884,8 @@ export function EditResidentsModal({
                             onChange={handlePhotoUpload}
                             className="hidden"
                           />
-                          {photoPreview && (
+                          {photoPreview && hasPhotoUpdate && (
                             <div className="mt-3 space-y-2 w-44">
-                             
-                              
                               <div>
                                 <p className="text-[11px] text-gray-500 mb-1">
                                   Zoom
