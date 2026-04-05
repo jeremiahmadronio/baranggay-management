@@ -33,7 +33,7 @@ export interface RecordBlotterEntry {
   relationshipToComplainant?: string;
   respondentAddress?: string;
 
-  natureOfComplaintId: number;
+  natureOfComplaintId: string;
   dateOfIncident: string;
   timeOfIncident?: string;
   placeOfIncident: string;
@@ -78,11 +78,11 @@ export interface FormalComplaintEntry {
   relationshipTypeName?: string;
   livingWithComplainant?: boolean;
 
-  natureOfComplaintId: number;
+  natureOfComplaintId: string;
   dateOfIncident: string;
   timeOfIncident?: string;
   placeOfIncident: string;
-  frequencyOfIncident?: number;
+  frequencyOfIncident?: string;
   descriptionOfInjuries?: string;
 
   narrativeStatement: string;

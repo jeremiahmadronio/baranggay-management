@@ -1,5 +1,5 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
-const PEOPLE_URL = `${BASE}/api/v1/resident`; 
+const PEOPLE_URL = `${BASE}/api/v1/resident`;
 
 export interface PersonSearchResponseDTO {
   id: number;
@@ -8,13 +8,13 @@ export interface PersonSearchResponseDTO {
   middleName: string;
   contactNumber: string;
   age: number;
-  birthDate: string; 
+  birthDate: string;
   gender: string;
   civilStatus: string;
   email: string;
   completeAddress: string;
   isResident: boolean;
-  barangayIdNumber: string | null; 
+  barangayIdNumber: string | null;
 }
 
 export interface ResidentStatsDTO {
@@ -27,6 +27,7 @@ export interface ResidentStatsDTO {
 export interface ResidentSummary {
   residentId: number;
   barangayIdNumber: string;
+  photo?: string; // Base64 or URL
   fullName: string;
   contactNumber: string;
   householdNumber: string;
@@ -43,9 +44,11 @@ export interface ResidentCaseHistoryDTO {
 
 export interface ResidentProfileViewDTO {
   peopleId: number;
+  photo?: string; // Base64 or URL
   firstName: string;
   lastName: string;
   middleName: string;
+  suffix?: string;
   fullName: string;
   gender: string;
   birthDate: string;
@@ -64,6 +67,13 @@ export interface ResidentProfileViewDTO {
   isVoter: boolean;
   isHeadOfFamily: boolean;
   dateOfResidency: string;
+  is4ps: boolean;
+  isPwd: boolean;
+  pwdIdNumber: string | null;
+  isIndigent: boolean;
+  educationalAttainment: string;
+  status: string;
+
   cases: ResidentCaseHistoryDTO[];
 }
 
@@ -101,29 +111,42 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.json();
 }
 
-export async function searchPeople(query: string): Promise<PersonSearchResponseDTO[]> {
-  if (!query || query.trim().length < 2) return []; 
-  
+export async function searchPeople(
+  query: string,
+): Promise<PersonSearchResponseDTO[]> {
+  if (!query || query.trim().length < 2) return [];
+
   const queryParams = new URLSearchParams({ query: query.trim() });
-  return apiFetch<PersonSearchResponseDTO[]>(`${PEOPLE_URL}/search?${queryParams.toString()}`);
+  return apiFetch<PersonSearchResponseDTO[]>(
+    `${PEOPLE_URL}/search?${queryParams.toString()}`,
+  );
 }
 
-export async function getResidentTable(params: ResidentTableParams = {}): Promise<ResidentSummary[]> {
+export async function getResidentTable(
+  params: ResidentTableParams = {},
+): Promise<ResidentSummary[]> {
   const queryParams = new URLSearchParams();
-  
+
   if (params.search) queryParams.append("search", params.search);
   if (params.gender) queryParams.append("gender", params.gender);
-  if (params.isVoter !== undefined) queryParams.append("isVoter", params.isVoter.toString());
+  if (params.isVoter !== undefined)
+    queryParams.append("isVoter", params.isVoter.toString());
   if (params.household) queryParams.append("household", params.household);
 
   const queryString = queryParams.toString();
-  const endpoint = queryString ? `${PEOPLE_URL}/table?${queryString}` : `${PEOPLE_URL}/table`;
+  const endpoint = queryString
+    ? `${PEOPLE_URL}/table?${queryString}`
+    : `${PEOPLE_URL}/table`;
 
   return apiFetch<ResidentSummary[]>(endpoint);
 }
 
-export async function getResidentProfile(residentId: number): Promise<ResidentProfileViewDTO> {
-  return apiFetch<ResidentProfileViewDTO>(`${PEOPLE_URL}/resident-profile/${residentId}`);
+export async function getResidentProfile(
+  residentId: number,
+): Promise<ResidentProfileViewDTO> {
+  return apiFetch<ResidentProfileViewDTO>(
+    `${PEOPLE_URL}/resident-full-profile/${residentId}`,
+  );
 }
 
 export async function getResidentStats(): Promise<ResidentStatsDTO> {

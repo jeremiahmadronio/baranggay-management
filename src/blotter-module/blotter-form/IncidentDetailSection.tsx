@@ -6,25 +6,32 @@ import {
   FormTimePicker,
   FormInput,
 } from "../reusable/FormComponents";
-import { type NatureOptionDTO } from "../../blotter-api/BlotterFormComplaint";
-export const FREQUENCY_OPTIONS = [
-  {
-    value: "First Time",
-    label: "First Time",
-  },
-  {
-    value: "Second Time",
-    label: "Second Time",
-  },
-  {
-    value: "Third Time",
-    label: "Third Time",
-  },
-  {
-    value: "Recurring",
-    label: "Recurring / Multiple Times",
-  },
-];
+
+const NATURE_OPTIONS = [
+  "Physical Injury",
+  "Slander / Oral Defamation",
+  "Theft",
+  "Threats",
+  "Trespassing",
+  "Grave Coercion",
+  "Debt / Financial Dispute",
+  "Unjust Vexation",
+  "Boundary / Land Dispute",
+  "Family / Relational Dispute",
+  "Noise Nuisance (Videoke, Loud Music)",
+  "Animal Nuisance (Stray/Noise/Waste)",
+  "Public Disturbance / Scandal",
+  "Illegal Parking / Obstruction",
+  "Violation of Barangay Ordinance",
+  "Others (Specify in Narrative)",
+].map((v) => ({ value: v, label: v }));
+
+const FREQUENCY_OPTIONS = [
+  "First Time",
+  "Second Time",
+  "Habitual / Third Time+",
+].map((v) => ({ value: v, label: v }));
+
 export interface IncidentState {
   natureId: string;
   dateOfIncident: string;
@@ -33,31 +40,22 @@ export interface IncidentState {
   frequency: string;
   injuryDesc: string;
 }
-import type { IncidentOptionDTO } from "../../blotter-api/DocketView";
+
 interface IncidentDetailsSectionProps {
   mode: "record" | "formal";
   data: IncidentState;
   onChange: (field: keyof IncidentState, value: any) => void;
   errors: Record<string, string>;
   clearErr: (key: string) => void;
-  natureOptions: NatureOptionDTO[];
-  frequencyOptions: IncidentOptionDTO[];
-  optionsLoading: boolean;
 }
+
 export const IncidentDetailsSection = ({
   mode,
   data,
   onChange,
   errors,
   clearErr,
-  natureOptions,
-  frequencyOptions,
-  optionsLoading,
 }: IncidentDetailsSectionProps) => {
-  const natureSelectOptions = natureOptions.map((n) => ({
-    value: String(n.id),
-    label: n.natureName,
-  }));
   return (
     <SectionCard letter="D" title="Incident Details">
       <FormRow cols={3}>
@@ -65,16 +63,13 @@ export const IncidentDetailsSection = ({
           id="field-natureId"
           label="Nature of Complaint"
           required
-          options={natureSelectOptions}
-          placeholder={
-            optionsLoading ? "Loading..." : "Select Nature of Complaint"
-          }
+          options={NATURE_OPTIONS}
+          placeholder="Select Nature of Complaint"
           value={data.natureId}
           onChange={(e) => {
             onChange("natureId", e.target.value);
             clearErr("natureId");
           }}
-          disabled={optionsLoading}
           error={errors.natureId}
         />
         <FormDatePicker
@@ -112,11 +107,8 @@ export const IncidentDetailsSection = ({
             id="field-frequency"
             label="Frequency of Incident"
             required
-            options={frequencyOptions.map((opt) => ({
-              value: opt.label,
-              label: opt.label,
-            }))}
-            placeholder={optionsLoading ? "Loading..." : "Select Frequency"}
+            options={FREQUENCY_OPTIONS}
+            placeholder="Select Frequency"
             value={data.frequency}
             onChange={(e) => {
               onChange("frequency", e.target.value);

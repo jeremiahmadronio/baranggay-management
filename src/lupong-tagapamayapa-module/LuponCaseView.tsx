@@ -225,11 +225,14 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
       key: "timeline",
       label: "Timeline",
     },
-    {
+  ];
+  // Only show CFA tab if status is CERTIFIED_TO_FILE_ACTION
+  if (luponData?.caseStatus === "CERTIFIED_TO_FILE_ACTION") {
+    tabDefs.push({
       key: "CFA",
       label: "CFA (Certified to File Action)",
-    },
-  ];
+    });
+  }
   if (loading)
     return (
       <div className="flex items-center justify-center h-64">

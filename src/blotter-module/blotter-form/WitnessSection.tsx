@@ -1,13 +1,13 @@
-import { SectionCard, FormRow, FormInput } from '../reusable/FormComponents'
-import { PersonSearchInput } from '../reusable/PersonSearchInput'
-import { type WitnessEntry } from '../../blotter-api/BlotterFormComplaint'
-import { type PersonSearchResponseDTO } from '../../blotter-api/resident'
+import { SectionCard, FormRow, FormInput } from "../reusable/FormComponents";
+import { PersonSearchInput } from "../reusable/PersonSearchInput";
+import { type WitnessEntry } from "../../blotter-api/BlotterFormComplaint";
+import { type PersonSearchResponseDTO } from "../../blotter-api/Resident";
 
 interface WitnessSectionProps {
-  witnesses: WitnessEntry[]
-  addWitness: () => void
-  removeWitness: (i: number) => void
-  updateWitness: (i: number, field: keyof WitnessEntry, value: any) => void
+  witnesses: WitnessEntry[];
+  addWitness: () => void;
+  removeWitness: (i: number) => void;
+  updateWitness: (i: number, field: keyof WitnessEntry, value: any) => void;
 }
 
 export const WitnessSection = ({
@@ -55,14 +55,14 @@ export const WitnessSection = ({
               label="Search Witness (Auto-fill)"
               placeholder="Search by name..."
               onSelect={(person: PersonSearchResponseDTO) => {
-                updateWitness(i, 'personId', person.id)
+                updateWitness(i, "personId", person.id);
                 updateWitness(
                   i,
-                  'fullName',
+                  "fullName",
                   `${person.firstName} ${person.lastName}`.trim(),
-                )
-                updateWitness(i, 'contactNumber', person.contactNumber || '')
-                updateWitness(i, 'address', person.completeAddress || '')
+                );
+                updateWitness(i, "contactNumber", person.contactNumber || "");
+                updateWitness(i, "address", person.completeAddress || "");
               }}
             />
 
@@ -71,19 +71,19 @@ export const WitnessSection = ({
                 label="Full Name"
                 placeholder="Full name"
                 value={w.fullName}
-                onChange={(e) => updateWitness(i, 'fullName', e.target.value)}
+                onChange={(e) => updateWitness(i, "fullName", e.target.value)}
               />
               <FormInput
                 label="Contact Number"
                 placeholder="09XX XXX XXXX"
                 inputMode="numeric"
                 maxLength={11}
-                value={w.contactNumber ?? ''}
+                value={w.contactNumber ?? ""}
                 onChange={(e) =>
                   updateWitness(
                     i,
-                    'contactNumber',
-                    e.target.value.replace(/\D/g, ''),
+                    "contactNumber",
+                    e.target.value.replace(/\D/g, ""),
                   )
                 }
               />
@@ -92,8 +92,8 @@ export const WitnessSection = ({
             <FormInput
               label="Address"
               placeholder="Complete address"
-              value={w.address ?? ''}
-              onChange={(e) => updateWitness(i, 'address', e.target.value)}
+              value={w.address ?? ""}
+              onChange={(e) => updateWitness(i, "address", e.target.value)}
             />
           </div>
         ))}
@@ -120,5 +120,5 @@ export const WitnessSection = ({
         + Add Witness
       </button>
     </SectionCard>
-  )
-}
+  );
+};

@@ -18,14 +18,12 @@ import {
   getNatureOfComplaintOptions,
   type NatureOptionDTO,
 } from "../blotter-api/BlotterFormComplaint";
+import { referToLupon } from "../blotter-api/ForwardToLupon";
 import { StatusBadge, type StatusType } from "../reusable/StatusBadge";
 import {
   ReferToLuponModal,
   type PangkatMember,
 } from "./modal/ReferToLuponModal"; // ← adjust path to wherever you put it
-import { em } from "framer-motion/client";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "—";
@@ -86,7 +84,7 @@ const Docketview = () => {
     end: "",
     page: 0,
     size: PAGE_SIZE,
-    sort: "createdAt,desc",
+    sort: "dateFiled,desc",
   });
 
   // Data state
@@ -204,7 +202,6 @@ const Docketview = () => {
     fetchTable(updated);
   };
 
-  
   const handleReferConfirm = async (members: PangkatMember[]) => {
     if (!referEntry) return;
     setReferLoading(true);
@@ -220,7 +217,6 @@ const Docketview = () => {
           position: m.position,
         };
       });
-      const { referToLupon } = await import("../blotter-api/ForwardToLupon");
       await referToLupon(referEntry.blotterNumber, { members: mappedMembers });
 
       setReferEntry(null);
@@ -256,7 +252,7 @@ const Docketview = () => {
         </button>
       ),
     },
-   
+
     {
       key: "complainantName",
       header: "Complainant",
@@ -298,7 +294,7 @@ const Docketview = () => {
         );
       },
     },
-     {
+    {
       key: "dateFiled",
       header: "Date Filed",
       width: "120px",

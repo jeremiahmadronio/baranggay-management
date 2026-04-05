@@ -27,6 +27,7 @@ import AdminPage from "./admin-module/DashboardReusable";
 import AdminDashboard from "./admin-module/dashboard";
 import UserManagement from "./admin-module/user-management";
 import { AdminSettings } from "./admin-module/settings";
+import {ResidentsPage} from "./pages/resident.tsx/ResidentsPage";
 
 
 // Root Admin
@@ -119,6 +120,7 @@ export function App() {
         <Route path="charts" element={<ChartPage />} />
         <Route path="archive" element={<PagePlaceholder title="Archive" />} />
         <Route path="inputform" element={<RecordInputDemo />} />
+          <Route path="residents" element={<ResidentsPage />} />
         <Route
           path="users"
           element={<PagePlaceholder title="User Management" />}

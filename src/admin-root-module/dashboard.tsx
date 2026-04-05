@@ -200,36 +200,31 @@ export default function RootAdminDashboard() {
       {/* ── KPI Cards ── */}
       <KPIGrid columns={4}>
         <KPICard
-          title="Total Staff"
+          title="Total Admin Users"
           value={<AnimatedCounter target={stats.totalUser} />}
           icon={KPIIcons.users}
           color="blue"
-          subtitle="Active accounts"
+        
         />
         <KPICard
-          title="Active Sessions"
+          title="Active Admin Users"
           value={<AnimatedCounter target={stats.totalActiveUser} />}
           icon={KPIIcons.clock}
           color="emerald"
-          subtitle="Currently online"
         />
         <KPICard
           title="Security Alerts"
           value={<AnimatedCounter target={stats.totalCritical} />}
           icon={<ShieldAlert className="w-6 h-6" />}
           color="rose"
-          subtitle="Require attention"
+        
         />
         <KPICard
           title="Total Audit Entries"
           value={<AnimatedCounter target={stats.totalAuditEntry} />}
           icon={KPIIcons.document}
           color="violet"
-          trend={{
-            value: `${stats.auditGrowth}%`,
-            direction: stats.auditDirection,
-            label: "from last month"
-          }}
+            
         />
       </KPIGrid>
 

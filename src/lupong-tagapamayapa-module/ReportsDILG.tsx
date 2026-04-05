@@ -57,12 +57,7 @@ export function MonthlyReportPage() {
   useEffect(() => {
     fetchMonthlyReport()
   }, [reportMonth, reportYear])
-  const getMonthName = (m: number) =>
-    new Date(0, m - 1)
-      .toLocaleString('default', {
-        month: 'short',
-      })
-      .toUpperCase()
+  
   const formatDateRange = () => {
     const monthName = new Date(0, reportMonth - 1)
       .toLocaleString('default', {

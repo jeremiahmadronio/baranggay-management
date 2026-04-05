@@ -19,7 +19,6 @@ import {
   getHearingView,
   getCaseNotes,
   updateCaseStatus,
-  getHearingFullDetails,
 } from "../blotter-api/DocketView";
 import { getMyAccess } from "../blotter-api/BlotterPermission";
 import { OverviewTab } from "../blotter-module/tabs/OverviewTab";
@@ -135,26 +134,12 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
     }
   };
 
-  const handleOpenHearingDetails = async (
-    hId: number,
-    mode: "viewMinutes" | "recordMinutes",
-  ) => {
-    setDetailsLoading(true);
-    try {
-      const data = await getHearingFullDetails(hId);
-      setFullHearing(data);
-      setModal(mode);
-    } catch (err: any) {
-      alert(err.message || "Failed to fetch hearing details.");
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
+ 
   // ── Initial load ──
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+       setDetailsLoading(true);
       setError(null);
       try {
         const [d, m] = await Promise.all([

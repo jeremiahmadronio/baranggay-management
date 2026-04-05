@@ -25,7 +25,7 @@ export type UserRole = 'admin' | 'blotter' | 'official' | 'lupongtagapamayapa' |
 export const adminNavItems: NavItemType[] = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'User Management', path: '/admin/user-management', icon: Users },
-  
+  { label: 'Residents', path: '/admin/residents', icon: Users },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ]
 

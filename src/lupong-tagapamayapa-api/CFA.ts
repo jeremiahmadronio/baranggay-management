@@ -1,26 +1,34 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
-const HEARING_URL = `${BASE}/api/v1/hearing`;
 
+const CFA_URL = `${BASE}/api/v1/lupon`;
 
-export async function updateHearingStatus(
-  hearingId: number,
-  newStatus: string,
-  remarks: string
-): Promise<string> {
-  if (!remarks.trim()) {
-    throw new Error("Remarks/Reason is required for status updates.");
-  }
-
-  return apiFetch<string>(`${HEARING_URL}/new-status/${hearingId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      newStatus,
-      remarks,
-    }),
-  });
+export interface CreateCFARequest {
+  blotterNumber: string;
+  grounds: string;
+  matterFiled: string;
 }
 
+export interface CFAResponse {
+  blotterNumber: string;
+  matterFiled: string;
+  complinantName: string;
+  complinantAddress: string;
+  respondentName: string;
+  respondentAddress: string;
+  grounds: string;
+  controlNumber: string;
+  issuedAt: string;
+  issueByName: string;
 
+  luponChairman: string;
+  chairmanPosition : string;
+
+  luponSecretary: string;
+  secretaryPosition: string;
+  
+  luponMember: string;
+  memberPosition: string;
+}
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
@@ -51,4 +59,19 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/json")) return response.json();
   return response.text() as unknown as T;
+}
+
+export async function issueCFA(data: CreateCFARequest): Promise<string> {
+  return apiFetch<string>(`${CFA_URL}/issue`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getCfaDetails(
+  blotterNumber: string,
+): Promise<CFAResponse> {
+  return apiFetch<CFAResponse>(`${CFA_URL}/cfa-display/${blotterNumber}`, {
+    method: "GET",
+  });
 }

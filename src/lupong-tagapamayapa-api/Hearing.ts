@@ -36,7 +36,6 @@
     recordedByMinutes: string | null;
   }
 
-  //hearing schedule filtering params
   export interface HearingScheduleParams {
     search?: string;
     tab?: string;
@@ -44,7 +43,6 @@
     size?: number;
   }
 
-  //update hearing status 
   export interface UpdateHearingStatusRequest {
     newStatus: string;
     remarks: string;

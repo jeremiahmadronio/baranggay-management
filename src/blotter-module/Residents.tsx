@@ -8,7 +8,10 @@ import {
   getResidentProfile,
   getResidentStats,
 } from "../blotter-api/Resident";
-import type { ResidentSummary, ResidentStatsDTO } from "../blotter-api/Resident";
+import type {
+  ResidentSummary,
+  ResidentStatsDTO,
+} from "../blotter-api/Resident";
 import { KPICard, KPIGrid, KPIIcons } from "../reusable/KPICard";
 
 function useDebounce<T>(value: T, delay = 400): T {
@@ -62,7 +65,7 @@ export default function ResidentListPage() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -108,7 +111,7 @@ export default function ResidentListPage() {
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
   const paginatedData = data.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   const COLUMNS: TableColumn<ResidentSummary>[] = [
@@ -129,7 +132,26 @@ export default function ResidentListPage() {
       key: "fullName",
       header: "Full Name",
       render: (item) => (
-        <span className="font-medium text-gray-800">{item.fullName}</span>
+        <div className="flex items-center gap-2">
+          {item.photo ? (
+            <img
+              src={item.photo}
+              alt={item.fullName}
+              className="w-8 h-8 rounded-full object-cover border border-gray-200"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-500">
+              {item.fullName
+                .split(" ")
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase() || "R"}
+            </div>
+          )}
+          <span className="font-medium text-gray-800">{item.fullName}</span>
+        </div>
       ),
     },
     {
@@ -155,13 +177,31 @@ export default function ResidentListPage() {
       render: (item) =>
         item.isVoter ? (
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </span>
         ) : (
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </span>
@@ -199,35 +239,44 @@ export default function ResidentListPage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
-
-        
-
         {/* Stats — KPI Cards */}
         <KPIGrid columns={4}>
           <KPICard
             title="Total Residents"
-            value={statsLoading ? "—" : (stats?.totalResidents ?? 0).toLocaleString()}
+            value={
+              statsLoading ? "—" : (stats?.totalResidents ?? 0).toLocaleString()
+            }
             icon={KPIIcons["users"]}
             color="blue"
             subtitle="All registered residents"
           />
           <KPICard
             title="Registered Voters"
-            value={statsLoading ? "—" : (stats?.totalVoters ?? 0).toLocaleString()}
+            value={
+              statsLoading ? "—" : (stats?.totalVoters ?? 0).toLocaleString()
+            }
             icon={KPIIcons["issued"]}
             color="emerald"
             subtitle="Active voter registrants"
           />
           <KPICard
             title="Senior Citizens"
-            value={statsLoading ? "—" : (stats?.totalSeniorCitizen ?? 0).toLocaleString()}
+            value={
+              statsLoading
+                ? "—"
+                : (stats?.totalSeniorCitizen ?? 0).toLocaleString()
+            }
             icon={KPIIcons["gift"]}
             color="amber"
             subtitle="Residents aged 60 and above"
           />
           <KPICard
             title="Heads of Family"
-            value={statsLoading ? "—" : (stats?.headsOfTheFamily ?? 0).toLocaleString()}
+            value={
+              statsLoading
+                ? "—"
+                : (stats?.headsOfTheFamily ?? 0).toLocaleString()
+            }
             icon={KPIIcons["home"]}
             color="violet"
             subtitle="Registered household heads"

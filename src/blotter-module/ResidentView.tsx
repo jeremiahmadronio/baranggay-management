@@ -21,6 +21,13 @@ const ROLE_COLORS: Record<string, string> = {
   WITNESS: "text-blue-600 bg-blue-50 border border-blue-200",
 };
 
+const RESIDENT_STATUS_COLORS: Record<string, string> = {
+  ACTIVE: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  INACTIVE: "bg-gray-100 text-gray-600 border border-gray-200",
+  ARCHIVED: "bg-slate-100 text-slate-600 border border-slate-200",
+  LOCKED: "bg-amber-100 text-amber-700 border border-amber-200",
+};
+
 function InfoField({
   label,
   value,
@@ -81,6 +88,7 @@ export function ResidentProfilePage({
   const [profile, setProfile] = useState<ResidentProfileViewDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "cases">("overview");
 
   useEffect(() => {
@@ -105,6 +113,16 @@ export function ResidentProfilePage({
       return date;
     }
   };
+
+  const normalizeAsset = (value?: string | null, mimeHint = "image/jpeg") => {
+    if (!value) return "";
+    if (value.startsWith("data:") || value.startsWith("http")) return value;
+    return `data:${mimeHint};base64,${value}`;
+  };
+
+  const profilePhotoSrc = profile?.photo
+    ? normalizeAsset(profile.photo, "image/jpeg")
+    : "";
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -137,43 +155,77 @@ export function ResidentProfilePage({
             </div>
           ) : error ? null : (
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {profile?.fullName}
-                  </h1>
-                  {profile?.barangayIdNumber && (
-                    <span className="text-xs font-mono bg-blue-50 text-blue-600 border border-blue-200 px-2.5 py-1 rounded-full">
-                      {profile.barangayIdNumber}
-                    </span>
-                  )}
-                  {profile?.isVoter && (
-                    <span className="text-xs font-medium bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+              <div className="flex items-start gap-4">
+                {profilePhotoSrc ? (
+                  <img
+                    src={profilePhotoSrc}
+                    alt={profile?.fullName || "Resident"}
+                    className="w-16 h-16 rounded-full object-cover border border-gray-200 shadow-sm cursor-zoom-in"
+                    onClick={() => setIsPhotoModalOpen(true)}
+                    title="Click to zoom"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-lg font-semibold text-gray-500">
+                    {profile?.fullName
+                      ?.split(" ")
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase() || "R"}
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {profile?.fullName}
+                    </h1>
+                    {profile?.barangayIdNumber && (
+                      <span className="text-xs font-mono bg-blue-50 text-blue-600 border border-blue-200 px-2.5 py-1 rounded-full">
+                        {profile.barangayIdNumber}
+                      </span>
+                    )}
+                    {profile?.isVoter && (
+                      <span className="text-xs font-medium bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Registered Voter
+                      </span>
+                    )}
+                    {profile?.isHeadOfFamily && (
+                      <span className="text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-full">
+                        Head of Family
+                      </span>
+                    )}
+                    {!!profile?.status && (
+                      <span
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                          RESIDENT_STATUS_COLORS[
+                            profile.status.toUpperCase()
+                          ] ??
+                          "bg-gray-100 text-gray-600 border border-gray-200"
+                        }`}
                       >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Registered Voter
-                    </span>
-                  )}
-                  {profile?.isHeadOfFamily && (
-                    <span className="text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-full">
-                      Head of Family
-                    </span>
-                  )}
+                        {profile.status}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1.5">
+                    {profile?.occupation || "No occupation listed"} • Household
+                    No. {profile?.householdNumber || "N/A"}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500 mt-1.5">
-                  {profile?.occupation || "No occupation listed"} • Household
-                  No. {profile?.householdNumber || "N/A"}
-                </p>
               </div>
             </div>
           )}
@@ -387,6 +439,46 @@ export function ResidentProfilePage({
                       </div>
                     </SectionCard>
                   </div>
+
+                  <SectionCard
+                    title="Social & Program Details"
+                    icon={
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 2v20" />
+                        <path d="M2 12h20" />
+                      </svg>
+                    }
+                  >
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-5">
+                      <InfoField
+                        label="Educational Attainment"
+                        value={profile.educationalAttainment}
+                      />
+                      <InfoField
+                        label="4Ps Beneficiary"
+                        value={profile.is4ps}
+                      />
+                      <InfoField label="PWD" value={profile.isPwd} />
+                      <InfoField
+                        label="PWD ID Number"
+                        value={profile.isPwd ? profile.pwdIdNumber : "—"}
+                      />
+                      <InfoField label="Indigent" value={profile.isIndigent} />
+                      <InfoField
+                        label="Resident Status"
+                        value={profile.status}
+                      />
+                    </div>
+                  </SectionCard>
                 </>
               )}
 
@@ -477,6 +569,31 @@ export function ResidentProfilePage({
           </div>
         )}
       </div>
+
+      {isPhotoModalOpen && profilePhotoSrc && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setIsPhotoModalOpen(false)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setIsPhotoModalOpen(false)}
+              className="absolute -top-10 right-0 text-white/90 hover:text-white text-sm"
+            >
+              Close
+            </button>
+            <img
+              src={profilePhotoSrc}
+              alt={profile?.fullName || "Resident"}
+              className="w-[70vw] max-w-[520px] aspect-square rounded-full object-cover border-4 border-white shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

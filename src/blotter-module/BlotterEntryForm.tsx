@@ -13,21 +13,17 @@ import { RespondentSection } from "./blotter-form/RespondentSection";
 import type { RespondentState } from "./blotter-form/RespondentSection";
 import { IncidentDetailsSection } from "../blotter-module/blotter-form/IncidentDetailSection";
 import type { IncidentState } from "./blotter-form/IncidentDetailSection";
-import { getFrequencyOptions } from "../blotter-api/DocketView";
-import type { IncidentOptionDTO } from "../blotter-api/DocketView";
 import { NarrativeSection } from "./blotter-form/NarrativeSection";
 import { EvidenceSection } from "./blotter-form/EvidenceSection";
 import { WitnessSection } from "./blotter-form/WitnessSection";
 import { CertificationSection } from "./blotter-form/CertificationSection";
 
 import {
-  getNatureOfComplaintOptions,
   getEvidenceTypeOptions,
   submitForTheRecord,
   submitFormalComplaint,
 } from "../blotter-api/BlotterFormComplaint";
 import type {
-  NatureOptionDTO,
   EvidenceOptionDTO,
   WitnessEntry,
 } from "../blotter-api/BlotterFormComplaint";
@@ -73,13 +69,10 @@ export default function BlotterEntryForm() {
       delete next[key];
       return next;
     });
-  const [natureOptions, setNatureOptions] = useState<NatureOptionDTO[]>([]);
   const [evidenceOptions, setEvidenceOptions] = useState<EvidenceOptionDTO[]>(
     [],
   );
-  const [frequencyOptions, setFrequencyOptions] = useState<IncidentOptionDTO[]>(
-    [],
-  );
+
   const [optionsLoading, setOptionsLoading] = useState(true);
   // Form State Groups
   const [complainant, setComplainant] = useState<ComplainantState>({
@@ -137,14 +130,8 @@ export default function BlotterEntryForm() {
   useEffect(() => {
     const init = async () => {
       try {
-        const [natures, evidences, frequencies] = await Promise.all([
-          getNatureOfComplaintOptions().catch(() => []),
-          getEvidenceTypeOptions().catch(() => []),
-          getFrequencyOptions().catch(() => []),
-        ]);
-        setNatureOptions(natures);
+        const evidences = await getEvidenceTypeOptions().catch(() => []);
         setEvidenceOptions(evidences);
-        setFrequencyOptions(frequencies);
       } catch (err) {
         console.error("Failed to load initialization data:", err);
       } finally {
@@ -330,7 +317,8 @@ export default function BlotterEntryForm() {
           respondentContact: respondent.contact || undefined,
           relationshipToComplainant: respondent.relationship || undefined,
           respondentAddress: respondent.address || undefined,
-          natureOfComplaintId: Number(incident.natureId),
+          natureOfComplaintId: incident.natureId,
+
           dateOfIncident: incident.dateOfIncident,
           timeOfIncident: incident.timeOfIncident
             ? `${incident.timeOfIncident}:00`
@@ -373,15 +361,14 @@ export default function BlotterEntryForm() {
             respondent.livingWith !== ""
               ? respondent.livingWith === "true"
               : undefined,
-          natureOfComplaintId: Number(incident.natureId),
+          natureOfComplaintId: incident.natureId,
           dateOfIncident: incident.dateOfIncident,
           timeOfIncident: incident.timeOfIncident
             ? `${incident.timeOfIncident}:00`
             : undefined,
           placeOfIncident: incident.placeOfIncident,
-          frequencyOfIncident: incident.frequency
-            ? Number(incident.frequency)
-            : undefined,
+          frequencyOfIncident: incident.frequency || undefined,
+
           descriptionOfInjuries: incident.injuryDesc || undefined,
           narrativeStatement: narrative,
           evidenceTypeIds: buildEvidenceIds().length
@@ -554,9 +541,6 @@ export default function BlotterEntryForm() {
           onChange={updateIncident}
           errors={errors}
           clearErr={clearErr}
-          natureOptions={natureOptions}
-          frequencyOptions={frequencyOptions}
-          optionsLoading={optionsLoading}
         />
 
         <NarrativeSection

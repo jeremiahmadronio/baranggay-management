@@ -385,7 +385,7 @@ export default function AdminManagement() {
         </div>
       ) : statsError ? (
         <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm">
-          ⚠ {statsError}
+          {statsError}
         </div>
       ) : (
         <div className="mb-6">
