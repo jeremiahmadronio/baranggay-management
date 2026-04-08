@@ -109,6 +109,11 @@ export function AddResidentsModal({
     return "Failed to submit resident. Please try again.";
   };
 
+  const toOptional = (value?: string | null) => {
+    const trimmed = (value ?? "").trim();
+    return trimmed.length ? trimmed : undefined;
+  };
+
   const fileToBase64Payload = (file: File) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -536,7 +541,7 @@ export function AddResidentsModal({
     setDocuments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const validateStep1 = () => {
+  const getStep1Errors = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.firstName.trim()) newErrors.firstName = "Required";
@@ -564,11 +569,10 @@ export function AddResidentsModal({
     if (!formData.gender) newErrors.gender = "Required";
     if (!formData.civilStatus) newErrors.civilStatus = "Required";
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
-  const validateStep2 = () => {
+  const getStep2Errors = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.completeAddress.trim()) {
@@ -602,14 +606,15 @@ export function AddResidentsModal({
       if (err) newErrors.dateOfResidency = err;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
-  const validateStep3 = () => {
+  const getStep3Errors = () => {
     const newErrors: Record<string, string> = {};
 
-    if (formData.contactNumber) {
+    if (!formData.contactNumber?.trim()) {
+      newErrors.contactNumber = "Required";
+    } else {
       const err = validateContact(formData.contactNumber);
       if (err) newErrors.contactNumber = err;
     }
@@ -638,7 +643,11 @@ export function AddResidentsModal({
       newErrors.educationalAttainment = `Max ${EDUCATION_MAX_LENGTH} characters`;
     }
 
-    if ((formData.occupation ?? "").trim().length > OCCUPATION_MAX_LENGTH) {
+    if (!(formData.occupation ?? "").trim()) {
+      newErrors.occupation = "Required";
+    } else if (
+      (formData.occupation ?? "").trim().length > OCCUPATION_MAX_LENGTH
+    ) {
       newErrors.occupation = `Max ${OCCUPATION_MAX_LENGTH} characters`;
     }
 
@@ -649,15 +658,18 @@ export function AddResidentsModal({
       if (err) newErrors.pwdIdNumber = err;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const validateAllSteps = () => {
-    const e1 = validateStep1();
-    const e2 = validateStep2();
-    const e3 = validateStep3();
-    return e1 && e2 && e3;
+    const mergedErrors = {
+      ...getStep1Errors(),
+      ...getStep2Errors(),
+      ...getStep3Errors(),
+    };
+
+    setErrors(mergedErrors);
+    return Object.keys(mergedErrors).length === 0;
   };
 
   const handleSubmit = async () => {
@@ -674,32 +686,48 @@ export function AddResidentsModal({
       const age = calculateAge(formData.birthDate);
       const croppedPhotoPayload = photoPreview
         ? await createCroppedPhotoPayload(photoPreview)
-        : formData.photo;
+        : toOptional(formData.photo);
+
+      const normalizedDocuments = documents
+        .map((doc) => ({
+          documentName: toOptional(doc.documentName),
+          documentType: toOptional(doc.documentType),
+          fileData: toOptional(doc.fileData),
+        }))
+        .filter(
+          (doc): doc is ResidentDocumentRequest =>
+            !!doc.documentName && !!doc.documentType && !!doc.fileData,
+        );
 
       const finalData: AddResidentRequest = {
         ...formData,
         firstName: formData.firstName.trim(),
-        middleName: (formData.middleName ?? "").trim(),
+        middleName: toOptional(formData.middleName),
         lastName: formData.lastName.trim(),
         completeAddress: formData.completeAddress.trim(),
-        email: (formData.email ?? "").trim(),
-        occupation: (formData.occupation ?? "").trim(),
+        email: toOptional(formData.email),
+        occupation: toOptional(formData.occupation),
         educationalAttainment: formData.educationalAttainment.trim(),
-        photo: croppedPhotoPayload,
+        photo: toOptional(croppedPhotoPayload),
         age,
         religion:
           formData.religion === "Others"
-            ? customReligion.trim()
-            : formData.religion,
+            ? toOptional(customReligion)
+            : toOptional(formData.religion),
         citizenship:
           formData.citizenship === "Others"
-            ? customCitizenship.trim()
+            ? (toOptional(customCitizenship) ?? formData.citizenship)
             : formData.citizenship,
+        suffix: toOptional(formData.suffix),
+        contactNumber: toOptional(formData.contactNumber),
+        bloodType: toOptional(formData.bloodType),
         is4ps: !!formData.is4ps,
         isPwd: !!formData.isPwd,
         isIndigent: !!formData.isIndigent,
-        pwdIdNumber: formData.isPwd ? formData.pwdIdNumber : undefined,
-        documents: documents.length ? documents : undefined,
+        pwdIdNumber: formData.isPwd
+          ? toOptional(formData.pwdIdNumber)
+          : undefined,
+        documents: normalizedDocuments.length ? normalizedDocuments : undefined,
       };
 
       await onSubmit(finalData);
@@ -1181,7 +1209,7 @@ export function AddResidentsModal({
             <FormSectionTitle title="Additional Details" />
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <InputLabel label="Contact Number" />
+                <InputLabel label="Contact Number" required />
                 <input
                   type="tel"
                   value={formData.contactNumber}
@@ -1301,7 +1329,7 @@ export function AddResidentsModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <InputLabel label="Occupation" />
+                <InputLabel label="Occupation" required />
                 <input
                   type="text"
                   value={formData.occupation}
@@ -1312,8 +1340,8 @@ export function AddResidentsModal({
                     })
                   }
                   maxLength={OCCUPATION_MAX_LENGTH}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Optional"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.occupation ? "border-red-500" : "border-gray-300"}`}
+                  placeholder="e.g. Driver"
                 />
                 <CharCount
                   current={(formData.occupation || "").length}
