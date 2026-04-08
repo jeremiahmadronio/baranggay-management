@@ -12,7 +12,7 @@ import {
   LockIcon,
   ChevronRightIcon,
 } from "lucide-react";
-import type { HearingViewDTO } from "../../blotter-api/DocketView";
+import type { HearingViewDTO } from "../../service/blotter-api/DocketView";
 import { HEARING_STATUS_CONFIG, isTerminalStatus } from "../shared/StatusBadge";
 import { SectionCard } from "../shared/SectionCard";
 import { formatDate, formatTime } from "../lib/Utils";

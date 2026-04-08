@@ -41,8 +41,9 @@ import BCPCDashboard from "./bcpc-module/dashboard";
 import BlotterDashboard from "./pages/blotter-module/dashboard";
 import BlotterEntryForm from "./pages/blotter-module/BlotterEntryForm";
 import Docketview from "./pages/blotter-module/Docketview";
+import ArchiveCasesPage from "./pages/blotter-module/ArchiveCases";
 import BlotterRecordsPage from "./pages/blotter-module/BlotterRecord";
-import BlotterViewPage from "./pages/blotter-module/BlotterRecordView";
+import BlotterViewPage from "./pages/blotter-module/BlotterRecordDetailView";
 import ReportsPage from "./pages/blotter-module/BlotterReport";
 import ResidentListPage from "./pages/blotter-module/Residents";
 
@@ -67,7 +68,7 @@ import LuponCaseDetailViewWrapper from "./lupong-tagapamayapa-module/LuponCaseDe
 import OfficialDashboard from "./official-module/dashboard";
 
 //VAWC
-import {VawcDashboard} from "./pages/vawc/dashboard";
+import { VawcDashboard } from "./pages/vawc/dashboard";
 
 // Landing Page
 import { LandingPage } from "./landing-page";
@@ -139,16 +140,12 @@ export function App() {
         <Route path="dashboard" element={<BlotterDashboard />} />
 
         <Route path="docket" element={<Docketview />} />
+        <Route path="archive" element={<ArchiveCasesPage />} />
         <Route path="records" element={<BlotterRecordsPage />} />
-        <Route
-          path="docket"
-          element={<PagePlaceholder title="Docket Books" />}
-        />
         <Route path="entry-form" element={<BlotterEntryForm />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="record-view" element={<BlotterViewPage />} />
         <Route path="residents" element={<ResidentListPage />} />
-        <Route path="account-settings" element={<AccountSettings />} />
       </Route>
 
       {/* Lupong Tagapamayapa */}

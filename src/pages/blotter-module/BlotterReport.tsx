@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -34,20 +34,16 @@ import {
   CircleLoader,
   NoRecords,
 } from "../../reusable/LoadingStates";
-import { LayoutDashboard, CalendarRange, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const NATURE_COLORS = [
-  "#3B82F6",
-  "#10B981",
-  "#EF4444",
-  "#8B5CF6",
-  "#EC4899",
-  "#F59E0B",
-  "#06B6D4",
-  "#F97316",
-  "#84CC16",
-  "#6366F1",
+  "#c98e46",
+  "#2563EB",
+  "#94A3B8",
+  "#31397d",
+  "#54b4d6",
+  "#60A5FA",
 ];
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
@@ -75,6 +71,33 @@ function getMaxEndDate(startDateInput: string): string {
   const today = new Date();
   return toDateInputValue(max > today ? today : max);
 }
+
+function toMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthShortLabel(date: Date): string {
+  return date.toLocaleString("en-US", { month: "short" });
+}
+
+function normalizeMonthName(value: string): string {
+  return value.slice(0, 3).toLowerCase();
+}
+
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
+};
 
 // ─── Tiny helpers ────────────────────────────────────────────────────────────
 function SectionCard({
@@ -104,17 +127,36 @@ function SectionCard({
 }
 
 const STATUS_DONUT_COLORS = [
-  "#2563EB",
-  "#0EA5E9",
-  "#64748B",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#EC4899",
-  "#14B8A6",
+  "#8b98b3",
+  "#434e53",
   "#94A3B8",
+  "#64748B",
+  "#DC2626",
 ];
+
+function getStatusColor(raw: string, index: number): string {
+  const key = String(raw || "")
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+  const map: Record<string, string> = {
+    PENDING: "#c98e46",
+    RECORDED: "#435973",
+    UNDER_MEDIATION: "#0EA5E9",
+    UNDER_CONCILIATION: "#3B82F6",
+    UNDER_INVESTIGATION: "#94A3B8",
+    SETTLED: "#2563EB",
+    UNSETTLED: "#64748B",
+    REFERRED_TO_LUPON: "#3B82F6",
+    ESCALATED: "#2563EB",
+    ELEVATED_TO_FORMAL: "#2563EB",
+    CLOSED: "#94A3B8",
+    DISMISSED: "#DC2626",
+    WITHDRAWN: "#64748B",
+    EXPIRED_UNACTIONED: "#DC2626",
+    ARCHIVED: "#64748B",
+  };
+  return map[key] ?? STATUS_DONUT_COLORS[index % STATUS_DONUT_COLORS.length];
+}
 
 function formatStatusName(raw: string): string {
   return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -137,45 +179,35 @@ function getStatusDescription(raw: string): string {
   return map[key] ?? "Case lifecycle status";
 }
 
-function getNatureDescription(raw: string): string {
-  const key = raw.toUpperCase();
-  if (key.includes("PHYSICAL")) return "Physical injury related complaints";
-  if (key.includes("VERBAL")) return "Verbal abuse and related concerns";
-  if (key.includes("THREAT")) return "Threat and intimidation incidents";
-  if (key.includes("PROPERTY")) return "Property-related disputes";
-  if (key.includes("NOISE")) return "Noise and disturbance complaints";
-  return "Complaint category distribution";
-}
-
 function SettlementGauge({
   efficiency,
 }: {
   efficiency: SettlementEfficiencyDTO;
 }) {
   const pct = efficiency.efficiencyPercentage ?? 0;
-  const radius = 54;
+  const radius = 62;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (pct / 100) * circ;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-5 py-2">
+    <div className="flex flex-col items-center justify-center gap-6 py-3">
       <div className="relative flex items-center justify-center">
-        <svg width="140" height="140" className="-rotate-90">
+        <svg width="168" height="168" className="-rotate-90">
           <circle
-            cx="70"
-            cy="70"
+            cx="84"
+            cy="84"
             r={radius}
             fill="none"
             stroke="#E2E8F0"
-            strokeWidth="12"
+            strokeWidth="14"
           />
           <circle
-            cx="70"
-            cy="70"
+            cx="84"
+            cy="84"
             r={radius}
             fill="none"
-            stroke={pct >= 70 ? "#10B981" : pct >= 40 ? "#F59E0B" : "#EF4444"}
-            strokeWidth="12"
+            stroke="#2563EB"
+            strokeWidth="14"
             strokeLinecap="round"
             strokeDasharray={circ}
             strokeDashoffset={offset}
@@ -183,36 +215,36 @@ function SettlementGauge({
           />
         </svg>
         <div className="absolute flex flex-col items-center">
-          <span className="text-2xl font-bold text-slate-800 tabular-nums">
+          <span className="text-3xl font-bold text-slate-800 tabular-nums">
             {pct.toFixed(0)}%
           </span>
-          <span className="text-[10px] text-slate-400 font-medium -mt-0.5 uppercase tracking-wide">
+          <span className="text-xs text-slate-500 font-semibold -mt-0.5 uppercase tracking-wide">
             efficiency
           </span>
         </div>
       </div>
 
       <div className="w-full grid grid-cols-2 gap-3">
-        <div className="border border-slate-100 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-slate-700 tabular-nums">
+        <div className="border border-slate-200 bg-slate-50/40 rounded-xl p-3.5 text-center">
+          <p className="text-xl font-bold text-slate-800 tabular-nums leading-none">
             {efficiency.totalFormalComplaints}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+          <p className="text-xs text-slate-600 mt-1 leading-tight font-medium">
             Formal Complaints
           </p>
         </div>
-        <div className="border border-slate-100 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-slate-700 tabular-nums">
+        <div className="border border-slate-200 bg-slate-50/40 rounded-xl p-3.5 text-center">
+          <p className="text-xl font-bold text-slate-800 tabular-nums leading-none">
             {efficiency.settledCases}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+          <p className="text-xs text-slate-600 mt-1 leading-tight font-medium">
             Settled Cases
           </p>
         </div>
       </div>
 
       {efficiency.totalFormalComplaints > 0 && (
-        <p className="text-[10px] text-slate-400 text-center">
+        <p className="text-xs text-slate-600 text-center leading-relaxed">
           {efficiency.totalFormalComplaints - efficiency.settledCases} case
           {efficiency.totalFormalComplaints - efficiency.settledCases !== 1
             ? "s"
@@ -249,6 +281,78 @@ export default function ReportsPage() {
   );
   const [loading, setLoading] = useState(true);
   const [dateError, setDateError] = useState<string | null>(null);
+
+  const monthlyTrend = useMemo(() => {
+    const start = new Date(appliedStart);
+    const end = new Date(appliedEnd);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return [] as ChartDataDTO[];
+    }
+
+    const monthBuckets: Array<{ key: string; label: string }> = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+    while (cursor <= endMonth) {
+      monthBuckets.push({
+        key: toMonthKey(cursor),
+        label: monthShortLabel(cursor),
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    const counts = new Map<string, number>();
+
+    const resolveYearForMonth = (monthIndex: number) => {
+      if (start.getFullYear() === end.getFullYear()) return start.getFullYear();
+      return monthIndex >= start.getMonth()
+        ? start.getFullYear()
+        : end.getFullYear();
+    };
+
+    const getPointMonthKey = (label: string): string | null => {
+      const directDate = new Date(label);
+      if (!Number.isNaN(directDate.getTime())) {
+        return toMonthKey(directDate);
+      }
+
+      const monthDayYearMatch = label
+        .trim()
+        .match(/^([A-Za-z]{3,9})\s+\d{1,2}(?:,\s*(\d{4}))?$/);
+      if (monthDayYearMatch) {
+        const month = MONTH_INDEX[normalizeMonthName(monthDayYearMatch[1])];
+        if (month !== undefined) {
+          const explicitYear = monthDayYearMatch[2]
+            ? Number(monthDayYearMatch[2])
+            : resolveYearForMonth(month);
+          return `${explicitYear}-${String(month + 1).padStart(2, "0")}`;
+        }
+      }
+
+      const monthOnlyMatch = label.trim().match(/^([A-Za-z]{3,9})$/);
+      if (monthOnlyMatch) {
+        const month = MONTH_INDEX[normalizeMonthName(monthOnlyMatch[1])];
+        if (month !== undefined) {
+          const year = resolveYearForMonth(month);
+          return `${year}-${String(month + 1).padStart(2, "0")}`;
+        }
+      }
+
+      return null;
+    };
+
+    trend.forEach((point) => {
+      const key = getPointMonthKey(point.label);
+      if (!key) return;
+      counts.set(key, (counts.get(key) || 0) + (point.count || 0));
+    });
+
+    return monthBuckets.map((bucket) => ({
+      label: bucket.label,
+      count: counts.get(bucket.key) || 0,
+    }));
+  }, [appliedStart, appliedEnd, trend]);
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
   const fetchAll = useCallback(async (start: string, end: string) => {
@@ -375,34 +479,14 @@ export default function ReportsPage() {
     );
   }
 
-  const trendBarColors = trend.map(() => "#3B82F6");
+  const trendBarColors = monthlyTrend.map(() => "#3B82F6");
   const totalStatusCases = status.reduce((sum, item) => sum + item.count, 0);
   const totalNatureCases = nature.reduce((sum, item) => sum + item.count, 0);
+  const sortedNature = [...nature].sort((a, b) => b.count - a.count);
 
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white p-2 rounded-lg">
-              <LayoutDashboard className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Blotter Reports Dashboard
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Analytics summary for filed cases, status trends, and settlement
-                performance.
-              </p>
-            </div>
-          </div>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
-            <CalendarRange className="w-3.5 h-3.5" />
-            Range: {appliedStart} to {appliedEnd}
-          </span>
-        </div>
-
         <div className="bg-white rounded-lg border border-gray-200 p-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
@@ -545,240 +629,233 @@ export default function ReportsPage() {
         </KPIGrid>
 
         <SectionCard
-          title="Cases Trend"
-          subtitle="Monthly volume of blotter entries in selected date range"
+          title="Monthly Cases Filed"
+          subtitle="Distribution of filed cases by month"
+          className="rounded-xl border-gray-300"
         >
-          {trend.length === 0 ? (
+          {monthlyTrend.length === 0 ? (
             <NoRecords text="No monthly case filed for the selected period." />
           ) : (
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={trend}
+                  data={monthlyTrend}
                   margin={{
-                    top: 5,
-                    right: 30,
-                    bottom: 20,
-                    left: 10,
+                    top: 8,
+                    right: 10,
+                    bottom: 8,
+                    left: -18,
                   }}
                 >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#e5e7eb"
-                />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 11, fill: "#6b7280" }}
-                  axisLine={false}
-                  tickLine={false}
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "8px",
-                    border: "none",
-                    fontSize: 12,
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                  }}
-                  cursor={{ fill: "#f8fafc" }}
-                  formatter={(v?: number) => [v ?? 0, "Cases"]}
-                />
-                <Bar
-                  dataKey="count"
-                  radius={[4, 4, 0, 0]}
-                  barSize={35}
-                >
-                  {trend.map((_, i) => (
-                    <Cell key={i} fill={trendBarColors[i]} />
-                  ))}
-                </Bar>
+                  <CartesianGrid
+                    strokeDasharray="4 4"
+                    vertical={false}
+                    stroke="#D1D5DB"
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 13, fill: "#4B5563" }}
+                    axisLine={{ stroke: "#9CA3AF", strokeWidth: 1.2 }}
+                    tickLine={false}
+                    angle={0}
+                    textAnchor="middle"
+                    height={40}
+                    interval={0}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 13, fill: "#4B5563" }}
+                    axisLine={{ stroke: "#9CA3AF", strokeWidth: 1.2 }}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "10px",
+                      border: "1px solid #E5E7EB",
+                      fontSize: 12,
+                      boxShadow: "0 8px 20px -12px rgb(15 23 42 / 0.25)",
+                    }}
+                    cursor={{ fill: "#EFF6FF" }}
+                    formatter={(v?: number) => [v ?? 0, "Cases"]}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={44}>
+                    {monthlyTrend.map((_, i) => (
+                      <Cell key={i} fill={trendBarColors[i]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
         </SectionCard>
 
-        {/* ── Row 3: Cases by Status (full width, below trend) ── */}
-        <SectionCard
-          title="Cases by Status"
-          subtitle="Relative distribution across case lifecycle states"
-        >
-          {status.length === 0 ? (
-            <NoRecords text="No case status distribution for selected period." />
+        {/* ── Row 3: Cases by Nature (full width, below trend) ── */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">
+                Cases by Nature
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Most common complaint categories
+              </p>
+            </div>
+
+            <div className="text-right shrink-0">
+              <p className="text-2xl font-semibold text-gray-900 leading-none">
+                {totalNatureCases.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Total categorized cases
+              </p>
+            </div>
+          </div>
+
+          {nature.length === 0 ? (
+            <NoRecords text="No case nature data for the selected period." />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-center">
-              <div className="h-60">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={status}
-                      dataKey="count"
-                      nameKey="statusName"
-                      innerRadius={62}
-                      outerRadius={92}
-                      paddingAngle={2}
-                    >
-                      {status.map((_, index) => (
-                        <Cell
-                          key={`status-${index}`}
-                          fill={
-                            STATUS_DONUT_COLORS[
-                              index % STATUS_DONUT_COLORS.length
-                            ]
-                          }
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number | string | undefined) =>
-                        typeof value === "number"
-                          ? value.toLocaleString()
-                          : (value ?? "0")
-                      }
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="max-h-[320px] overflow-y-auto pr-1 space-y-3">
+              {sortedNature.map((item, index) => {
+                const pct =
+                  totalNatureCases > 0
+                    ? (item.count / totalNatureCases) * 100
+                    : 0;
+                const natureLabel =
+                  String(item.natureName || "").trim() || "Unspecified Nature";
+                const barColor = NATURE_COLORS[index % NATURE_COLORS.length];
 
-              <div className="space-y-3">
-                <div className="mb-4">
-                  <p className="text-3xl font-semibold text-gray-900">
-                    {totalStatusCases.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-500">Total case statuses</p>
-                </div>
+                return (
+                  <div key={`${natureLabel}-${index}`} className="space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-gray-700 truncate">
+                        {natureLabel}
+                      </p>
+                      <span className="text-sm text-gray-800 tabular-nums shrink-0">
+                        {item.count.toLocaleString()} ({pct.toFixed(1)}%)
+                      </span>
+                    </div>
 
-                {status.map((item, index) => (
-                  <div
-                    key={`${item.statusName}-${index}`}
-                    className="flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-start gap-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full mt-1.5"
+                    <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
                         style={{
-                          backgroundColor:
-                            STATUS_DONUT_COLORS[
-                              index % STATUS_DONUT_COLORS.length
-                            ],
+                          width: `${Math.max(4, pct)}%`,
+                          backgroundColor: barColor,
                         }}
                       />
-                      <div>
-                        <p className="text-sm text-gray-700 leading-tight">
-                          {formatStatusName(item.statusName)}
-                        </p>
-                        <p className="text-xs text-gray-500 leading-tight mt-0.5">
-                          {getStatusDescription(item.statusName)}
-                        </p>
-                      </div>
                     </div>
-                    <span className="text-sm text-gray-900 font-medium">
-                      {item.count.toLocaleString()}
-                    </span>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
-        </SectionCard>
+        </div>
 
-        {/* ── Row 3: Cases by Nature + Settlement Efficiency ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <SectionCard
-            title="Cases by Nature"
-            subtitle="Most common complaint categories"
-            className="lg:col-span-2"
-          >
-            {nature.length === 0 ? (
-              <NoRecords text="No case nature data for the selected period." />
+        {/* ── Row 4: Cases by Status + Settlement Efficiency ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-5 lg:col-span-7">
+            <div className="mb-5 flex items-end justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Cases by Status
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Relative distribution across case lifecycle states
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-3xl font-semibold text-gray-900 leading-none">
+                  {totalStatusCases.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Total case statuses
+                </p>
+              </div>
+            </div>
+
+            {status.length === 0 ? (
+              <NoRecords text="No case status distribution for selected period." />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-center">
-                <div className="h-60">
+                <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={nature}
+                        data={status}
                         dataKey="count"
-                        nameKey="natureName"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={62}
-                        outerRadius={92}
-                        paddingAngle={2}
-                        strokeWidth={0}
+                        nameKey="statusName"
+                        innerRadius={64}
+                        outerRadius={96}
+                        paddingAngle={1.5}
+                        stroke="#FFFFFF"
+                        strokeWidth={2}
                       >
-                        {nature.map((_, i) => (
+                        {status.map((_, index) => (
                           <Cell
-                            key={i}
-                            fill={NATURE_COLORS[i % NATURE_COLORS.length]}
+                            key={`status-${index}`}
+                            fill={getStatusColor(
+                              status[index]?.statusName,
+                              index,
+                            )}
                           />
                         ))}
                       </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: 10,
+                          border: "1px solid #E5E7EB",
+                          fontSize: 12,
+                          boxShadow: "0 8px 20px -12px rgb(15 23 42 / 0.25)",
+                        }}
+                        formatter={(value: number | string | undefined) =>
+                          typeof value === "number"
+                            ? value.toLocaleString()
+                            : (value ?? "0")
+                        }
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="mb-4">
-                    <p className="text-3xl font-semibold text-gray-900">
-                      {totalNatureCases.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Total categorized cases
-                    </p>
-                  </div>
-
-                  {nature.map((item, index) => {
-                    const pct =
-                      totalNatureCases > 0
-                        ? (item.count / totalNatureCases) * 100
-                        : 0;
-                    return (
-                      <div
-                        key={`${item.natureName}-${index}`}
-                        className="flex items-center justify-between gap-4"
-                      >
-                        <div className="flex items-start gap-2">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full mt-1.5"
-                            style={{
-                              backgroundColor:
-                                NATURE_COLORS[index % NATURE_COLORS.length],
-                            }}
-                          />
-                          <div>
-                            <p className="text-sm text-gray-700 leading-tight">
-                              {item.natureName}
-                            </p>
-                            <p className="text-xs text-gray-500 leading-tight mt-0.5">
-                              {getNatureDescription(item.natureName)}
-                            </p>
-                          </div>
+                  {status.map((item, index) => (
+                    <div
+                      key={`${item.statusName}-${index}`}
+                      className="flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full mt-1.5"
+                          style={{
+                            backgroundColor: getStatusColor(
+                              item.statusName,
+                              index,
+                            ),
+                          }}
+                        />
+                        <div>
+                          <p className="text-sm text-gray-700 leading-tight">
+                            {formatStatusName(item.statusName)}
+                          </p>
+                          <p className="text-xs text-gray-500 leading-tight mt-0.5">
+                            {getStatusDescription(item.statusName)}
+                          </p>
                         </div>
-                        <span className="text-sm text-gray-900 font-medium whitespace-nowrap">
-                          {item.count.toLocaleString()} ({pct.toFixed(1)}%)
-                        </span>
                       </div>
-                    );
-                  })}
+                      <span className="text-sm text-gray-900 font-medium">
+                        {item.count.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-          </SectionCard>
+          </div>
           {efficiency && (
             <SectionCard
               title="Settlement Efficiency"
               subtitle="Ratio of settled formal complaints"
+              className="lg:col-span-5 lg:py-6"
             >
               <SettlementGauge efficiency={efficiency} />
             </SectionCard>
@@ -787,6 +864,7 @@ export default function ReportsPage() {
             <SectionCard
               title="Settlement Efficiency"
               subtitle="Ratio of settled formal complaints"
+              className="lg:col-span-5 lg:py-6"
             >
               <NoRecords text="No settlement data for the selected period." />
             </SectionCard>

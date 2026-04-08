@@ -28,20 +28,32 @@ import {
   NoRecords,
 } from "../../reusable/LoadingStates";
 
-const COLORS = ["#F59E0B", "#3B82F6", "#10B981", "#8B5CF6", "#6366F1"];
+const DONUT_COLORS = ["#38BDF8", "#2563EB", "#60A5FA", "#93C5FD"];
 
-const DONUT_COLORS = [
-  "#2563EB",
-  "#0EA5E9",
-  "#64748B",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#EC4899",
-  "#14B8A6",
-  "#94A3B8",
-];
+function getDistributionColor(status: string, index: number): string {
+  const key = String(status || "")
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+
+  const map: Record<string, string> = {
+    PENDING: "#c98e46",
+    UNDER_MEDIATION: "#2e4888",
+    UNDER_CONCILIATION: "#38BDF8",
+    REFERRED_TO_LUPON: "#1D4ED8",
+    SETTLED: "#3bbe5a",
+    DISMISSED: "#DC2626",
+    CERTIFIED_TO_FILE_ACTION: "#4F46E5",
+    EXPIRED_UNACTIONED: "#B91C1C",
+    WITHDRAWN: "#64748B",
+    CLOSED: "#64748B",
+    RECORDED: "#12b6e7",
+    UNDER_INVESTIGATION: "#93C5FD",
+    ESCALATED: "#2563EB",
+    ELEVATED_TO_FORMAL: "#4F46E5",
+  };
+
+  return map[key] ?? DONUT_COLORS[index % DONUT_COLORS.length];
+}
 
 function getStatusDistributionDescription(status: string): string {
   const key = status.toUpperCase().replace(/\s+/g, "_");
@@ -84,17 +96,27 @@ function SectionCard({
 
 const getCaseStatusBadge = (statusRaw: string) => {
   const status = String(statusRaw || "").toUpperCase();
-  if (status === "PENDING") return "bg-amber-100 text-amber-700";
-  if (status === "UNDER_MEDIATION") return "bg-blue-100 text-blue-700";
-  if (status === "UNDER_CONCILIATION") return "bg-indigo-100 text-indigo-700";
-  if (status === "REFERRED_TO_LUPON") return "bg-violet-100 text-violet-700";
-  if (status === "SETTLED") return "bg-emerald-100 text-emerald-700";
-  if (status === "DISMISSED") return "bg-rose-100 text-rose-700";
-  if (status === "CERTIFIED_TO_FILE_ACTION") return "bg-cyan-100 text-cyan-700";
-  if (status === "EXPIRED_UNACTIONED") return "bg-red-100 text-red-700";
-  if (status === "WITHDRAWN") return "bg-orange-100 text-orange-700";
-  if (status === "CLOSED") return "bg-slate-100 text-slate-700";
-  return "bg-slate-100 text-slate-700";
+  if (status === "PENDING")
+    return "bg-amber-50 text-amber-700 border border-amber-300";
+  if (status === "UNDER_MEDIATION")
+    return "bg-blue-50 text-blue-700 border border-blue-300";
+  if (status === "UNDER_CONCILIATION")
+    return "bg-indigo-50 text-indigo-700 border border-indigo-300";
+  if (status === "REFERRED_TO_LUPON")
+    return "bg-violet-50 text-violet-700 border border-violet-300";
+  if (status === "SETTLED")
+    return "bg-emerald-50 text-emerald-700 border border-emerald-300";
+  if (status === "DISMISSED")
+    return "bg-rose-50 text-rose-700 border border-rose-300";
+  if (status === "CERTIFIED_TO_FILE_ACTION")
+    return "bg-cyan-50 text-cyan-700 border border-cyan-300";
+  if (status === "EXPIRED_UNACTIONED")
+    return "bg-red-50 text-red-700 border border-red-300";
+  if (status === "WITHDRAWN")
+    return "bg-orange-50 text-orange-700 border border-orange-300";
+  if (status === "CLOSED")
+    return "bg-slate-50 text-slate-700 border border-slate-300";
+  return "bg-slate-50 text-slate-700 border border-slate-300";
 };
 
 const BlotterDashboard = () => {
@@ -179,19 +201,7 @@ const BlotterDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Blotter Dashboard
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Quick view of case trends, statuses, and upcoming hearings.
-            </p>
-          </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
-            Live Overview
-          </span>
-        </div>
+       
 
         <KPIGrid columns={4}>
           <KPICard
@@ -277,18 +287,26 @@ const BlotterDashboard = () => {
                         data={distribution}
                         dataKey="count"
                         nameKey="status"
-                        innerRadius={62}
-                        outerRadius={92}
-                        paddingAngle={2}
+                        innerRadius={64}
+                        outerRadius={94}
+                        paddingAngle={1.5}
+                        stroke="#FFFFFF"
+                        strokeWidth={2}
                       >
-                        {distribution.map((_, index) => (
+                        {distribution.map((item, index) => (
                           <Cell
                             key={`dist-${index}`}
-                            fill={DONUT_COLORS[index % DONUT_COLORS.length]}
+                            fill={getDistributionColor(item.status, index)}
                           />
                         ))}
                       </Pie>
                       <Tooltip
+                        contentStyle={{
+                          borderRadius: 10,
+                          border: "1px solid #E5E7EB",
+                          fontSize: 12,
+                          boxShadow: "0 8px 20px -12px rgb(15 23 42 / 0.25)",
+                        }}
                         formatter={(value: number | string | undefined) =>
                           typeof value === "number"
                             ? value.toLocaleString()
@@ -304,9 +322,7 @@ const BlotterDashboard = () => {
                     <p className="text-3xl font-semibold text-gray-900">
                       {totalDistribution.toLocaleString()}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      Total distributed cases
-                    </p>
+                    <p className="text-sm text-gray-500">Total cases</p>
                   </div>
 
                   {distribution.map((item, index) => (
@@ -318,8 +334,10 @@ const BlotterDashboard = () => {
                         <span
                           className="w-2.5 h-2.5 rounded-full mt-1.5"
                           style={{
-                            backgroundColor:
-                              DONUT_COLORS[index % DONUT_COLORS.length],
+                            backgroundColor: getDistributionColor(
+                              item.status,
+                              index,
+                            ),
                           }}
                         />
                         <div>
@@ -408,7 +426,7 @@ const BlotterDashboard = () => {
                         </td>
                         <td className="px-6 py-4">
                           <span
-                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium uppercase ${getCaseStatusBadge(c.status)}`}
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide ${getCaseStatusBadge(c.status)}`}
                           >
                             {formatStatusText(c.status)}
                           </span>
@@ -424,7 +442,7 @@ const BlotterDashboard = () => {
           <div className="lg:col-span-4 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
             <div className="p-5 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">
-                Upcoming Hearings
+                Upcoming Mediations
               </h3>
               <p className="text-sm text-gray-500 mt-1">
                 Next scheduled mediation sessions

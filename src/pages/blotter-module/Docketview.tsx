@@ -1,10 +1,10 @@
 import { BlotterDocketDetailView } from "./Blotterdocketdetailview";
 import { useState, useEffect, useCallback } from "react";
-import { Eye, ArrowUpRight, Archive } from "lucide-react";
+import { Eye, ArrowUpRight, Archive, PencilLine } from "lucide-react";
 import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
 import { Table, type TableColumn } from "../../reusable";
 import { TableFilter } from "../../reusable/TableFilter";
-import { ActionModal } from "./reusable/SuccessModal";
+import { ActionModal } from "../../hooks/SuccessModal";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import type {
   DocketTableParams,
@@ -69,6 +69,8 @@ const ARCHIVABLE_STATUSES = new Set([
   "CLOSED",
 ]);
 
+const EDITABLE_STATUSES = new Set(["PENDING", "UNDER_MEDIATION"]);
+
 const getStatusPillClass = (status: string) => {
   switch (status) {
     case "PENDING":
@@ -102,6 +104,7 @@ const Docketview = () => {
   const [selectedBlotterNumber, setSelectedBlotterNumber] = useState<
     string | null
   >(null);
+  const [openEditOnDetailLoad, setOpenEditOnDetailLoad] = useState(false);
 
   // Filter state
   const [search, setSearch] = useState("");
@@ -138,10 +141,13 @@ const Docketview = () => {
   // Refer to Lupon modal state
   const [referEntry, setReferEntry] = useState<BlotterSummaryDTO | null>(null);
   const [referLoading, setReferLoading] = useState(false);
+  const [referSuccessOpen, setReferSuccessOpen] = useState(false);
+  const [referredBlotterNumber, setReferredBlotterNumber] = useState("");
   const [archiveEntry, setArchiveEntry] = useState<BlotterSummaryDTO | null>(
     null,
   );
   const [archiveSuccessOpen, setArchiveSuccessOpen] = useState(false);
+  const safeTotalPages = Math.max(1, totalPages || 0);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -260,6 +266,7 @@ const Docketview = () => {
     if (!referEntry) return;
     setReferLoading(true);
     try {
+      const targetBlotterNumber = referEntry.blotterNumber;
       const mappedMembers = members.map((m) => {
         const [firstName, ...rest] = m.fullName.split(" ");
         const lastName = rest.join(" ");
@@ -270,9 +277,11 @@ const Docketview = () => {
           position: m.position,
         };
       });
-      await referToLupon(referEntry.blotterNumber, { members: mappedMembers });
+      await referToLupon(targetBlotterNumber, { members: mappedMembers });
 
       setReferEntry(null);
+      setReferredBlotterNumber(targetBlotterNumber);
+      setReferSuccessOpen(true);
       fetchTable(params);
       fetchStats();
     } catch (err: any) {
@@ -371,6 +380,7 @@ const Docketview = () => {
           .toUpperCase()
           .trim();
         const canArchiveThisStatus = ARCHIVABLE_STATUSES.has(statusKey);
+        const canEditThisStatus = EDITABLE_STATUSES.has(statusKey);
 
         return (
           <div className="flex items-center justify-end gap-1.5">
@@ -379,7 +389,10 @@ const Docketview = () => {
               disabled={!canView}
               onClick={(e) => {
                 e.stopPropagation();
-                if (canView) setSelectedBlotterNumber(item.blotterNumber);
+                if (canView) {
+                  setOpenEditOnDetailLoad(false);
+                  setSelectedBlotterNumber(item.blotterNumber);
+                }
               }}
               title="View case"
               className={`p-1.5 rounded-lg transition-colors ${
@@ -391,7 +404,30 @@ const Docketview = () => {
               <Eye className="w-4 h-4" />
             </button>
 
-            {/* Refer to Pangkat — only for active/mediation cases */}
+            {/* Edit */}
+            <button
+              disabled={!canView || !canEditThisStatus}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canView && canEditThisStatus) {
+                  setOpenEditOnDetailLoad(true);
+                  setSelectedBlotterNumber(item.blotterNumber);
+                }
+              }}
+              title={
+                canEditThisStatus
+                  ? "Edit case"
+                  : "Editing allowed only for Pending and Under Mediation"
+              }
+              className={`p-1.5 rounded-lg transition-colors ${
+                !canView || !canEditThisStatus
+                  ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
+                  : "text-gray-500 hover:bg-amber-50"
+              }`}
+            >
+              <PencilLine className="w-4 h-4" />
+            </button>
+
             {["UNSETTLED", "PENDING", "UNDER_MEDIATION"].includes(
               item.status,
             ) && (
@@ -443,7 +479,9 @@ const Docketview = () => {
     return (
       <BlotterDocketDetailView
         blotterNumber={selectedBlotterNumber}
+        openEditOnLoad={openEditOnDetailLoad}
         onBack={() => {
+          setOpenEditOnDetailLoad(false);
           setSelectedBlotterNumber(null);
           fetchTable(params);
           fetchStats();
@@ -465,6 +503,16 @@ const Docketview = () => {
           onCancel={() => setReferEntry(null)}
         />
       )}
+
+      <ActionModal
+        isOpen={referSuccessOpen}
+        onClose={() => setReferSuccessOpen(false)}
+        title="Case referred to Lupon"
+        type="success"
+      >
+        Case {referredBlotterNumber || ""} has been successfully referred to
+        Lupon.
+      </ActionModal>
 
       {archiveEntry && (
         <ArchiveReasonModal
@@ -565,22 +613,21 @@ const Docketview = () => {
         emptyMessage="No docket records found."
         variant="resident"
         onRowClick={(item) => {
-          if (canView) setSelectedBlotterNumber(item.blotterNumber);
+          if (canView) {
+            setOpenEditOnDetailLoad(false);
+            setSelectedBlotterNumber(item.blotterNumber);
+          }
         }}
         hoverable
         striped
         minRows={PAGE_SIZE}
-        pagination={
-          totalElements > 0
-            ? {
-                currentPage: currentPage + 1,
-                totalPages,
-                totalItems: totalElements,
-                itemsPerPage: PAGE_SIZE,
-                onPageChange: handlePageChange,
-              }
-            : undefined
-        }
+        pagination={{
+          currentPage: Math.min(currentPage + 1, safeTotalPages),
+          totalPages: safeTotalPages,
+          totalItems: totalElements,
+          itemsPerPage: PAGE_SIZE,
+          onPageChange: handlePageChange,
+        }}
       />
     </div>
   );

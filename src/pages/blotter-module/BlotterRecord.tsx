@@ -1,16 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, Archive } from "lucide-react";
 import { Table, type TableColumn } from "../../reusable";
 import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
 import { TableFilter } from "../../reusable/TableFilter";
 import {
   getPagedBlotters,
   getRecordStats,
+  archiveCase,
+  BLOTTER_PERMISSIONS,
+  getMyAccess,
+  hasBlotterPermission,
+  type UserSecurityProfile,
   type RecordBlotterSummaryDTO,
   type RecordTableParams,
   type FtrSummaryStatsDTO,
 } from "../../service/blotter-api/blotter-api";
 import { CircleLoader } from "../../reusable/LoadingStates";
+import { ArchiveReasonModal } from "../../hooks/archive-modal";
+import { ActionModal } from "./reusable/SuccessModal";
 
 // Normalize status for internal logic
 const normalizeStatus = (s: string) => s.toLowerCase().replace(/_/g, " ");
@@ -23,62 +31,65 @@ const getStatusDisplay = (status: string) => {
   return status.replace(/_/g, " ").toUpperCase();
 };
 
-interface StatusStyle {
-  bg: string;
-  text: string;
-  dot: string;
-}
-
-const STATUS_CONFIG: Record<string, StatusStyle> = {
-  pending: { bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400" },
-  "under investigation": {
-    bg: "bg-blue-50",
-    text: "text-blue-600",
-    dot: "bg-blue-400",
-  },
-  "under mediation": {
-    bg: "bg-indigo-50",
-    text: "text-indigo-500",
-    dot: "bg-indigo-400",
-  },
-  resolved: {
-    bg: "bg-emerald-50",
-    text: "text-emerald-600",
-    dot: "bg-emerald-400",
-  },
-  "elevated to formal": {
-    bg: "bg-red-50",
-    text: "text-red-500",
-    dot: "bg-red-400",
-  },
-  unsettled: { bg: "bg-rose-50", text: "text-rose-500", dot: "bg-rose-400" },
-  summoned: { bg: "bg-amber-50", text: "text-amber-600", dot: "bg-amber-400" },
-  "referred to lupon": {
-    bg: "bg-purple-50",
-    text: "text-purple-500",
-    dot: "bg-purple-400",
-  },
-  recorded: { bg: "bg-teal-50", text: "text-teal-600", dot: "bg-teal-400" },
-  closed: { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
+const getStatusPillClass = (status: string) => {
+  switch (status) {
+    case "PENDING":
+      return "bg-amber-50 text-amber-700 border border-amber-200";
+    case "UNDER_MEDIATION":
+      return "bg-blue-50 text-blue-700 border border-blue-200";
+    case "UNDER_CONCILIATION":
+      return "bg-indigo-50 text-indigo-700 border border-indigo-200";
+    case "REFERRED_TO_LUPON":
+      return "bg-violet-50 text-violet-700 border border-violet-200";
+    case "SETTLED":
+      return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    case "RECORDED":
+      return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    case "DISMISSED":
+      return "bg-rose-50 text-rose-700 border border-rose-200";
+    case "CERTIFIED_TO_FILE_ACTION":
+      return "bg-cyan-50 text-cyan-700 border border-cyan-200";
+    case "EXPIRED_UNACTIONED":
+      return "bg-red-50 text-red-700 border border-red-200";
+    case "WITHDRAWN":
+      return "bg-orange-50 text-orange-700 border border-orange-200";
+    case "CLOSED":
+      return "bg-slate-100 text-slate-700 border border-slate-200";
+    case "ELEVATED_TO_FORMAL":
+      return "bg-red-50 text-red-700 border border-red-200";
+    default:
+      return "bg-gray-100 text-gray-600 border border-gray-200";
+  }
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
-  const cfg = STATUS_CONFIG[normalizeStatus(status)] ?? {
-    bg: "bg-gray-100",
-    text: "text-gray-500",
-    dot: "bg-gray-400",
-  };
+  const normalized = String(status || "")
+    .toUpperCase()
+    .trim();
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusPillClass(normalized)}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} />
       {getStatusDisplay(status)}
     </span>
   );
 };
 
 const STATUS_OPTIONS = [{ value: "recorded", label: "Recorded" }];
+const ARCHIVABLE_STATUSES = new Set([
+  "RECORDED",
+  "ELEVATED_TO_FORMAL",
+  "SETTLED",
+  "DISMISSED",
+  "WITHDRAWN",
+  "CLOSED",
+  "CERTIFIED_TO_FILE_ACTION",
+]);
+
+const isArchivedStatus = (status: string) =>
+  String(status || "")
+    .toUpperCase()
+    .trim() === "ARCHIVED";
 
 const PAGE_SIZE = 10;
 
@@ -96,11 +107,17 @@ const BlotterRecordsPage: React.FC = () => {
   });
 
   const [records, setRecords] = useState<RecordBlotterSummaryDTO[]>([]);
+  const [userAccess, setUserAccess] = useState<UserSecurityProfile | null>(
+    null,
+  );
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [archiveEntry, setArchiveEntry] =
+    useState<RecordBlotterSummaryDTO | null>(null);
+  const [archiveSuccessOpen, setArchiveSuccessOpen] = useState(false);
 
   // KPI stats state
   const [stats, setStats] = useState<FtrSummaryStatsDTO | null>(null);
@@ -112,14 +129,27 @@ const BlotterRecordsPage: React.FC = () => {
       .then(setStats)
       .catch(() => setStats(null))
       .finally(() => setStatsLoading(false));
+
+    getMyAccess()
+      .then((access) => setUserAccess(access))
+      .catch(() => setUserAccess(null));
   }, []);
+
+  const canView = hasBlotterPermission(
+    userAccess,
+    BLOTTER_PERMISSIONS.VIEW_CASES,
+  );
+  const canArchive = hasBlotterPermission(
+    userAccess,
+    BLOTTER_PERMISSIONS.ARCHIVE_CASES,
+  );
 
   const fetchRecords = useCallback(async (params: RecordTableParams) => {
     setLoading(true);
     setError(null);
     try {
       const page = await getPagedBlotters(params);
-      setRecords(page.content);
+      setRecords(page.content.filter((row) => !isArchivedStatus(row.status)));
       setTotalPages(page.totalPages);
       setTotalItems(page.totalElements);
       setCurrentPage(page.number);
@@ -166,9 +196,21 @@ const BlotterRecordsPage: React.FC = () => {
 
   // Pass blotterNumber as query param to view page
   const handleView = (item: RecordBlotterSummaryDTO) => {
+    if (!canView) return;
     navigate(
       `/blotter/record-view?blotterNumber=${encodeURIComponent(item.blotterNumber)}`,
     );
+  };
+
+  const handleArchiveSubmit = async (reason: string) => {
+    if (!archiveEntry) return;
+    await archiveCase(archiveEntry.id, { reason });
+    setArchiveEntry(null);
+    setArchiveSuccessOpen(true);
+    fetchRecords(appliedParams);
+    getRecordStats()
+      .then(setStats)
+      .catch(() => setStats(null));
   };
 
   const activeFilterCount = [
@@ -181,32 +223,29 @@ const BlotterRecordsPage: React.FC = () => {
   const columns: TableColumn<RecordBlotterSummaryDTO>[] = [
     {
       key: "blotterNumber",
-      header: "Blotter No.",
-      width: "180px",
+      header: "Case / Blotter No.",
+      width: "250px",
       render: (item) => (
-        <span className="font-mono text-xxs font-semibold text-blue-600 tracking-wide whitespace-nowrap">
-          {" "}
-          {item.blotterNumber}
-        </span>
+        <span className="text-gray-600">{item.blotterNumber}</span>
       ),
     },
 
     {
       key: "complainantName",
       header: "Complainant",
-      width: "200px",
+      width: "260px",
       render: (item) => (
-        <span className="text-sm font-medium text-slate-700">
+        <span className="block whitespace-normal break-words text-gray-600 leading-snug">
           {item.complainantName}
         </span>
       ),
     },
     {
       key: "respondentName",
-      width: "200px",
+      width: "175px",
       header: "Respondent",
       render: (item) => (
-        <span className="text-sm text-slate-600">{item.respondentName}</span>
+        <span className="text-gray-600">{item.respondentName}</span>
       ),
     },
 
@@ -219,9 +258,9 @@ const BlotterRecordsPage: React.FC = () => {
     {
       key: "dateFiled",
       header: "Date Filed",
-      width: "110px",
+      width: "120px",
       render: (item) => (
-        <span className="text-sm text-slate-500">
+        <span className="text-gray-600 whitespace-nowrap">
           {item.dateFiled
             ? new Date(item.dateFiled).toLocaleDateString("en-PH", {
                 year: "numeric",
@@ -235,46 +274,80 @@ const BlotterRecordsPage: React.FC = () => {
     {
       key: "actions",
       header: "Actions",
-      width: "100px",
-      render: (item) => (
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* View — always shown, passes blotterNumber to view page */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleView(item);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-lg ring-1 ring-slate-200 transition-colors"
-          >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      align: "right",
+      width: "170px",
+      render: (item) => {
+        const statusKey = String(item.status || "")
+          .toUpperCase()
+          .trim();
+        const canArchiveThisStatus = ARCHIVABLE_STATUSES.has(statusKey);
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              disabled={!canView}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleView(item);
+              }}
+              title="View case"
+              className={`p-1.5 rounded-lg transition-colors ${
+                !canView
+                  ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
+                  : "text-blue-600 hover:bg-blue-50"
+              }`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-              />
-            </svg>
-            View
-          </button>
-        </div>
-      ),
+              <Eye className="w-4 h-4" />
+            </button>
+
+            <button
+              disabled={!canArchive || !canArchiveThisStatus}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canArchive && canArchiveThisStatus) setArchiveEntry(item);
+              }}
+              title={
+                canArchiveThisStatus
+                  ? "Archive case"
+                  : "Archiving is not allowed for this status"
+              }
+              className={`p-1.5 rounded-lg transition-colors ${
+                !canArchive || !canArchiveThisStatus
+                  ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
+                  : "text-rose-600 hover:bg-rose-50"
+              }`}
+            >
+              <Archive className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="mb-4 ">
+      {archiveEntry && (
+        <ArchiveReasonModal
+          isOpen={!!archiveEntry}
+          onClose={() => setArchiveEntry(null)}
+          title="Archive For the Record Case"
+          subjectName={archiveEntry.blotterNumber}
+          subjectLabel="case"
+          submitLabel="Archive"
+          onSubmit={handleArchiveSubmit}
+        />
+      )}
+
+      <ActionModal
+        isOpen={archiveSuccessOpen}
+        onClose={() => setArchiveSuccessOpen(false)}
+        title="Case archived"
+        type="success"
+      >
+        The for-the-record case has been archived successfully.
+      </ActionModal>
+
       <KPIGrid columns={4}>
         <KPICard
           title="Total Records"
@@ -301,7 +374,7 @@ const BlotterRecordsPage: React.FC = () => {
         />
 
         <KPICard
-          title="Top Incident Nature"
+          title="Top Nature of Complaint"
           value={
             statsLoading ? (
               <CircleLoader size="sm" />
@@ -384,7 +457,10 @@ const BlotterRecordsPage: React.FC = () => {
         keyExtractor={(item) => item.id}
         loading={loading}
         emptyMessage="No blotter records found."
-        onRowClick={handleView}
+        variant="resident"
+        onRowClick={(item) => {
+          if (canView) handleView(item);
+        }}
         hoverable
         striped
         minRows={PAGE_SIZE}

@@ -98,7 +98,7 @@ export function Layout({ userRole }: LayoutProps) {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full relative overflow-hidden">
-        <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200">
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-5 py-3 bg-white border-b border-slate-200">
           <div className="flex items-center gap-4">
             {isMobile && (
               <div className="flex items-center gap-2">
@@ -160,8 +160,8 @@ export function Layout({ userRole }: LayoutProps) {
           </button>
         </header>
 
-        <div className="flex-1 h-full overflow-y-auto p-4 md:p-8 pt-0 md:pt-2">
-          <div className="max-w-6xl mx-auto pb-24 md:pb-8">
+        <div className="flex-1 h-full overflow-y-auto p-3 md:px-5 md:py-4 pt-0 md:pt-1.5">
+          <div className="w-full max-w-none mr-auto pb-24 md:pb-8">
             <Outlet />
           </div>
         </div>

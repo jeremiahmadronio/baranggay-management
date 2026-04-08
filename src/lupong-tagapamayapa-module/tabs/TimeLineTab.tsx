@@ -5,7 +5,7 @@ import { formatDate } from "../../pages/blotter-module/shared/utils";
 import {
   getCaseTimeline,
   type CaseTimelineDTO,
-} from "../../blotter-api/DocketView";
+} from "../../service/blotter-api/DocketView";
 
 interface TimelineTabProps {
   blotterNumber: string;

@@ -1,12 +1,6 @@
 import { referToLupon } from "../../service/blotter-api/blotter-api";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ArrowLeftIcon,
-  AlertCircleIcon,
-  CheckCircleIcon,
-  XIcon,
-  PencilLineIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, AlertCircleIcon } from "lucide-react";
 import type {
   BlotterDocketViewDTO,
   MediationProcessDTO,
@@ -41,10 +35,12 @@ import { EditCaseModal } from "./modal/EditCaseModal";
 import { ActionModal } from "./reusable/SuccessModal";
 import { PermissionDeniedPage } from "./reusable/PermissionDeniedPage";
 import { CenteredLoader, CircleLoader } from "../../reusable/LoadingStates";
+import { ArchiveReasonModal } from "../../hooks/archive-modal";
 
 interface Props {
   blotterNumber: string;
   onBack: () => void;
+  openEditOnLoad?: boolean;
 }
 
 type TabKey = "overview" | "hearings" | "notes" | "timeline";
@@ -61,7 +57,11 @@ type ModalKey =
   | "editCase"
   | null;
 
-export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
+export function BlotterDocketDetailView({
+  blotterNumber,
+  onBack,
+  openEditOnLoad = false,
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [docket, setDocket] = useState<BlotterDocketViewDTO | null>(null);
   const [mediation, setMediation] = useState<MediationProcessDTO | null>(null);
@@ -84,6 +84,10 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
   );
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showEditSuccess, setShowEditSuccess] = useState(false);
+  const [showReferSuccess, setShowReferSuccess] = useState(false);
+  const [attemptedAutoEditOpen, setAttemptedAutoEditOpen] = useState(false);
+
+  const EDITABLE_CASE_STATUSES = new Set(["PENDING", "UNDER_MEDIATION"]);
 
   // ── Permissions — single fetch for all ──
   const [canViewCases, setCanViewCases] = useState(false);
@@ -237,6 +241,7 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
     try {
       await referToLupon(blotterNumber, { members });
       setModal(null);
+      setShowReferSuccess(true);
       await refreshData();
     } catch (err: any) {
       alert(err.message || "Failed to refer case.");
@@ -251,6 +256,29 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
     { key: "notes", label: "Case Notes", count: notes.length },
     { key: "timeline", label: "Timeline" },
   ];
+
+  const normalizedStatus = String(docket?.caseStatus || "")
+    .toUpperCase()
+    .trim();
+  const canEditByStatus = EDITABLE_CASE_STATUSES.has(normalizedStatus);
+  const canEditCase = canUpdateCaseInfo && canEditByStatus;
+
+  useEffect(() => {
+    if (attemptedAutoEditOpen) return;
+    if (!openEditOnLoad) return;
+    if (accessLoading || !docket) return;
+
+    if (canEditCase) {
+      setModal("editCase");
+    }
+    setAttemptedAutoEditOpen(true);
+  }, [
+    attemptedAutoEditOpen,
+    openEditOnLoad,
+    accessLoading,
+    docket,
+    canEditCase,
+  ]);
 
   if (loading) return <CenteredLoader minHeight="min-h-[16rem]" />;
 
@@ -316,38 +344,28 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
         )}
 
         {modal === "settle" && (
-          <ConfirmModal
-            title="Mark as Settled"
-            description="Are you sure you want to mark this case as settled? This will close the case."
-            confirmLabel="Mark as Settled"
-            confirmClass="bg-emerald-600 hover:bg-emerald-700"
-            icon={
-              <div className="bg-emerald-50 p-2 rounded-full">
-                <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
-              </div>
-            }
-            loading={actionLoading}
-            reasonLabel="Settlement Details *"
-            onConfirm={(reason) => handleUpdateStatus("SETTLED", reason)}
-            onCancel={() => setModal(null)}
+          <ArchiveReasonModal
+            isOpen
+            onClose={() => setModal(null)}
+            title="Mark Case as Settled"
+            subjectName={blotterNumber}
+            subjectLabel="case"
+            submitLabel="Mark as Settled"
+            placeholder="Provide settlement details..."
+            onSubmit={(reason) => handleUpdateStatus("SETTLED", reason)}
           />
         )}
 
         {modal === "dismiss" && (
-          <ConfirmModal
-            title="Dismiss Case"
-            description="Are you sure you want to dismiss this case?"
-            confirmLabel="Dismiss Case"
-            confirmClass="bg-gray-600 hover:bg-gray-700"
-            icon={
-              <div className="bg-gray-100 p-2 rounded-full">
-                <XIcon className="w-4 h-4 text-gray-600" />
-              </div>
-            }
-            loading={actionLoading}
-            reasonLabel="Reason for Dismissal *"
-            onConfirm={(reason) => handleUpdateStatus("DISMISSED", reason)}
-            onCancel={() => setModal(null)}
+          <ArchiveReasonModal
+            isOpen
+            onClose={() => setModal(null)}
+            title="Close / Dismiss Case"
+            subjectName={blotterNumber}
+            subjectLabel="case"
+            submitLabel="Close Case"
+            placeholder="Provide reason for closing/dismissal..."
+            onSubmit={(reason) => handleUpdateStatus("DISMISSED", reason)}
           />
         )}
 
@@ -455,6 +473,15 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
           Case information has been successfully updated.
         </ActionModal>
 
+        <ActionModal
+          isOpen={showReferSuccess}
+          onClose={() => setShowReferSuccess(false)}
+          title="Case referred to Lupon"
+          type="success"
+        >
+          Case has been successfully referred to Lupon.
+        </ActionModal>
+
         {/* ── HEADER ── */}
         <div>
           <button
@@ -467,18 +494,6 @@ export function BlotterDocketDetailView({ blotterNumber, onBack }: Props) {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               {docket.caseNumber}
             </h1>
-            <button
-              onClick={() => setModal("editCase")}
-              disabled={!canUpdateCaseInfo}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm border transition-colors ${
-                canUpdateCaseInfo
-                  ? "border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
-                  : "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
-              }`}
-            >
-              <PencilLineIcon className="w-4 h-4" />
-              Edit Case
-            </button>
           </div>
           <p className="text-sm text-gray-500">{docket.natureOfComplaint}</p>
         </div>

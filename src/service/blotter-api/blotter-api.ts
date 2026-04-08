@@ -31,6 +31,7 @@ export {
 export {
   getDocketTable,
   getRecordTable,
+  getArchiveTable,
   getFullBlotterDocket,
   getMediationProcess,
   getHearingView,
@@ -42,13 +43,18 @@ export {
   scheduleHearing,
   recordHearingMinutes,
   getDocketStats,
+  getArchiveStats,
   updateCaseStatus,
   recordHearingFollowUp,
   getHearingFullDetails,
   getFrequencyOptions,
   getCaseTimeline,
   archiveCase,
+  restoreCase,
   type DocketTableParams,
+  type ArchiveTableParams,
+  type ArchiveTableDTO,
+  type ArchiveTableResponse,
   type BlotterSummaryDTO,
   type BlotterDocketViewDTO,
   type MediationProcessDTO,
@@ -56,18 +62,19 @@ export {
   type HearingFullDetailsDTO,
   type CaseNoteViewDTO,
   type BlotterStatsDTO,
+  type ArchiveStatsDTO,
   type UpdateCaseStatusRequest,
   type FollowUpHearingDTO,
   type CaseTimelineDTO,
   type archivedDTO,
-} from "../../blotter-api/DocketView";
+} from "./DocketView";
 
 export type {
   ScheduleHearingRequest,
   RecordMinutesRequest,
   CalendarMarkerDTO,
   BusySlotDTO,
-} from "../../blotter-api/DocketView";
+} from "./DocketView";
 
 // For-the-record / record views
 export {

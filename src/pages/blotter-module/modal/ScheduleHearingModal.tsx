@@ -81,6 +81,22 @@ const timeToMin = (t: string) => {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
 };
+const normalizeHHMM = (t: string) => {
+  if (!t) return "";
+  const core = t.trim().slice(0, 5);
+  if (!/^\d{1,2}:\d{2}$/.test(core)) return "";
+  const [h, m] = core.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return "";
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+const to12Hour = (t: string) => {
+  const hhmm = normalizeHHMM(t);
+  if (!hhmm) return t;
+  const [h, m] = hhmm.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${ampm}`;
+};
 
 type TimeStatus =
   | "valid"
@@ -209,7 +225,22 @@ export function ScheduleHearingModal({
     today.getDate(),
   );
   const timeStatus = getTimeStatus(startTime, endTime);
-  const isFormValid = !!selectedDate && timeStatus === "valid" && !!finalVenue;
+  const startMin = timeToMin(startTime);
+  const endMin = timeToMin(endTime);
+  const conflictingSlots =
+    timeStatus === "valid"
+      ? busySlots.filter((slot) => {
+          const slotStart = timeToMin(normalizeHHMM(slot.startTime));
+          const slotEnd = timeToMin(normalizeHHMM(slot.endTime));
+          return startMin < slotEnd && endMin > slotStart;
+        })
+      : [];
+  const hasTimeConflict = conflictingSlots.length > 0;
+  const isFormValid =
+    !!selectedDate &&
+    timeStatus === "valid" &&
+    !hasTimeConflict &&
+    !!finalVenue;
 
   const prevMonth = () => {
     if (viewMonth === 0) {
@@ -226,7 +257,15 @@ export function ScheduleHearingModal({
 
   const handleSubmit = async () => {
     if (!isFormValid) {
-      setError("Please complete all required fields with valid values.");
+      if (timeStatus && timeStatus !== "valid") {
+        setError(TIME_MESSAGES[timeStatus]);
+      } else if (hasTimeConflict) {
+        setError(
+          "Selected time conflicts with an existing hearing schedule. Please choose another time.",
+        );
+      } else {
+        setError("Please complete all required fields with valid values.");
+      }
       return;
     }
     setLoading(true);
@@ -327,7 +366,7 @@ export function ScheduleHearingModal({
               {DAYS.map((d) => (
                 <div
                   key={d}
-                  className="text-center text-[10px] font-bold text-gray-400 py-1 uppercase tracking-wide"
+                  className="text-center text-xs font-semibold text-gray-400 py-1 uppercase tracking-wide"
                 >
                   {d}
                 </div>
@@ -372,7 +411,7 @@ export function ScheduleHearingModal({
 
             {/* ── Office Hours Reference ── */}
             <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                 <ClockIcon className="w-3 h-3" /> Office Working Hours
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -381,10 +420,10 @@ export function ScheduleHearingModal({
                     key={s.label}
                     className="bg-white border border-gray-200 rounded-md px-3 py-2"
                   >
-                    <p className="text-[10px] text-slate-400 font-medium">
+                    <p className="text-xs text-slate-400 font-medium">
                       {s.label}
                     </p>
-                    <p className="text-xs font-bold text-slate-700 mt-0.5">
+                    <p className="text-xs font-semibold text-slate-700 mt-0.5">
                       {s.display}
                     </p>
                   </div>
@@ -401,10 +440,10 @@ export function ScheduleHearingModal({
             >
               {selectedDate ? (
                 <>
-                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1">
+                  <p className="text-xs font-semibold text-blue-500 uppercase tracking-widest mb-1">
                     Selected Date
                   </p>
-                  <p className="text-sm font-bold text-blue-800 leading-snug">
+                  <p className="text-sm font-semibold text-blue-800 leading-snug">
                     {formattedDate}
                   </p>
                 </>
@@ -419,23 +458,49 @@ export function ScheduleHearingModal({
             {selectedDate &&
               (busySlots.length > 0 ? (
                 <div>
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">
                     Conflicting Schedules
                   </p>
                   <div className="space-y-1.5">
-                    {busySlots.map((slot, i) => (
-                      <div
-                        key={i}
-                        className="bg-rose-50 border border-rose-100 rounded-md px-3 py-2"
-                      >
-                        <p className="text-xs font-bold text-rose-700">
-                          {slot.startTime} – {slot.endTime}
-                        </p>
-                        <p className="text-[10px] text-rose-500 truncate mt-0.5">
-                          {slot.caseNumber} · {slot.natureOfComplaint}
-                        </p>
-                      </div>
-                    ))}
+                    {busySlots.map((slot, i) =>
+                      (() => {
+                        const overlap =
+                          timeStatus === "valid" &&
+                          startMin < timeToMin(normalizeHHMM(slot.endTime)) &&
+                          endMin > timeToMin(normalizeHHMM(slot.startTime));
+                        return (
+                          <div
+                            key={i}
+                            className={`rounded-md px-3 py-2 border ${
+                              overlap
+                                ? "bg-red-50 border-red-200"
+                                : "bg-rose-50 border-rose-100"
+                            }`}
+                          >
+                            <p
+                              className={`text-xs font-bold ${
+                                overlap ? "text-red-700" : "text-rose-700"
+                              }`}
+                            >
+                              {to12Hour(slot.startTime)} –{" "}
+                              {to12Hour(slot.endTime)}
+                            </p>
+                            <p
+                              className={`text-[10px] truncate mt-0.5 ${
+                                overlap ? "text-red-600" : "text-rose-500"
+                              }`}
+                            >
+                              {slot.caseNumber} · {slot.natureOfComplaint}
+                            </p>
+                            {overlap && (
+                              <p className="text-xs text-red-700 font-semibold mt-1">
+                                Conflicts with selected time
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })(),
+                    )}
                   </div>
                 </div>
               ) : (
@@ -449,7 +514,7 @@ export function ScheduleHearingModal({
 
             {/* Time Range */}
             <div>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">
                 Time Range *
               </p>
               <div className="flex items-center gap-2">
@@ -473,24 +538,19 @@ export function ScheduleHearingModal({
               {timeStatus && timeStatus !== "valid" && (
                 <div className="mt-2 flex items-start gap-1.5 p-2.5 bg-amber-50 border border-amber-200 rounded-md">
                   <AlertTriangleIcon className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-amber-700 font-medium leading-snug">
+                  <p className="text-xs text-amber-700 font-medium leading-snug">
                     {TIME_MESSAGES[timeStatus]}
                   </p>
                 </div>
               )}
-              {timeStatus === "valid" && (
-                <div className="mt-2 flex items-center gap-1.5 p-2.5 bg-emerald-50 border border-emerald-200 rounded-md">
-                  <CheckCircleIcon className="w-3 h-3 text-emerald-500 shrink-0" />
-                  <p className="text-[10px] text-emerald-700 font-medium">
-                    Within office hours
-                  </p>
-                </div>
-              )}
+
+             
+
+              
             </div>
 
-            {/* Venue Dropdown */}
             <div>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1">
                 <MapPinIcon className="w-3 h-3" /> Venue *
               </p>
               <div className="relative">
@@ -524,7 +584,7 @@ export function ScheduleHearingModal({
 
             {/* Notes */}
             <div>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">
                 Notes (Optional)
               </p>
               <textarea
@@ -539,7 +599,7 @@ export function ScheduleHearingModal({
             {error && (
               <div className="flex items-start gap-1.5 p-2.5 bg-red-50 border border-red-200 rounded-md">
                 <AlertTriangleIcon className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-red-600 font-medium">{error}</p>
+                <p className="text-xs text-red-600 font-medium">{error}</p>
               </div>
             )}
 
@@ -557,7 +617,9 @@ export function ScheduleHearingModal({
 
             {/* PDF notice */}
             <p className="text-[10px] text-gray-400 text-center leading-relaxed">
-            Summon letter (Paanyaya) will be generated as a PDF file immediately after scheduling. Please download and print the document to serve the parties.
+              Summon letter (Paanyaya) will be generated as a PDF file
+              immediately after scheduling. Please download and print the
+              document to serve the parties.
             </p>
           </div>
         </div>

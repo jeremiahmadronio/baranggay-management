@@ -26,6 +26,11 @@ export function HearingViewModal({ hearing, onClose }: Props) {
   const notes = hearing.minutes?.hearingNotes || "";
   const outcome = hearing.minutes?.outcome || "";
   const followUps: FollowUpSummaryDTO[] = hearing.followUps ?? [];
+  const normalizedOutcome = String(outcome || "PENDING")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const isSettledOutcome = String(outcome).toUpperCase() === "SETTLED";
 
   return (
     <div
@@ -144,20 +149,31 @@ export function HearingViewModal({ hearing, onClose }: Props) {
               <CheckCircle2Icon className="w-3.5 h-3.5" /> 3 Outcome
             </p>
             <div
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
-                outcome === "SETTLED"
-                  ? "border-emerald-200 bg-emerald-50/50"
-                  : "border-red-200 bg-red-50/50"
+              className={`flex items-start gap-3 px-4 py-3.5 rounded-lg border ${
+                isSettledOutcome
+                  ? "border-emerald-200 bg-emerald-50/60"
+                  : "border-amber-200 bg-amber-50/60"
               }`}
             >
-              {outcome === "SETTLED" ? (
-                <CheckCircle2Icon className="w-4 h-4 text-emerald-600" />
+              {isSettledOutcome ? (
+                <CheckCircle2Icon className="w-4 h-4 text-emerald-600 mt-0.5" />
               ) : (
-                <AlertCircleIcon className="w-4 h-4 text-red-600" />
+                <AlertCircleIcon className="w-4 h-4 text-amber-600 mt-0.5" />
               )}
-              <span className="text-sm font-bold text-gray-900 uppercase tracking-tight">
-                {outcome?.replace("_", " ") || "PENDING"}
-              </span>
+              <div className="space-y-0.5">
+                <p
+                  className={`text-sm font-semibold ${
+                    isSettledOutcome ? "text-emerald-700" : "text-amber-700"
+                  }`}
+                >
+                  {normalizedOutcome}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {isSettledOutcome
+                    ? "Parties reached an agreement during mediation."
+                    : "Case remains unresolved and may need further action."}
+                </p>
+              </div>
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Pagination } from "./Pagination";
+import { Pagination } from "../hooks/Pagination";
 
 export interface TableColumn<T> {
   key: keyof T | string;

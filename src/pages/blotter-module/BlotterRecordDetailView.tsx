@@ -59,7 +59,7 @@ const StatusBadge = ({ status }: { status: string }) => (
   </span>
 );
 
-const BlotterRecordViewPage: React.FC = () => {
+const BlotterRecordDetailViewPage: React.FC = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const blotterNumber = searchParams.get("blotterNumber") || "";
@@ -125,8 +125,7 @@ const BlotterRecordViewPage: React.FC = () => {
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-4 transition-colors"
           >
-            <ArrowLeftIcon className="w-4 h-4" />
-            Back to Records
+            <ArrowLeftIcon className="w-4 h-4" /> Back to Records
           </button>
 
           <div className="flex items-center gap-3 mb-1">
@@ -247,4 +246,4 @@ const BlotterRecordViewPage: React.FC = () => {
   );
 };
 
-export default BlotterRecordViewPage;
+export default BlotterRecordDetailViewPage;

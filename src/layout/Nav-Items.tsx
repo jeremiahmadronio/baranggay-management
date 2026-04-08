@@ -1,11 +1,11 @@
 import {
   LayoutDashboard,
   Users,
-  Package,
   Settings,
   MapPinHouse,
   Leaf,
   FileText,
+  FilePlus2,
   ScrollText,
   CalendarIcon,
   ChartNoAxesCombined,
@@ -57,11 +57,11 @@ export const rootAdminNavItems: NavItemType[] = [
 export const blotterNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/blotter/dashboard", icon: LayoutDashboard },
   { label: "Residents", path: "/blotter/residents", icon: Users },
-  { label: "Docket Books", path: "/blotter/docket", icon: Package },
-  { label: "New Complaints", path: "/blotter/entry-form", icon: MapPinHouse },
+  { label: "Docket Books", path: "/blotter/docket", icon: ScrollText },
+  { label: "Archive Cases", path: "/blotter/archive", icon: Archive },
+  { label: "New Complaints", path: "/blotter/entry-form", icon: FilePlus2 },
   { label: "Records", path: "/blotter/records", icon: FileText },
   { label: "Reports", path: "/blotter/reports", icon: ChartNoAxesCombined },
-  { label: "settings", path: "/blotter/account-settings", icon: Settings },
 ];
 
 // Lupong Tagapamayapa navigation items

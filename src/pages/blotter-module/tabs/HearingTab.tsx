@@ -19,6 +19,7 @@ import { formatDate, formatTime } from "../shared/utils";
 import { generatePaanyaya } from "../modal/GeneratePaanyaya";
 import { updateHearingStatus } from "../../../service/blotter-api/blotter-api";
 import { ActionModal } from "../../../reusable/SuccessModal";
+import { ArchiveReasonModal } from "../../../hooks/archive-modal";
 import {
   getHearingFullDetails,
   type HearingFullDetailsDTO,
@@ -73,8 +74,6 @@ export function HearingsTab({
   const [selectedHearingId, setSelectedHearingId] = useState<number | null>(
     null,
   );
-  const [cancelRemarks, setCancelRemarks] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isHearingInFuture = (dateStr: string, timeStr: string) => {
     return new Date(`${dateStr}T${timeStr}`) > new Date();
@@ -108,13 +107,10 @@ export function HearingsTab({
     });
   };
 
-  const handleConfirmCancel = async () => {
-    if (!selectedHearingId || !cancelRemarks.trim()) return;
-    setIsSubmitting(true);
+  const handleConfirmCancel = async (reason: string) => {
+    if (!selectedHearingId || !reason.trim()) return;
     try {
-      await updateHearingStatus(selectedHearingId, "CANCELLED", cancelRemarks);
-      setShowCancelInput(false);
-      setCancelRemarks("");
+      await updateHearingStatus(selectedHearingId, "CANCELLED", reason);
       setShowSuccessModal(true);
       onRefresh?.();
     } catch (error) {
@@ -122,8 +118,6 @@ export function HearingsTab({
       alert(
         error instanceof Error ? error.message : "Failed to cancel hearing",
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -321,70 +315,21 @@ export function HearingsTab({
 
       {/* Cancel Modal */}
       {showCancelInput && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-2 mb-4 text-red-600">
-              <XCircleIcon className="w-6 h-6" />
-              <h3 className="text-xl font-bold">Cancel Mediation</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Please provide a reason for cancelling this mediation. This will
-              be recorded in the system for future reference.
-            </p>
-            <textarea
-              autoFocus
-              className="w-full p-3 border-2 border-gray-100 rounded-lg text-sm focus:border-red-500 outline-none resize-none h-32 transition-all"
-              placeholder="Enter cancellation reason here..."
-              value={cancelRemarks}
-              onChange={(e) => {
-                const words = e.target.value.split(/\s+/).filter(Boolean);
-                if (words.length <= 250) {
-                  setCancelRemarks(e.target.value);
-                } else {
-                  setCancelRemarks(words.slice(0, 250).join(" "));
-                }
-              }}
-            />
-            <div className="flex justify-between items-center mt-1">
-              <span className="text-xs text-gray-400">
-                {cancelRemarks.trim().split(/\s+/).filter(Boolean).length} / 250
-                words
-              </span>
-              {cancelRemarks.trim().split(/\s+/).filter(Boolean).length >=
-                250 && (
-                <span className="text-xs text-red-500 font-semibold">
-                  Word limit reached
-                </span>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                disabled={isSubmitting}
-                onClick={() => {
-                  setShowCancelInput(false);
-                  setCancelRemarks("");
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800"
-              >
-                Go Back
-              </button>
-              <button
-                disabled={isSubmitting || !cancelRemarks.trim()}
-                onClick={handleConfirmCancel}
-                className="px-6 py-2 text-sm font-bold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{" "}
-                    Processing...
-                  </>
-                ) : (
-                  "Confirm Cancellation"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ArchiveReasonModal
+          isOpen={showCancelInput}
+          onClose={() => {
+            setShowCancelInput(false);
+            setSelectedHearingId(null);
+          }}
+          title="Cancel Mediation"
+          subjectName={
+            selectedHearingId ? `Hearing #${selectedHearingId}` : undefined
+          }
+          subjectLabel="mediation"
+          submitLabel="Confirm Cancellation"
+          placeholder="Enter cancellation reason here..."
+          onSubmit={handleConfirmCancel}
+        />
       )}
 
       <ActionModal

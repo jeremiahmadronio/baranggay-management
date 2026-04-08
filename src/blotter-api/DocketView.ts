@@ -75,6 +75,33 @@ export interface BlotterSummaryDTO {
   status: string;
 }
 
+export interface ArchiveTableDTO {
+  caseId: number;
+  blotterNumber: string;
+  caseType: string;
+  complainant: string;
+  respondent: string;
+  status: string;
+  archivedRemarks: string;
+  dateFiled: string;
+}
+
+export interface ArchiveTablePage {
+  size: number;
+  number: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface ArchiveTableResponse {
+  content: ArchiveTableDTO[];
+  page?: ArchiveTablePage;
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+
 //witness for docket view
 export interface WitnessDTO {
   personId?: number;
@@ -168,6 +195,65 @@ export interface DocketTableParams {
   sort?: string;
 }
 
+export interface ArchiveTableParams {
+  search?: string;
+  caseType?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+type ArchiveTableRawItem = Partial<ArchiveTableDTO> & {
+  id?: number;
+  caseNumber?: string;
+  complaintType?: string;
+  complainantName?: string;
+  respondentName?: string;
+  caseStatus?: string;
+  archiveRemarks?: string;
+  reason?: string;
+  filedAt?: string;
+};
+
+type ArchiveTableRawResponse = Partial<ArchiveTableResponse> & {
+  content?: ArchiveTableRawItem[];
+  items?: ArchiveTableRawItem[];
+  data?: ArchiveTableRawItem[];
+};
+
+function mapArchiveRow(row: ArchiveTableRawItem): ArchiveTableDTO {
+  return {
+    caseId: Number(row.caseId ?? row.id ?? 0),
+    blotterNumber: String(row.blotterNumber ?? row.caseNumber ?? ""),
+    caseType: String(row.caseType ?? row.complaintType ?? ""),
+    complainant: String(row.complainant ?? row.complainantName ?? ""),
+    respondent: String(row.respondent ?? row.respondentName ?? ""),
+    status: String(row.status ?? row.caseStatus ?? "ARCHIVED"),
+    archivedRemarks: String(
+      row.archivedRemarks ?? row.archiveRemarks ?? row.reason ?? "",
+    ),
+    dateFiled: String(row.dateFiled ?? row.filedAt ?? ""),
+  };
+}
+
+function normalizeArchiveTableResponse(
+  raw: ArchiveTableRawResponse,
+): ArchiveTableResponse {
+  const rawContent = raw.content ?? raw.items ?? raw.data ?? [];
+
+  return {
+    content: rawContent.map(mapArchiveRow),
+    page: raw.page,
+    totalElements: raw.totalElements,
+    totalPages: raw.totalPages,
+    size: raw.size,
+    number: raw.number,
+  };
+}
+
 //view  hearing
 export interface HearingViewDTO {
   hearingId: number;
@@ -258,6 +344,13 @@ export interface BlotterStatsDTO {
   activeCases: number;
   resolved: number;
   pendingMediation: number;
+}
+
+export interface ArchiveStatsDTO {
+  totalArchive: number;
+  totalArchiveThisMonth: number;
+  totalArchiveFormalComplaint: number;
+  totalArchiveForTheRecord: number;
 }
 
 // update case status request
@@ -370,6 +463,53 @@ export async function getRecordTable(
   return apiFetch<SpringPage<BlotterSummaryDTO>>(endpoint);
 }
 
+export async function getArchiveTable(
+  params: ArchiveTableParams = {},
+): Promise<ArchiveTableResponse> {
+  const buildEndpoint = (statusOverride?: string) => {
+    const queryParams = new URLSearchParams();
+
+    if (params.search) queryParams.append("search", params.search);
+    if (params.caseType) queryParams.append("caseType", params.caseType);
+
+    const statusToUse = statusOverride ?? params.status;
+    if (statusToUse) queryParams.append("status", statusToUse);
+
+    if (params.dateFrom) queryParams.append("dateFrom", params.dateFrom);
+    if (params.dateTo) queryParams.append("dateTo", params.dateTo);
+    if (params.page !== undefined)
+      queryParams.append("page", params.page.toString());
+    if (params.size !== undefined)
+      queryParams.append("size", params.size.toString());
+    if (params.sort) queryParams.append("sort", params.sort);
+
+    const queryString = queryParams.toString();
+    return queryString
+      ? `${BLOTTER_URL}/archive-table?${queryString}`
+      : `${BLOTTER_URL}/archive-table`;
+  };
+
+  const raw = await apiFetch<ArchiveTableRawResponse>(buildEndpoint());
+  const normalized = normalizeArchiveTableResponse(raw);
+
+  if (params.status && normalized.content.length === 0) {
+    const altStatus =
+      params.status === params.status.toUpperCase()
+        ? params.status.toLowerCase()
+        : params.status.toUpperCase();
+
+    if (altStatus !== params.status) {
+      const rawFallback = await apiFetch<ArchiveTableRawResponse>(
+        buildEndpoint(altStatus),
+      );
+      const fallbackNormalized = normalizeArchiveTableResponse(rawFallback);
+      if (fallbackNormalized.content.length > 0) return fallbackNormalized;
+    }
+  }
+
+  return normalized;
+}
+
 export async function getFullBlotterDocket(
   blotterNumber: string,
 ): Promise<BlotterDocketViewDTO> {
@@ -460,6 +600,10 @@ export async function getDocketStats(): Promise<BlotterStatsDTO> {
   return apiFetch<BlotterStatsDTO>(`${BLOTTER_URL}/docket-stats`);
 }
 
+export async function getArchiveStats(): Promise<ArchiveStatsDTO> {
+  return apiFetch<ArchiveStatsDTO>(`${BLOTTER_URL}/archive/stats`);
+}
+
 export async function updateCaseStatus(
   body: UpdateCaseStatusRequest,
 ): Promise<string> {
@@ -477,7 +621,6 @@ export async function updateCaseStatus(
       throw err;
     });
 }
-
 export async function recordHearingFollowUp(
   hearingId: number,
   body: FollowUpHearingDTO,
@@ -520,7 +663,7 @@ export async function archiveCase(
     method: "PATCH",
     body: JSON.stringify(body),
   });
-}  
+}
 
 export async function restoreCase(
   caseId: number,
@@ -531,4 +674,4 @@ export async function restoreCase(
     method: "PATCH",
     body: JSON.stringify(body),
   });
-}  
+}
