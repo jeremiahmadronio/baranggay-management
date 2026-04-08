@@ -16,6 +16,10 @@ export interface SpringPage<T> {
   empty: boolean;
 }
 
+export interface archivedDTO {
+  reason: string;
+}
+
 export interface CaseTimelineDTO {
   id: number;
   eventType: string;
@@ -37,7 +41,7 @@ export interface MinutesSummaryDTO {
   respondentPresent: boolean;
   hearingNotes: string;
   outcome: string;
-  
+
   recordedBy: string;
 }
 
@@ -73,14 +77,17 @@ export interface BlotterSummaryDTO {
 
 //witness for docket view
 export interface WitnessDTO {
+  personId?: number;
   fullName: string;
-  
   contactNumber?: string;
   address?: string;
+  testimony?: string;
 }
 
 //docket view all info
 export interface BlotterDocketViewDTO {
+  caseId?: number;
+  id?: number;
   mediationDeadline: string;
   daysRemaining: number;
   caseNumber: string;
@@ -125,13 +132,13 @@ export interface BlotterDocketViewDTO {
   agreementsTerm?: string;
   agreementDate?: string;
   luponManagement: CaseHandleByDTO[];
+  assignOfficer: string;
 }
 
 export interface CaseHandleByDTO {
-  
   firstName: string;
   lastName: string;
-  position: string; 
+  position: string;
 }
 
 //mediation process
@@ -199,7 +206,7 @@ export interface CalendarMarkerDTO {
   totalHearings: number;
 }
 
-export interface IncidentOptionDTO{
+export interface IncidentOptionDTO {
   id: number;
   label: string;
 }
@@ -491,17 +498,37 @@ export async function getHearingFullDetails(
   );
 }
 
-
 export async function getFrequencyOptions(): Promise<IncidentOptionDTO[]> {
   return apiFetch<IncidentOptionDTO[]>(`${BLOTTER_URL}/frequencies`);
 }
 
-
 export async function getCaseTimeline(
-  blotterNumber: string
+  blotterNumber: string,
 ): Promise<CaseTimelineDTO[]> {
   if (!blotterNumber) throw new Error("Blotter number is required");
   return apiFetch<CaseTimelineDTO[]>(
-    `${BLOTTER_URL}/timeline/${encodeURIComponent(blotterNumber)}`
+    `${BLOTTER_URL}/timeline/${encodeURIComponent(blotterNumber)}`,
   );
 }
+
+export async function archiveCase(
+  caseId: number,
+  body: archivedDTO,
+): Promise<string> {
+  if (!caseId) throw new Error("Case ID is required");
+  return apiFetch<string>(`${BLOTTER_URL}/archived/${caseId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}  
+
+export async function restoreCase(
+  caseId: number,
+  body: archivedDTO,
+): Promise<string> {
+  if (!caseId) throw new Error("Case ID is required");
+  return apiFetch<string>(`${BLOTTER_URL}/restore/${caseId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}  

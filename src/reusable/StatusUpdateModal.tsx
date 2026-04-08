@@ -5,7 +5,10 @@ import {
   FormFieldLabel,
 } from "./FormModalShell";
 
-export type StatusReasonMode = "status-and-reason" | "reason-only";
+export type StatusReasonMode =
+  | "status-and-reason"
+  | "reason-only"
+  | "reason-and-lock-until";
 
 export interface StatusOption {
   value: string;
@@ -28,11 +31,13 @@ interface StatusUpdateModalProps {
   reasonOptions?: ReasonOption[];
   initialStatus?: string;
   initialReason?: string;
+  initialLockUntil?: string;
   submitLabel?: string;
   onSubmit: (payload: {
     status?: string;
     reason: string;
-  }) => void;
+    lockUntil?: string | null;
+  }) => void | Promise<void>;
 }
 
 const DEFAULT_STATUSES: StatusOption[] = [
@@ -54,6 +59,7 @@ export function StatusUpdateModal({
   statusOptions = DEFAULT_STATUSES,
   initialStatus,
   initialReason,
+  initialLockUntil,
   submitLabel = "Update Status",
   onSubmit,
 }: StatusUpdateModalProps) {
@@ -64,19 +70,26 @@ export function StatusUpdateModal({
 
   const [selectedStatus, setSelectedStatus] = useState(defaultStatus);
   const [reason, setReason] = useState(initialReason || "");
+  const [lockUntil, setLockUntil] = useState(initialLockUntil || "");
   const [statusError, setStatusError] = useState("");
   const [reasonError, setReasonError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     setSelectedStatus(defaultStatus);
     setReason(initialReason || "");
+    setLockUntil(initialLockUntil || "");
     setStatusError("");
     setReasonError("");
-  }, [isOpen, defaultStatus, initialReason]);
+    setSubmitError("");
+    setSubmitting(false);
+  }, [isOpen, defaultStatus, initialReason, initialLockUntil]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     let hasError = false;
+    setSubmitError("");
 
     if (mode === "status-and-reason" && !selectedStatus) {
       setStatusError("Please select a status.");
@@ -90,11 +103,22 @@ export function StatusUpdateModal({
 
     if (hasError) return;
 
-    onSubmit({
-      status: mode === "status-and-reason" ? selectedStatus : undefined,
-      reason: reason.trim(),
-    });
-    onClose();
+    try {
+      setSubmitting(true);
+      await onSubmit({
+        status: mode === "status-and-reason" ? selectedStatus : undefined,
+        reason: reason.trim(),
+        lockUntil:
+          mode === "reason-and-lock-until" ? lockUntil.trim() || null : null,
+      });
+      onClose();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Failed to update status.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -108,6 +132,7 @@ export function StatusUpdateModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={submitting}
             className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
           >
             Cancel
@@ -115,9 +140,10 @@ export function StatusUpdateModal({
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            disabled={submitting}
+            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
           >
-            {submitLabel}
+            {submitting ? "Saving..." : submitLabel}
           </button>
         </div>
       }
@@ -129,6 +155,21 @@ export function StatusUpdateModal({
             <span className="font-semibold text-gray-900">{subjectName}</span>{" "}
             <span className="text-gray-500">({subjectLabel})</span>
           </p>
+        ) : null}
+
+        {mode === "reason-and-lock-until" ? (
+          <div>
+            <FormFieldLabel label="Lock Until (optional)" />
+            <input
+              type="datetime-local"
+              value={lockUntil}
+              onChange={(e) => setLockUntil(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              If empty, default lock period will be used.
+            </p>
+          </div>
         ) : null}
 
         {mode === "status-and-reason" ? (
@@ -174,6 +215,8 @@ export function StatusUpdateModal({
             </p>
           </div>
         </div>
+
+        <FormFieldError msg={submitError} />
       </div>
     </FormModalShell>
   );

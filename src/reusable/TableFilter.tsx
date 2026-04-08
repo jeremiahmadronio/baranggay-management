@@ -36,6 +36,8 @@ interface TableFilterProps {
   dateRange?: DateRangeConfig;
   /** Show a badge on the Apply button with the count of active filters */
   activeFilterCount?: number;
+  /** Disable all filter controls (view-only mode) */
+  disabled?: boolean;
 }
 
 export const TableFilter = ({
@@ -53,8 +55,8 @@ export const TableFilter = ({
   clearButtonText = "Clear",
   dateRange,
   activeFilterCount,
+  disabled = false,
 }: TableFilterProps) => {
-
   const handleStartChange = (v: string) => {
     dateRange?.onStartChange?.(v);
     // Auto-clamp: if new start > current end, clear end
@@ -72,25 +74,33 @@ export const TableFilter = ({
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-4">
       <div className="flex flex-wrap gap-4 items-end">
-
         {/* Search */}
         {showSearch && (
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Search
+            </label>
             <div className="relative">
               <input
                 type="text"
                 value={searchValue}
                 onChange={(e) => onSearchChange?.(e.target.value)}
                 placeholder={searchPlaceholder}
+                disabled={disabled}
                 className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
           </div>
@@ -105,6 +115,7 @@ export const TableFilter = ({
             <select
               value={filter.value || ""}
               onChange={(e) => onFilterChange?.(filter.key, e.target.value)}
+              disabled={disabled}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-600"
             >
               <option value="">All</option>
@@ -129,6 +140,7 @@ export const TableFilter = ({
                 value={dateRange.startValue ?? ""}
                 max={dateRange.endValue || undefined}
                 onChange={(e) => handleStartChange(e.target.value)}
+                disabled={disabled}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600"
               />
             </div>
@@ -142,6 +154,7 @@ export const TableFilter = ({
                 value={dateRange.endValue ?? ""}
                 min={dateRange.startValue || undefined}
                 onChange={(e) => handleEndChange(e.target.value)}
+                disabled={disabled}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600"
               />
             </div>
@@ -152,11 +165,21 @@ export const TableFilter = ({
         {showFilterButton && (
           <button
             onClick={onFilterClick}
+            disabled={disabled}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
             </svg>
             {filterButtonText}
             {/* Active filter count badge */}
@@ -172,15 +195,25 @@ export const TableFilter = ({
         {showClearButton && (
           <button
             onClick={onClearClick}
+            disabled={disabled}
             className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1 border border-gray-300"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
             {clearButtonText}
           </button>
         )}
-
       </div>
     </div>
   );

@@ -1,8 +1,27 @@
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const VAWC_URL = `${BASE}/api/v1/vawc`;
+const PEOPLE_URL = `${BASE}/api/v1/resident`;
+
 
 // ─── Shared ────────────────────────────────────────────────────────────────
+
+
+export interface PersonSearchResponseDTO {
+  id: number;
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  contactNumber: string;
+  age: number;
+  birthDate: string;
+  gender: string;
+  civilStatus: string;
+  email: string;
+  completeAddress: string;
+  isResident: boolean;
+  barangayIdNumber: string | null;
+}
 
 export interface WitnessDTO {
   firstName: string;
@@ -405,4 +424,17 @@ export async function createReferral(dto: CreateReferralDTO): Promise<string> {
 // display CFA details for a vawc case
 export async function getVawcCfa(caseId: number): Promise<DisplayCFADTO> {
   return apiFetch(`${VAWC_URL}/cfa/${caseId}`);
+}
+
+
+//search people for complainant, respondent and witness selection in complaint form
+export async function searchPeople(
+  query: string,
+): Promise<PersonSearchResponseDTO[]> {
+  if (!query || query.trim().length < 2) return [];
+
+  const queryParams = new URLSearchParams({ query: query.trim() });
+  return apiFetch<PersonSearchResponseDTO[]>(
+    `${PEOPLE_URL}/search?${queryParams.toString()}`,
+  );
 }

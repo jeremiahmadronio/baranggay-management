@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react'
-import { Camera, X } from 'lucide-react'
+import React, { useEffect, useState, useRef } from "react";
+import { Camera, X } from "lucide-react";
 interface Props {
-  firstName: string
-  lastName: string
-  currentPhotoUrl?: string
-  onPhotoUpdate: (url: string) => void
+  firstName: string;
+  lastName: string;
+  currentPhotoUrl?: string;
+  onPhotoUpdate: (url: string) => void;
 }
 export function ProfilePictureUpload({
   firstName,
@@ -12,21 +12,21 @@ export function ProfilePictureUpload({
   currentPhotoUrl,
   onPhotoUpdate,
 }: Props) {
-  const [selectedFile, setSelectedFile] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = () => {
-        setSelectedFile(reader.result as string)
-      }
-      reader.readAsDataURL(e.target.files[0])
+        setSelectedFile(reader.result as string);
+      };
+      reader.readAsDataURL(e.target.files[0]);
     }
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
   const initials =
-    `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() ||
-    'U'
+    `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase() ||
+    "U";
   return (
     <>
       <div className="flex items-center gap-5">
@@ -54,7 +54,7 @@ export function ProfilePictureUpload({
 
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-gray-900 mb-0.5 truncate">
-            {firstName || 'User'} {lastName || 'Name'}
+            {firstName || "User"} {lastName || "Name"}
           </h2>
           <p className="text-xs text-gray-500 mb-2">
             Manage your account information
@@ -82,117 +82,117 @@ export function ProfilePictureUpload({
           imageSrc={selectedFile}
           onClose={() => setSelectedFile(null)}
           onCrop={(croppedUrl) => {
-            onPhotoUpdate(croppedUrl)
-            setSelectedFile(null)
+            onPhotoUpdate(croppedUrl);
+            setSelectedFile(null);
           }}
         />
       )}
     </>
-  )
+  );
 }
 function CropModal({
   imageSrc,
   onClose,
   onCrop,
 }: {
-  imageSrc: string
-  onClose: () => void
-  onCrop: (url: string) => void
+  imageSrc: string;
+  onClose: () => void;
+  onCrop: (url: string) => void;
 }) {
-  const imageRef = useRef<HTMLImageElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [cropPos, setCropPos] = useState({
     x: 0,
     y: 0,
-  })
-  const [isDragging, setIsDragging] = useState(false)
+  });
+  const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({
     x: 0,
     y: 0,
-  })
-  const CROP_SIZE = 240
+  });
+  const CROP_SIZE = 240;
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    e.preventDefault();
+    setIsDragging(true);
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
     setDragStart({
       x: clientX - cropPos.x,
       y: clientY - cropPos.y,
-    })
-  }
+    });
+  };
   const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-    if (!isDragging) return
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    if (!isDragging) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
     if (imageRef.current && containerRef.current) {
-      const imgRect = imageRef.current.getBoundingClientRect()
-      const containerRect = containerRef.current.getBoundingClientRect()
-      let newX = clientX - dragStart.x
-      let newY = clientY - dragStart.y
-      const imgLeft = (containerRect.width - imgRect.width) / 2
-      const imgTop = (containerRect.height - imgRect.height) / 2
-      const minX = imgLeft
-      const maxX = imgLeft + imgRect.width - CROP_SIZE
-      const minY = imgTop
-      const maxY = imgTop + imgRect.height - CROP_SIZE
+      const imgRect = imageRef.current.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      let newX = clientX - dragStart.x;
+      let newY = clientY - dragStart.y;
+      const imgLeft = (containerRect.width - imgRect.width) / 2;
+      const imgTop = (containerRect.height - imgRect.height) / 2;
+      const minX = imgLeft;
+      const maxX = imgLeft + imgRect.width - CROP_SIZE;
+      const minY = imgTop;
+      const maxY = imgTop + imgRect.height - CROP_SIZE;
       if (imgRect.width < CROP_SIZE)
-        newX = imgLeft - (CROP_SIZE - imgRect.width) / 2
-      else newX = Math.max(minX, Math.min(newX, maxX))
+        newX = imgLeft - (CROP_SIZE - imgRect.width) / 2;
+      else newX = Math.max(minX, Math.min(newX, maxX));
       if (imgRect.height < CROP_SIZE)
-        newY = imgTop - (CROP_SIZE - imgRect.height) / 2
-      else newY = Math.max(minY, Math.min(newY, maxY))
+        newY = imgTop - (CROP_SIZE - imgRect.height) / 2;
+      else newY = Math.max(minY, Math.min(newY, maxY));
       setCropPos({
         x: newX,
         y: newY,
-      })
+      });
     }
-  }
+  };
   const handleMouseUp = () => {
-    setIsDragging(false)
-  }
+    setIsDragging(false);
+  };
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-      window.addEventListener('touchmove', handleMouseMove, {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("touchmove", handleMouseMove, {
         passive: false,
-      })
-      window.addEventListener('touchend', handleMouseUp)
+      });
+      window.addEventListener("touchend", handleMouseUp);
     }
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-      window.removeEventListener('touchmove', handleMouseMove)
-      window.removeEventListener('touchend', handleMouseUp)
-    }
-  }, [isDragging, dragStart])
-  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const container = containerRef.current
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleMouseMove);
+      window.removeEventListener("touchend", handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
+  const handleImageLoad = () => {
+    const container = containerRef.current;
     if (container) {
-      const containerRect = container.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect();
       setCropPos({
         x: (containerRect.width - CROP_SIZE) / 2,
         y: (containerRect.height - CROP_SIZE) / 2,
-      })
+      });
     }
-  }
+  };
   const handleSave = () => {
-    if (!imageRef.current || !containerRef.current) return
-    const canvas = document.createElement('canvas')
-    canvas.width = CROP_SIZE
-    canvas.height = CROP_SIZE
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const img = imageRef.current
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const imgRect = img.getBoundingClientRect()
-    const imgLeft = (containerRect.width - imgRect.width) / 2
-    const imgTop = (containerRect.height - imgRect.height) / 2
-    const relativeX = cropPos.x - imgLeft
-    const relativeY = cropPos.y - imgTop
-    const scaleX = img.naturalWidth / imgRect.width
-    const scaleY = img.naturalHeight / imgRect.height
+    if (!imageRef.current || !containerRef.current) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = CROP_SIZE;
+    canvas.height = CROP_SIZE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = imageRef.current;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+    const imgLeft = (containerRect.width - imgRect.width) / 2;
+    const imgTop = (containerRect.height - imgRect.height) / 2;
+    const relativeX = cropPos.x - imgLeft;
+    const relativeY = cropPos.y - imgTop;
+    const scaleX = img.naturalWidth / imgRect.width;
+    const scaleY = img.naturalHeight / imgRect.height;
     ctx.drawImage(
       img,
       relativeX * scaleX,
@@ -203,9 +203,9 @@ function CropModal({
       0,
       CROP_SIZE,
       CROP_SIZE,
-    )
-    onCrop(canvas.toDataURL('image/jpeg', 0.9))
-  }
+    );
+    onCrop(canvas.toDataURL("image/jpeg", 0.9));
+  };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -225,7 +225,7 @@ function CropModal({
           ref={containerRef}
           className="relative bg-gray-900 flex justify-center items-center overflow-hidden"
           style={{
-            height: '450px',
+            height: "450px",
           }}
         >
           <img
@@ -244,8 +244,8 @@ function CropModal({
                 height: CROP_SIZE,
                 transform: `translate(${cropPos.x}px, ${cropPos.y}px)`,
                 boxShadow:
-                  '0 0 0 9999px rgba(0,0,0,0.75), 0 8px 32px rgba(0,0,0,0.4)',
-                touchAction: 'none',
+                  "0 0 0 9999px rgba(0,0,0,0.75), 0 8px 32px rgba(0,0,0,0.4)",
+                touchAction: "none",
               }}
               onMouseDown={handleMouseDown}
               onTouchStart={handleMouseDown}
@@ -274,5 +274,5 @@ function CropModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

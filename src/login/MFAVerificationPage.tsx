@@ -5,6 +5,38 @@ import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
 import { authService } from "../login-api/login";
 
+function normalizeKey(value?: string | null): string {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+function routeFromDepartment(department?: string | null): string | null {
+  const key = normalizeKey(department);
+
+  switch (key) {
+    case "CLEARANCE":
+      return "/clearance/dashboard";
+    case "OFFICIAL":
+      return "/official-portal/dashboard";
+    case "BLOTTER":
+      return "/blotter/dashboard";
+    case "BCPC":
+      return "/bcpc/dashboard";
+    case "VAWC":
+      return "/vawc/dashboard";
+    case "LUPON":
+    case "LUPONG_TAGAPAMAYAPA":
+      return "/lupongtagapamayapa/dashboard";
+    case "FIRST_TIME_JOB_SEEKER":
+    case "FTJS":
+      return "/first-time-job-seeker/dashboard";
+    default:
+      return null;
+  }
+}
+
 export function MFAVerificationPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,7 +60,8 @@ export function MFAVerificationPage() {
     : "";
 
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
     if (countdown > 0 && !canResend) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);
@@ -36,7 +69,10 @@ export function MFAVerificationPage() {
     } else if (countdown === 0) {
       setCanResend(true);
     }
-    return () => clearInterval(timer);
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [countdown, canResend]);
 
   const handleResend = () => {
@@ -96,44 +132,25 @@ export function MFAVerificationPage() {
       const fullCode = code.join("");
       const response = await authService.verifyMfa({ email, code: fullCode });
 
-      // ✅ Redirect based on user role
-      const role = response.role?.toUpperCase();
+      const role = normalizeKey(response.role);
 
       if (role === "ROOT_ADMIN") {
         navigate("/rootadmin/dashboard");
-      } else if (role === "ADMIN") {
-        navigate("/admin/dashboard");
-      } else if (role === "STAFF") {
-        // For STAFF, redirect based on first department
-        const department = response.departments?.[0]?.toUpperCase();
-        switch (department) {
-          case "CLEARANCE":
-            navigate("/clearance/dashboard");
-            break;
-          case "OFFICIAL":
-            navigate("/official/dashboard");
-            break;
-          case "BLOTTER":
-            navigate("/blotter/dashboard");
-            break;
-          case "BCPC":
-            navigate("/bcpc/dashboard");
-            break;
-          case "VAWC":
-            navigate("/vawc/dashboard");
-            break;
-          case "LUPONG_TAGAPAMAYAPA":
-            navigate("/lupongtagapamayapa/dashboard");
-            break;
-          case "FIRST_TIME_JOB_SEEKER":
-            navigate("/first-time-job-seeker/dashboard");
-            break;
-          default:
-            navigate("/dashboard");
-        }
-      } else {
-        navigate("/login");
+        return;
       }
+
+      if (role === "ADMIN") {
+        navigate("/admin/dashboard");
+        return;
+      }
+
+      const departmentRoute = routeFromDepartment(response.departments?.[0]);
+      if (departmentRoute) {
+        navigate(departmentRoute);
+        return;
+      }
+
+      navigate("/login");
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       setCode(["", "", "", "", "", ""]);

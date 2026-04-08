@@ -1,5 +1,5 @@
-import  { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts'
+} from "recharts";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -20,7 +20,7 @@ import {
   FileText,
   LayoutDashboard,
   ExternalLink,
-} from 'lucide-react'
+} from "lucide-react";
 import {
   getReportStats,
   getStatusStats,
@@ -30,60 +30,60 @@ import {
   type StatusStatDTO,
   type NatureReportDTO,
   type ChartDataDTO,
-} from '../lupong-tagapamayapa-api/LuponReport'
-import { TableFilter } from '../reusable/TableFilter'
-import { KPICard,KPIGrid } from '../reusable/KPICard'
-import { getStatusLabel } from '../lupong-tagapamayapa-module/lib/StatusMapper'
-const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']
+} from "../lupong-tagapamayapa-api/LuponReport";
+import { TableFilter } from "../reusable/TableFilter";
+import { KPICard, KPIGrid } from "../reusable/KPICard";
+import { getStatusLabel } from "../lupong-tagapamayapa-module/lib/StatusMapper";
+const PIE_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
 export function LuponReportsPage() {
-  const navigate = useNavigate()
-  const today = new Date()
-  const currentYear = today.getFullYear()
-  const [startDate, setStartDate] = useState(`${currentYear}-01-01`)
-  const [endDate, setEndDate] = useState(`${currentYear}-12-31`)
-  const [stats, setStats] = useState<ReportStatsDTO | null>(null)
-  const [statusData, setStatusData] = useState<StatusStatDTO[]>([])
-  const [natureData, setNatureData] = useState<NatureReportDTO[]>([])
-  const [trendData, setTrendData] = useState<ChartDataDTO[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const navigate = useNavigate();
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
+  const [endDate, setEndDate] = useState(`${currentYear}-12-31`);
+  const [stats, setStats] = useState<ReportStatsDTO | null>(null);
+  const [statusData, setStatusData] = useState<StatusStatDTO[]>([]);
+  const [natureData, setNatureData] = useState<NatureReportDTO[]>([]);
+  const [trendData, setTrendData] = useState<ChartDataDTO[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const toLocalDateTime = (date: string, endOfDay = false) =>
-    date ? `${date}T${endOfDay ? '23:59:59' : '00:00:00'}` : ''
+    date ? `${date}T${endOfDay ? "23:59:59" : "00:00:00"}` : "";
   const fetchDashboardData = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const statsStart = toLocalDateTime(startDate)
-      const statsEnd = toLocalDateTime(endDate, true)
+      const statsStart = toLocalDateTime(startDate);
+      const statsEnd = toLocalDateTime(endDate, true);
       const [statsRes, statusRes, natureRes, trendRes] = await Promise.all([
         getReportStats(statsStart, statsEnd),
         getStatusStats(statsStart, statsEnd),
         getTopNature(statsStart, statsEnd),
         getCasesTrend(statsStart, statsEnd),
-      ])
-      setStats(statsRes)
+      ]);
+      setStats(statsRes);
       // Map status labels for display
       const mappedStatusData = statusRes.map((item) => ({
         ...item,
         status: getStatusLabel(item.status),
-      }))
-      setStatusData(mappedStatusData)
+      }));
+      setStatusData(mappedStatusData);
       setNatureData(
         natureRes.filter((n) => Number.isInteger(n.count) && n.count >= 1),
-      )
-      setTrendData(trendRes)
+      );
+      setTrendData(trendRes);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err)
+      console.error("Error fetching dashboard data:", err);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
   useEffect(() => {
-    fetchDashboardData()
-  }, [startDate, endDate])
-  const handleApplyGlobalFilter = () => fetchDashboardData()
+    fetchDashboardData();
+  }, [startDate, endDate]);
+  const handleApplyGlobalFilter = () => fetchDashboardData();
   const handleClearGlobalFilter = () => {
-    setStartDate(`${currentYear}-01-01`)
-    setEndDate(`${currentYear}-12-31`)
-  }
+    setStartDate(`${currentYear}-01-01`);
+    setEndDate(`${currentYear}-12-31`);
+  };
   if (isLoading && !stats) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -92,10 +92,10 @@ export function LuponReportsPage() {
           <p className="text-sm">Loading reports dashboard...</p>
         </div>
       </div>
-    )
+    );
   }
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans text-gray-900">
+    <div className="min-h-screen bg-gray-50/50 p-4 md:p-8 font-sans text-gray-900">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
@@ -104,7 +104,7 @@ export function LuponReportsPage() {
               <LayoutDashboard className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900">
                 Lupon Reports Dashboard
               </h1>
               <p className="text-sm text-gray-500">
@@ -112,6 +112,9 @@ export function LuponReportsPage() {
               </p>
             </div>
           </div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
+            Range: {startDate} to {endDate}
+          </span>
         </div>
 
         {/* Global Date Filter */}
@@ -120,8 +123,8 @@ export function LuponReportsPage() {
           filterButtonText="Apply Filter"
           clearButtonText="Reset"
           dateRange={{
-            startLabel: 'Date From',
-            endLabel: 'Date To',
+            startLabel: "Date From",
+            endLabel: "Date To",
             startValue: startDate,
             endValue: endDate,
             onStartChange: setStartDate,
@@ -164,7 +167,7 @@ export function LuponReportsPage() {
         </KPIGrid>
 
         {/* Cases Trend Chart */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-5 rounded-lg border border-gray-200">
           <h3 className="text-base font-semibold mb-5 text-gray-800">
             Cases Trend
           </h3>
@@ -189,7 +192,7 @@ export function LuponReportsPage() {
                   axisLine={false}
                   tickLine={false}
                   tick={{
-                    fill: '#6b7280',
+                    fill: "#6b7280",
                     fontSize: 11,
                   }}
                   angle={-45}
@@ -201,15 +204,15 @@ export function LuponReportsPage() {
                   axisLine={false}
                   tickLine={false}
                   tick={{
-                    fill: '#6b7280',
+                    fill: "#6b7280",
                     fontSize: 12,
                   }}
                 />
                 <Tooltip
                   contentStyle={{
-                    borderRadius: '8px',
-                    border: 'none',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    borderRadius: "8px",
+                    border: "none",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                   }}
                 />
                 <Bar
@@ -226,7 +229,7 @@ export function LuponReportsPage() {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Status Distribution */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-5 rounded-lg border border-gray-200">
             <h3 className="text-base font-semibold mb-5 text-gray-800">
               Status Distribution
             </h3>
@@ -252,9 +255,9 @@ export function LuponReportsPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      borderRadius: '8px',
-                      border: 'none',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      borderRadius: "8px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                     }}
                   />
                   <Legend
@@ -268,7 +271,7 @@ export function LuponReportsPage() {
           </div>
 
           {/* Top Nature of Complaints */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-5 rounded-lg border border-gray-200">
             <h3 className="text-base font-semibold mb-5 text-gray-800">
               Top Nature of Complaints
             </h3>
@@ -294,7 +297,7 @@ export function LuponReportsPage() {
                     axisLine={false}
                     tickLine={false}
                     tick={{
-                      fill: '#6b7280',
+                      fill: "#6b7280",
                       fontSize: 12,
                     }}
                   />
@@ -304,19 +307,19 @@ export function LuponReportsPage() {
                     axisLine={false}
                     tickLine={false}
                     tick={{
-                      fill: '#4b5563',
+                      fill: "#4b5563",
                       fontSize: 12,
                     }}
                     width={Math.max(90, Math.min(180, natureData.length * 40))}
                   />
                   <Tooltip
                     cursor={{
-                      fill: '#f3f4f6',
+                      fill: "#f3f4f6",
                     }}
                     contentStyle={{
-                      borderRadius: '8px',
-                      border: 'none',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      borderRadius: "8px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                     }}
                   />
                   <Bar
@@ -332,7 +335,7 @@ export function LuponReportsPage() {
         </div>
 
         {/* Monthly Report Link */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-5 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-semibold text-gray-800 mb-1">
@@ -343,7 +346,7 @@ export function LuponReportsPage() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/lupongtagapamayapa/monthly-report')}
+              onClick={() => navigate("/lupongtagapamayapa/monthly-report")}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               View Report
@@ -353,5 +356,5 @@ export function LuponReportsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

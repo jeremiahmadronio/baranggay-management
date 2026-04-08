@@ -32,6 +32,7 @@ export interface ResidentSummary {
   contactNumber: string;
   householdNumber: string;
   isVoter: boolean;
+  status?: string;
 }
 
 export interface ResidentCaseHistoryDTO {

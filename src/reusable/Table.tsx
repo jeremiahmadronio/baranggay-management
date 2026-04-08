@@ -30,6 +30,7 @@ interface TableProps<T> {
     itemsPerPage: number;
     onPageChange: (page: number) => void;
   };
+  variant?: "default" | "resident";
 }
 
 export const Table = <T,>({
@@ -46,6 +47,7 @@ export const Table = <T,>({
   selectedKeys = [],
   onSelectionChange,
   pagination,
+  variant = "default",
 }: TableProps<T>) => {
   const allKeys = data.map((item, index) => keyExtractor(item, index));
   const isAllSelected =
@@ -89,12 +91,34 @@ export const Table = <T,>({
     return value !== undefined && value !== null ? String(value) : "-";
   };
 
+  const isResidentVariant = variant === "resident";
+  const containerClass = isResidentVariant
+    ? "bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col"
+    : "bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col";
+  const theadClass = isResidentVariant
+    ? "bg-gray-50 border-b border-gray-200"
+    : "bg-slate-50 border-b border-gray-200";
+  const thClass = isResidentVariant
+    ? "px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
+    : "px-4 py-3 text-sm font-medium text-gray-700";
+  const tdClass = isResidentVariant
+    ? "px-6 py-4 text-base text-gray-700"
+    : "px-4 py-3 text-sm text-gray-700";
+
+  const rowBaseClass = isResidentVariant
+    ? "transition-colors"
+    : "transition-colors";
+  const stripedClass = striped
+    ? isResidentVariant
+      ? "bg-white"
+      : "bg-white"
+    : "bg-white";
+
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+      <div className={containerClass}>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-slate-600"></div>
-          <span className="ml-3 text-slate-500">Loading...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-slate-600"></div>
         </div>
       </div>
     );
@@ -108,13 +132,13 @@ export const Table = <T,>({
     minRows && data.length < minRows ? minRows - data.length : 0;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+    <div className={containerClass}>
       <div
         className="overflow-x-auto flex-1"
         style={{ minHeight: tableMinHeight }}
       >
         <table className="w-full">
-          <thead className="bg-slate-50 border-b border-gray-200">
+          <thead className={theadClass}>
             <tr>
               {selectable && (
                 <th className="px-4 py-3 w-[50px]">
@@ -133,7 +157,7 @@ export const Table = <T,>({
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
-                  className={`px-4 py-3 text-sm font-medium text-gray-700 ${getAlignment(column.align)}`}
+                  className={`${thClass} ${getAlignment(column.align)}`}
                   style={{ width: column.width }}
                 >
                   {column.header}
@@ -179,11 +203,12 @@ export const Table = <T,>({
                       key={rowKey}
                       onClick={() => onRowClick?.(item)}
                       className={`
-                        ${striped && index % 2 === 1 ? "bg-slate-50/50" : "bg-white"}
-                        ${hoverable ? "hover:bg-slate-50 transition-colors" : ""}
+                        ${striped && index % 2 === 1 ? (isResidentVariant ? "bg-gray-50/50" : "bg-slate-50/50") : stripedClass}
+                        ${hoverable ? (isResidentVariant ? "hover:bg-gray-50" : "hover:bg-slate-50") : ""}
                         ${onRowClick ? "cursor-pointer" : ""}
                         ${isSelected ? "bg-blue-50/50" : ""}
                         ${showBorder ? "border-b border-gray-100" : ""}
+                        ${rowBaseClass}
                       `}
                     >
                       {selectable && (
@@ -200,7 +225,7 @@ export const Table = <T,>({
                       {columns.map((column) => (
                         <td
                           key={String(column.key)}
-                          className={`px-4 py-3 text-sm text-gray-700 ${getAlignment(column.align)}`}
+                          className={`${tdClass} ${getAlignment(column.align)}`}
                         >
                           {getCellValue(item, column)}
                         </td>
@@ -213,10 +238,7 @@ export const Table = <T,>({
                   <tr key={`empty-${index}`} className="bg-white">
                     {selectable && <td className="px-4 py-3">&nbsp;</td>}
                     {columns.map((column) => (
-                      <td
-                        key={String(column.key)}
-                        className="px-4 py-3 text-sm"
-                      >
+                      <td key={String(column.key)} className={tdClass}>
                         &nbsp;
                       </td>
                     ))}

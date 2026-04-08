@@ -1,19 +1,79 @@
-import { useEffect, useState } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend 
-} from 'recharts';
-import { Calendar, ArrowRight, Clock, FileText, CheckCircle, AlertCircle } from 'lucide-react';
-import { KPICard, KPIGrid } from '../reusable/KPICard'; 
-import * as api from '../lupong-tagapamayapa-api/dashboard-api';
-import {  useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+import {
+  Calendar,
+  ArrowRight,
+  Clock,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
+import { KPICard, KPIGrid } from "../reusable/KPICard";
+import * as api from "../lupong-tagapamayapa-api/dashboard-api";
+import { useNavigate } from "react-router-dom";
+import {
+  CenteredLoader,
+  CircleLoader,
+  NoRecords,
+} from "../reusable/LoadingStates";
 
-const COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#8B5CF6', '#6366F1'];
+const COLORS = ["#F59E0B", "#3B82F6", "#10B981", "#8B5CF6", "#6366F1"];
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="mb-5">
+        <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+        {subtitle ? (
+          <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+        ) : null}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const getCaseStatusBadge = (statusRaw: string) => {
+  const status = String(statusRaw || "").toUpperCase();
+  if (status === "PENDING") return "bg-amber-100 text-amber-700";
+  if (status === "UNDER_MEDIATION") return "bg-blue-100 text-blue-700";
+  if (status === "UNDER_CONCILIATION") return "bg-indigo-100 text-indigo-700";
+  if (status === "REFERRED_TO_LUPON") return "bg-violet-100 text-violet-700";
+  if (status === "SETTLED") return "bg-emerald-100 text-emerald-700";
+  if (status === "DISMISSED") return "bg-rose-100 text-rose-700";
+  if (status === "CERTIFIED_TO_FILE_ACTION") return "bg-cyan-100 text-cyan-700";
+  if (status === "EXPIRED_UNACTIONED") return "bg-red-100 text-red-700";
+  if (status === "WITHDRAWN") return "bg-orange-100 text-orange-700";
+  if (status === "CLOSED") return "bg-slate-100 text-slate-700";
+  return "bg-slate-100 text-slate-700";
+};
 
 const LupongTagapamayapaDashboard = () => {
   const [stats, setStats] = useState<api.DashboardStatsDTO | null>(null);
   const [chartData, setChartData] = useState<api.MonthlyCaseChartDTO[]>([]);
-  const [distribution, setDistribution] = useState<api.CaseStatusDistributionDTO[]>([]);
+  const [distribution, setDistribution] = useState<
+    api.CaseStatusDistributionDTO[]
+  >([]);
   const [recentCases, setRecentCases] = useState<api.RecentCaseDTO[]>([]);
   const [hearings, setHearings] = useState<api.UpcomingHearingDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,16 +89,17 @@ const LupongTagapamayapaDashboard = () => {
           api.getMonthlyChart(),
           api.getCaseDistribution(),
           api.getRecentCases(),
-          api.getUpcomingHearings()
+          api.getUpcomingHearings(),
         ]);
-        
+
         setStats(s);
         setChartData(c);
-        // Format names directly here para sa Legend ng Pie Chart
-        setDistribution(d.map(item => ({
-          ...item,
-          status: formatStatusText(item.status)
-        })));
+        setDistribution(
+          d.map((item) => ({
+            ...item,
+            status: formatStatusText(item.status),
+          })),
+        );
         setRecentCases(r);
         setHearings(h);
       } catch (error) {
@@ -50,175 +111,297 @@ const LupongTagapamayapaDashboard = () => {
     fetchData();
   }, []);
 
-  // Helper: CERTIFIED_TO_FILE_ACTION -> Certified To File Action
   const formatStatusText = (text: string) => {
     if (!text) return "";
     return text
       .toLowerCase()
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   const formatDate = (dateStr: string) => {
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(dateStr));
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(dateStr));
   };
 
   const formatTime = (dateStr: string) => {
-    return new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' }).format(new Date(dateStr));
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(dateStr));
   };
 
-  if (loading) return <div className="p-8 text-center font-medium text-gray-500">Loading Blotter Dashboard...</div>;
+  const cardValue = (value?: number | null) => {
+    if (loading) return <CircleLoader size="sm" />;
+    if (value === undefined || value === null) return 0;
+    return value;
+  };
 
   return (
-    <div className="p-6  min-h-screen space-y-6">
-      <KPIGrid columns={4}>
-        <KPICard 
-          title="Hearings Today" 
-          value={stats?.hearingsToday || 0} 
-          color="blue" 
-          icon={<Clock className="w-6 h-6" />}
-          subtitle="Scheduled for today"
-        />
-        <KPICard 
-          title="Pending New Cases" 
-          value={stats?.pendingNewCases || 0} 
-          color="amber" 
-          icon={<FileText className="w-6 h-6" />}
-          subtitle="Awaiting initial action"
-        />
-        <KPICard 
-          title="Nearing Deadline" 
-          value={stats?.nearingDeadline || 0} 
-          color="rose" 
-          icon={<AlertCircle className="w-6 h-6" />}
-          subtitle="Cases within 5 days"
-        />
-        <KPICard 
-          title="Settled This Month" 
-          value={stats?.settledThisMonth || 0} 
-          color="emerald" 
-          icon={<CheckCircle className="w-6 h-6" />}
-          subtitle="Successfully mediated"
-        />
-      </KPIGrid>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Monthly Cases Filed</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" fontSize={12} tickMargin={10} />
-                <YAxis fontSize={12} />
-                <Tooltip cursor={{fill: '#f3f4f6'}} />
-                <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={35} />
-              </BarChart>
-            </ResponsiveContainer>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Lupong Dashboard
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Quick view of lupon case trends, statuses, and upcoming hearings.
+            </p>
           </div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
+            Live Overview
+          </span>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Case Status Distribution</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={distribution}
-                  dataKey="count"
-                  nameKey="status"
-                  cx="50%" cy="50%"
-                  innerRadius={65}
-                  outerRadius={85}
-                  paddingAngle={5}
-                >
-                  {distribution.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend 
-                  verticalAlign="bottom" 
-                  iconType="circle"
-                  wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+        <KPIGrid columns={4}>
+          <KPICard
+            title="Hearings Today"
+            value={cardValue(stats?.hearingsToday)}
+            color="blue"
+            icon={<Clock className="w-6 h-6" />}
+            subtitle="Scheduled for today"
+          />
+          <KPICard
+            title="Pending New Cases"
+            value={cardValue(stats?.pendingNewCases)}
+            color="amber"
+            icon={<FileText className="w-6 h-6" />}
+            subtitle="Awaiting initial action"
+          />
+          <KPICard
+            title="Nearing Deadline"
+            value={cardValue(stats?.nearingDeadline)}
+            color="rose"
+            icon={<AlertCircle className="w-6 h-6" />}
+            subtitle="Cases within 5 days"
+          />
+          <KPICard
+            title="Settled This Month"
+            value={cardValue(stats?.settledThisMonth)}
+            color="emerald"
+            icon={<CheckCircle className="w-6 h-6" />}
+            subtitle="Successfully mediated"
+          />
+        </KPIGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-5 border-b flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800">Recent Cases</h3>
-            <button className="text-blue-600 text-sm font-medium flex items-center gap-1 hover:text-blue-700"  onClick={() => navigate(`/lupongtagapamayapa/cases`)}>
-              View All <ArrowRight className="w-4 h-4" />
-              
-              
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="px-6 py-4 font-bold">Blotter No.</th>
-                  <th className="px-6 py-4 font-bold">Parties</th>
-                  <th className="px-6 py-4 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentCases.map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-600">{c.blotterNumber}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-gray-900 font-semibold">{c.complainantName}</div>
-                      <div className="text-gray-400 text-xs italic">vs {c.respondentName}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase
-                        ${c.status.includes('PENDING') ? 'bg-amber-100 text-amber-700' : 
-                          c.status.includes('SETTLED') ? 'bg-emerald-100 text-emerald-700' : 
-                          'bg-blue-100 text-blue-700'}`}>
-                        {formatStatusText(c.status)}
-                      </span>
-                    </td>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SectionCard
+            title="Monthly Cases Filed"
+            subtitle="Distribution of filed cases by month"
+          >
+            <div className="h-64">
+              {loading ? (
+                <CenteredLoader minHeight="min-h-[256px]" />
+              ) : chartData.length === 0 ? (
+                <NoRecords text="No monthly case filed." />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" fontSize={12} tickMargin={10} />
+                    <YAxis fontSize={12} />
+                    <Tooltip
+                      cursor={{ fill: "#f8fafc" }}
+                      contentStyle={{
+                        borderRadius: 10,
+                        border: "1px solid #E2E8F0",
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar
+                      dataKey="count"
+                      fill="#3B82F6"
+                      radius={[4, 4, 0, 0]}
+                      barSize={35}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Case Status Distribution"
+            subtitle="Current spread of case outcomes"
+          >
+            <div className="h-64">
+              {loading ? (
+                <CenteredLoader minHeight="min-h-[256px]" />
+              ) : distribution.length === 0 ? (
+                <NoRecords text="No case status distribution yet." />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={distribution}
+                      dataKey="count"
+                      nameKey="status"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={85}
+                      paddingAngle={5}
+                    >
+                      {distribution.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: 10,
+                        border: "1px solid #E2E8F0",
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: "20px", fontSize: "12px" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </SectionCard>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-8 bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="p-5 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Recent Cases
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Latest records from lupon case entries
+                </p>
+              </div>
+              <button
+                className="text-sm font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1"
+                onClick={() => navigate(`/lupongtagapamayapa/cases`)}
+              >
+                View All <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Blotter No.
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Complainant
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Respondent
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-10">
+                        <CenteredLoader minHeight="min-h-[120px]" />
+                      </td>
+                    </tr>
+                  ) : recentCases.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-10">
+                        <NoRecords text="No recent cases." />
+                      </td>
+                    </tr>
+                  ) : (
+                    recentCases.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="hover:bg-slate-50/70 transition-colors"
+                      >
+                        <td className="px-6 py-4 font-medium text-gray-600">
+                          {c.blotterNumber}
+                        </td>
+                        <td className="px-6 py-4 text-gray-900 font-semibold">
+                          {c.complainantName}
+                        </td>
+                        <td className="px-6 py-4 text-gray-700">
+                          {c.respondentName}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium uppercase ${getCaseStatusBadge(c.status)}`}
+                          >
+                            {formatStatusText(c.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        <div className="lg:col-span-4 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
-          <div className="p-5 border-b flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800">Upcoming Hearings</h3>
-            <button className="text-blue-600 text-sm font-medium hover:text-blue-700" onClick={() => navigate(`/lupongtagapamayapa/view-all-hearings`)}>
-               View Hearing
-            </button>
-          </div>
-          <div className="p-5 space-y-5 flex-1">
-            {hearings.length > 0 ? hearings.map((h) => (
-              <div key={h.hearingId} className="flex items-center gap-4 group cursor-default">
-                <div className="bg-blue-50 p-2.5 rounded-lg group-hover:bg-blue-100 transition-colors">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{h.caseTitle}</p>
-                  <p className="text-[11px] text-gray-400">{h.blotterNumber}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-xs font-bold text-gray-700">{formatDate(h.scheduledStart)}</p>
-                  <p className="text-[10px] font-medium text-gray-400">{formatTime(h.scheduledStart)}</p>
-                </div>
+          <div className="lg:col-span-4 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Upcoming Hearings
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Next scheduled mediation sessions
+                </p>
               </div>
-            )) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-2">
-                <Calendar className="w-8 h-8 opacity-20" />
-                <p className="text-xs italic">No upcoming hearings</p>
-              </div>
-            )}
+              <button
+                className="text-sm font-semibold text-blue-700 hover:text-blue-800"
+                onClick={() =>
+                  navigate(`/lupongtagapamayapa/view-all-hearings`)
+                }
+              >
+                View Hearing
+              </button>
+            </div>
+            <div className="p-5 space-y-5 flex-1">
+              {loading ? (
+                <CenteredLoader minHeight="min-h-[180px]" />
+              ) : hearings.length > 0 ? (
+                hearings.map((h) => (
+                  <div key={h.hearingId} className="flex items-center gap-4">
+                    <div className="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {h.caseTitle}
+                      </p>
+                      <p className="text-xs text-gray-500">{h.blotterNumber}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-semibold text-gray-700">
+                        {formatDate(h.scheduledStart)}
+                      </p>
+                      <p className="text-[10px] font-medium text-gray-500">
+                        {formatTime(h.scheduledStart)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-2">
+                  <NoRecords text="No upcoming hearings." />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -5,6 +5,38 @@ import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
 import { authService } from "../login-api/login";
 
+function normalizeKey(value?: string | null): string {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+function routeFromDepartment(department?: string | null): string | null {
+  const key = normalizeKey(department);
+
+  switch (key) {
+    case "CLEARANCE":
+      return "/clearance/dashboard";
+    case "OFFICIAL":
+      return "/official-portal/dashboard";
+    case "BLOTTER":
+      return "/blotter/dashboard";
+    case "BCPC":
+      return "/bcpc/dashboard";
+    case "VAWC":
+      return "/vawc/dashboard";
+    case "LUPON":
+    case "LUPONG_TAGAPAMAYAPA":
+      return "/lupongtagapamayapa/dashboard";
+    case "FIRST_TIME_JOB_SEEKER":
+    case "FTJS":
+      return "/first-time-job-seeker/dashboard";
+    default:
+      return null;
+  }
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -35,7 +67,28 @@ export function LoginPage() {
 
       if (response.token === "MFA_REQUIRED") {
         navigate("/mfa-verification", { state: { email } });
+        return;
       }
+
+      const role = normalizeKey(response.role);
+
+      if (role === "ROOT_ADMIN") {
+        navigate("/rootadmin/dashboard");
+        return;
+      }
+
+      if (role === "ADMIN") {
+        navigate("/admin/dashboard");
+        return;
+      }
+
+      const departmentRoute = routeFromDepartment(response.departments?.[0]);
+      if (departmentRoute) {
+        navigate(departmentRoute);
+        return;
+      }
+
+      navigate("/login");
     } catch (err: any) {
       setError("Login failed. Please check your credentials.");
     } finally {
@@ -55,7 +108,7 @@ export function LoginPage() {
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
             Welcome Back
           </h2>
-          <p className="text-slate-500">Sign in to your  account</p>
+          <p className="text-slate-500">Sign in to your account</p>
         </div>
 
         {error && (
@@ -204,8 +257,6 @@ export function LoginPage() {
             )}
           </button>
         </form>
-
-   
       </motion.div>
     </AuthLayout>
   );

@@ -1,6 +1,6 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
-const BLOTTER_FORM_URL    = `${BASE}/api/v1/blotter-form`;
+const BLOTTER_FORM_URL = `${BASE}/api/v1/blotter-form`;
 const BLOTTER_OPTIONS_URL = `${BASE}/api/v1/blotter`;
 
 export interface NatureOptionDTO {
@@ -13,9 +13,16 @@ export interface EvidenceOptionDTO {
   typName: string;
 }
 
+export interface OfficerOptionDTO {
+  id: number;
+  name: string;
+  position: string;
+}
+
 export interface RecordBlotterEntry {
-  complainantId ?: number; 
-    respondentId ?: number;
+  complainantId?: number;
+  respondentId?: number;
+  assignToId?: number;
   firstName: string;
   lastName: string;
   middleName?: string;
@@ -40,7 +47,7 @@ export interface RecordBlotterEntry {
 
   narrativeStatement: string;
 
-  evidenceTypeIds?: number[];
+  evidenceTypeIds?: string[];
 }
 
 export interface WitnessEntry {
@@ -48,12 +55,13 @@ export interface WitnessEntry {
   fullName: string;
   contactNumber?: string;
   address?: string;
+  testimony?: string;
 }
 
 export interface FormalComplaintEntry {
-
-  complainantId ?: number;
-  respondentId ?: number;
+  complainantId?: number;
+  respondentId?: number;
+  assignToId?: number;
 
   complainantLastName: string;
   complainantFirstName: string;
@@ -87,10 +95,59 @@ export interface FormalComplaintEntry {
 
   narrativeStatement: string;
 
-  evidenceTypeIds?: (string | number)[];
-  
+  evidenceTypeIds?: string[];
+
   witnesses?: WitnessEntry[];
   certifiedTrue?: boolean;
+}
+
+export interface EditComplaintEntry {
+  complainantId: number | null;
+  respondentId: number | null;
+
+  // Complainant Details
+  complainantLastName: string;
+  complainantFirstName: string;
+  complainantMiddleName: string | null;
+  complainantContact: string;
+  complainantAge: number | null;
+  complainantGender: string | null;
+  complainantCivilStatus: string | null;
+  complainantEmail: string | null;
+  complainantAddress: string;
+
+  respondentLastName: string;
+  respondentFirstName: string;
+  respondentMiddleName: string | null;
+  respondentAlias: string | null;
+  respondentAge: number | null;
+  respondentDob: string | null; // "YYYY-MM-DD"
+  respondentGender: string | null;
+  respondentCivilStatus: string | null;
+  respondentContact: string | null;
+  respondentAddress: string | null;
+  relationshipTypeName: string | null;
+  livingWithComplainant: boolean;
+
+  natureOfComplaintId: string; // @NotNull
+  dateOfIncident: string; // @NotNull ("YYYY-MM-DD")
+  timeOfIncident: string | null;
+  placeOfIncident: string; // @NotBlank
+  frequencyOfIncident: string | null;
+  descriptionOfInjuries: string | null;
+  narrativeStatement: string;
+
+  assignToId: number | null;
+
+  evidenceTypeIds: string[];
+  witnesses: WitnessEntry[];
+  isCertified?: boolean;
+}
+
+export interface LuponOptionDTO {
+  id: number;
+  name: string;
+  position: string;
 }
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -124,34 +181,72 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.text() as unknown as T;
 }
 
-export async function getNatureOfComplaintOptions(): Promise<NatureOptionDTO[]> {
-  return apiFetch<NatureOptionDTO[]>(`${BLOTTER_OPTIONS_URL}/nature-of-complaint-options`);
+export async function getNatureOfComplaintOptions(): Promise<
+  NatureOptionDTO[]
+> {
+  return apiFetch<NatureOptionDTO[]>(
+    `${BLOTTER_OPTIONS_URL}/nature-of-complaint-options`,
+  );
 }
 
 export async function getEvidenceTypeOptions(): Promise<EvidenceOptionDTO[]> {
-  return apiFetch<EvidenceOptionDTO[]>(`${BLOTTER_OPTIONS_URL}/evidence-type-options`);
+  return apiFetch<EvidenceOptionDTO[]>(
+    `${BLOTTER_OPTIONS_URL}/evidence-type-options`,
+  );
 }
 
-export async function submitForTheRecord(body: RecordBlotterEntry): Promise<string> {
+export async function submitForTheRecord(
+  body: RecordBlotterEntry,
+): Promise<string> {
   return apiFetch<string>(`${BLOTTER_FORM_URL}/for-the-record`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export async function submitFormalComplaint(body: FormalComplaintEntry): Promise<string> {
+export async function submitFormalComplaint(
+  body: FormalComplaintEntry,
+): Promise<string> {
   return apiFetch<string>(`${BLOTTER_FORM_URL}/formal-complaint`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export async function escalateToFormalComplaint(
-  blotterNumber: string, 
-  body: FormalComplaintEntry
+export async function updateCaseInformation(
+  caseId: number,
+  body: EditComplaintEntry,
 ): Promise<string> {
-  return apiFetch<string>(`${BLOTTER_FORM_URL}/escalate/${encodeURIComponent(blotterNumber)}`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  return apiFetch<string>(
+    `${BLOTTER_FORM_URL}/update/${encodeURIComponent(String(caseId))}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function luponOptions(): Promise<LuponOptionDTO[]> {
+  return apiFetch<LuponOptionDTO[]>(
+    `${BLOTTER_OPTIONS_URL}/assign-officer-option`,
+  );
+}
+
+export async function escalateToFormalComplaint(
+  blotterNumber: string,
+  body: FormalComplaintEntry,
+): Promise<string> {
+  return apiFetch<string>(
+    `${BLOTTER_FORM_URL}/escalate/${encodeURIComponent(blotterNumber)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function getOfficerOptions(): Promise<OfficerOptionDTO[]> {
+  return apiFetch<OfficerOptionDTO[]>(
+    `${BLOTTER_FORM_URL}/assign-officer-complaint`,
+  );
 }

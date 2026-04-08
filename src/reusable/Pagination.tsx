@@ -23,71 +23,61 @@ export const Pagination = ({
   const canGoPrev = currentPage > 1;
   const canGoNext = currentPage < totalPages;
 
-  // Generate page numbers to show
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible + 2) {
-      // Show all pages if total is small
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Always show first page
-      pages.push(1);
-
-      if (currentPage > 3) {
-        pages.push("...");
-      }
-
-      // Show pages around current
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-
-      if (currentPage < totalPages - 2) {
-        pages.push("...");
-      }
-
-      // Always show last page
-      pages.push(totalPages);
+  const getVisiblePages = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
-    return pages;
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages] as const;
+    }
+
+    if (currentPage >= totalPages - 3) {
+      return [
+        1,
+        "...",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ] as const;
+    }
+
+    return [
+      1,
+      "...",
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      "...",
+      totalPages,
+    ] as const;
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-end gap-4 px-4 py-3 bg-white border-t border-gray-200">
+    <div
+      className={`flex flex-col sm:flex-row sm:items-center gap-3 px-6 py-4 border-t border-gray-200 ${
+        showItemCount && totalItems !== undefined
+          ? "sm:justify-between"
+          : "sm:justify-end"
+      }`}
+    >
       {/* Item count */}
       {showItemCount && totalItems !== undefined && (
-        <p className="text-sm text-slate-600">
-          Showing{" "}
-          <span className="font-medium">
-            {totalItems === 0 ? 0 : startItem}
-          </span>{" "}
-          to <span className="font-medium">{endItem}</span> of{" "}
-          <span className="font-medium">{totalItems}</span> results
+        <p className="text-sm text-gray-500">
+          Showing {totalItems === 0 ? 0 : startItem} to {endItem} of{" "}
+          {totalItems} results
         </p>
       )}
 
       {/* Pagination controls */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {/* Previous button */}
         <button
           onClick={() => canGoPrev && onPageChange(currentPage - 1)}
           disabled={!canGoPrev}
-          className={`
-            flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md border transition-colors
-            ${
-              canGoPrev
-                ? "text-slate-700 bg-white border-slate-300 hover:bg-slate-50"
-                : "text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed"
-            }
-          `}
+          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <svg
             className="w-4 h-4"
@@ -102,28 +92,27 @@ export const Pagination = ({
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Prev
         </button>
 
         {/* Page numbers */}
-        <div className="hidden sm:flex items-center gap-1">
-          {getPageNumbers().map((page, index) =>
+        <div className="flex items-center gap-1">
+          {getVisiblePages().map((page, index) =>
             page === "..." ? (
-              <span key={`ellipsis-${index}`} className="px-2 text-slate-400">
+              <span
+                key={`ellipsis-${index}`}
+                className="px-2 py-1 text-sm text-gray-400"
+              >
                 ...
               </span>
             ) : (
               <button
                 key={page}
                 onClick={() => onPageChange(page as number)}
-                className={`
-                  min-w-[36px] px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-                  ${
-                    currentPage === page
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-600 hover:bg-slate-100"
-                  }
-                `}
+                className={`min-w-9 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  currentPage === page
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
               >
                 {page}
               </button>
@@ -131,25 +120,12 @@ export const Pagination = ({
           )}
         </div>
 
-        {/* Mobile page indicator */}
-        <span className="sm:hidden px-3 py-1.5 text-sm text-slate-600">
-          Page {currentPage} of {totalPages}
-        </span>
-
         {/* Next button */}
         <button
           onClick={() => canGoNext && onPageChange(currentPage + 1)}
           disabled={!canGoNext}
-          className={`
-            flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md border transition-colors
-            ${
-              canGoNext
-                ? "text-slate-700 bg-white border-slate-300 hover:bg-slate-50"
-                : "text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed"
-            }
-          `}
+          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Next
           <svg
             className="w-4 h-4"
             fill="none"

@@ -20,35 +20,31 @@ import { MFAVerificationPage } from "./login/MFAVerificationPage";
 import { ResetCodeVerificationPage } from "./login/ResetCodeVerificationPage";
 import { ResetPasswordPage } from "./login/ResetPasswordPage";
 // Admin
-import { Reusable } from "./admin-module/reusable";
-import RecordInputDemo from "./admin-module/record-input";
-import ChartPage from "./admin-module/chart";
-import AdminPage from "./admin-module/DashboardReusable";
-import AdminDashboard from "./admin-module/dashboard";
-import UserManagement from "./admin-module/user-management";
-import { AdminSettings } from "./admin-module/settings";
-import {ResidentsPage} from "./pages/resident/ResidentsPage";
-
+import RecordInputDemo from "./pages/admin-module/user-management/record-input";
+import AdminDashboard from "./pages/admin-module/dashboard/dashboard";
+import UserManagement from "./pages/admin-module/user-management/user-management";
+import { AdminSettings } from "./pages/admin-module/settings";
+import { ResidentsPage } from "./pages/admin-module/resident/ResidentsPage";
+import { OfficerManagementPage } from "./pages/admin-module/officer/officerManagement";
+import ArchivePage from "./pages/admin-module/archive/archive";
 
 // Root Admin
 import RootAdminDashboard from "./admin-root-module/dashboard";
 import AdminManagement from "./admin-root-module/admin-management";
 import AuditLogs from "./admin-root-module/audit-logs";
-import {AccountSettings} from "./admin-root-module/account-settings";
+import { AccountSettings } from "./admin-root-module/account-settings";
 
 // BCPC
 import BCPCDashboard from "./bcpc-module/dashboard";
 
 // Blotter
-import BlotterDashboard from "./blotter-module/dashboard";
-import BlotterEntryForm from "./blotter-module/BlotterEntryForm";
-import Docketview from './blotter-module/Docketview';
-import BlotterRecordsPage from "./blotter-module/BlotterRecord";
-import BlotterViewPage from "./blotter-module/BlotterRecordView";
-import ReportsPage from "./blotter-module/BlotterReport";
-import ResidentListPage from "./blotter-module/Residents";
-
-
+import BlotterDashboard from "./pages/blotter-module/dashboard";
+import BlotterEntryForm from "./pages/blotter-module/BlotterEntryForm";
+import Docketview from "./pages/blotter-module/Docketview";
+import BlotterRecordsPage from "./pages/blotter-module/BlotterRecord";
+import BlotterViewPage from "./pages/blotter-module/BlotterRecordView";
+import ReportsPage from "./pages/blotter-module/BlotterReport";
+import ResidentListPage from "./pages/blotter-module/Residents";
 
 // Clearance
 import ClearanceDashboard from "./clearance-module/Dashboard";
@@ -66,12 +62,12 @@ import LupongTagapamayapaDashboard from "./lupong-tagapamayapa-module/dashboard"
 import LuponCases from "./lupong-tagapamayapa-module/Cases";
 import { ViewAllHearings } from "./lupong-tagapamayapa-module/ViewAllHearing";
 import { LuponReportsPage } from "./lupong-tagapamayapa-module/LuponReports";
-import{ MonthlyReportPage} from "./lupong-tagapamayapa-module/ReportsDILG";
-  import LuponCaseDetailViewWrapper from "./lupong-tagapamayapa-module/LuponCaseDetailViewWrapper";
+import { MonthlyReportPage } from "./lupong-tagapamayapa-module/ReportsDILG";
+import LuponCaseDetailViewWrapper from "./lupong-tagapamayapa-module/LuponCaseDetailViewWrapper";
 import OfficialDashboard from "./official-module/dashboard";
 
 //VAWC
-import VAWCDashboard from "./pages/vawc/dashboard";
+import {VawcDashboard} from "./pages/vawc/dashboard";
 
 // Landing Page
 import { LandingPage } from "./landing-page";
@@ -116,16 +112,15 @@ export function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="user-management" element={<UserManagement />} />
-        <Route path="reusable" element={<Reusable />} />
-        <Route path="charts" element={<ChartPage />} />
-        <Route path="archive" element={<PagePlaceholder title="Archive" />} />
+        <Route path="archive" element={<ArchivePage />} />
         <Route path="inputform" element={<RecordInputDemo />} />
-          <Route path="residents" element={<ResidentsPage />} />
+        <Route path="residents" element={<ResidentsPage />} />
+        <Route path="officers" element={<OfficerManagementPage />} />
         <Route
           path="users"
           element={<PagePlaceholder title="User Management" />}
         />
-        <Route path="tables" element={<AdminPage />} />
+        <Route path="tables" element={<AdminDashboard />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
@@ -145,7 +140,10 @@ export function App() {
 
         <Route path="docket" element={<Docketview />} />
         <Route path="records" element={<BlotterRecordsPage />} />
-        <Route path="docket"element={<PagePlaceholder title="Docket Books" />} />
+        <Route
+          path="docket"
+          element={<PagePlaceholder title="Docket Books" />}
+        />
         <Route path="entry-form" element={<BlotterEntryForm />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="record-view" element={<BlotterViewPage />} />
@@ -153,20 +151,20 @@ export function App() {
         <Route path="account-settings" element={<AccountSettings />} />
       </Route>
 
-
-        {/* Lupong Tagapamayapa */}
+      {/* Lupong Tagapamayapa */}
       <Route path="/lupongtagapamayapa" element={<LupongTagapamayapaLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<LupongTagapamayapaDashboard />} />
         <Route path="cases" element={<LuponCases />} />
         <Route path="residents" element={<ResidentListPage />} />
-        <Route path="cases/:blotterNumber" element={<LuponCaseDetailViewWrapper />} />
+        <Route
+          path="cases/:blotterNumber"
+          element={<LuponCaseDetailViewWrapper />}
+        />
         <Route path="view-all-hearings" element={<ViewAllHearings />} />
         <Route path="reports" element={<LuponReportsPage />} />
         <Route path="monthly-report" element={<MonthlyReportPage />} />
         <Route path="account-settings" element={<AccountSettings />} />
-         
-        
       </Route>
 
       {/* BCPC */}
@@ -182,7 +180,7 @@ export function App() {
       {/* VAWC */}
       <Route path="/vawc" element={<VawcLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<VAWCDashboard />} />
+        <Route path="dashboard" element={<VawcDashboard />} />
         <Route path="cases" element={<PagePlaceholder title="VAWC Cases" />} />
         <Route
           path="reports"
