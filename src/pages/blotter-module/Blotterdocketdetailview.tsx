@@ -34,7 +34,7 @@ import { ChangeStatusModal } from "./modal/ChangeStatusModal";
 import { EditCaseModal } from "./modal/EditCaseModal";
 import { ActionModal } from "./reusable/SuccessModal";
 import { PermissionDeniedPage } from "./reusable/PermissionDeniedPage";
-import { CenteredLoader, CircleLoader } from "../../reusable/LoadingStates";
+import { CenteredLoader, CircleLoader } from "../../hooks/LoadingStates";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 
 interface Props {

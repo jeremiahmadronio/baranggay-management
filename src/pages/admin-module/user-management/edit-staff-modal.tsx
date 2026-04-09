@@ -11,7 +11,7 @@ import {
   type UserTable,
   type UserViewDTO,
 } from "../../../service/admin-module-api/user-management";
-import { ActionModal } from "../../../reusable/SuccessModal";
+import { ActionModal } from "../../../hooks/SuccessModal";
 import { FormModalShell, FormSectionTitle } from "../../../reusable";
 import {
   filterPermissionsByDepartments,

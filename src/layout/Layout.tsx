@@ -49,10 +49,15 @@ export function Layout({ userRole }: LayoutProps) {
   const currentNavItem = navItems.find(
     (item) => item.path === location.pathname,
   );
-  const pageTitle =
-    currentNavItem?.label ||
-    location.pathname.split("/").pop()?.replace(/-/g, " ") ||
-    "Dashboard";
+  const isLuponCaseDetailRoute =
+    location.pathname.startsWith("/lupongtagapamayapa/cases/") &&
+    location.pathname.split("/").length === 4;
+
+  const fallbackTitle = isLuponCaseDetailRoute
+    ? "Case Details"
+    : location.pathname.split("/").pop()?.replace(/-/g, " ");
+
+  const pageTitle = currentNavItem?.label || fallbackTitle || "Dashboard";
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);

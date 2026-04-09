@@ -19,7 +19,7 @@ import {
   type EmployeeTable,
   type PagedTableParams,
 } from "../../../service/admin-module-api/officer";
-import { ActionModal } from "../../../reusable/SuccessModal";
+import { ActionModal } from "../../../reusable";
 import {
   KPICard,
   KPIGrid,

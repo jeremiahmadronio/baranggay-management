@@ -8,11 +8,12 @@ import {
   MessageSquareIcon,
   CheckCircle2Icon,
   AlertCircleIcon,
+  ShieldCheck,
 } from "lucide-react";
 import type {
   HearingFullDetailsDTO,
   FollowUpSummaryDTO,
-} from "../../../lupong-tagapamayapa-api/LuponCaseManagement-view-api-v2";
+} from "../../../service/lupon-api/LuponCaseManagement-view-api-v2";
 import { formatDate, formatTime } from "../shared/utils";
 
 interface Props {
@@ -26,6 +27,33 @@ export function HearingViewModal({ hearing, onClose }: Props) {
   const notes = hearing.minutes?.hearingNotes || "";
   const outcome = hearing.minutes?.outcome || "";
   const followUps: FollowUpSummaryDTO[] = hearing.followUps ?? [];
+  const hasLuponAttendance = hearing.minutes?.isInLupon === true;
+
+  const narrativeStep = hasLuponAttendance ? 3 : 2;
+  const outcomeStep = hasLuponAttendance ? 4 : 3;
+  const followUpStep = hasLuponAttendance ? 5 : 4;
+
+  const PresenceBadge = ({
+    present,
+  }: {
+    present: boolean | null | undefined;
+  }) => {
+    if (present === null || present === undefined) {
+      return (
+        <span className="text-xs font-bold px-2.5 py-1 rounded-full uppercase bg-gray-100 text-gray-500">
+          —
+        </span>
+      );
+    }
+
+    return (
+      <span
+        className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase ${present ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+      >
+        {present ? "Present" : "Absent"}
+      </span>
+    );
+  };
   const normalizedOutcome = String(outcome || "PENDING")
     .replace(/_/g, " ")
     .toLowerCase()
@@ -124,10 +152,56 @@ export function HearingViewModal({ hearing, onClose }: Props) {
             </div>
           </div>
 
-          {/* --- 2. Mediation Narrative --- */}
+          {/* --- 2. Lupon Attendance --- */}
+          {hasLuponAttendance && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5" /> 2 Lupon Attendance
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  {
+                    label: "Chairperson",
+                    present: hearing.minutes?.chairmanPresent,
+                  },
+                  {
+                    label: "Secretary",
+                    present: hearing.minutes?.secretaryPresent,
+                  },
+                  {
+                    label: "Member",
+                    present: hearing.minutes?.memberPresent,
+                  },
+                ].map(({ label, present }) => {
+                  const isAbsent = present === false;
+                  const isPresent = present === true;
+                  const rowClass = isPresent
+                    ? "bg-emerald-50/50 border-emerald-100"
+                    : isAbsent
+                      ? "bg-red-50/50 border-red-100"
+                      : "bg-gray-50 border-gray-200";
+
+                  return (
+                    <div
+                      key={label}
+                      className={`flex items-center justify-between px-4 py-3 border rounded-lg ${rowClass}`}
+                    >
+                      <span className="text-sm font-medium text-gray-700">
+                        {label}
+                      </span>
+                      <PresenceBadge present={present} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* --- 2/3. Mediation Narrative --- */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-              <FileTextIcon className="w-3.5 h-3.5" /> 2 Mediation Narrative
+              <FileTextIcon className="w-3.5 h-3.5" /> {narrativeStep} Mediation
+              Narrative
             </p>
             <div className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 leading-relaxed min-h-[100px] whitespace-pre-wrap">
               {notes || (
@@ -143,10 +217,10 @@ export function HearingViewModal({ hearing, onClose }: Props) {
             )}
           </div>
 
-          {/* --- 3. Outcome --- */}
+          {/* --- 3/4. Outcome --- */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-              <CheckCircle2Icon className="w-3.5 h-3.5" /> 3 Outcome
+              <CheckCircle2Icon className="w-3.5 h-3.5" /> {outcomeStep} Outcome
             </p>
             <div
               className={`flex items-start gap-3 px-4 py-3.5 rounded-lg border ${
@@ -180,8 +254,8 @@ export function HearingViewModal({ hearing, onClose }: Props) {
           {followUps.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <MessageSquareIcon className="w-3.5 h-3.5" /> 4 Follow-up
-                Records
+                <MessageSquareIcon className="w-3.5 h-3.5" /> {followUpStep}{" "}
+                Follow-up Records
               </p>
               <div className="space-y-3">
                 {followUps.map((f) => (

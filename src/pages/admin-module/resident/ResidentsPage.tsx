@@ -11,8 +11,8 @@ import {
   ChevronRightIcon,
   PlusIcon,
 } from "lucide-react";
-import { KPICard, KPIGrid, KPIIcons } from "../../../reusable/KPICard";
-import { ActionModal } from "../../../reusable/SuccessModal";
+import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
+import { ActionModal } from "../../../reusable";
 import { ResidentsView } from "./ResidentsView";
 import { AddResidentsModal } from "./AddResidentsModal";
 import { EditResidentsModal } from "./EditResidentsModal";

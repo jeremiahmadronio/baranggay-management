@@ -1,4 +1,4 @@
-import  { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 import {
   PieChart,
   Pie,
@@ -6,7 +6,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
-} from 'recharts'
+} from "recharts";
 import {
   AlertCircle,
   ShieldAlert,
@@ -14,8 +14,8 @@ import {
   FileWarning,
   RefreshCw,
   Loader2,
-} from 'lucide-react'
-import { KPICard, KPIGrid } from '../../reusable/KPICard'
+} from "lucide-react";
+import { KPICard, KPIGrid } from "../../hooks/KPICard";
 import {
   getVawcDashboardStats,
   getVawcCaseDistribution,
@@ -23,7 +23,7 @@ import {
   type DashboardStatsDTO,
   type DashboardCaseDistributionDTO,
   type DashboardRecentCaseDTO,
-} from '../../service/vawc-api/dashboard-api'
+} from "../../service/vawc-api/dashboard-api";
 // Fallback Mock Data for Preview purposes if API is unavailable
 const MOCK_STATS: DashboardStatsDTO = {
   totalCases: 142,
@@ -33,141 +33,141 @@ const MOCK_STATS: DashboardStatsDTO = {
   settledTrend: 5,
   bposIssued: 45,
   bposTrend: -2,
-}
+};
 const MOCK_DISTRIBUTION: DashboardCaseDistributionDTO[] = [
   {
-    label: 'Physical Abuse',
+    label: "Physical Abuse",
     value: 65,
   },
   {
-    label: 'Psychological Abuse',
+    label: "Psychological Abuse",
     value: 45,
   },
   {
-    label: 'Economic Abuse',
+    label: "Economic Abuse",
     value: 20,
   },
   {
-    label: 'Sexual Abuse',
+    label: "Sexual Abuse",
     value: 12,
   },
-]
+];
 const MOCK_RECENT_CASES: DashboardRecentCaseDTO[] = [
   {
-    caseNumber: 'VAWC-2023-001',
-    complainantName: 'Maria Santos',
-    natureOfComplaint: 'Physical Abuse',
-    status: 'Active',
+    caseNumber: "VAWC-2023-001",
+    complainantName: "Maria Santos",
+    natureOfComplaint: "Physical Abuse",
+    status: "Active",
   },
   {
-    caseNumber: 'VAWC-2023-002',
-    complainantName: 'Juana Dela Cruz',
-    natureOfComplaint: 'Psychological Abuse',
-    status: 'Under Investigation',
+    caseNumber: "VAWC-2023-002",
+    complainantName: "Juana Dela Cruz",
+    natureOfComplaint: "Psychological Abuse",
+    status: "Under Investigation",
   },
   {
-    caseNumber: 'VAWC-2023-003',
-    complainantName: 'Elena Reyes',
-    natureOfComplaint: 'Economic Abuse',
-    status: 'Resolved',
+    caseNumber: "VAWC-2023-003",
+    complainantName: "Elena Reyes",
+    natureOfComplaint: "Economic Abuse",
+    status: "Resolved",
   },
   {
-    caseNumber: 'VAWC-2023-004',
-    complainantName: 'Rosa Garcia',
-    natureOfComplaint: 'Physical Abuse',
-    status: 'Pending',
+    caseNumber: "VAWC-2023-004",
+    complainantName: "Rosa Garcia",
+    natureOfComplaint: "Physical Abuse",
+    status: "Pending",
   },
   {
-    caseNumber: 'VAWC-2023-005',
-    complainantName: 'Carmen Bautista',
-    natureOfComplaint: 'Sexual Abuse',
-    status: 'Active',
+    caseNumber: "VAWC-2023-005",
+    complainantName: "Carmen Bautista",
+    natureOfComplaint: "Sexual Abuse",
+    status: "Active",
   },
-]
-const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981']
+];
+const CHART_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#10b981"];
 export function VawcDashboard() {
-  const [stats, setStats] = useState<DashboardStatsDTO | null>(null)
+  const [stats, setStats] = useState<DashboardStatsDTO | null>(null);
   const [distribution, setDistribution] = useState<
     DashboardCaseDistributionDTO[]
-  >([])
-  const [recentCases, setRecentCases] = useState<DashboardRecentCaseDTO[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isUsingMock, setIsUsingMock] = useState(false)
+  >([]);
+  const [recentCases, setRecentCases] = useState<DashboardRecentCaseDTO[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUsingMock, setIsUsingMock] = useState(false);
   const fetchData = async () => {
-    setIsLoading(true)
-    setError(null)
-    setIsUsingMock(false)
+    setIsLoading(true);
+    setError(null);
+    setIsUsingMock(false);
     try {
       const [statsData, distData, casesData] = await Promise.all([
         getVawcDashboardStats(),
         getVawcCaseDistribution(),
         getVawcRecentCases(),
-      ])
-      setStats(statsData)
-      setDistribution(distData)
-      setRecentCases(casesData)
+      ]);
+      setStats(statsData);
+      setDistribution(distData);
+      setRecentCases(casesData);
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err)
-      setError('Unable to connect to the server. The API might be offline.')
+      console.error("Failed to fetch dashboard data:", err);
+      setError("Unable to connect to the server. The API might be offline.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
   const loadMockData = () => {
-    setStats(MOCK_STATS)
-    setDistribution(MOCK_DISTRIBUTION)
-    setRecentCases(MOCK_RECENT_CASES)
-    setError(null)
-    setIsUsingMock(true)
-  }
- 
+    setStats(MOCK_STATS);
+    setDistribution(MOCK_DISTRIBUTION);
+    setRecentCases(MOCK_RECENT_CASES);
+    setError(null);
+    setIsUsingMock(true);
+  };
+
   const getStatusBadge = (status: string) => {
-    const statusLower = status.toLowerCase()
-    if (statusLower.includes('resolved') || statusLower.includes('settled')) {
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes("resolved") || statusLower.includes("settled")) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
           Resolved
         </span>
-      )
+      );
     }
-    if (statusLower.includes('pending')) {
+    if (statusLower.includes("pending")) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
           Pending
         </span>
-      )
+      );
     }
-    if (statusLower.includes('active')) {
+    if (statusLower.includes("active")) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 border border-rose-200">
           Active
         </span>
-      )
+      );
     }
-    if (statusLower.includes('investigation')) {
+    if (statusLower.includes("investigation")) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
           Under Investigation
         </span>
-      )
+      );
     }
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
         {status}
       </span>
-    )
-  }
+    );
+  };
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
         <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
         <p className="text-gray-500 font-medium">Loading dashboard data...</p>
       </div>
-    )
+    );
   }
   if (error && !stats) {
     return (
@@ -194,7 +194,7 @@ export function VawcDashboard() {
           </div>
         </div>
       </div>
-    )
+    );
   }
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -225,7 +225,6 @@ export function VawcDashboard() {
               value={stats.totalCases.toLocaleString()}
               color="blue"
               icon={<FileWarning className="w-6 h-6" />}
-             
             />
             <KPICard
               title="Active BPOs"
@@ -239,14 +238,12 @@ export function VawcDashboard() {
               value={stats.totalSettled.toLocaleString()}
               color="emerald"
               icon={<Scale className="w-6 h-6" />}
-             
             />
             <KPICard
               title="BPOs Issued"
               value={stats.bposIssued.toLocaleString()}
               color="amber"
               icon={<FileWarning className="w-6 h-6" />}
-              
             />
           </KPIGrid>
         )}
@@ -271,7 +268,7 @@ export function VawcDashboard() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {distribution.map((entry, index) => (
+                      {distribution.map((_, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={CHART_COLORS[index % CHART_COLORS.length]}
@@ -280,9 +277,9 @@ export function VawcDashboard() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        borderRadius: '8px',
-                        border: 'none',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        borderRadius: "8px",
+                        border: "none",
+                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                       }}
                     />
                     <Legend
@@ -360,5 +357,5 @@ export function VawcDashboard() {
         </div>
       </div>
     </div>
-  )
+  );
 }

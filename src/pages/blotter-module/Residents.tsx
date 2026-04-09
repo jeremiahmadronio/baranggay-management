@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { EyeIcon } from "lucide-react";
-import { Table } from "../../reusable/Table";
-import type { TableColumn } from "../../reusable/Table";
-import { TableFilter } from "../../reusable/TableFilter";
+import { Table } from "../../hooks/Table";
+import type { TableColumn } from "../../hooks/Table";
+import { TableFilter } from "../../hooks/TableFilter";
 import { ResidentProfilePage } from "./ResidentView";
 import {
   getResidentTable,
@@ -13,7 +13,7 @@ import type {
   ResidentSummary,
   ResidentStatsDTO,
 } from "../../service/blotter-api/blotter-api";
-import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
+import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 
 function useDebounce<T>(value: T, delay = 400): T {
   const [debounced, setDebounced] = useState(value);

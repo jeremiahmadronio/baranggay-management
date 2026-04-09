@@ -23,7 +23,7 @@ import {
   type UserViewDTO,
   type UserTable,
 } from "../../../service/admin-module-api/user-management";
-import { KPICard, KPIGrid, KPIIcons } from "../../../reusable/KPICard";
+import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
 import CreateStaffModal from "./Create-Staff-Modal";
 import { LockStaffModal } from "./Lock-staff-modal";
 import { DeleteStaffModal } from "./delete-staff-modal";

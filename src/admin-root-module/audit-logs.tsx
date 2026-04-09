@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  
   Eye,
   ShieldAlert,
   AlertTriangle,
@@ -8,9 +7,9 @@ import {
   CalendarDays,
 } from "lucide-react";
 
-import { KPICard, KPIGrid } from "../reusable/KPICard";
-import { Table, type TableColumn } from "../reusable/Table";
-import { TableFilter } from "../reusable/TableFilter";
+import { KPICard, KPIGrid } from "../hooks/KPICard";
+import { Table, type TableColumn } from "../hooks/Table";
+import { TableFilter } from "../hooks/TableFilter";
 import { ViewModal } from "../reusable/DetailView";
 
 import {

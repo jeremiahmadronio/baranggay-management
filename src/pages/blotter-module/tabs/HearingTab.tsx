@@ -18,12 +18,12 @@ import { SectionCard } from "../shared/SectionCard";
 import { formatDate, formatTime } from "../shared/utils";
 import { generatePaanyaya } from "../modal/GeneratePaanyaya";
 import { updateHearingStatus } from "../../../service/blotter-api/blotter-api";
-import { ActionModal } from "../../../reusable/SuccessModal";
+import { ActionModal } from "../../../reusable";
 import { ArchiveReasonModal } from "../../../hooks/archive-modal";
 import {
   getHearingFullDetails,
   type HearingFullDetailsDTO,
-} from "../../../lupong-tagapamayapa-api/LuponCaseManagement-view-api-v2";
+} from "../../../service/lupon-api/LuponCaseManagement-view-api-v2";
 import { HearingViewModal } from "../modal/HearingViewModal";
 
 interface HearingsTabProps {

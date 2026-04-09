@@ -1,9 +1,9 @@
 import { BlotterDocketDetailView } from "./Blotterdocketdetailview";
 import { useState, useEffect, useCallback } from "react";
 import { Eye, ArrowUpRight, Archive, PencilLine } from "lucide-react";
-import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
+import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { Table, type TableColumn } from "../../reusable";
-import { TableFilter } from "../../reusable/TableFilter";
+import { TableFilter } from "../../hooks/TableFilter";
 import { ActionModal } from "../../hooks/SuccessModal";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import type {

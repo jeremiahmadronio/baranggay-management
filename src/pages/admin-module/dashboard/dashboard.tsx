@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
-import { KPICard, KPIGrid, KPIIcons } from "../../../reusable/KPICard";
+import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
 import {
   adminDashboardApi,
   type AdminDashboardStats,

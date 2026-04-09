@@ -23,7 +23,7 @@ import {
   type StatusStatDTO,
   type SettlementEfficiencyDTO,
 } from "../../service/blotter-api/blotter-api";
-import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
+import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import {
   BLOTTER_PERMISSIONS,
   getMyAccess,
@@ -33,7 +33,7 @@ import {
   CenteredLoader,
   CircleLoader,
   NoRecords,
-} from "../../reusable/LoadingStates";
+} from "../../hooks/LoadingStates";
 import { CalendarDays } from "lucide-react";
 
 // ─── Palette ────────────────────────────────────────────────────────────────

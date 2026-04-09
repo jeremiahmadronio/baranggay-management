@@ -10,7 +10,7 @@ import {
   type PersonSearchResponseDTO,
   type Role,
 } from "../../../service/admin-module-api/user-management";
-import { ActionModal } from "../../../reusable/SuccessModal";
+import { ActionModal } from "../../../reusable";
 import { FormModalShell, FormSectionTitle } from "../../../reusable";
 import {
   filterPermissionsByDepartments,
@@ -304,7 +304,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
   return (
     <>
       <FormModalShell
-        isOpen
+        isOpen={!submitSuccess}
         onClose={onClose}
         title="Create User Account"
         maxWidthClass="max-w-4xl"

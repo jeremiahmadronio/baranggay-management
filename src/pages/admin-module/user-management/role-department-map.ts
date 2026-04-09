@@ -30,10 +30,12 @@ const DEPT_PERMISSION_RULES: Record<DeptKey, string[]> = {
   ],
   lupon: [
     "Manage Conciliation",
+    "Manage Hearings & Mediation",
     "View Cases",
     "Create Case Entry",
     "Archive Cases",
     "Resolve & Finalize Case",
+    "Update Case Status",
     "Manage Case notes",
     "Manage Reports",
     "Issue Referral",

@@ -14,9 +14,9 @@ import { ViewUserModal } from "./view-user-modal";
 import { LockUserModal } from "./lock-user-modal";
 import { DeleteUserModal } from "./delete-user-modal";
 import { RestoreUserModal } from "./restore-user-modal";
-import { KPIGrid, KPICard, KPIIcons } from "../reusable/KPICard";
-import { Table, type TableColumn } from "../reusable/Table";
-import { TableFilter } from "../reusable/TableFilter";
+import { KPIGrid, KPICard, KPIIcons } from "../hooks/KPICard";
+import { Table, type TableColumn } from "../hooks/Table";
+import { TableFilter } from "../hooks/TableFilter";
 import { StatusBadge, getStatusFromValue } from "../reusable/StatusBadge";
 import {
   getAdminStats,

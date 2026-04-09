@@ -4,7 +4,7 @@ import { Lock, Eye, EyeOff, Loader2, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
 import { resetPasswordService } from "../login-api/reset-password";
-import { ActionModal } from "../reusable/SuccessModal";
+import { ActionModal } from "../reusable";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -246,7 +246,6 @@ export function ResetPasswordPage() {
         </form>
       </motion.div>
 
-      
       <ActionModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}

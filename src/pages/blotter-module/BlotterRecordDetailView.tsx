@@ -10,7 +10,7 @@ import {
   getFullBlotterRecord,
   type BlotterRecordViewDTO,
 } from "../../service/blotter-api/blotter-api";
-import { CenteredLoader } from "../../reusable/LoadingStates";
+import { CenteredLoader } from "../../hooks/LoadingStates";
 import { InfoRow } from "./shared/InfoRow";
 import { SectionCard } from "./shared/SectionCard";
 import { formatDate, formatTime } from "./shared/utils";

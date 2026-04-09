@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, Archive } from "lucide-react";
 import { Table, type TableColumn } from "../../reusable";
-import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
-import { TableFilter } from "../../reusable/TableFilter";
+import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
+import { TableFilter } from "../../hooks/TableFilter";
 import {
   getPagedBlotters,
   getRecordStats,
@@ -16,7 +16,7 @@ import {
   type RecordTableParams,
   type FtrSummaryStatsDTO,
 } from "../../service/blotter-api/blotter-api";
-import { CircleLoader } from "../../reusable/LoadingStates";
+import { CircleLoader } from "../../hooks/LoadingStates";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { ActionModal } from "./reusable/SuccessModal";
 
@@ -118,6 +118,7 @@ const BlotterRecordsPage: React.FC = () => {
   const [archiveEntry, setArchiveEntry] =
     useState<RecordBlotterSummaryDTO | null>(null);
   const [archiveSuccessOpen, setArchiveSuccessOpen] = useState(false);
+  const safeTotalPages = Math.max(1, totalPages || 0);
 
   // KPI stats state
   const [stats, setStats] = useState<FtrSummaryStatsDTO | null>(null);
@@ -464,17 +465,13 @@ const BlotterRecordsPage: React.FC = () => {
         hoverable
         striped
         minRows={PAGE_SIZE}
-        pagination={
-          totalItems > 0
-            ? {
-                currentPage: currentPage + 1,
-                totalPages,
-                totalItems,
-                itemsPerPage: PAGE_SIZE,
-                onPageChange: handlePageChange,
-              }
-            : undefined
-        }
+        pagination={{
+          currentPage: Math.min(currentPage + 1, safeTotalPages),
+          totalPages: safeTotalPages,
+          totalItems,
+          itemsPerPage: PAGE_SIZE,
+          onPageChange: handlePageChange,
+        }}
       />
     </div>
   );

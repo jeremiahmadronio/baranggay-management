@@ -11,7 +11,7 @@ import {
   type ReasonOption,
 } from "../../../reusable/StatusUpdateModal";
 
-import { ActionModal } from "../../../reusable/SuccessModal";
+import { ActionModal } from "../../../hooks/SuccessModal";
 
 interface ResidentProfilePageProps {
   residentId: number;

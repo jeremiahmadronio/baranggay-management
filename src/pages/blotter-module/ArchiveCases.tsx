@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Eye, RotateCcw } from "lucide-react";
 import { Table, type TableColumn } from "../../reusable";
-import { TableFilter } from "../../reusable/TableFilter";
-import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
+import { TableFilter } from "../../hooks/TableFilter";
+import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { BlotterDocketDetailView } from "./Blotterdocketdetailview";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { ActionModal } from "./reusable/SuccessModal";

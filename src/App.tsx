@@ -59,12 +59,13 @@ import { ClearanceSettings } from "./clearance-module/settings";
 import FirstTimeJobSeekerDashboard from "./first-time-job-seeker-module/dashboard";
 
 //LUPON
-import LupongTagapamayapaDashboard from "./lupong-tagapamayapa-module/dashboard";
-import LuponCases from "./lupong-tagapamayapa-module/Cases";
-import { ViewAllHearings } from "./lupong-tagapamayapa-module/ViewAllHearing";
-import { LuponReportsPage } from "./lupong-tagapamayapa-module/LuponReports";
-import { MonthlyReportPage } from "./lupong-tagapamayapa-module/ReportsDILG";
-import LuponCaseDetailViewWrapper from "./lupong-tagapamayapa-module/LuponCaseDetailViewWrapper";
+import LupongTagapamayapaDashboard from "./pages/lupon-module/lupon-pages/dashboard";
+import LuponCases from "./pages/lupon-module/lupon-pages/Cases";
+import LuponArchiveCasesPage from "./pages/lupon-module/lupon-pages/ArchiveCases";
+import { ViewAllHearings } from "./pages/lupon-module/lupon-pages/ViewAllHearing";
+import { LuponReportsPage } from "./pages/lupon-module/lupon-pages/LuponReports";
+import { MonthlyReportPage } from "./pages/lupon-module/lupon-pages/ReportsDILG";
+import LuponCaseDetailViewWrapper from "./pages/lupon-module/lupon-pages/LuponCaseDetailViewWrapper";
 import OfficialDashboard from "./official-module/dashboard";
 
 //VAWC
@@ -153,6 +154,7 @@ export function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<LupongTagapamayapaDashboard />} />
         <Route path="cases" element={<LuponCases />} />
+        <Route path="archive" element={<LuponArchiveCasesPage />} />
         <Route path="residents" element={<ResidentListPage />} />
         <Route
           path="cases/:blotterNumber"

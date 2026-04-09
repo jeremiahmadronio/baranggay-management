@@ -19,14 +19,14 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import { KPICard, KPIGrid } from "../../reusable/KPICard";
+import { KPICard, KPIGrid } from "../../hooks/KPICard";
 import * as api from "../../service/blotter-api/blotter-api";
 import { useNavigate } from "react-router-dom";
 import {
   CenteredLoader,
   CircleLoader,
   NoRecords,
-} from "../../reusable/LoadingStates";
+} from "../../hooks/LoadingStates";
 
 const DONUT_COLORS = ["#38BDF8", "#2563EB", "#60A5FA", "#93C5FD"];
 
@@ -201,8 +201,6 @@ const BlotterDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-       
-
         <KPIGrid columns={4}>
           <KPICard
             title="Hearings Today"

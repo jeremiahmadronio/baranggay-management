@@ -1,4 +1,4 @@
-export { ActionModal } from "./SuccessModal";
+export { ActionModal } from "../hooks/SuccessModal";
 export { ConfirmModal } from "./ActionsModal";
 export { LoadingModal } from "./LoadingModal";
 export { InputModal, InputGroupModal } from "./InputModal";
@@ -17,15 +17,15 @@ export type {
 } from "./StatusUpdateModal";
 
 // Table Components
-export { TableFilter } from "./TableFilter";
-export { Table } from "./Table";
-export type { TableColumn } from "./Table";
+export { TableFilter } from "../hooks/TableFilter";
+export { Table } from "../hooks/Table";
+export type { TableColumn } from "../hooks/Table";
 export { StatusBadge, getStatusFromValue } from "./StatusBadge";
 export { ActionButton, ActionButtonGroup } from "./ActionButton";
-export { Pagination } from "./Pagination";
+export { Pagination } from "../hooks/Pagination";
 
 // KPI Cards
-export { KPICard, KPIGrid, KPIIcons } from "./KPICard";
+export { KPICard, KPIGrid, KPIIcons } from "../hooks/KPICard";
 
 // View/Edit Components
 export { ViewModal, DetailModal, DetailCard, Avatar } from "./DetailView";
