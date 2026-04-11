@@ -121,8 +121,10 @@ export const clearanceNavItems: NavItemType[] = [
 // VAWC navigation items
 export const vawcNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/vawc/dashboard", icon: LayoutDashboard },
+  { label: "Residents", path: "/vawc/residents", icon: Users },
+  { label: "New Complaint", path: "/vawc/newcomplaint", icon: FilePlus2 },
   { label: "Cases", path: "/vawc/cases", icon: FileText },
-  { label: "Reports", path: "/vawc/reports", icon: Settings },
+  { label: "Reports", path: "/vawc/reports", icon: ChartNoAxesCombined },
 ];
 
 // First Time Job Seeker navigation items
