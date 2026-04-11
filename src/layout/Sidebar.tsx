@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut } from "lucide-react";
 import { getNavItemsByRole, type UserRole } from "./Nav-Items";
-import { authService } from "../login-api/login";
+import { authService } from "../service/login-api/login";
 import ugongLogo from "../../assets/ugong-logo.png";
 
 interface SidebarProps {

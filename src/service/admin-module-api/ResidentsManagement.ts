@@ -53,8 +53,8 @@ export interface ResidentCaseHistoryDTO {
 }
 
 export interface ResidentProfileViewDTO {
- peopleId: number;
-  photo?: string; 
+  peopleId: number;
+  photo?: string;
   firstName: string;
   lastName: string;
   middleName: string;
@@ -67,12 +67,12 @@ export interface ResidentProfileViewDTO {
   contactNumber: string;
   email: string;
   completeAddress: string;
-  
-  occupation: string;      
-  barangayIdNumber: string; 
-  householdNumber: string;  
-  precinctNumber: string;   
-  
+
+  occupation: string;
+  barangayIdNumber: string;
+  householdNumber: string;
+  precinctNumber: string;
+
   citizenship: string;
   religion: string;
   bloodType: string;
@@ -98,8 +98,8 @@ export interface ResidentDocumentViewDTO {
 }
 
 export interface UpdateStatusRequest {
-    status? : string
-    reason? : string
+  status?: string;
+  reason?: string;
 }
 
 export interface ResidentDocumentRequest {
@@ -124,7 +124,7 @@ export interface ResidentTableParams {
 }
 
 export interface AddResidentRequest {
- firstName: string;
+  firstName: string;
   lastName: string;
   middleName?: string;
   suffix?: string;
@@ -135,14 +135,14 @@ export interface AddResidentRequest {
   gender: string;
   civilStatus: string;
   email?: string;
-  photo?: string; 
-  
-  householdNumber: string; 
-  precinctNumber: string;  
+  photo?: string;
+
+  householdNumber: string;
+  precinctNumber: string;
   isVoter: boolean;
   isHeadOfFamily: boolean;
-  occupation?: string;   
-  
+  occupation?: string;
+
   citizenship: string;
   religion?: string;
   bloodType?: string;
@@ -152,8 +152,9 @@ export interface AddResidentRequest {
   isPwd: boolean;
   pwdIdNumber?: string;
   isIndigent: boolean;
-  educationalAttainment: string;
+  educationalAttainment?: string;
   documents?: ResidentDocumentRequest[];
+  username?: string; // Optional for backend compatibility
 }
 
 export interface UpdateResidentRequest {
@@ -183,7 +184,7 @@ export interface UpdateResidentRequest {
   isPwd: boolean;
   pwdIdNumber?: string;
   isIndigent: boolean;
-  educationalAttainment: string;
+  educationalAttainment?: string;
   documents?: UpdateDocumentRequest[];
 }
 
@@ -311,9 +312,10 @@ export async function getResidentStats(): Promise<ResidentStatsDTO> {
   return apiFetch<ResidentStatsDTO>(`${PEOPLE_URL}/stats`);
 }
 
-
-
-export async function updateResidentStatus(residentId: number, data: UpdateStatusRequest): Promise<string> {
+export async function updateResidentStatus(
+  residentId: number,
+  data: UpdateStatusRequest,
+): Promise<string> {
   return apiFetch<string>(`${PEOPLE_URL}/update-status/${residentId}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -322,7 +324,6 @@ export async function updateResidentStatus(residentId: number, data: UpdateStatu
     },
   });
 }
-
 
 //add resident
 export async function addResident(data: AddResidentRequest): Promise<string> {

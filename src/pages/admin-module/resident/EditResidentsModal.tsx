@@ -20,19 +20,6 @@ interface EditResidentsModalProps {
   onSubmit: (data: UpdateResidentRequest) => Promise<void>;
 }
 
-const PHILIPPINE_RELIGIONS = [
-  "Roman Catholic",
-  "Islam",
-  "Iglesia ni Cristo",
-  "Protestant",
-  "Seventh-day Adventist",
-  "Aglipayan",
-  "Bible Baptist",
-  "UCCP",
-  "Jehovah's Witness",
-  "Others",
-];
-
 const CITIZENSHIPS = [
   "Filipino",
   "American",
@@ -51,10 +38,7 @@ const NAME_MIN_LENGTH = 2;
 const NAME_MAX_LENGTH = 40;
 const ADDRESS_MAX_LENGTH = 200;
 const OCCUPATION_MAX_LENGTH = 80;
-const EDUCATION_MIN_LENGTH = 2;
-const EDUCATION_MAX_LENGTH = 80;
 const EMAIL_MAX_LENGTH = 100;
-const CUSTOM_TEXT_MAX_LENGTH = 60;
 
 const INITIAL_FORM_DATA: AddResidentRequest = {
   firstName: "",
@@ -103,7 +87,7 @@ export function EditResidentsModal({
   const [formData, setFormData] =
     useState<AddResidentRequest>(INITIAL_FORM_DATA);
   const [status, setStatus] = useState("");
-  const [customReligion, setCustomReligion] = useState("");
+  // Removed customReligion state as religion field is removed
   const [customCitizenship, setCustomCitizenship] = useState("");
   const [existingDocuments, setExistingDocuments] = useState<
     ResidentDocumentViewDTO[]
@@ -355,14 +339,7 @@ export function EditResidentsModal({
         setReplaceTargetDocumentId(null);
         setPhotoPreview(toDisplayPhotoSrc(existingPhoto));
 
-        let rel = profile.religion || "";
-        const isCustomRel = rel && !PHILIPPINE_RELIGIONS.includes(rel);
-        if (isCustomRel) {
-          setCustomReligion(rel);
-          rel = "Others";
-        } else {
-          setCustomReligion("");
-        }
+        // Religion field removed
 
         let cit = profile.citizenship || "Filipino";
         const isCustomCit = cit && !CITIZENSHIPS.includes(cit);
@@ -391,15 +368,13 @@ export function EditResidentsModal({
           isHeadOfFamily: profile.isHeadOfFamily,
           occupation: profile.occupation || "",
           citizenship: cit,
-          religion: rel,
           bloodType: profile.bloodType || "",
           barangayIdNumber: profile.barangayIdNumber || "",
-          dateOfResidency: profile.dateOfResidency,
+          dateOfResidency: profile.dateOfResidency || "",
           is4ps: profile.is4ps ?? false,
           isPwd: profile.isPwd ?? false,
           pwdIdNumber: profile.pwdIdNumber || "",
           isIndigent: profile.isIndigent ?? false,
-          educationalAttainment: profile.educationalAttainment || "",
         });
       })
       .catch((error) => console.error("Failed to fetch profile:", error))
@@ -486,12 +461,6 @@ export function EditResidentsModal({
       .replace(/[^A-Za-z\s'-]/g, "")
       .replace(/\s{2,}/g, " ")
       .slice(0, NAME_MAX_LENGTH);
-
-  const sanitizeCustomText = (value: string) =>
-    value
-      .replace(/[^A-Za-z\s'-]/g, "")
-      .replace(/\s{2,}/g, " ")
-      .slice(0, CUSTOM_TEXT_MAX_LENGTH);
 
   const validateEmail = (email: string) => {
     const value = email.trim();
@@ -749,17 +718,7 @@ export function EditResidentsModal({
 
     if (!finalCitizenship) newErrors.citizenship = "Required";
 
-    if (!formData.educationalAttainment.trim()) {
-      newErrors.educationalAttainment = "Required";
-    } else if (
-      formData.educationalAttainment.trim().length < EDUCATION_MIN_LENGTH
-    ) {
-      newErrors.educationalAttainment = `At least ${EDUCATION_MIN_LENGTH} characters`;
-    } else if (
-      formData.educationalAttainment.trim().length > EDUCATION_MAX_LENGTH
-    ) {
-      newErrors.educationalAttainment = `Max ${EDUCATION_MAX_LENGTH} characters`;
-    }
+    // Educational attainment is now optional and removed from UI
 
     if ((formData.occupation ?? "").trim().length > OCCUPATION_MAX_LENGTH) {
       newErrors.occupation = `Max ${OCCUPATION_MAX_LENGTH} characters`;
@@ -825,13 +784,9 @@ export function EditResidentsModal({
         completeAddress: formData.completeAddress.trim(),
         email: (formData.email ?? "").trim(),
         occupation: (formData.occupation ?? "").trim(),
-        educationalAttainment: formData.educationalAttainment.trim(),
+        // educationalAttainment, religion, and bloodType removed from update
         photo: croppedPhotoPayload,
         age,
-        religion:
-          formData.religion === "Others"
-            ? customReligion.trim()
-            : formData.religion,
         citizenship:
           formData.citizenship === "Others"
             ? customCitizenship.trim()
@@ -1404,63 +1359,16 @@ export function EditResidentsModal({
                               type="text"
                               value={customCitizenship}
                               onChange={(e) =>
-                                setCustomCitizenship(
-                                  sanitizeCustomText(e.target.value),
-                                )
+                                setCustomCitizenship(e.target.value)
                               }
-                              maxLength={CUSTOM_TEXT_MAX_LENGTH}
+                              maxLength={40}
                               placeholder="Specify citizenship"
                               className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           )}
-                          {formData.citizenship === "Others" && (
-                            <CharCount
-                              current={customCitizenship.length}
-                              max={CUSTOM_TEXT_MAX_LENGTH}
-                            />
-                          )}
                           <ErrorMsg msg={errors.citizenship} />
                         </div>
-                        <div>
-                          <InputLabel label="Religion" />
-                          <select
-                            value={formData.religion}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                religion: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="">Select Religion</option>
-                            {PHILIPPINE_RELIGIONS.map((r) => (
-                              <option key={r} value={r}>
-                                {r}
-                              </option>
-                            ))}
-                          </select>
-                          {formData.religion === "Others" && (
-                            <input
-                              type="text"
-                              value={customReligion}
-                              onChange={(e) =>
-                                setCustomReligion(
-                                  sanitizeCustomText(e.target.value),
-                                )
-                              }
-                              maxLength={CUSTOM_TEXT_MAX_LENGTH}
-                              placeholder="Specify religion"
-                              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                          )}
-                          {formData.religion === "Others" && (
-                            <CharCount
-                              current={customReligion.length}
-                              max={CUSTOM_TEXT_MAX_LENGTH}
-                            />
-                          )}
-                        </div>
+                        {/* Religion field removed */}
                         <div>
                           <InputLabel label="Occupation" />
                           <input
@@ -1481,51 +1389,9 @@ export function EditResidentsModal({
                           />
                           <ErrorMsg msg={errors.occupation} />
                         </div>
-                        <div>
-                          <InputLabel label="Blood Type" />
-                          <select
-                            value={formData.bloodType}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                bloodType: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="">Select Blood Type</option>
-                            <option value="A+">A+</option>
-                            <option value="A-">A-</option>
-                            <option value="B+">B+</option>
-                            <option value="B-">B-</option>
-                            <option value="AB+">AB+</option>
-                            <option value="AB-">AB-</option>
-                            <option value="O+">O+</option>
-                            <option value="O-">O-</option>
-                          </select>
-                        </div>
+                        {/* Blood Type field removed */}
 
-                        <div className="col-span-2">
-                          <InputLabel label="Educational Attainment" required />
-                          <input
-                            name="educationalAttainment"
-                            type="text"
-                            value={formData.educationalAttainment}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                educationalAttainment: e.target.value,
-                              })
-                            }
-                            maxLength={EDUCATION_MAX_LENGTH}
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.educationalAttainment ? "border-red-500" : "border-gray-300"}`}
-                          />
-                          <CharCount
-                            current={formData.educationalAttainment.length}
-                            max={EDUCATION_MAX_LENGTH}
-                          />
-                          <ErrorMsg msg={errors.educationalAttainment} />
-                        </div>
+                        {/* Educational Attainment field removed */}
                       </div>
 
                       <div className="p-4 mt-4 bg-gray-50 rounded-lg border border-gray-100">

@@ -50,20 +50,40 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
         body !== undefined && body !== null ? JSON.stringify(body) : undefined,
     });
 
-    if (response.status === 401) {
-      localStorage.removeItem("token");
-      throw new Error("Session expired. Please login again.");
-    }
-
-    if (response.status === 403) {
-      throw new Error("You don't have permission to access this resource.");
-    }
-
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Request failed with status ${response.status}`,
-      );
+      let errorMessage = `Request failed with status ${response.status}`;
+      let errorData: any = {};
+
+      // Try to parse JSON, otherwise fallback to text
+      try {
+        errorData = await response.clone().json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        try {
+          const text = await response.clone().text();
+          if (text) errorMessage = text;
+        } catch {
+          // ignore
+        }
+      }
+
+      if (response.status === 401) {
+        const isLoginRequest = endpoint.includes("/auth/login");
+        if (
+          !isLoginRequest &&
+          /token|session/i.test(errorMessage)
+        ) {
+          localStorage.removeItem("token");
+          throw new Error("Session expired. Please login again.");
+        }
+        throw new Error(errorMessage);
+      }
+
+      if (response.status === 403 || response.status === 400) {
+        throw new Error(errorMessage);
+      }
+
+      throw new Error(errorMessage);
     }
 
     const contentType = response.headers.get("content-type");
@@ -73,6 +93,16 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
       return await response.text();
     }
   } catch (error: any) {
+    // Customize "failed to fetch" error
+    if (
+      error.message === "Failed to fetch" ||
+      error.message === "NetworkError when attempting to fetch resource." ||
+      error.message === "Network request failed"
+    ) {
+      throw new Error(
+        "Failed to load data.",
+      );
+    }
     console.error("API Error:", error.message);
     throw error;
   }

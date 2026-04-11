@@ -1,4 +1,4 @@
-import { api } from "../apiClients";
+import { api } from "../../apiClients";
 
 export interface UserProfile {
   id: string;
@@ -9,7 +9,6 @@ export interface UserProfile {
   contactNumber?: string;
   role?: string;
 }
-
 
 export async function getUserProfile(): Promise<UserProfile> {
   return api.get("/api/v1/users/settings-preview");

@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
-import { authService } from "../login-api/login";
+import { authService } from "../../service/login-api/login";
 
 function normalizeKey(value?: string | null): string {
   return String(value ?? "")
@@ -46,37 +46,53 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+
+
+  const LOGIN_ERRORS: Record<string, string> = {
+  INVALID_CREDENTIALS: "Invalid email or password.",
+  ACCOUNT_LOCKED: "Account temporarily locked. Try again in 15 minutes.",
+  ACCOUNT_INACTIVE: "Account is inactive. Contact your administrator.",
+  USER_NOT_FOUND: "No account found with this email.",
+};
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  e.preventDefault();
+  setError("");
 
-    if (!email || !password) {
-      setError("Please enter both email and password.");
+  if (!email || !password) {
+    setError("Please enter both email and password.");
+    return;
+  }
+
+  if (!agreedToTerms) {
+    setError("You must agree to the Terms and Conditions before signing in.");
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const response = await authService.login({ email, password });
+
+    if (response.status === "MFA_REQUIRED") {
+      navigate("/mfa-verification", { state: { email } });
       return;
     }
 
-    if (!agreedToTerms) {
-      setError("You must agree to the Terms and Conditions before signing in.");
+    if (response.status === "CHANGE_PASSWORD_REQUIRED") {
+      navigate("/change-password-new-account", { state: { email } });
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      const response = await authService.login({ email, password });
-
-      if (response.token === "MFA_REQUIRED") {
-        navigate("/mfa-verification", { state: { email } });
-        return;
-      }
-
+    if (response.status === "SUCCESS") {
+      // Normal success flow
       const role = normalizeKey(response.role);
-
+      
       if (role === "ROOT_ADMIN") {
         navigate("/rootadmin/dashboard");
         return;
       }
-
+      
       if (role === "ADMIN") {
         navigate("/admin/dashboard");
         return;
@@ -89,12 +105,15 @@ export function LoginPage() {
       }
 
       navigate("/login");
-    } catch (err: any) {
-      setError("Login failed. Please check your credentials.");
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
+  } catch (err: any) {
+    setError(LOGIN_ERRORS[err.response?.data?.code] || err.response?.data?.message || "Login failed. Please try again.");
+
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <AuthLayout>
@@ -102,7 +121,7 @@ export function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100"
+        className="bg-white p-8 rounded-2xl shadow-xs shadow-slate-300/50 border border-slate-200"
       >
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Lock, Eye, EyeOff, Loader2, Check, X } from "lucide-react";
+import { Lock, Eye, EyeOff, Loader2, Check, X, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
-import { resetPasswordService } from "../login-api/reset-password";
-import { ActionModal } from "../reusable";
+import { authService } from "../../service/login-api/login";
+import { Link } from "react-router-dom";
+import { ActionModal } from "../../reusable";
 
-export function ResetPasswordPage() {
+export function ChangePasswordNewAccountPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [newPassword, setNewPassword] = useState("");
@@ -17,18 +18,14 @@ export function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Get email and code from navigation state
-  const { email, code } =
-    (location.state as { email?: string; code?: string }) || {};
+  const email = (location.state as { email?: string })?.email || "";
 
-  // Redirect back if no email or code
   useEffect(() => {
-    if (!email || !code) {
-      navigate("/forgot-password");
+    if (!email) {
+      navigate("/login");
     }
-  }, [email, code, navigate]);
+  }, [email, navigate]);
 
-  // Password validation rules
   const passwordRules = {
     minLength: newPassword.length >= 8,
     hasUppercase: /[A-Z]/.test(newPassword),
@@ -58,21 +55,27 @@ export function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      await resetPasswordService.resetPassword({
-        email: email!,
-        code: code!,
+      const response = await authService.changePasswordNewAccount({
+        email,
         newPassword,
+        confirmPassword,
       });
+
+      // Show success modal instead of navigating immediately
       setShowSuccessModal(true);
+      // Optionally, you can store the role if you want to use it after closing the modal
+      // setUserRole(response.role);
     } catch (err: any) {
-      setError(err.message || "Failed to reset password. Please try again.");
+      setError(err.response?.data?.message || "Failed to change password.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Handle modal close and redirect based on role
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
+    // You can fetch the role again if needed, or just send to login
     navigate("/login");
   };
 
@@ -93,12 +96,20 @@ export function ResetPasswordPage() {
         transition={{ duration: 0.4 }}
         className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100"
       >
-        <div className="mb-8">
+        <Link
+          to="/login"
+          className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 mb-6 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 rounded-md px-1 -ml-1"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Login
+        </Link>
+
+        <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Reset Your Password
+            Set Your Password
           </h2>
-          <p className="text-slate-500">
-            Create a new password for your account
+          <p className="text-slate-500 text-sm">
+            Create a strong password for your new account
           </p>
         </div>
 
@@ -237,10 +248,10 @@ export function ResetPasswordPage() {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                Resetting...
+                Setting Password...
               </>
             ) : (
-              "Reset Password"
+              "Set Password & Continue"
             )}
           </button>
         </form>
@@ -249,11 +260,11 @@ export function ResetPasswordPage() {
       <ActionModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
-        title="Password Reset Successful"
+        title="Password Changed Successfully"
         type="success"
       >
         <p>
-          Your password has been successfully reset. Please log in with your new
+          Your password has been set. You can now log in with your new
           credentials.
         </p>
       </ActionModal>

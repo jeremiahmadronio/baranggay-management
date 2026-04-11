@@ -1,11 +1,44 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Shield, Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
-import { resetPasswordService } from "../login-api/reset-password";
+import { authService } from "../../service/login-api/login";
+import { resetPasswordService } from "../../service/login-api/reset-password";
 
-export function ResetCodeVerificationPage() {
+function normalizeKey(value?: string | null): string {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+function routeFromDepartment(department?: string | null): string | null {
+  const key = normalizeKey(department);
+
+  switch (key) {
+    case "CLEARANCE":
+      return "/clearance/dashboard";
+    case "OFFICIAL":
+      return "/official-portal/dashboard";
+    case "BLOTTER":
+      return "/blotter/dashboard";
+    case "BCPC":
+      return "/bcpc/dashboard";
+    case "VAWC":
+      return "/vawc/dashboard";
+    case "LUPON":
+    case "LUPONG_TAGAPAMAYAPA":
+      return "/lupongtagapamayapa/dashboard";
+    case "FIRST_TIME_JOB_SEEKER":
+    case "FTJS":
+      return "/first-time-job-seeker/dashboard";
+    default:
+      return null;
+  }
+}
+
+export function MFAVerificationPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -19,7 +52,7 @@ export function ResetCodeVerificationPage() {
 
   useEffect(() => {
     if (!email) {
-      navigate("/forgot-password");
+      navigate("/login");
     }
   }, [email, navigate]);
 
@@ -28,7 +61,7 @@ export function ResetCodeVerificationPage() {
     : "";
 
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
+    let timer: ReturnType<typeof setInterval> | undefined = undefined;
     if (countdown > 0 && !canResend) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);
@@ -36,7 +69,9 @@ export function ResetCodeVerificationPage() {
     } else if (countdown === 0) {
       setCanResend(true);
     }
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [countdown, canResend]);
 
   const handleResend = async () => {
@@ -101,9 +136,34 @@ export function ResetCodeVerificationPage() {
 
     try {
       const fullCode = code.join("");
-      await resetPasswordService.verifyResetCode({ email, code: fullCode });
+      const response = await authService.verifyMfa({ email, code: fullCode });
 
-      navigate("/reset-password", { state: { email, code: fullCode } });
+      if (response.status === "CHANGE_PASSWORD_REQUIRED") {
+        navigate("/change-password-new-account", {
+          state: { email, userId: response.userId },
+        });
+        return;
+      }
+
+      const role = normalizeKey(response.role);
+
+      if (role === "ROOT_ADMIN") {
+        navigate("/rootadmin/dashboard");
+        return;
+      }
+
+      if (role === "ADMIN") {
+        navigate("/admin/dashboard");
+        return;
+      }
+
+      const departmentRoute = routeFromDepartment(response.departments?.[0]);
+      if (departmentRoute) {
+        navigate(departmentRoute);
+        return;
+      }
+
+      navigate("/login");
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       setCode(["", "", "", "", "", ""]);
@@ -121,15 +181,9 @@ export function ResetCodeVerificationPage() {
         transition={{ duration: 0.4 }}
         className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100"
       >
-        <div className="flex justify-center mb-6">
-          <div className="bg-blue-50 p-4 rounded-full">
-            <Shield className="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
-
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Verify Your Email
+            Email Verification
           </h2>
           <p className="text-slate-500 text-sm">
             We sent a 6-digit code to{" "}
@@ -201,10 +255,10 @@ export function ResetCodeVerificationPage() {
           )}
           <div className="mt-4">
             <Link
-              to="/forgot-password"
+              to="/login"
               className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600"
             >
-              <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              <ArrowLeft className="h-4 w-4 mr-1" /> Back to Login
             </Link>
           </div>
         </div>

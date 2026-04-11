@@ -14,22 +14,6 @@ interface AddResidentsModalProps {
   onSubmit: (data: AddResidentRequest) => Promise<void>;
 }
 
-const PHILIPPINE_RELIGIONS = [
-  "Roman Catholic",
-  "Christian (General)",
-  "Islam",
-  "Iglesia ni Cristo",
-  "Evangelical / Born Again",
-  "Seventh-day Adventist",
-  "Jehovah's Witness",
-  "Aglipayan",
-  "Baptist",
-  "Buddhism",
-  "Hinduism",
-  "Others",
-  "None / No Religion",
-];
-
 const CITIZENSHIPS = [
   "Filipino",
   "American",
@@ -612,48 +596,47 @@ export function AddResidentsModal({
   const getStep3Errors = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.contactNumber?.trim()) {
-      newErrors.contactNumber = "Required";
-    } else {
-      const err = validateContact(formData.contactNumber);
-      if (err) newErrors.contactNumber = err;
-    }
-
-    {
-      const err = validateEmail(formData.email || "");
+    // Email is now optional, only validate if present
+    if (formData.email?.trim()) {
+      const err = validateEmail(formData.email);
       if (err) newErrors.email = err;
     }
 
+    // Citizenship is still required
     const finalCitizenship =
       formData.citizenship === "Others"
         ? customCitizenship.trim()
         : formData.citizenship;
-
     if (!finalCitizenship) newErrors.citizenship = "Required";
 
-    if (!formData.educationalAttainment.trim()) {
-      newErrors.educationalAttainment = "Required";
-    } else if (
-      formData.educationalAttainment.trim().length < EDUCATION_MIN_LENGTH
-    ) {
-      newErrors.educationalAttainment = `At least ${EDUCATION_MIN_LENGTH} characters`;
-    } else if (
-      formData.educationalAttainment.trim().length > EDUCATION_MAX_LENGTH
-    ) {
-      newErrors.educationalAttainment = `Max ${EDUCATION_MAX_LENGTH} characters`;
+    // Educational attainment is now optional
+    if (formData.educationalAttainment?.trim()) {
+      if (formData.educationalAttainment.trim().length < EDUCATION_MIN_LENGTH) {
+        newErrors.educationalAttainment = `At least ${EDUCATION_MIN_LENGTH} characters`;
+      } else if (
+        formData.educationalAttainment.trim().length > EDUCATION_MAX_LENGTH
+      ) {
+        newErrors.educationalAttainment = `Max ${EDUCATION_MAX_LENGTH} characters`;
+      }
     }
 
-    if (!(formData.occupation ?? "").trim()) {
-      newErrors.occupation = "Required";
-    } else if (
-      (formData.occupation ?? "").trim().length > OCCUPATION_MAX_LENGTH
-    ) {
-      newErrors.occupation = `Max ${OCCUPATION_MAX_LENGTH} characters`;
+    // Occupation is now optional (do not require, only validate if present)
+    if (formData.occupation?.trim()) {
+      if ((formData.occupation ?? "").trim().length > OCCUPATION_MAX_LENGTH) {
+        newErrors.occupation = `Max ${OCCUPATION_MAX_LENGTH} characters`;
+      }
     }
 
+    // Contact number is now optional (do not require, only validate if present)
+    if (formData.contactNumber?.trim()) {
+      const err = validateContact(formData.contactNumber);
+      if (err) newErrors.contactNumber = err;
+    }
+
+    // PWD ID only required if isPwd is checked
     if (formData.isPwd && !formData.pwdIdNumber?.trim()) {
       newErrors.pwdIdNumber = "PWD ID number is required when PWD is checked";
-    } else if (formData.isPwd) {
+    } else if (formData.isPwd && formData.pwdIdNumber) {
       const err = validatePwdId(formData.pwdIdNumber);
       if (err) newErrors.pwdIdNumber = err;
     }
@@ -707,7 +690,6 @@ export function AddResidentsModal({
         completeAddress: formData.completeAddress.trim(),
         email: toOptional(formData.email),
         occupation: toOptional(formData.occupation),
-        educationalAttainment: formData.educationalAttainment.trim(),
         photo: toOptional(croppedPhotoPayload),
         age,
         religion:
@@ -728,6 +710,7 @@ export function AddResidentsModal({
           ? toOptional(formData.pwdIdNumber)
           : undefined,
         documents: normalizedDocuments.length ? normalizedDocuments : undefined,
+        username: "@user", // Set default username
       };
 
       await onSubmit(finalData);
@@ -1207,6 +1190,7 @@ export function AddResidentsModal({
 
           <div className="space-y-5">
             <FormSectionTitle title="Additional Details" />
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <InputLabel label="Contact Number" required />
@@ -1222,27 +1206,6 @@ export function AddResidentsModal({
                 />
                 <ErrorMsg msg={errors.contactNumber} />
               </div>
-              <div>
-                <InputLabel label="Email Address" />
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  maxLength={EMAIL_MAX_LENGTH}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Optional"
-                />
-                <CharCount
-                  current={(formData.email || "").length}
-                  max={EMAIL_MAX_LENGTH}
-                />
-                <ErrorMsg msg={errors.email} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <InputLabel label="Citizenship" required />
                 <select
@@ -1262,68 +1225,24 @@ export function AddResidentsModal({
                   ))}
                 </select>
                 {formData.citizenship === "Others" && (
-                  <input
-                    type="text"
-                    value={customCitizenship}
-                    onChange={(e) => setCustomCitizenship(e.target.value)}
-                    maxLength={CUSTOM_TEXT_MAX_LENGTH}
-                    onInput={(e) => {
-                      const target = e.target as HTMLInputElement;
-                      target.value = sanitizeCustomText(target.value);
-                      setCustomCitizenship(target.value);
-                    }}
-                    placeholder="Specify citizenship"
-                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                )}
-                {formData.citizenship === "Others" && (
-                  <CharCount
-                    current={customCitizenship.length}
-                    max={CUSTOM_TEXT_MAX_LENGTH}
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={customCitizenship}
+                      onChange={(e) =>
+                        setCustomCitizenship(sanitizeCustomText(e.target.value))
+                      }
+                      maxLength={CUSTOM_TEXT_MAX_LENGTH}
+                      placeholder="Specify citizenship"
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <CharCount
+                      current={customCitizenship.length}
+                      max={CUSTOM_TEXT_MAX_LENGTH}
+                    />
+                  </>
                 )}
                 <ErrorMsg msg={errors.citizenship} />
-              </div>
-              <div>
-                <InputLabel label="Religion" />
-                <select
-                  value={formData.religion}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      religion: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select Religion</option>
-                  {PHILIPPINE_RELIGIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-                {formData.religion === "Others" && (
-                  <input
-                    type="text"
-                    value={customReligion}
-                    onChange={(e) => setCustomReligion(e.target.value)}
-                    maxLength={CUSTOM_TEXT_MAX_LENGTH}
-                    onInput={(e) => {
-                      const target = e.target as HTMLInputElement;
-                      target.value = sanitizeCustomText(target.value);
-                      setCustomReligion(target.value);
-                    }}
-                    placeholder="Specify religion"
-                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                )}
-                {formData.religion === "Others" && (
-                  <CharCount
-                    current={customReligion.length}
-                    max={CUSTOM_TEXT_MAX_LENGTH}
-                  />
-                )}
               </div>
             </div>
 
@@ -1349,51 +1268,6 @@ export function AddResidentsModal({
                 />
                 <ErrorMsg msg={errors.occupation} />
               </div>
-              <div>
-                <InputLabel label="Blood Type" />
-                <select
-                  value={formData.bloodType}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      bloodType: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select Blood Type</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <InputLabel label="Educational Attainment" required />
-              <input
-                type="text"
-                value={formData.educationalAttainment}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    educationalAttainment: e.target.value,
-                  })
-                }
-                maxLength={EDUCATION_MAX_LENGTH}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.educationalAttainment ? "border-red-500" : "border-gray-300"}`}
-                placeholder="e.g. College Graduate"
-              />
-              <CharCount
-                current={formData.educationalAttainment.length}
-                max={EDUCATION_MAX_LENGTH}
-              />
-              <ErrorMsg msg={errors.educationalAttainment} />
             </div>
 
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">

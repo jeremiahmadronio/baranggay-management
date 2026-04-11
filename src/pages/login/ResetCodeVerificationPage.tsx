@@ -3,41 +3,9 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Shield, Loader2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
-import { authService } from "../login-api/login";
+import { resetPasswordService } from "../../service/login-api/reset-password";
 
-function normalizeKey(value?: string | null): string {
-  return String(value ?? "")
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, "_");
-}
-
-function routeFromDepartment(department?: string | null): string | null {
-  const key = normalizeKey(department);
-
-  switch (key) {
-    case "CLEARANCE":
-      return "/clearance/dashboard";
-    case "OFFICIAL":
-      return "/official-portal/dashboard";
-    case "BLOTTER":
-      return "/blotter/dashboard";
-    case "BCPC":
-      return "/bcpc/dashboard";
-    case "VAWC":
-      return "/vawc/dashboard";
-    case "LUPON":
-    case "LUPONG_TAGAPAMAYAPA":
-      return "/lupongtagapamayapa/dashboard";
-    case "FIRST_TIME_JOB_SEEKER":
-    case "FTJS":
-      return "/first-time-job-seeker/dashboard";
-    default:
-      return null;
-  }
-}
-
-export function MFAVerificationPage() {
+export function ResetCodeVerificationPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -47,11 +15,20 @@ export function MFAVerificationPage() {
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const email = (location.state as { email?: string })?.email || "";
+  const navEmail = (location.state as { email?: string })?.email;
+  const [email] = useState(
+    navEmail || localStorage.getItem("resetEmail") || "",
+  );
+
+  useEffect(() => {
+    if (navEmail) {
+      localStorage.setItem("resetEmail", navEmail);
+    }
+  }, [navEmail]);
 
   useEffect(() => {
     if (!email) {
-      navigate("/login");
+      navigate("/forgot-password");
     }
   }, [email, navigate]);
 
@@ -61,7 +38,6 @@ export function MFAVerificationPage() {
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | null = null;
-
     if (countdown > 0 && !canResend) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);
@@ -69,16 +45,22 @@ export function MFAVerificationPage() {
     } else if (countdown === 0) {
       setCanResend(true);
     }
-
     return () => {
       if (timer) clearInterval(timer);
     };
   }, [countdown, canResend]);
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!canResend) return;
     setCountdown(60);
     setCanResend(false);
+    setError("");
+
+    try {
+      await resetPasswordService.forgotPassword(email);
+    } catch (err: any) {
+      setError(err.message || "Failed to resend code. Please try again.");
+    }
   };
 
   const handleChange = (index: number, value: string) => {
@@ -130,27 +112,9 @@ export function MFAVerificationPage() {
 
     try {
       const fullCode = code.join("");
-      const response = await authService.verifyMfa({ email, code: fullCode });
-
-      const role = normalizeKey(response.role);
-
-      if (role === "ROOT_ADMIN") {
-        navigate("/rootadmin/dashboard");
-        return;
-      }
-
-      if (role === "ADMIN") {
-        navigate("/admin/dashboard");
-        return;
-      }
-
-      const departmentRoute = routeFromDepartment(response.departments?.[0]);
-      if (departmentRoute) {
-        navigate(departmentRoute);
-        return;
-      }
-
-      navigate("/login");
+      await resetPasswordService.verifyResetCode({ email, code: fullCode });
+      localStorage.setItem("resetCode", fullCode);
+      navigate("/reset-password", { state: { email, code: fullCode } });
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       setCode(["", "", "", "", "", ""]);
@@ -176,7 +140,7 @@ export function MFAVerificationPage() {
 
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Email Verification
+            Verify Your Email
           </h2>
           <p className="text-slate-500 text-sm">
             We sent a 6-digit code to{" "}
@@ -248,10 +212,10 @@ export function MFAVerificationPage() {
           )}
           <div className="mt-4">
             <Link
-              to="/login"
+              to="/forgot-password"
               className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600"
             >
-              <ArrowLeft className="h-4 w-4 mr-1" /> Back to Login
+              <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Link>
           </div>
         </div>

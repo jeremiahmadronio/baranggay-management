@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthLayout } from "./AuthLayout";
-import { resetPasswordService } from "../login-api/reset-password";
+import { resetPasswordService } from "../../service/login-api/reset-password";
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();

@@ -5,7 +5,10 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { getUserProfile, type UserProfile } from "../login-api/user-profile";
+import {
+  getUserProfile,
+  type UserProfile,
+} from "../service/login-api/user-profile";
 
 interface UserContextType {
   user: UserProfile | null;

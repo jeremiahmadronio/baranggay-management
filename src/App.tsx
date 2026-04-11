@@ -13,12 +13,13 @@ import {
   RootAdminLayout,
 } from "./layout/Layout";
 
-import { LoginPage } from "./login/LoginPage";
-import { ForgotPasswordPage } from "./login/ForgotPasswordPage";
-import { TermsAndConditionsPage } from "./login/TermsAndConditionPage";
-import { MFAVerificationPage } from "./login/MFAVerificationPage";
-import { ResetCodeVerificationPage } from "./login/ResetCodeVerificationPage";
-import { ResetPasswordPage } from "./login/ResetPasswordPage";
+import { LoginPage } from "./pages/login/LoginPage";
+import { ForgotPasswordPage } from "./pages/login/ForgotPasswordPage";
+import { TermsAndConditionsPage } from "./pages/login/TermsAndConditionPage";
+import { MFAVerificationPage } from "./pages/login/MFAVerificationPage";
+import { ResetCodeVerificationPage } from "./pages/login/ResetCodeVerificationPage";
+import { ResetPasswordPage } from "./pages/login/ResetPasswordPage";
+import { ChangePasswordNewAccountPage } from "./pages/login/ChangePasswordNewAccountPage";
 // Admin
 import RecordInputDemo from "./pages/admin-module/user-management/record-input";
 import AdminDashboard from "./pages/admin-module/dashboard/dashboard";
@@ -89,13 +90,11 @@ function PagePlaceholder({ title }: { title: string }) {
 export function App() {
   return (
     <Routes>
-      {/* Landing Page */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/officials" element={<OfficialsPage />} />
       <Route path="/map" element={<MapsPage />} />
       <Route path="/events" element={<EventsCalendar />} />
 
-      {/*login page*/}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route
@@ -108,6 +107,10 @@ export function App() {
         element={<TermsAndConditionsPage />}
       />
       <Route path="/mfa-verification" element={<MFAVerificationPage />} />
+      <Route
+        path="/change-password-new-account"
+        element={<ChangePasswordNewAccountPage />}
+      />
 
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout />}>
