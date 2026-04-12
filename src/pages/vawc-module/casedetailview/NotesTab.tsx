@@ -5,6 +5,9 @@ import { SectionCard } from './shared';
 type NotesTabProps = {
   notes: CaseNoteViewDTO[];
   isWithdrawn: boolean;
+  isReadOnly: boolean;
+  isCertifiedToFileAction: boolean;
+  canManageNotes: boolean;
   notesLoading: boolean;
   showNoteInput: boolean;
   noteText: string;
@@ -19,6 +22,9 @@ type NotesTabProps = {
 export function NotesTab({
   notes,
   isWithdrawn,
+  isReadOnly,
+  isCertifiedToFileAction,
+  canManageNotes,
   notesLoading,
   showNoteInput,
   noteText,
@@ -34,7 +40,7 @@ export function NotesTab({
       title="Case Notes"
       icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
       action={
-        !showNoteInput && !isWithdrawn ? (
+        !showNoteInput && !isReadOnly && canManageNotes ? (
           <button
             onClick={() => onShowNoteInput(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -44,13 +50,21 @@ export function NotesTab({
         ) : null
       }
     >
-      {isWithdrawn && (
+      {isReadOnly && (
         <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          This case is withdrawn and notes can no longer be edited.
+          {isCertifiedToFileAction
+            ? "This case is Certified To File Action and notes can no longer be edited."
+            : "This case is withdrawn and notes can no longer be edited."}
         </div>
       )}
 
-      {showNoteInput && !isWithdrawn && (
+      {!isReadOnly && !canManageNotes && (
+        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          You do not have permission to manage case notes.
+        </div>
+      )}
+
+      {showNoteInput && !isReadOnly && (
         <div className="mb-4 space-y-2">
           <textarea
             autoFocus

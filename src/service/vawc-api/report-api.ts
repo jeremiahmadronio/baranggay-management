@@ -75,8 +75,15 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
 
 function buildDateParams(startDate?: string, endDate?: string): string {
   const query = new URLSearchParams();
-  if (startDate) query.set("startDate", startDate);
-  if (endDate) query.set("endDate", endDate);
+
+  const toApiDateTime = (value: string, endOfDay = false): string => {
+    if (!value) return value;
+    if (value.includes("T")) return value;
+    return `${value}T${endOfDay ? "23:59:59" : "00:00:00"}`;
+  };
+
+  if (startDate) query.set("startDate", toApiDateTime(startDate));
+  if (endDate) query.set("endDate", toApiDateTime(endDate, true));
   return query.toString();
 }
 

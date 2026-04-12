@@ -3,19 +3,25 @@
 import { useState, useEffect } from 'react';
 import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getVawcReportStats } from '../../service/vawc-api/report-api';
 
 import { 
   getVawcCaseSummary,
-  getVawcStats, 
+  getVawcStats,
   getViolenceOptions,
-  type CaseSummaryDTO, 
+  getMyAccess,
+  hasVawcPermission,
+  VAWC_PERMISSIONS,
+  type CaseSummaryDTO,
   type CaseStatsDTO,
   type ViolenceOptionDTO,
+  type UserAccessPermission,
 } from "../../service/vawc-api/vawc-api";
 
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { TableFilter } from "../../hooks/TableFilter";
 import { Table, type TableColumn } from "../../hooks/Table";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 const VIOLENCE_TYPE_TONE: string[] = [
   'bg-rose-50 text-rose-700 border border-rose-200',
@@ -36,6 +42,17 @@ const formatStatusLabel = (status: string) =>
     .split('_')
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(' ');
+
+const formatNameAsInitials = (fullName?: string) => {
+  const parts = String(fullName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return '-';
+
+  return parts.map((part) => `${part.charAt(0).toUpperCase()}.`).join(' ');
+};
 
 const getStatusPillClass = (status: string) => {
   switch (status) {
@@ -65,6 +82,7 @@ export default function VawcCaseTable() {
   const navigate = useNavigate();
 
   const [stats, setStats] = useState<CaseStatsDTO | null>(null);
+  const [resolvedCases, setResolvedCases] = useState(0);
   const [cases, setCases] = useState<CaseSummaryDTO[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -74,6 +92,8 @@ export default function VawcCaseTable() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [tableError, setTableError] = useState<string | null>(null);
   const [violenceOptions, setViolenceOptions] = useState<ViolenceOptionDTO[]>([]);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [userAccess, setUserAccess] = useState<UserAccessPermission | null>(null);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -86,10 +106,25 @@ export default function VawcCaseTable() {
   const fetchStats = async () => {
     try {
       setLoadingStats(true);
-      const data = await getVawcStats();
-      setStats(data);
+      const [caseStats, reportStats] = await Promise.allSettled([
+        getVawcStats(),
+        getVawcReportStats(),
+      ]);
+
+      if (caseStats.status === 'fulfilled') {
+        setStats(caseStats.value);
+      } else {
+        throw caseStats.reason;
+      }
+
+      if (reportStats.status === 'fulfilled') {
+        setResolvedCases(reportStats.value.resolvedCases ?? 0);
+      } else {
+        setResolvedCases(0);
+      }
     } catch (err) {
       console.error('Error fetching stats:', err);
+      setResolvedCases(0);
     } finally {
       setLoadingStats(false);
     }
@@ -135,15 +170,38 @@ export default function VawcCaseTable() {
     }
   };
 
+  const fetchAccess = async () => {
+    try {
+      setAccessLoading(true);
+      const data = await getMyAccess();
+      setUserAccess(data);
+    } catch (err) {
+      console.error('Error fetching VAWC access:', err);
+      setUserAccess(null);
+    } finally {
+      setAccessLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchViolenceOptions();
+    fetchAccess();
   }, []);
 
-  useEffect(() => { fetchStats(); }, []);
+  const canViewCases = hasVawcPermission(userAccess, VAWC_PERMISSIONS.VIEW_CASES);
+  const canManageReports = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_REPORTS);
 
   useEffect(() => {
-    fetchCases();
-  }, [search, status, violenceType, dateFrom, dateTo, currentPage]);
+    if (!accessLoading && canViewCases) {
+      fetchStats();
+    }
+  }, [accessLoading, canViewCases]);
+
+  useEffect(() => {
+    if (!accessLoading && canViewCases) {
+      fetchCases();
+    }
+  }, [search, status, violenceType, dateFrom, dateTo, currentPage, accessLoading, canViewCases]);
 
   const safeStats: CaseStatsDTO = stats || {
     totalPending: 0,
@@ -154,7 +212,12 @@ export default function VawcCaseTable() {
 
   const columns: TableColumn<CaseSummaryDTO>[] = [
     { key: "caseNumber", header: "CASE NUMBER", align: "left" },
-    { key: "victimFullName", header: "VICTIM", align: "left" },
+    {
+      key: "victimFullName",
+      header: "VICTIM",
+      align: "left",
+      render: (item: CaseSummaryDTO) => formatNameAsInitials(item.victimFullName),
+    },
     {
       key: "violenceTypes",
       header: "VIOLENCE TYPE",
@@ -209,9 +272,17 @@ export default function VawcCaseTable() {
       align: "center",
       render: (item: CaseSummaryDTO) => (
         <button
-          onClick={() => navigate(`/vawc/casedetailview?id=${item.id}`)}
-          className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-gray-50 hover:text-blue-600"
-          title="View case details"
+          onClick={() => {
+            if (!canViewCases) return;
+            navigate(`/vawc/casedetailview?id=${item.id}`);
+          }}
+          disabled={!canViewCases}
+          className={`rounded-lg p-2 transition-colors ${
+            canViewCases
+              ? 'text-neutral-400 hover:bg-gray-50 hover:text-blue-600'
+              : 'cursor-not-allowed text-gray-300'
+          }`}
+          title={canViewCases ? 'View case details' : 'You do not have permission to view cases'}
         >
           <Eye className="h-5 w-5" />
         </button>
@@ -270,12 +341,39 @@ export default function VawcCaseTable() {
     setCurrentPage(0);
   };
 
+  if (accessLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50/50">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center text-sm text-gray-500">
+            Loading access permissions...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canViewCases) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to view VAWC cases."
+        hint="Ask your administrator to grant the View Cases permission."
+        actionLabel="Go to Dashboard"
+        onAction={() => navigate('/vawc/dashboard')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-7xl px-4 py-8">
 
         <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
-          <button className="rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+          <button
+            disabled={!canManageReports}
+            className="rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            title={canManageReports ? 'Export records' : 'You do not have permission to manage reports'}
+          >
             Export Records
           </button>
         </div>
@@ -291,7 +389,7 @@ export default function VawcCaseTable() {
             />
             <KPICard
               title="Closed Cases"
-              value={loadingStats ? "—" : safeStats.totalClose.toLocaleString()}
+              value={loadingStats ? "—" : resolvedCases.toLocaleString()}
               icon={KPIIcons["check"]}
               color="emerald"
               subtitle="Cases marked resolved"

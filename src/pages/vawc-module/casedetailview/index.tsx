@@ -8,6 +8,7 @@ import {
   addCaseNote,
   addFollowUp,
   addIntervention,
+  getMyAccess,
   getAssignOfficerOptions,
   getBpoDetails,
   getCaseNotes,
@@ -15,7 +16,9 @@ import {
   getInterventionDetails,
   getInterventionLogs,
   getVawcCaseDetails,
+  hasVawcPermission,
   withdrawVawcCase,
+  VAWC_PERMISSIONS,
   type AssignOfficerOptionDTO,
   type BpoDetails,
   type CaseNoteViewDTO,
@@ -23,15 +26,18 @@ import {
   type CaseViewDTO,
   type FollowUpViewDTO,
   type InterventionViewDTO,
+  type UserAccessPermission,
 } from "../../../service/vawc-api/vawc-api";
 import { ActionModal } from "../../../hooks/SuccessModal";
 import { BpoTab } from "./BpoTab";
+import { downloadVawcBpoRequestAsWord } from "./BpoExport";
 import { CfaTab } from "./CfaTab";
 import { NotesTab } from "./NotesTab";
 import { OverviewTab } from "./OverviewTab";
 import { TimelineTab } from "./TimelineTab";
 import { SkeletonBlock, formatDate } from "./shared";
 import type { ActiveTab } from "./shared";
+import { PermissionDeniedPage } from "../../blotter-module/reusable/PermissionDeniedPage";
 
 type LocalFollowUpViewDTO = FollowUpViewDTO & {
   pendingSync?: boolean;
@@ -70,6 +76,8 @@ export default function CaseDetailsPage() {
   const [caseData, setCaseData] = useState<CaseViewDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [userAccess, setUserAccess] = useState<UserAccessPermission | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
 
   const [bpoDetails, setBpoDetails] = useState<BpoDetails | null>(null);
@@ -130,6 +138,16 @@ export default function CaseDetailsPage() {
   const activeUserId = localStorage.getItem("userId") || "anonymous";
   const interventionCacheKey = `vawc:intervention-logs:${activeUserId}:${id}`;
   const activeBpoId = bpoDetails?.id;
+  const caseStatus = (caseData?.caseStatus || "").toUpperCase();
+  const isWithdrawn = caseStatus === "WITHDRAWN";
+  const isCertifiedToFileAction = caseStatus === "CERTIFIED_TO_FILE_ACTION";
+  const isReadOnlyCase = isWithdrawn || isCertifiedToFileAction;
+  const canViewCases = hasVawcPermission(userAccess, VAWC_PERMISSIONS.VIEW_CASES);
+  const canManageCaseNotes = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_CASE_NOTES);
+  const canIssueBpo = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_BPO);
+  const canManageIntervention = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_INTERVENTION);
+  const canIssueReferral = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_REFERRAL);
+  const canResolveFinalize = hasVawcPermission(userAccess, VAWC_PERMISSIONS.RESOLVE_FINALIZE_CASE);
 
   const readCachedInterventionLogs = (): LocalInterventionViewDTO[] => {
     try {
@@ -174,6 +192,19 @@ export default function CaseDetailsPage() {
       setError("Failed to load case details.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAccess = async () => {
+    try {
+      setAccessLoading(true);
+      const access = await getMyAccess();
+      setUserAccess(access);
+    } catch (err) {
+      console.error("Failed to load VAWC permissions:", err);
+      setUserAccess(null);
+    } finally {
+      setAccessLoading(false);
     }
   };
 
@@ -273,9 +304,15 @@ export default function CaseDetailsPage() {
   };
 
   useEffect(() => {
-    void fetchCase();
-    void loadBpoDetails();
-  }, [id]);
+    void loadAccess();
+  }, []);
+
+  useEffect(() => {
+    if (!accessLoading && canViewCases) {
+      void fetchCase();
+      void loadBpoDetails();
+    }
+  }, [id, accessLoading, canViewCases]);
 
   const victimFullName =
     [caseData?.firstName, caseData?.middleName, caseData?.lastName]
@@ -403,8 +440,21 @@ export default function CaseDetailsPage() {
   }, [activeTab, id, timeline.length]);
 
   const handleAddNote = async () => {
-    if ((caseData?.caseStatus || "").toUpperCase() === "WITHDRAWN") {
-      setNoteError("Withdrawn cases are read-only.");
+    if (!hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_CASE_NOTES)) {
+      setNoteError("You do not have permission to manage case notes.");
+      return;
+    }
+
+    if (
+      ["WITHDRAWN", "CERTIFIED_TO_FILE_ACTION"].includes(
+        (caseData?.caseStatus || "").toUpperCase(),
+      )
+    ) {
+      setNoteError(
+        (caseData?.caseStatus || "").toUpperCase() === "CERTIFIED_TO_FILE_ACTION"
+          ? "Certified To File Action cases are view-only."
+          : "Withdrawn cases are read-only.",
+      );
       return;
     }
 
@@ -428,8 +478,21 @@ export default function CaseDetailsPage() {
   };
 
   const handleActivateBpo = () => {
-    if ((caseData?.caseStatus || "").toUpperCase() === "WITHDRAWN") {
-      setBpoActionMessage("Withdrawn cases are read-only.");
+    if (!hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_BPO)) {
+      setBpoActionMessage("You do not have permission to issue BPO.");
+      return;
+    }
+
+    if (
+      ["WITHDRAWN", "CERTIFIED_TO_FILE_ACTION"].includes(
+        (caseData?.caseStatus || "").toUpperCase(),
+      )
+    ) {
+      setBpoActionMessage(
+        (caseData?.caseStatus || "").toUpperCase() === "CERTIFIED_TO_FILE_ACTION"
+          ? "Certified To File Action cases are view-only."
+          : "Withdrawn cases are read-only.",
+      );
       return;
     }
 
@@ -437,8 +500,21 @@ export default function CaseDetailsPage() {
   };
 
   const handleConfirmActivateBpo = async () => {
-    if ((caseData?.caseStatus || "").toUpperCase() === "WITHDRAWN") {
-      setBpoActionMessage("Withdrawn cases are read-only.");
+    if (!hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_BPO)) {
+      setBpoActionMessage("You do not have permission to issue BPO.");
+      return;
+    }
+
+    if (
+      ["WITHDRAWN", "CERTIFIED_TO_FILE_ACTION"].includes(
+        (caseData?.caseStatus || "").toUpperCase(),
+      )
+    ) {
+      setBpoActionMessage(
+        (caseData?.caseStatus || "").toUpperCase() === "CERTIFIED_TO_FILE_ACTION"
+          ? "Certified To File Action cases are view-only."
+          : "Withdrawn cases are read-only.",
+      );
       return;
     }
 
@@ -458,6 +534,27 @@ export default function CaseDetailsPage() {
       setBpoActionMessage(normalizeBpoActivationError(err));
     } finally {
       setBpoActionLoading(false);
+    }
+  };
+
+  const handlePrintBpoRequest = async () => {
+    if (!hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_BPO)) {
+      setBpoActionMessage("You do not have permission to issue BPO.");
+      return;
+    }
+
+    if (!caseData) {
+      setBpoActionMessage("Case details are still loading.");
+      return;
+    }
+
+    try {
+      setBpoActionMessage("");
+      await downloadVawcBpoRequestAsWord(caseData, bpoDetails);
+    } catch (err) {
+      setBpoActionMessage(
+        err instanceof Error ? err.message : "Failed to generate BPO request letter.",
+      );
     }
   };
 
@@ -483,8 +580,21 @@ export default function CaseDetailsPage() {
   };
 
   const handleAddIntervention = async () => {
-    if ((caseData?.caseStatus || "").toUpperCase() === "WITHDRAWN") {
-      setInterventionError("Withdrawn cases are read-only.");
+    if (!hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_INTERVENTION)) {
+      setInterventionError("You do not have permission to manage intervention.");
+      return;
+    }
+
+    if (
+      ["WITHDRAWN", "CERTIFIED_TO_FILE_ACTION"].includes(
+        (caseData?.caseStatus || "").toUpperCase(),
+      )
+    ) {
+      setInterventionError(
+        (caseData?.caseStatus || "").toUpperCase() === "CERTIFIED_TO_FILE_ACTION"
+          ? "Certified To File Action cases are view-only."
+          : "Withdrawn cases are read-only.",
+      );
       return;
     }
 
@@ -614,8 +724,21 @@ export default function CaseDetailsPage() {
   };
 
   const handleAddFollowUp = async (targetInterventionId?: number) => {
-    if ((caseData?.caseStatus || "").toUpperCase() === "WITHDRAWN") {
-      setFollowUpError("Withdrawn cases are read-only.");
+    if (!hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_INTERVENTION)) {
+      setFollowUpError("You do not have permission to manage intervention.");
+      return;
+    }
+
+    if (
+      ["WITHDRAWN", "CERTIFIED_TO_FILE_ACTION"].includes(
+        (caseData?.caseStatus || "").toUpperCase(),
+      )
+    ) {
+      setFollowUpError(
+        (caseData?.caseStatus || "").toUpperCase() === "CERTIFIED_TO_FILE_ACTION"
+          ? "Certified To File Action cases are view-only."
+          : "Withdrawn cases are read-only.",
+      );
       return;
     }
 
@@ -738,6 +861,16 @@ export default function CaseDetailsPage() {
   };
 
   const handleWithdrawCase = async () => {
+    if (!hasVawcPermission(userAccess, VAWC_PERMISSIONS.RESOLVE_FINALIZE_CASE)) {
+      setWithdrawError("You do not have permission to resolve and finalize cases.");
+      return;
+    }
+
+    if ((caseData?.caseStatus || "").toUpperCase() === "CERTIFIED_TO_FILE_ACTION") {
+      setWithdrawError("Certified To File Action cases are view-only.");
+      return;
+    }
+
     if ((caseData?.caseStatus || "").toUpperCase() === "WITHDRAWN") {
       setWithdrawError("This case is already withdrawn.");
       return;
@@ -768,8 +901,6 @@ export default function CaseDetailsPage() {
     }
   };
 
-  const caseStatus = (caseData?.caseStatus || "").toUpperCase();
-  const isWithdrawn = caseStatus === "WITHDRAWN";
   const violenceTypeLabel =
     caseData?.violenceTypes?.map((item) => item.type).join(", ") || "—";
   const tabDefs: { key: ActiveTab; label: string; count?: number }[] = [
@@ -777,8 +908,31 @@ export default function CaseDetailsPage() {
     { key: "bpo", label: "BPO Management" },
     { key: "notes", label: "Case Notes", count: notes.length },
     { key: "timeline", label: "Timeline" },
-    { key: "cfa", label: "Referral / CFA" },
+    { key: "cfa", label: "Referral" },
   ];
+
+  if (accessLoading) {
+    return (
+      <div className="min-h-screen">
+        <div className="mx-auto px-6 py-6 space-y-5">
+          <div className="rounded-xl border border-gray-200 bg-white py-24 text-center text-sm text-gray-500">
+            Loading access permissions...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canViewCases) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to view this VAWC case."
+        hint="Ask your administrator to grant the View Cases permission."
+        actionLabel="Back to Dashboard"
+        onAction={() => navigate('/vawc/dashboard')}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -888,6 +1042,11 @@ export default function CaseDetailsPage() {
             respondentFullName={respondentFullName}
             caseStatus={caseStatus}
             isWithdrawn={isWithdrawn}
+            isReadOnly={isReadOnlyCase}
+            canIssueBpo={canIssueBpo}
+            canManageIntervention={canManageIntervention}
+            canIssueReferral={canIssueReferral}
+            canResolveFinalize={canResolveFinalize}
             violenceTypeLabel={violenceTypeLabel}
             canRecordIntervention={!!bpoDetails?.bpoNumber}
             showWithdrawInput={showWithdrawInput}
@@ -915,6 +1074,9 @@ export default function CaseDetailsPage() {
           <BpoTab
             caseData={caseData}
             isWithdrawn={isWithdrawn}
+            isReadOnly={isReadOnlyCase}
+            canIssueBpo={canIssueBpo}
+            canManageIntervention={canManageIntervention}
             victimFullName={victimFullName}
             respondentFullName={respondentFullName}
             bpoDetails={bpoDetails}
@@ -941,6 +1103,7 @@ export default function CaseDetailsPage() {
               interventionDetails?.pendingSync === true
             }
             onActivateBpo={handleActivateBpo}
+            onPrintBpoRequest={() => void handlePrintBpoRequest()}
             onInterventionFormChange={handleInterventionFormChange}
             onAddIntervention={handleAddIntervention}
             onViewIntervention={handleViewIntervention}
@@ -955,6 +1118,9 @@ export default function CaseDetailsPage() {
           <NotesTab
             notes={notes}
             isWithdrawn={isWithdrawn}
+            isReadOnly={isReadOnlyCase}
+            isCertifiedToFileAction={isCertifiedToFileAction}
+            canManageNotes={canManageCaseNotes}
             notesLoading={notesLoading}
             showNoteInput={showNoteInput}
             noteText={noteText}
@@ -982,7 +1148,12 @@ export default function CaseDetailsPage() {
         )}
 
         {activeTab === "cfa" && (
-          <CfaTab caseId={id} caseData={caseData} isWithdrawn={isWithdrawn} />
+          <CfaTab
+            caseId={id}
+            caseData={caseData}
+            isWithdrawn={isWithdrawn}
+            canIssueReferral={canIssueReferral}
+          />
         )}
       </div>
 

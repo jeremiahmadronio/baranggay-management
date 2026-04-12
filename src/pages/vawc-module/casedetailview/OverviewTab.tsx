@@ -15,6 +15,11 @@ type OverviewTabProps = {
   respondentFullName: string;
   caseStatus: string;
   isWithdrawn: boolean;
+  isReadOnly: boolean;
+  canIssueBpo: boolean;
+  canManageIntervention: boolean;
+  canIssueReferral: boolean;
+  canResolveFinalize: boolean;
   violenceTypeLabel: string;
   canRecordIntervention: boolean;
   showWithdrawInput: boolean;
@@ -52,6 +57,11 @@ export function OverviewTab({
   respondentFullName,
   caseStatus,
   isWithdrawn,
+  isReadOnly,
+  canIssueBpo,
+  canManageIntervention,
+  canIssueReferral,
+  canResolveFinalize,
   violenceTypeLabel,
   canRecordIntervention,
   showWithdrawInput,
@@ -68,6 +78,9 @@ export function OverviewTab({
 }: OverviewTabProps) {
   const pillClass = STATUS_PILL[caseStatus] ?? "bg-gray-100 text-gray-500";
   const isCertifiedToFileAction = caseStatus === "CERTIFIED_TO_FILE_ACTION";
+  const readOnlyMessage = isCertifiedToFileAction
+    ? "This case is Certified To File Action and can only be viewed."
+    : "This case is withdrawn and can no longer be changed.";
   const startDate = caseData.dateFiled ? new Date(caseData.dateFiled) : null;
   const deadlineDate = caseData.bpoDeadline
     ? new Date(caseData.bpoDeadline)
@@ -133,30 +146,30 @@ export function OverviewTab({
         <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">
           Quick Actions
         </p>
-        {isWithdrawn && (
+        {isReadOnly && (
           <p className="mb-3 text-xs font-medium text-gray-500">
-            This case is withdrawn and can no longer be changed.
+            {readOnlyMessage}
           </p>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <button
             onClick={onIssueBpo}
-            disabled={isWithdrawn}
+            disabled={isReadOnly || !canIssueBpo}
             className={`flex flex-col items-start gap-2 p-5 border shadow-sm rounded-xl text-left focus:outline-none ${
-              isWithdrawn
+              isReadOnly || !canIssueBpo
                 ? "bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed"
                 : "bg-white border-gray-200"
             }`}
           >
             <div
-              className={`p-2.5 rounded-lg ${isWithdrawn ? "bg-gray-100" : "bg-blue-50"}`}
+              className={`p-2.5 rounded-lg ${isReadOnly || !canIssueBpo ? "bg-gray-100" : "bg-blue-50"}`}
             >
               <ShieldAlertIcon
-                className={`w-5 h-5 ${isWithdrawn ? "text-gray-400" : "text-blue-600"}`}
+                className={`w-5 h-5 ${isReadOnly || !canIssueBpo ? "text-gray-400" : "text-blue-600"}`}
               />
             </div>
             <span
-              className={`text-sm ${isWithdrawn ? "text-gray-500" : "text-blue-600"}`}
+              className={`text-sm ${isReadOnly || !canIssueBpo ? "text-gray-500" : "text-blue-600"}`}
             >
               Issue BPO
             </span>
@@ -167,35 +180,41 @@ export function OverviewTab({
 
           <button
             onClick={onRecordIntervention}
-            disabled={isWithdrawn || !canRecordIntervention}
+            disabled={isReadOnly || !canRecordIntervention || !canManageIntervention}
             title={
-              isWithdrawn
-                ? "Withdrawn cases are read-only."
+              isReadOnly
+                ? isCertifiedToFileAction
+                  ? "Certified To File Action cases are view-only."
+                  : "Withdrawn cases are read-only."
+                : !canManageIntervention
+                  ? "You do not have permission to manage intervention."
                 : canRecordIntervention
                   ? "Open BPO intervention logs"
                   : "Activate the BPO first before recording an intervention."
             }
             className={`flex flex-col items-start gap-2 p-5 border shadow-sm rounded-xl text-left focus:outline-none ${
-              !isWithdrawn && canRecordIntervention
+              !isReadOnly && canRecordIntervention && canManageIntervention
                 ? "bg-white border-gray-200"
                 : "bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed"
             }`}
           >
             <div
-              className={`p-2.5 rounded-lg ${!isWithdrawn && canRecordIntervention ? "bg-emerald-50" : "bg-gray-100"}`}
+              className={`p-2.5 rounded-lg ${!isReadOnly && canRecordIntervention && canManageIntervention ? "bg-emerald-50" : "bg-gray-100"}`}
             >
               <ClipboardPenIcon
-                className={`w-5 h-5 ${!isWithdrawn && canRecordIntervention ? "text-emerald-600" : "text-gray-400"}`}
+                className={`w-5 h-5 ${!isReadOnly && canRecordIntervention && canManageIntervention ? "text-emerald-600" : "text-gray-400"}`}
               />
             </div>
             <span
-              className={`text-sm ${!isWithdrawn && canRecordIntervention ? "text-emerald-600" : "text-gray-500"}`}
+              className={`text-sm ${!isReadOnly && canRecordIntervention && canManageIntervention ? "text-emerald-600" : "text-gray-500"}`}
             >
               Record Intervention
             </span>
             <span className="text-xs text-gray-500">
-              {isWithdrawn
+              {isReadOnly
                 ? "Case is read-only"
+                : !canManageIntervention
+                  ? "Permission required"
                 : canRecordIntervention
                   ? "Log activity or visit"
                   : "Activate BPO first"}
@@ -204,9 +223,9 @@ export function OverviewTab({
 
           <button
             onClick={onReferralLetter}
-            disabled={isWithdrawn}
+            disabled={isWithdrawn || (!canIssueReferral && !isCertifiedToFileAction)}
             className={`flex flex-col items-start gap-2 p-5 border shadow-sm rounded-xl text-left focus:outline-none ${
-              isWithdrawn
+              isWithdrawn || (!canIssueReferral && !isCertifiedToFileAction)
                 ? "bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed"
                 : "bg-white border-gray-200"
             }`}
@@ -221,11 +240,13 @@ export function OverviewTab({
             >
               {isCertifiedToFileAction
                 ? "Referral Letter"
-                : "Referral / CFA Form"}
+                : "Referral Form"}
             </span>
             <span className="text-xs text-gray-500">
               {isWithdrawn
                 ? "Case is read-only"
+                : !canIssueReferral && !isCertifiedToFileAction
+                  ? "Permission required"
                 : isCertifiedToFileAction
                   ? "View or export saved referral letter"
                   : "Complete grounds first before issuance"}
@@ -234,27 +255,33 @@ export function OverviewTab({
 
           <button
             onClick={() => onShowWithdrawInput(true)}
-            disabled={isWithdrawn}
+            disabled={isReadOnly || !canResolveFinalize}
             className={`flex flex-col items-start gap-2 p-5 border shadow-sm rounded-xl text-left focus:outline-none ${
-              isWithdrawn
+              isReadOnly || !canResolveFinalize
                 ? "bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed"
                 : "bg-white border-gray-200"
             }`}
           >
             <div
-              className={`p-2.5 rounded-lg ${isWithdrawn ? "bg-gray-100" : "bg-rose-50"}`}
+              className={`p-2.5 rounded-lg ${isReadOnly || !canResolveFinalize ? "bg-gray-100" : "bg-rose-50"}`}
             >
               <XCircleIcon
-                className={`w-5 h-5 ${isWithdrawn ? "text-gray-400" : "text-rose-600"}`}
+                className={`w-5 h-5 ${isReadOnly || !canResolveFinalize ? "text-gray-400" : "text-rose-600"}`}
               />
             </div>
             <span
-              className={`text-sm ${isWithdrawn ? "text-gray-500" : "text-rose-600"}`}
+              className={`text-sm ${isReadOnly || !canResolveFinalize ? "text-gray-500" : "text-rose-600"}`}
             >
               Withdraw
             </span>
             <span className="text-xs text-gray-500">
-              {isWithdrawn ? "Case already withdrawn" : "Withdraw this case"}
+              {!canResolveFinalize
+                ? "Permission required"
+                : isCertifiedToFileAction
+                ? "Unavailable for certified cases"
+                : isWithdrawn
+                  ? "Case already withdrawn"
+                  : "Withdraw this case"}
             </span>
           </button>
         </div>

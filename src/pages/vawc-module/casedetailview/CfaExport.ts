@@ -179,7 +179,7 @@ export async function downloadVawcCFAasWord(
   const url = URL.createObjectURL(blob);
   const anchor = Object.assign(document.createElement('a'), {
     href: url,
-    download: `CFA_${data.blotterNumber}.docx`,
+    download: `Referral_${data.blotterNumber}.docx`,
   });
   anchor.click();
   URL.revokeObjectURL(url);

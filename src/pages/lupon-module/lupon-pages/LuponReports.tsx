@@ -28,9 +28,11 @@ import {
   type NatureReportDTO,
   type ChartDataDTO,
 } from "../../../service/lupon-api/LuponReport";
+import { getMyAccess } from "../../../service/lupon-api/LuponCasePermission";
 import { KPICard, KPIGrid } from "../../../hooks/KPICard";
 import { getStatusLabel } from "../lib/StatusMapper";
 import { CenteredLoader, NoRecords } from "../../../hooks/LoadingStates";
+import { PermissionDeniedPage } from "../../blotter-module/reusable/PermissionDeniedPage";
 
 const NATURE_COLORS = [
   "#c98e46",
@@ -48,6 +50,29 @@ const STATUS_DONUT_COLORS = [
   "#64748B",
   "#DC2626",
 ];
+
+const VIEW_REPORTS_PERMISSIONS = [
+  "Manage Reports",
+  "MANAGE_REPORTS",
+  "View Reports",
+  "VIEW_REPORTS",
+];
+
+function normalizePermission(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/[&/]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function hasAnyPermission(owned: string[], required: string[]) {
+  const ownedSet = new Set(owned.map((permission) => normalizePermission(permission)));
+  return required.some((permission) =>
+    ownedSet.has(normalizePermission(permission)),
+  );
+}
 
 function toDateInputValue(d: Date): string {
   const y = d.getFullYear();
@@ -215,6 +240,8 @@ export function LuponReportsPage() {
   const [trendData, setTrendData] = useState<ChartDataDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [canViewReports, setCanViewReports] = useState(false);
 
   const toLocalDateTime = (date: string, endOfDay = false) =>
     date ? `${date}T${endOfDay ? "23:59:59" : "00:00:00"}` : "";
@@ -248,8 +275,41 @@ export function LuponReportsPage() {
   };
 
   useEffect(() => {
-    fetchDashboardData(appliedStart, appliedEnd);
-  }, [appliedStart, appliedEnd]);
+    getMyAccess()
+      .then((access) => {
+        const granted = access.permissions || [];
+        setCanViewReports(hasAnyPermission(granted, VIEW_REPORTS_PERMISSIONS));
+      })
+      .catch(() => {
+        setCanViewReports(false);
+      })
+      .finally(() => {
+        setAccessLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!accessLoading && canViewReports) {
+      fetchDashboardData(appliedStart, appliedEnd);
+    }
+  }, [appliedStart, appliedEnd, accessLoading, canViewReports]);
+
+  if (accessLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50/50">
+        <CenteredLoader minHeight="min-h-screen" />
+      </div>
+    );
+  }
+
+  if (!canViewReports) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to view Lupon reports."
+        hint="Ask your administrator to grant the Manage Reports permission."
+      />
+    );
+  }
 
   const handleApplyGlobalFilter = () => {
     setDateError(null);

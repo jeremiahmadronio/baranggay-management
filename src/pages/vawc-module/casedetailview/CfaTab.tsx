@@ -124,9 +124,10 @@ type CfaTabProps = {
   caseId: number;
   caseData: CaseViewDTO;
   isWithdrawn: boolean;
+  canIssueReferral: boolean;
 };
 
-export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
+export function CfaTab({ caseId, caseData, isWithdrawn, canIssueReferral }: CfaTabProps) {
   const [cfaLoading, setCfaLoading] = useState(false);
   const [cfaDetails, setCfaDetails] = useState<DisplayCFADTO | null>(null);
   const [cfaError, setCfaError] = useState("");
@@ -235,6 +236,11 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
   };
 
   const handleCreateReferral = async () => {
+    if (!canIssueReferral) {
+      setReferralError("You do not have permission to issue referral.");
+      return;
+    }
+
     if (
       !referralForm.grounds.trim() ||
       !referralForm.subjectOfLitigation.trim()
@@ -262,7 +268,7 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
       const existingCfa = await loadCfaDetails(false);
       if (existingCfa) {
         setReferralMessage(
-          `A CFA already exists for Case No. ${caseData.caseNumber}. The existing document for the selected case has been loaded instead.`,
+          `A referral already exists for Case No. ${caseData.caseNumber}. The existing document for the selected case has been loaded instead.`,
         );
         return;
       }
@@ -278,7 +284,7 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
 
       if (!issuedCfa) {
         setQueuedReferralMessage(
-          "Referral created successfully. The saved CFA document is still syncing, so a case-based Word copy is being downloaded.",
+          "Referral created successfully. The saved referral document is still syncing, so a case-based Word copy is being downloaded.",
         );
       } else {
         setQueuedReferralMessage("Referral created successfully.");
@@ -300,13 +306,13 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
         if (existingCfa) {
           setReferralError("");
           setReferralMessage(
-            `A CFA already exists for Case No. ${caseData.caseNumber}. The existing document for the selected case has been loaded instead.`,
+            `A referral already exists for Case No. ${caseData.caseNumber}. The existing document for the selected case has been loaded instead.`,
           );
           return;
         }
 
         setReferralError(
-          `A CFA already exists for Case No. ${caseData.caseNumber}. Please reload the existing document instead of issuing a new one.`,
+          `A referral already exists for Case No. ${caseData.caseNumber}. Please reload the existing document instead of issuing a new one.`,
         );
         return;
       }
@@ -337,13 +343,13 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
   return (
     <>
       <SectionCard
-        title="Referral / CFA"
+        title="Referral"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
       >
         {cfaLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 py-24 text-gray-400">
             <Loader2Icon className="h-6 w-6 animate-spin" />
-            <p className="text-sm">Loading CFA details...</p>
+            <p className="text-sm">Loading referral details...</p>
           </div>
         ) : cfaError && !displayCfa ? (
           <div className="flex flex-col items-center justify-center gap-3 py-24">
@@ -353,8 +359,8 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
             <div className="text-center">
               <p className="text-sm font-semibold text-gray-800">
                 {isCertifiedToFileAction
-                  ? "CFA has been issued, but the document could not be loaded."
-                  : "Unable to load CFA details"}
+                  ? "Referral has been issued, but the document could not be loaded."
+                  : "Unable to load referral details"}
               </p>
               <p className="mt-1 text-xs text-gray-500">{cfaError}</p>
             </div>
@@ -456,6 +462,10 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
           <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-8 text-sm text-gray-600">
             This case is withdrawn and referral issuance is no longer available.
           </div>
+        ) : !canIssueReferral ? (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-8 text-sm text-gray-600">
+            You do not have permission to issue referral.
+          </div>
         ) : isCertifiedToFileAction ? (
           <div className="space-y-5">
             <div className="rounded-xl border border-blue-200 bg-blue-50 px-6 py-8 text-sm text-blue-900">
@@ -473,7 +483,7 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
                   className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-white px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
                 >
                   <FileTextIcon className="h-4 w-4" />
-                  Reload CFA
+                  Reload Referral
                 </button>
               </div>
             </div>
@@ -487,7 +497,7 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">
-                    Issue Referral / CFA
+                    Issue Referral
                   </h3>
                   <p className="text-xs text-gray-500">
                     Case No. {caseData.caseNumber}
@@ -575,7 +585,7 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
                     ) : (
                       <>
                         <SendIcon className="h-4 w-4" />
-                        Mag-issue ng CFA
+                        Mag-issue ng Referral
                       </>
                     )}
                   </button>
@@ -589,7 +599,7 @@ export function CfaTab({ caseId, caseData, isWithdrawn }: CfaTabProps) {
       <ActionModal
         isOpen={showReferralSuccessModal}
         onClose={handleCloseReferralSuccessModal}
-        title="CFA Issued"
+        title="Referral Issued"
         type="success"
       >
         {queuedReferralMessage ||

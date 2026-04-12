@@ -22,6 +22,13 @@ import {
   type DashboardRecentCaseDTO,
   type DashboardStatsDTO,
 } from "../../service/vawc-api/dashboard-api";
+import {
+  getMyAccess,
+  hasVawcPermission,
+  VAWC_PERMISSIONS,
+  type UserAccessPermission,
+} from "../../service/vawc-api/vawc-api";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 const DISTRIBUTION_COLORS = [
   "#64748B",
@@ -118,6 +125,17 @@ function getStatusTone(status: string) {
   return "bg-slate-50 text-slate-700 border border-slate-300";
 }
 
+function formatNameAsInitials(fullName?: string) {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "-";
+
+  return parts.map((part) => `${part.charAt(0).toUpperCase()}.`).join(" ");
+}
+
 export default function VAWCDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStatsDTO | null>(null);
@@ -127,6 +145,10 @@ export default function VAWCDashboard() {
   const [recentCases, setRecentCases] = useState<DashboardRecentCaseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [userAccess, setUserAccess] = useState<UserAccessPermission | null>(null);
+
+  const canViewCases = hasVawcPermission(userAccess, VAWC_PERMISSIONS.VIEW_CASES);
 
   const fetchData = useCallback(async () => {
     try {
@@ -162,8 +184,27 @@ export default function VAWCDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const loadAccess = async () => {
+      try {
+        setAccessLoading(true);
+        const access = await getMyAccess();
+        setUserAccess(access);
+      } catch (err) {
+        console.error("Failed to load VAWC access:", err);
+        setUserAccess(null);
+      } finally {
+        setAccessLoading(false);
+      }
+    };
+
+    void loadAccess();
+  }, []);
+
+  useEffect(() => {
+    if (!accessLoading && canViewCases) {
+      fetchData();
+    }
+  }, [accessLoading, canViewCases, fetchData]);
 
   const safeStats: DashboardStatsDTO = stats || {
     totalCases: 0,
@@ -180,6 +221,27 @@ export default function VAWCDashboard() {
     if (value === undefined || value === null) return 0;
     return value;
   };
+
+  if (accessLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50/50">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <CenteredLoader minHeight="min-h-[320px]" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!canViewCases) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to access the VAWC dashboard."
+        hint="Ask your administrator to grant the View Cases permission."
+        actionLabel="Open Complaint Entry"
+        onAction={() => navigate('/vawc/newcomplaint')}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -287,7 +349,7 @@ export default function VAWCDashboard() {
                           {item.caseNumber}
                         </td>
                         <td className="px-6 py-4 text-gray-900 font-semibold">
-                          {item.complainantName}
+                          {formatNameAsInitials(item.complainantName)}
                         </td>
                         <td className="px-6 py-4 text-gray-600">
                           {item.natureOfComplaint}

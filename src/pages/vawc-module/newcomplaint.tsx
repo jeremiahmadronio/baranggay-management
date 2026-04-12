@@ -17,8 +17,11 @@ import {
   fileVawcComplaint,
   getAssignOfficerComplaintOptions,
   getEvidenceOptions,
+  getMyAccess,
   getViolenceOptions,
+  hasVawcPermission,
   searchPeople,
+  VAWC_PERMISSIONS,
 } from "../../service/vawc-api/vawc-api";
 import type {
   ComplaintDTO,
@@ -26,7 +29,9 @@ import type {
   AssignOfficerOptionDTO,
   EvidenceOptionDTO,
   PersonSearchResponseDTO,
+  UserAccessPermission,
 } from "../../service/vawc-api/vawc-api";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 
@@ -568,6 +573,8 @@ export function VAWCNewComplaint() {
   >([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [optionsWarning, setOptionsWarning] = useState<string | null>(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [userAccess, setUserAccess] = useState<UserAccessPermission | null>(null);
 
   /* ── selections ── */
   const [assignToId, setAssignToId] = useState("");
@@ -580,6 +587,7 @@ export function VAWCNewComplaint() {
   const [selectedViolenceIds, setSelectedViolenceIds] = useState<number[]>([]);
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
   const [certified, setCertified] = useState(false);
+  const canCreateCaseEntry = hasVawcPermission(userAccess, VAWC_PERMISSIONS.CREATE_CASE_ENTRY);
 
   /* ── complainant ── */
   const [complainant, setComplainant] = useState({
@@ -696,8 +704,32 @@ export function VAWCNewComplaint() {
     sessionStorage.removeItem(COMPLAINT_DRAFT_KEY);
   };
 
+  useEffect(() => {
+    const loadAccess = async () => {
+      try {
+        setAccessLoading(true);
+        const access = await getMyAccess();
+        setUserAccess(access);
+      } catch (error) {
+        console.error("Failed to load VAWC access:", error);
+        setUserAccess(null);
+      } finally {
+        setAccessLoading(false);
+      }
+    };
+
+    void loadAccess();
+  }, []);
+
   /* ── load options ── */
   useEffect(() => {
+    if (accessLoading || !canCreateCaseEntry) {
+      if (!accessLoading) {
+        setIsLoadingOptions(false);
+      }
+      return;
+    }
+
     const loadOptions = async () => {
       try {
         const [officersResult, violenceResult, evidenceResult] =
@@ -732,7 +764,7 @@ export function VAWCNewComplaint() {
       }
     };
     loadOptions();
-  }, []);
+  }, [accessLoading, canCreateCaseEntry]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(COMPLAINT_DRAFT_KEY);
@@ -1003,7 +1035,10 @@ export function VAWCNewComplaint() {
       if (witness.address && witness.address.length < LIMITS.addressMin)
         e[`witness-${index}-address`] =
           `Witness ${index + 1}: address must be at least 8 characters.`;
-      if (witness.testimony && witness.testimony.length < 10)
+      if (!witness.testimony)
+        e[`witness-${index}-testimony`] =
+          `Witness ${index + 1}: testimony is required.`;
+      else if (witness.testimony.length < 10)
         e[`witness-${index}-testimony`] =
           `Witness ${index + 1}: testimony must be at least 10 characters.`;
     });
@@ -1174,6 +1209,29 @@ export function VAWCNewComplaint() {
   };
 
   /* ─── Render ──────────────────────────────────────────────────────────── */
+
+  if (accessLoading) {
+    return (
+      <div className="min-h-screen bg-blue-50/40">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="rounded-xl border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+            Loading access permissions...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canCreateCaseEntry) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to create a VAWC complaint entry."
+        hint="Ask your administrator to grant the Create Case Entry permission."
+        actionLabel="Go to Dashboard"
+        onAction={() => navigate('/vawc/dashboard')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-blue-50/40">
@@ -1822,7 +1880,9 @@ export function VAWCNewComplaint() {
                   <CharCounter current={w.address.length} max={180} />
                 </div>
                 <FormTextarea
+                  id={`field-witness-${i}-testimony`}
                   label="Testimony"
+                  required
                   rows={3}
                   maxLength={500}
                   placeholder="Enter witness testimony / statement..."
@@ -1831,6 +1891,7 @@ export function VAWCNewComplaint() {
                     updateWitness(i, "testimony", e.target.value)
                   }
                   hint="Max 500 characters"
+                  error={errors[`witness-${i}-testimony`]}
                 />
               </div>
             ))}

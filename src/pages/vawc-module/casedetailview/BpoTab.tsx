@@ -33,6 +33,9 @@ function formatShortDate(dateStr: string): string {
 type BpoTabProps = {
   caseData: CaseViewDTO;
   isWithdrawn: boolean;
+  isReadOnly: boolean;
+  canIssueBpo: boolean;
+  canManageIntervention: boolean;
   victimFullName: string;
   respondentFullName: string;
   bpoDetails: BpoDetails | null;
@@ -56,6 +59,7 @@ type BpoTabProps = {
   followUpMessage: string;
   followUpSaveDisabled: boolean;
   onActivateBpo: () => void;
+  onPrintBpoRequest: () => void;
   onInterventionFormChange: (field: keyof InterventionFormState, value: string | number[]) => void;
   onAddIntervention: () => void;
   onViewIntervention: (id: number) => void;
@@ -68,6 +72,9 @@ type BpoTabProps = {
 export function BpoTab({
   caseData,
   isWithdrawn,
+  isReadOnly,
+  canIssueBpo,
+  canManageIntervention,
   victimFullName,
   respondentFullName,
   bpoDetails,
@@ -89,6 +96,7 @@ export function BpoTab({
   followUpError,
   followUpMessage,
   onActivateBpo,
+  onPrintBpoRequest,
   onInterventionFormChange,
   onAddIntervention,
   onViewIntervention,
@@ -180,17 +188,21 @@ export function BpoTab({
       {/* ── BPO DETAILS CARD ── */}
       <SectionCard title="Barangay Protection Order Details"
         action={
-          !isActive && !isWithdrawn ? (
+          !isActive && !isReadOnly ? (
             <div className="flex items-center gap-2">
               <button
+                onClick={onPrintBpoRequest}
+                disabled={!canIssueBpo}
                 className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 flex items-center gap-1.5"
+                title={canIssueBpo ? 'Print BPO request letter' : 'You do not have permission to issue BPO'}
               >
                 <PrinterIcon className="w-3.5 h-3.5" /> Print BPO Request Letter
               </button>
               <button
                 onClick={onActivateBpo}
-                disabled={bpoActionLoading}
+                disabled={bpoActionLoading || !canIssueBpo}
                 className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                title={canIssueBpo ? 'Activate BPO' : 'You do not have permission to issue BPO'}
               >
                 {bpoActionLoading ? 'Activating...' : 'Activate BPO (Post-Signature)'}
               </button>
@@ -249,8 +261,9 @@ export function BpoTab({
           action={
             <button
               onClick={handleOpenAddLog}
-              disabled={isWithdrawn}
+              disabled={isReadOnly || !canManageIntervention}
               className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+              title={canManageIntervention ? 'Add intervention log' : 'You do not have permission to manage intervention'}
             >
               <PlusIcon className="w-3.5 h-3.5" /> Add Log
             </button>
@@ -303,7 +316,7 @@ export function BpoTab({
                           e.stopPropagation();
                           handleOpenFollowUp(log.id);
                         }}
-                        disabled={isWithdrawn}
+                        disabled={isReadOnly || !canManageIntervention}
                         className="text-xs font-medium text-gray-500 inline-flex items-center gap-1 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <MessageSquarePlusIcon className="w-3.5 h-3.5" /> Follow-up
@@ -314,8 +327,7 @@ export function BpoTab({
                           e.stopPropagation();
                           handleViewLog(log.id);
                         }}
-                        disabled={isWithdrawn}
-                        className="text-xs font-medium text-blue-600 inline-flex items-center gap-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="text-xs font-medium text-blue-600 inline-flex items-center gap-0.5"
                       >
                         View Details <ChevronRightIcon className="w-3.5 h-3.5" />
                       </button>

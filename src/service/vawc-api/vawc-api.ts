@@ -8,6 +8,7 @@ export async function getInterventionLogs(
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const VAWC_URL = `${BASE}/api/v1/vawc`;
 const PEOPLE_URL = `${BASE}/api/v1/resident`;
+const PERMISSION_URL = `${BASE}/api/v1/permission`;
 
 // ─── Shared ────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,72 @@ export interface FollowUpViewDTO {
 export interface ViolenceTypeDTO {
   id: number;
   type: string;
+}
+
+export interface PermissionOptions {
+  id: number;
+  permissionName: string;
+}
+
+export interface UserAccessPermission {
+  userId: string;
+  username: string;
+  role: string;
+  department: string;
+  permissions: string[];
+}
+
+export const VAWC_PERMISSIONS = {
+  VIEW_CASES: "View Cases",
+  ARCHIVE_CASES: "Archive Cases",
+  MANAGE_CASE_NOTES: "Manage Case notes",
+  ISSUE_REFERRAL: "Issue Referral",
+  ISSUE_BPO: "Issue BPO",
+  CREATE_CASE_ENTRY: "Create Case Entry",
+  RESOLVE_FINALIZE_CASE: "Resolve & Finalize Case",
+  MANAGE_REPORTS: "Manage Reports",
+  UPDATE_CASE_INFORMATION: "Update Case information",
+  MANAGE_INTERVENTION: "Manage Intervention",
+} as const;
+
+function normalizePermissionName(value?: string | null): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/[^a-z0-9& ]/g, "");
+}
+
+export function hasVawcPermission(
+  user: Pick<UserAccessPermission, "permissions"> | null | undefined,
+  permission: string,
+): boolean {
+  if (!user?.permissions?.length) return false;
+
+  const normalizedOwnedList = user.permissions.map((entry) =>
+    normalizePermissionName(entry),
+  );
+  const normalizedOwned = new Set(normalizedOwnedList);
+  const normalizedTarget = normalizePermissionName(permission);
+
+  if (normalizedOwned.has(normalizedTarget)) return true;
+
+  const targetWords = normalizedTarget.split(" ").filter(Boolean);
+  return normalizedOwnedList.some((owned) => {
+    if (owned.includes(normalizedTarget) || normalizedTarget.includes(owned)) {
+      return true;
+    }
+
+    return targetWords.every((word) => owned.includes(word));
+  });
+}
+
+export function hasAnyVawcPermission(
+  user: Pick<UserAccessPermission, "permissions"> | null | undefined,
+  permissions: string[],
+): boolean {
+  return permissions.some((permission) => hasVawcPermission(user, permission));
 }
 
 export interface PageResponse<T> {
@@ -415,6 +482,14 @@ export async function getAssignOfficerComplaintOptions(): Promise<
   AssignOfficerOptionDTO[]
 > {
   return apiFetch(`${VAWC_URL}/assign-officer-complaint`);
+}
+
+export async function getPermissionOptions(): Promise<PermissionOptions[]> {
+  return apiFetch(`${PERMISSION_URL}/options`);
+}
+
+export async function getMyAccess(): Promise<UserAccessPermission> {
+  return apiFetch(`${PERMISSION_URL}/my-access`);
 }
 
 //add case note for a vawc case
