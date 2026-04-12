@@ -48,6 +48,7 @@ import BlotterViewPage from "./pages/blotter-module/BlotterRecordDetailView";
 import ReportsPage from "./pages/blotter-module/BlotterReport";
 import ResidentListPage from "./pages/blotter-module/Residents";
 
+
 // Clearance
 import ClearanceDashboard from "./clearance-module/Dashboard";
 import { IssueCertificatePage } from "./clearance-module/issue-certificate";

@@ -1,4 +1,4 @@
-import { LockIcon } from "lucide-react";
+  import { LockIcon } from "lucide-react";
 
 interface PermissionDeniedPageProps {
   message?: string;
