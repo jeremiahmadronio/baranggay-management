@@ -135,9 +135,24 @@ export const firstTimeJobSeekerNavItems: NavItemType[] = [
     icon: LayoutDashboard,
   },
   {
-    label: "Settings",
-    path: "/first-time-job-seeker/settings",
-    icon: Settings,
+    label: "FTJS Entry",
+    path: "/first-time-job-seeker/entry",
+    icon: FilePlus2,
+  },
+  {
+    label: "Management",
+    path: "/first-time-job-seeker/management",
+    icon: FileText,
+  },
+  {
+    label: "Archive",
+    path: "/first-time-job-seeker/archive",
+    icon: Archive,
+  },
+  {
+    label: "Reports",
+    path: "/first-time-job-seeker/reports",
+    icon: ChartNoAxesCombined,
   },
 ];
 

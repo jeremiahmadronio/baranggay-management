@@ -48,7 +48,6 @@ import BlotterViewPage from "./pages/blotter-module/BlotterRecordDetailView";
 import ReportsPage from "./pages/blotter-module/BlotterReport";
 import ResidentListPage from "./pages/blotter-module/Residents";
 
-
 // Clearance
 import ClearanceDashboard from "./clearance-module/Dashboard";
 import { IssueCertificatePage } from "./clearance-module/issue-certificate";
@@ -58,7 +57,12 @@ import EditTemplate from "./clearance-module/clearance-template/EditTemplate";
 import { ClearanceSettings } from "./clearance-module/settings";
 
 //FTJS
-import FirstTimeJobSeekerDashboard from "./first-time-job-seeker-module/dashboard";
+import FtjsDashboardPage from "./pages/ftjs/Dashboard";
+import FtjsEntryPage from "./pages/ftjs/ftjsentry";
+import FtjsManagementPage from "./pages/ftjs/ftjsManagement";
+import FtjsArchivePage from "./pages/ftjs/Archive";
+import FtjsReportPage from "./pages/ftjs/report";
+import FtjsDetailViewPage from "./pages/ftjs/FtjsDetailView";
 
 //LUPON
 import LupongTagapamayapaDashboard from "./pages/lupon-module/lupon-pages/dashboard";
@@ -185,7 +189,7 @@ export function App() {
       </Route>
 
       {/* VAWC */}
-       <Route path="/vawc" element={<VawcLayout />}>
+      <Route path="/vawc" element={<VawcLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<VawcDashboard />} />
         <Route path="newcomplaint" element={<VawcNewComplaint />} />
@@ -215,11 +219,12 @@ export function App() {
         element={<FirstTimeJobSeekerLayout />}
       >
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<FirstTimeJobSeekerDashboard />} />
-        <Route
-          path="reports"
-          element={<PagePlaceholder title="First Time Job Seeker Reports" />}
-        />
+        <Route path="dashboard" element={<FtjsDashboardPage />} />
+        <Route path="entry" element={<FtjsEntryPage />} />
+        <Route path="management" element={<FtjsManagementPage />} />
+        <Route path="management/:ftjsId" element={<FtjsDetailViewPage />} />
+        <Route path="archive" element={<FtjsArchivePage />} />
+        <Route path="reports" element={<FtjsReportPage />} />
       </Route>
 
       {/* Officials  */}
