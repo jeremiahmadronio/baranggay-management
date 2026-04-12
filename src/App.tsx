@@ -70,7 +70,11 @@ import LuponCaseDetailViewWrapper from "./pages/lupon-module/lupon-pages/LuponCa
 import OfficialDashboard from "./official-module/dashboard";
 
 //VAWC
-import { VawcDashboard } from "./pages/vawc/dashboard";
+import VawcDashboard from "./pages/vawc-module/dashboard";
+import VawcCaseTable from "./pages/vawc-module/cases";
+import VawcNewComplaint from "./pages/vawc-module/newcomplaint";
+import VawcReportsPage from "./pages/vawc-module/reports";
+import VawcCaseDetailsPage from "./pages/vawc-module/casedetailview";
 
 // Landing Page
 import { LandingPage } from "./landing-page";
@@ -180,14 +184,14 @@ export function App() {
       </Route>
 
       {/* VAWC */}
-      <Route path="/vawc" element={<VawcLayout />}>
+       <Route path="/vawc" element={<VawcLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<VawcDashboard />} />
-        <Route path="cases" element={<PagePlaceholder title="VAWC Cases" />} />
-        <Route
-          path="reports"
-          element={<PagePlaceholder title="VAWC Reports" />}
-        />
+        <Route path="newcomplaint" element={<VawcNewComplaint />} />
+        <Route path="cases" element={<VawcCaseTable />} />
+        <Route path="casedetailview" element={<VawcCaseDetailsPage />} />
+        <Route path="reports" element={<VawcReportsPage />} />
+        <Route path="residents" element={<ResidentListPage />} />
       </Route>
 
       {/* Clearance */}

@@ -784,7 +784,6 @@ export function EditResidentsModal({
         completeAddress: formData.completeAddress.trim(),
         email: (formData.email ?? "").trim(),
         occupation: (formData.occupation ?? "").trim(),
-        // educationalAttainment, religion, and bloodType removed from update
         photo: croppedPhotoPayload,
         age,
         citizenship:

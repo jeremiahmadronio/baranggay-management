@@ -13,9 +13,9 @@ import {
   type ViolenceOptionDTO,
 } from "../../service/vawc-api/vawc-api";
 
-import { KPICard, KPIGrid, KPIIcons } from "../../reusable/KPICard";
-import { TableFilter } from "../../reusable/TableFilter";
-import { Table, type TableColumn } from "../../reusable/Table";
+import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
+import { TableFilter } from "../../hooks/TableFilter";
+import { Table, type TableColumn } from "../../hooks/Table";
 
 const VIOLENCE_TYPE_TONE: string[] = [
   'bg-rose-50 text-rose-700 border border-rose-200',

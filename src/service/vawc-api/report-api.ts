@@ -3,7 +3,6 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const VAWC_REPORTS_URL = `${BASE}/api/v1/vawc/report`;
 
-
 export interface ReportStatsDTO {
   totalCases: number;
   totalExpired: number;
@@ -30,7 +29,6 @@ export interface CategorySummaryDTO {
   percentage: number;
 }
 
-
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
 
@@ -48,25 +46,43 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
       window.location.href = "/login";
       throw new Error("Session expired.");
     }
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Error: ${response.status}`);
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || errorData.error || `Error: ${response.status}`,
+      );
+    }
+
+    const plainText = await response.text().catch(() => "");
+    throw new Error(plainText || `Error: ${response.status}`);
   }
 
-  return response.status === 204 ? ({} as T) : response.json();
-}
+  if (response.status === 204) {
+    return {} as T;
+  }
 
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return (await response.text()) as T;
+}
 
 function buildDateParams(startDate?: string, endDate?: string): string {
   const query = new URLSearchParams();
   if (startDate) query.set("startDate", startDate);
-  if (endDate)   query.set("endDate", endDate);
+  if (endDate) query.set("endDate", endDate);
   return query.toString();
 }
 
-
 export async function getVawcReportStats(
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): Promise<ReportStatsDTO> {
   const params = buildDateParams(startDate, endDate);
   return apiFetch(`${VAWC_REPORTS_URL}/stats${params ? `?${params}` : ""}`);
@@ -74,15 +90,17 @@ export async function getVawcReportStats(
 
 export async function getVawcNatureStats(
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): Promise<NatureStatsDTO[]> {
   const params = buildDateParams(startDate, endDate);
-  return apiFetch(`${VAWC_REPORTS_URL}/nature-stats${params ? `?${params}` : ""}`);
+  return apiFetch(
+    `${VAWC_REPORTS_URL}/nature-stats${params ? `?${params}` : ""}`,
+  );
 }
 
 export async function getVawcTrend(
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): Promise<TrendStatsDTO[]> {
   const params = buildDateParams(startDate, endDate);
   return apiFetch(`${VAWC_REPORTS_URL}/trend${params ? `?${params}` : ""}`);
@@ -90,9 +108,10 @@ export async function getVawcTrend(
 
 export async function getVawcCategorySummary(
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): Promise<CategorySummaryDTO[]> {
   const params = buildDateParams(startDate, endDate);
-  return apiFetch(`${VAWC_REPORTS_URL}/category-summary${params ? `?${params}` : ""}`);
+  return apiFetch(
+    `${VAWC_REPORTS_URL}/category-summary${params ? `?${params}` : ""}`,
+  );
 }
-

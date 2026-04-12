@@ -1,8 +1,6 @@
-
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const VAWC_DASHBOARD_URL = `${BASE}/api/v1/vawc-dashboard`;
 
-// ─── Response DTOs ─────────────────────────────────────────────────────────
 
 export interface DashboardStatsDTO {
   totalCases: number;
@@ -26,7 +24,6 @@ export interface DashboardRecentCaseDTO {
   status: string;
 }
 
-// ─── Core fetch ────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
@@ -45,11 +42,31 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
       window.location.href = "/login";
       throw new Error("Session expired.");
     }
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Error: ${response.status}`);
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || errorData.error || `Error: ${response.status}`,
+      );
+    }
+
+    const plainText = await response.text().catch(() => "");
+    throw new Error(plainText || `Error: ${response.status}`);
   }
 
-  return response.status === 204 ? ({} as T) : response.json();
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return (await response.text()) as T;
 }
 
 // ─── API Functions ─────────────────────────────────────────────────────────
@@ -58,7 +75,9 @@ export async function getVawcDashboardStats(): Promise<DashboardStatsDTO> {
   return apiFetch(`${VAWC_DASHBOARD_URL}/stats`);
 }
 
-export async function getVawcCaseDistribution(): Promise<DashboardCaseDistributionDTO[]> {
+export async function getVawcCaseDistribution(): Promise<
+  DashboardCaseDistributionDTO[]
+> {
   return apiFetch(`${VAWC_DASHBOARD_URL}/distribution`);
 }
 
