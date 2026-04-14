@@ -14,9 +14,9 @@ interface PreviewProps {
 }
 
 export function ResidencyPreview({ template, customData }: PreviewProps) {
-  const hasPhoto     = template.settings.requiresPhoto;
+  const hasPhoto = template.settings.requiresPhoto;
   const hasThumbmark = template.settings.requiresThumbmark;
-  const hasFee       = template.settings.hasFee;
+  const hasFee = template.settings.hasFee;
 
   return (
     <div
@@ -40,8 +40,12 @@ export function ResidencyPreview({ template, customData }: PreviewProps) {
           {hasPhoto && (
             <div className="flex-shrink-0 ml-4 absolute right-10 top-6">
               <div className="w-[72px] h-[72px] border border-gray-300 bg-blue-50/40 flex flex-col items-center justify-center">
-                <span className="text-[8px] text-gray-400 font-medium">1x1</span>
-                <span className="text-[8px] text-gray-400 font-medium">PHOTO</span>
+                <span className="text-[8px] text-gray-400 font-medium">
+                  1x1
+                </span>
+                <span className="text-[8px] text-gray-400 font-medium">
+                  PHOTO
+                </span>
               </div>
             </div>
           )}
@@ -65,15 +69,24 @@ export function ResidencyPreview({ template, customData }: PreviewProps) {
           <div className="flex justify-end px-8 mb-4">
             <div className="flex flex-col items-center gap-1">
               <div className="w-[64px] h-[72px] border border-gray-300 bg-gray-50/60 flex flex-col items-center justify-center">
-                <span className="text-[8px] text-gray-400 font-medium">RIGHT</span>
-                <span className="text-[8px] text-gray-400 font-medium">THUMB</span>
+                <span className="text-[8px] text-gray-400 font-medium">
+                  RIGHT
+                </span>
+                <span className="text-[8px] text-gray-400 font-medium">
+                  THUMB
+                </span>
               </div>
               <span className="text-[8px] text-gray-400">Thumbmark</span>
             </div>
           </div>
         )}
 
-        <PaymentDetails hasFee={hasFee} customData={customData} />
+        <PaymentDetails
+          hasFee={hasFee}
+          hasCtn={template.settings.hasCtn}
+          fee={template.settings.fee}
+          customData={customData}
+        />
         <Signatories template={template} />
       </div>
 

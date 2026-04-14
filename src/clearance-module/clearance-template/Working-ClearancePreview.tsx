@@ -13,9 +13,12 @@ interface PreviewProps {
   customData?: Record<string, string>;
 }
 
-export function WorkingClearancePreview({ template, customData }: PreviewProps) {
+export function WorkingClearancePreview({
+  template,
+  customData,
+}: PreviewProps) {
   const hasPhoto = template.settings.requiresPhoto;
- 
+
   return (
     <div
       className="bg-white w-full max-w-[210mm] mx-auto shadow-xl relative flex flex-col border border-gray-200"
@@ -48,7 +51,6 @@ export function WorkingClearancePreview({ template, customData }: PreviewProps) 
             </div>
           )}
         </div>
-        
 
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 max-h-[500px] overflow-hidden px-8 py-6">
@@ -66,7 +68,12 @@ export function WorkingClearancePreview({ template, customData }: PreviewProps) 
           </div>
         </div>
 
-        <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
+        <PaymentDetails
+          hasFee={template.settings.hasFee}
+          hasCtn={template.settings.hasCtn}
+          fee={template.settings.fee}
+          customData={customData}
+        />
         <Signatories template={template} />
       </div>
 

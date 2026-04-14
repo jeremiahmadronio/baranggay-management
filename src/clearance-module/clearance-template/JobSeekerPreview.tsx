@@ -55,7 +55,12 @@ export function JobSeekerPreview({ template, customData }: PreviewProps) {
           </div>
         </div>
 
-        <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
+        <PaymentDetails
+          hasFee={template.settings.hasFee}
+          hasCtn={template.settings.hasCtn}
+          fee={template.settings.fee}
+          customData={customData}
+        />
         <Signatories template={template} />
       </div>
 

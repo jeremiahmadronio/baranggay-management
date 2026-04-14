@@ -26,6 +26,7 @@ export interface FtjsRequestDTO {
   contactNumber?: string;
   email?: string;
 
+  schoolAddress?: string;
   educationalAttainment: string;
   course?: string;
   institution?: string;
@@ -117,7 +118,7 @@ export interface FtjsFullResponseDTO {
   email: string;
   fullAddress: string;
   isRegisteredResident: boolean;
-
+schoolAddress: string;
   educationalAttainment: string;
   course: string;
   institution: string;

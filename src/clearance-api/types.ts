@@ -24,11 +24,14 @@ export interface CertificateSettings {
   requiresPhoto: boolean;
   requiresThumbmark: boolean;
   hasFee: boolean;
+  hasCtn: boolean;
+  ctnFee: number;
 }
 
 export interface TemplateData {
   id: number | string; // number from DB, string slug for URL/lookup
   title: string;
+  layoutStyle?: string; // "clearance" | "inline" from API
   bodySections: BodySection[]; // cert_body jsonb
   footerText: string; // cert_tagline
   signatories: Signatory[]; // signatories jsonb
@@ -54,6 +57,11 @@ export interface FormFieldConfig {
   autoFilled?: boolean;
   readOnly?: boolean;
   helpText?: string;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  patternMessage?: string;
 }
 
 export interface FormSection {
@@ -92,12 +100,21 @@ export interface IssuedCertificate {
   issuedById?: string; // issued_by_id uuid
   issuedBy: string; // JOIN: users.name
   deptId?: number; // dept_id
-  status: "Released" | "Pending" | "Cancelled"; // ← Fixed to match DB default
+  status: "Released" | "Pending" | "Cancelled" | "Voided"; // ← includes Voided
   dateIssued: string; // issued_at
   expiryDate?: string; // expiry_date
   // From revenue_records JOIN:
   orNumber?: string; // revenue_records.or_number
   fee?: number; // revenue_records.amount
+  // Void info
+  voidReason?: string;
+  voidedAt?: string;
+  voidedBy?: string;
+  // Archive info
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  archiveReason?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
