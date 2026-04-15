@@ -1,10 +1,11 @@
-
-
 import { User, ShieldCheck, Mail, AtSign, Phone } from "lucide-react";
-import { ReusableSettings, type SettingsSectionConfig } from "../reusable/Settings";
+import {
+  ReusableSettings,
+  type SettingsSectionConfig,
+} from "../../reusable/Settings";
 import {
   getSettingsPreview,
-  updateSettings
+  updateSettings,
 } from "../admin-root-api/admin-management";
 
 // ─── Config ───────────────────────────────────────────────────────────────────

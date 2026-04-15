@@ -1,40 +1,48 @@
-import React, { useState } from 'react'
-import { X, AlertTriangle, Loader2 } from 'lucide-react'
-import { updateUserStatus, Statuses, type AdminTable } from '../admin-root-api/admin-management'
+import React, { useState } from "react";
+import { X, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  updateUserStatus,
+  Statuses,
+  type AdminTable,
+} from "../admin-root-api/admin-management";
 
 interface DeleteUserModalProps {
-  admin: AdminTable
-  onClose: () => void
+  admin: AdminTable;
+  onClose: () => void;
 }
 
 export function DeleteUserModal({ admin, onClose }: DeleteUserModalProps) {
-  const [reason,  setReason]  = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose()
-  }
+    if (e.target === e.currentTarget) onClose();
+  };
 
   const handleConfirm = async () => {
-    setError(null)
+    setError(null);
     if (!reason.trim()) {
-      setError('Reason is required for accountability.')
-      return
+      setError("Reason is required for accountability.");
+      return;
     }
     try {
-      setLoading(true)
+      setLoading(true);
       await updateUserStatus(admin.id, Statuses.INACTIVE, {
         reason,
         lockUntil: null,
-      })
-      onClose()
+      });
+      onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to deactivate account. Please try again.')
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to deactivate account. Please try again.",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div
@@ -43,8 +51,14 @@ export function DeleteUserModal({ admin, onClose }: DeleteUserModalProps) {
     >
       <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md relative">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Deactivate User Account</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition" aria-label="Close modal">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Deactivate User Account
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            aria-label="Close modal"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -55,10 +69,16 @@ export function DeleteUserModal({ admin, onClose }: DeleteUserModalProps) {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-900">
-              Deactivate <span className="font-semibold">{admin.firstName} {admin.lastName}</span>'s account?
+              Deactivate{" "}
+              <span className="font-semibold">
+                {admin.firstName} {admin.lastName}
+              </span>
+              's account?
             </p>
             <p className="text-sm text-red-500 mt-1">
-              Their account will be set to <strong>Inactive</strong>. They will lose access immediately. A Root Admin can restore their account later.
+              Their account will be set to <strong>Inactive</strong>. They will
+              lose access immediately. A Root Admin can restore their account
+              later.
             </p>
           </div>
         </div>
@@ -69,7 +89,7 @@ export function DeleteUserModal({ admin, onClose }: DeleteUserModalProps) {
           </label>
           <textarea
             value={reason}
-            onChange={e => setReason(e.target.value)}
+            onChange={(e) => setReason(e.target.value)}
             placeholder="Enter reason for deactivating this account..."
             rows={4}
             className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
@@ -96,10 +116,10 @@ export function DeleteUserModal({ admin, onClose }: DeleteUserModalProps) {
             className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition disabled:opacity-50 flex items-center gap-2"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? 'Processing...' : 'Confirm Deactivate'}
+            {loading ? "Processing..." : "Confirm Deactivate"}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

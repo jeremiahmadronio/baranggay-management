@@ -9,7 +9,7 @@ import {
   StatusBadge,
   ConfirmModal,
   type TableColumn,
-} from "../reusable";
+} from "../../reusable";
 
 import {
   type IssuedStats,
@@ -19,8 +19,8 @@ import {
   voidCertificate,
   archiveIssuedCertificate,
   restoreIssuedCertificate,
-} from "../clearance-api/issued-certificate-api";
-import type { StatusType } from "../reusable/StatusBadge";
+} from "../../clearance-api/issued-certificate-api";
+import type { StatusType } from "../../reusable/StatusBadge";
 
 // ── Status helpers ──
 const statusMap: Record<string, StatusType> = {

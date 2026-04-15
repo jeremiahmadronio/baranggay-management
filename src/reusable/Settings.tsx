@@ -1,11 +1,15 @@
-
-
 import React, { useState, useEffect } from "react";
 import {
-  Eye, EyeOff, Save, ShieldCheck, Loader2,
-  CheckCircle2, AlertCircle, type LucideIcon,
+  Eye,
+  EyeOff,
+  Save,
+  ShieldCheck,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  type LucideIcon,
 } from "lucide-react";
-import { PasswordStrengthIndicator } from "./../admin-root-module/PasswordStrengthIndicator";
+import { PasswordStrengthIndicator } from "../pages/admin-root-module/PasswordStrengthIndicator";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -17,33 +21,33 @@ export type FieldType =
   | "confirmPassword";
 
 export interface SettingsFieldConfig {
-  key:           string;
-  label:         string;
-  type:          FieldType;
-  placeholder?:  string;
-  required?:     boolean;
-  hint?:         string;
-  icon?:         React.ReactNode;
-  readOnly?:     boolean;
-  confirmOf?:    string;
+  key: string;
+  label: string;
+  type: FieldType;
+  placeholder?: string;
+  required?: boolean;
+  hint?: string;
+  icon?: React.ReactNode;
+  readOnly?: boolean;
+  confirmOf?: string;
 }
 
 export interface SettingsSectionConfig {
-  title:     string;
+  title: string;
   subtitle?: string;
-  icon:      LucideIcon;
-  fields:    SettingsFieldConfig[];
+  icon: LucideIcon;
+  fields: SettingsFieldConfig[];
 }
 
 export interface ReusableSettingsProps<T extends Record<string, string>> {
-  loadData:    () => Promise<T>;
-  saveData:    (values: T) => Promise<string | void>;
-  sections:    SettingsSectionConfig[];
+  loadData: () => Promise<T>;
+  saveData: (values: T) => Promise<string | void>;
+  sections: SettingsSectionConfig[];
   omitOnSave?: string[];
   avatarKeys?: [string, string];
-  nameKeys?:   [string, string];
-  roleLabel?:  string;
-  columns?:    1 | 2 | 3;
+  nameKeys?: [string, string];
+  roleLabel?: string;
+  columns?: 1 | 2 | 3;
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -60,7 +64,7 @@ type ToastType = "success" | "error";
 // ─── Primitive UI pieces ──────────────────────────────────────────────────────
 
 const Skeleton = ({ className = "" }: { className?: string }) => (
-  <div 
+  <div
     className={`animate-pulse rounded-xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 ${className}`}
   />
 );
@@ -70,14 +74,17 @@ const Toast = ({ type, message }: { type: ToastType; message: string }) => (
     className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5
       rounded-xl shadow-xl border backdrop-blur-sm text-sm font-semibold
       transition-all duration-300 animate-in slide-in-from-bottom-5
-      ${type === "success" 
-        ? "border-emerald-200/60 bg-white text-emerald-900" 
-        : "border-rose-200/60 bg-white text-rose-900"
+      ${
+        type === "success"
+          ? "border-emerald-200/60 bg-white text-emerald-900"
+          : "border-rose-200/60 bg-white text-rose-900"
       }`}
   >
-    {type === "success"
-      ? <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-      : <AlertCircle  className="w-5 h-5 text-rose-500 shrink-0" />}
+    {type === "success" ? (
+      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+    ) : (
+      <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+    )}
     <span>{message}</span>
   </div>
 );
@@ -97,7 +104,9 @@ const SectionHeader = ({
     </div>
     <div className="flex-1">
       <p className="text-sm font-bold text-slate-900 tracking-tight">{title}</p>
-      {subtitle && <p className="text-xs text-slate-500 mt-1 font-normal">{subtitle}</p>}
+      {subtitle && (
+        <p className="text-xs text-slate-500 mt-1 font-normal">{subtitle}</p>
+      )}
     </div>
   </div>
 );
@@ -128,9 +137,12 @@ const InputShell = ({
   const borderCls = disabled
     ? "border-slate-150 bg-slate-50/60 cursor-not-allowed"
     : {
-        default: "border-slate-200 hover:border-slate-300 focus-within:border-blue-400 focus-within:shadow-md focus-within:shadow-blue-500/10 focus-within:ring-2 focus-within:ring-blue-500/20",
-        error:   "border-rose-300 hover:border-rose-400 focus-within:border-rose-500 focus-within:shadow-md focus-within:shadow-rose-500/10 focus-within:ring-2 focus-within:ring-rose-500/20",
-        success: "border-emerald-300 hover:border-emerald-400 focus-within:border-emerald-500 focus-within:shadow-md focus-within:shadow-emerald-500/10 focus-within:ring-2 focus-within:ring-emerald-500/20",
+        default:
+          "border-slate-200 hover:border-slate-300 focus-within:border-blue-400 focus-within:shadow-md focus-within:shadow-blue-500/10 focus-within:ring-2 focus-within:ring-blue-500/20",
+        error:
+          "border-rose-300 hover:border-rose-400 focus-within:border-rose-500 focus-within:shadow-md focus-within:shadow-rose-500/10 focus-within:ring-2 focus-within:ring-rose-500/20",
+        success:
+          "border-emerald-300 hover:border-emerald-400 focus-within:border-emerald-500 focus-within:shadow-md focus-within:shadow-emerald-500/10 focus-within:ring-2 focus-within:ring-emerald-500/20",
       }[state];
 
   return (
@@ -151,30 +163,28 @@ function SettingsField({
   allValues,
   onChange,
 }: {
-  cfg:       SettingsFieldConfig;
-  value:     string;
+  cfg: SettingsFieldConfig;
+  value: string;
   allValues: Record<string, string>;
-  onChange:  (key: string, val: string) => void;
+  onChange: (key: string, val: string) => void;
 }) {
   const [showPw, setShowPw] = useState(false);
 
-  const isPassword        = cfg.type === "password";
+  const isPassword = cfg.type === "password";
   const isConfirmPassword = cfg.type === "confirmPassword";
-  const pwKey             = cfg.confirmOf ?? "password";
-  const passwordValue     = allValues[pwKey] ?? "";
-  const disabled          = cfg.readOnly || (isConfirmPassword && !passwordValue);
+  const pwKey = cfg.confirmOf ?? "password";
+  const passwordValue = allValues[pwKey] ?? "";
+  const disabled = cfg.readOnly || (isConfirmPassword && !passwordValue);
 
   // Validation state
   let state: "default" | "error" | "success" = "default";
-  if (isPassword && value && !isPasswordStrong(value))  state = "error";
+  if (isPassword && value && !isPasswordStrong(value)) state = "error";
   if (isConfirmPassword && value) {
     state = value === passwordValue ? "success" : "error";
   }
 
   const inputType =
-    isPassword || isConfirmPassword
-      ? showPw ? "text" : "password"
-      : cfg.type;
+    isPassword || isConfirmPassword ? (showPw ? "text" : "password") : cfg.type;
 
   return (
     <div className="space-y-2">
@@ -182,7 +192,9 @@ function SettingsField({
 
       <InputShell state={state} disabled={disabled}>
         {cfg.icon && (
-          <span className="text-slate-400 shrink-0 flex-shrink-0">{cfg.icon}</span>
+          <span className="text-slate-400 shrink-0 flex-shrink-0">
+            {cfg.icon}
+          </span>
         )}
         <input
           type={inputType}
@@ -202,7 +214,11 @@ function SettingsField({
             onClick={() => setShowPw((p) => !p)}
             className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40 shrink-0 p-1 hover:bg-slate-100/50 rounded-md"
           >
-            {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showPw ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
           </button>
         )}
       </InputShell>
@@ -215,18 +231,23 @@ function SettingsField({
       )}
 
       {/* Confirm password feedback */}
-      {isConfirmPassword && value && (
-        state === "error"
-          ? <p className="text-xs text-rose-600 flex items-center gap-1.5 mt-1.5 font-medium">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Passwords do not match
-            </p>
-          : <p className="text-xs text-emerald-600 flex items-center gap-1.5 mt-1.5 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Passwords match
-            </p>
-      )}
+      {isConfirmPassword &&
+        value &&
+        (state === "error" ? (
+          <p className="text-xs text-rose-600 flex items-center gap-1.5 mt-1.5 font-medium">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Passwords do not
+            match
+          </p>
+        ) : (
+          <p className="text-xs text-emerald-600 flex items-center gap-1.5 mt-1.5 font-medium">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Passwords match
+          </p>
+        ))}
 
       {cfg.hint && (
-        <p className="text-xs text-slate-500 leading-relaxed mt-1.5">{cfg.hint}</p>
+        <p className="text-xs text-slate-500 leading-relaxed mt-1.5">
+          {cfg.hint}
+        </p>
       )}
     </div>
   );
@@ -238,17 +259,20 @@ export function ReusableSettings<T extends Record<string, string>>({
   loadData,
   saveData,
   sections,
-  omitOnSave   = ["confirmPassword"],
-  avatarKeys   = ["firstName", "lastName"],
-  nameKeys     = ["firstName", "lastName"],
+  omitOnSave = ["confirmPassword"],
+  avatarKeys = ["firstName", "lastName"],
+  nameKeys = ["firstName", "lastName"],
   roleLabel,
-  columns      = 2,
+  columns = 2,
 }: ReusableSettingsProps<T>) {
-  const [form,     setForm]    = useState<Record<string, string>>({});
-  const [original, setOrig]    = useState<Record<string, string>>({});
-  const [loading,  setLoading] = useState(true);
-  const [saving,   setSaving]  = useState(false);
-  const [toast,    setToast]   = useState<{ type: ToastType; message: string } | null>(null);
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [original, setOrig] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{
+    type: ToastType;
+    message: string;
+  } | null>(null);
 
   // ── Load ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -260,7 +284,7 @@ export function ReusableSettings<T extends Record<string, string>>({
       })
       .catch(() => fireToast("error", "Failed to load settings."))
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fireToast = (type: ToastType, message: string) => {
@@ -273,8 +297,9 @@ export function ReusableSettings<T extends Record<string, string>>({
     setForm((prev) => ({ ...prev, [key]: val }));
 
   // ── Dirty check ──────────────────────────────────────────────────────────
-  const hasChanges = Object.keys(original).some((k) => form[k] !== original[k])
-    || (form["password"]?.length ?? 0) > 0;
+  const hasChanges =
+    Object.keys(original).some((k) => form[k] !== original[k]) ||
+    (form["password"]?.length ?? 0) > 0;
 
   // ── Validation ───────────────────────────────────────────────────────────
   const allPasswordFields = sections
@@ -286,7 +311,7 @@ export function ReusableSettings<T extends Record<string, string>>({
     .filter((f) => f.type === "confirmPassword");
 
   const pwsValid = allPasswordFields.every(
-    (f) => !form[f.key] || isPasswordStrong(form[f.key])
+    (f) => !form[f.key] || isPasswordStrong(form[f.key]),
   );
 
   const confirmsMatch = allConfirmFields.every((f) => {
@@ -303,7 +328,7 @@ export function ReusableSettings<T extends Record<string, string>>({
     setSaving(true);
     try {
       const payload = Object.fromEntries(
-        Object.entries(form).filter(([k]) => !omitOnSave.includes(k))
+        Object.entries(form).filter(([k]) => !omitOnSave.includes(k)),
       ) as T;
 
       await saveData(payload);
@@ -311,18 +336,25 @@ export function ReusableSettings<T extends Record<string, string>>({
       // Update original (exclude password fields)
       const nextOrig = { ...form };
       allPasswordFields.forEach((f) => delete nextOrig[f.key]);
-      allConfirmFields.forEach((f)  => delete nextOrig[f.key]);
+      allConfirmFields.forEach((f) => delete nextOrig[f.key]);
       setOrig(nextOrig);
 
       // Reset password fields
       const reset: Record<string, string> = {};
-      allPasswordFields.forEach((f) => { reset[f.key] = ""; });
-      allConfirmFields.forEach((f)  => { reset[f.key] = ""; });
+      allPasswordFields.forEach((f) => {
+        reset[f.key] = "";
+      });
+      allConfirmFields.forEach((f) => {
+        reset[f.key] = "";
+      });
       setForm((prev) => ({ ...prev, ...reset }));
 
       fireToast("success", "Settings saved successfully.");
     } catch (err: unknown) {
-      fireToast("error", err instanceof Error ? err.message : "Something went wrong.");
+      fireToast(
+        "error",
+        err instanceof Error ? err.message : "Something went wrong.",
+      );
     } finally {
       setSaving(false);
     }
@@ -331,8 +363,12 @@ export function ReusableSettings<T extends Record<string, string>>({
   // ── Cancel ───────────────────────────────────────────────────────────────
   const handleCancel = () => {
     const reset: Record<string, string> = {};
-    allPasswordFields.forEach((f) => { reset[f.key] = ""; });
-    allConfirmFields.forEach((f)  => { reset[f.key] = ""; });
+    allPasswordFields.forEach((f) => {
+      reset[f.key] = "";
+    });
+    allConfirmFields.forEach((f) => {
+      reset[f.key] = "";
+    });
     setForm({ ...original, ...reset });
   };
 
@@ -341,8 +377,12 @@ export function ReusableSettings<T extends Record<string, string>>({
     return (
       <div className="max-w-5xl mx-auto space-y-6 p-4">
         <Skeleton className="h-24 w-full rounded-xl" />
-        <div className={`grid grid-cols-1 ${columns === 2 ? "lg:grid-cols-2" : columns === 3 ? "lg:grid-cols-3" : ""} gap-6`}>
-          {sections.map((_, i) => <Skeleton key={i} className="h-80 w-full rounded-xl" />)}
+        <div
+          className={`grid grid-cols-1 ${columns === 2 ? "lg:grid-cols-2" : columns === 3 ? "lg:grid-cols-3" : ""} gap-6`}
+        >
+          {sections.map((_, i) => (
+            <Skeleton key={i} className="h-80 w-full rounded-xl" />
+          ))}
         </div>
       </div>
     );
@@ -365,15 +405,18 @@ export function ReusableSettings<T extends Record<string, string>>({
     <div className="min-h-screen">
       <div className="max-w-5xl mx-auto px-4 py-8">
         <form onSubmit={handleSave} className="space-y-6">
-
           <div className="bg-white rounded-2xl border border-slate-200/50 shadow-sm hover:shadow-md transition-shadow duration-300 px-6 py-6 flex items-center gap-5">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-lg ring-2 ring-blue-400/20">
               {initials || <ShieldCheck className="w-7 h-7" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold text-slate-900 truncate">{displayName}</p>
+              <p className="text-lg font-bold text-slate-900 truncate">
+                {displayName}
+              </p>
               {roleLabel && (
-                <p className="text-sm text-slate-500 mt-1.5 font-medium">{roleLabel}</p>
+                <p className="text-sm text-slate-500 mt-1.5 font-medium">
+                  {roleLabel}
+                </p>
               )}
             </div>
             {hasChanges && (
@@ -384,7 +427,7 @@ export function ReusableSettings<T extends Record<string, string>>({
             )}
           </div>
 
-              <div className={`grid grid-cols-1 ${colClass} gap-6 items-start`}>
+          <div className={`grid grid-cols-1 ${colClass} gap-6 items-start`}>
             {sections.map((section) => (
               <div
                 key={section.title}
@@ -413,9 +456,7 @@ export function ReusableSettings<T extends Record<string, string>>({
           {/* ── Action Bar ───────────────────────────────────────────────── */}
           <div className="flex items-center justify-between pt-6 pb-2 border-t border-slate-200/50">
             <p className="text-sm text-slate-600 font-medium">
-              {hasChanges 
-                ? " You have unsaved changes" 
-                : " No changes to save"}
+              {hasChanges ? " You have unsaved changes" : " No changes to save"}
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -436,13 +477,18 @@ export function ReusableSettings<T extends Record<string, string>>({
                   disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2.5 shadow-md
                   active:scale-95 disabled:shadow-none"
               >
-                {saving
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving</>
-                  : <><Save className="w-4 h-4" /> Save Changes</>}
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save Changes
+                  </>
+                )}
               </button>
             </div>
           </div>
-
         </form>
 
         {toast && <Toast type={toast.type} message={toast.message} />}

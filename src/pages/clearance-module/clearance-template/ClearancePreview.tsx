@@ -1,7 +1,7 @@
 import { type TemplateData } from "./template";
 import { renderTextWithVariables, DataValue } from "./PreviewUtils";
 import { Header, Watermark, Footer } from "./SharedComponents";
-import { FORM_FIELDS_CONFIG } from "../../clearance-api/issue-certificate-api";
+import { FORM_FIELDS_CONFIG } from "../../../clearance-api/issue-certificate-api";
 
 interface PreviewProps {
   template: TemplateData & {

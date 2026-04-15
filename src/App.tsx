@@ -30,10 +30,10 @@ import { OfficerManagementPage } from "./pages/admin-module/officer/officerManag
 import ArchivePage from "./pages/admin-module/archive/archive";
 
 // Root Admin
-import RootAdminDashboard from "./admin-root-module/dashboard";
-import AdminManagement from "./admin-root-module/admin-management";
-import AuditLogs from "./admin-root-module/audit-logs";
-import { AccountSettings } from "./admin-root-module/account-settings";
+import RootAdminDashboard from "./pages/admin-root-module/dashboard";
+import AdminManagement from "./pages/admin-root-module/admin-management";
+import AuditLogs from "./pages/admin-root-module/audit-logs";
+import { AccountSettings } from "./pages/admin-root-module/account-settings";
 
 // BCPC
 import BCPCDashboard from "./bcpc-module/dashboard";
@@ -49,12 +49,12 @@ import ReportsPage from "./pages/blotter-module/BlotterReport";
 import ResidentListPage from "./pages/blotter-module/Residents";
 
 // Clearance
-import ClearanceDashboard from "./clearance-module/Dashboard";
-import { IssueCertificatePage } from "./clearance-module/issue-certificate";
-import IssuedCertificatePage from "./clearance-module/issued-certificate";
-import RevenueAndCollectionPage from "./clearance-module/revenue-and-collections";
-import CreateTemplate from "./clearance-module/clearance-template/CreateTemplate";
-import { ClearanceSettings } from "./clearance-module/settings";
+import ClearanceDashboard from "./pages/clearance-module/Dashboard";
+import { IssueCertificatePage } from "./pages/clearance-module/issue-certificate";
+import IssuedCertificatePage from "./pages/clearance-module/issued-certificate";
+import RevenueAndCollectionPage from "./pages/clearance-module/revenue-and-collections";
+import CreateTemplate from "./pages/clearance-module/clearance-template/CreateTemplate";
+import { ClearanceSettings } from "./pages/clearance-module/settings";
 
 //FTJS
 import FtjsDashboardPage from "./pages/first-time-job-seeker-module/Dashboard";

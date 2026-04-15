@@ -1,5 +1,5 @@
 import React, { Fragment, createContext, useContext } from "react";
-import { SAMPLE_DATA } from "../../clearance-api/template-api";
+import { SAMPLE_DATA } from "../../../clearance-api/template-api";
 
 // Context for custom preview data
 interface PreviewContextType {

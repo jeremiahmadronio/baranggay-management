@@ -10,7 +10,7 @@ import {
   extractVariables,
   type TemplateData,
   type TemplateOption,
-} from "../../clearance-api/template-api";
+} from "../../../clearance-api/template-api";
 import { Loader2 } from "lucide-react";
 export default function EditTemplate() {
   const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([]);

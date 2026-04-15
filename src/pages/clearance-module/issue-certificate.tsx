@@ -13,25 +13,25 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { LoadingModal } from "../reusable/LoadingModal";
+import { LoadingModal } from "../../reusable/LoadingModal";
 import {
   fetchTemplateOptions,
   getPreviewData,
   type TemplateOption,
-} from "../clearance-api/template-api";
+} from "../../clearance-api/template-api";
 import {
   fetchIssuanceTemplate,
   issueCertificate,
   type IssuanceTemplate,
   type FormFieldConfig,
-} from "../clearance-api/issue-certificate-api";
-import type { FormSection as FormSectionType } from "../clearance-api/types";
+} from "../../clearance-api/issue-certificate-api";
+import type { FormSection as FormSectionType } from "../../clearance-api/types";
 import { CertificatePreview } from "./clearance-template/CertificatPreview";
 import { type TemplateData } from "./clearance-template/template";
 import {
   searchPeople,
   type PersonSearchResponseDTO,
-} from "../blotter-api/Resident";
+} from "../../blotter-api/Resident";
 
 // ============================================
 // MAIN COMPONENT

@@ -4,7 +4,7 @@ import {
   type Signatory,
   type BodySection,
   type CertificateSettings,
-} from "../clearance-module/clearance-template/template";
+} from "../pages/clearance-module/clearance-template/template";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS

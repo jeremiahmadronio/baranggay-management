@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { Header, Watermark, Footer } from "./SharedComponents";
-import { SAMPLE_DATA } from "../../clearance-api/template-api";
+import { SAMPLE_DATA } from "../../../clearance-api/template-api";
 
 // Helper: resolve key trying as-is, UPPER_SNAKE, and lower_snake
 const resolveSampleValue = (key: string): string => {

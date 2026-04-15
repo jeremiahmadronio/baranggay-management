@@ -32,8 +32,8 @@ import {
 import {
   clearanceTemplateApi,
   type TemplateRequestDTO,
-} from "../../service/clearance-api/Template";
-import { invalidateTemplateCache } from "../../clearance-api/template-api";
+} from "../../../service/clearance-api/Template";
+import { invalidateTemplateCache } from "../../../clearance-api/template-api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AVAILABLE FIELDS (user picks from these)
@@ -123,9 +123,7 @@ const ALL_FIELD_GROUPS: {
   { label: "Vehicle (Tricycle)", icon: Car, fields: AVAILABLE_VEHICLE_FIELDS },
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 export default function CreateTemplate() {
   // --- State ---

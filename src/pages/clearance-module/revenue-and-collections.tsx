@@ -8,8 +8,8 @@ import {
   TableFilter,
   StatusBadge,
   type TableColumn,
-} from "../reusable";
-import type { StatusType } from "../reusable/StatusBadge";
+} from "../../reusable";
+import type { StatusType } from "../../reusable/StatusBadge";
 import {
   type IssuedCertificate,
   type IssuedStats,
@@ -18,7 +18,7 @@ import {
   fetchRevenueReport,
   type RevenueReportEntry,
   type RevenueReport,
-} from "../clearance-api/issued-certificate-api";
+} from "../../clearance-api/issued-certificate-api";
 
 // ── Status helpers ──
 const statusMap: Record<string, StatusType> = {

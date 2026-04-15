@@ -14,17 +14,17 @@ import { ViewUserModal } from "./view-user-modal";
 import { LockUserModal } from "./lock-user-modal";
 import { DeleteUserModal } from "./delete-user-modal";
 import { RestoreUserModal } from "./restore-user-modal";
-import { KPIGrid, KPICard, KPIIcons } from "../hooks/KPICard";
-import { Table, type TableColumn } from "../hooks/Table";
-import { TableFilter } from "../hooks/TableFilter";
-import { StatusBadge, getStatusFromValue } from "../reusable/StatusBadge";
+import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
+import { Table, type TableColumn } from "../../hooks/Table";
+import { TableFilter } from "../../hooks/TableFilter";
+import { StatusBadge, getStatusFromValue } from "../../reusable/StatusBadge";
 import {
   getAdminStats,
   getAdminTable,
   type AdminStats,
   type AdminTable,
 } from "../admin-root-api/admin-management";
-import { NoticeBanner } from "../reusable/Notification";
+import { NoticeBanner } from "../../reusable/Notification";
 
 function AnimatedCounter({ target }: { target: number | null | undefined }) {
   const safeTarget = target ?? 0;
