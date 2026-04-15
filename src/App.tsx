@@ -53,7 +53,7 @@ import ClearanceDashboard from "./clearance-module/Dashboard";
 import { IssueCertificatePage } from "./clearance-module/issue-certificate";
 import IssuedCertificatePage from "./clearance-module/issued-certificate";
 import RevenueAndCollectionPage from "./clearance-module/revenue-and-collections";
-import EditTemplate from "./clearance-module/clearance-template/EditTemplate";
+import CreateTemplate from "./clearance-module/clearance-template/CreateTemplate";
 import { ClearanceSettings } from "./clearance-module/settings";
 
 //FTJS
@@ -209,7 +209,7 @@ export function App() {
           element={<RevenueAndCollectionPage />}
         />
         <Route path="issue-certificate" element={<IssueCertificatePage />} />
-        <Route path="template" element={<EditTemplate />} />
+        <Route path="template" element={<CreateTemplate />} />
         <Route path="settings" element={<ClearanceSettings />} />
       </Route>
 

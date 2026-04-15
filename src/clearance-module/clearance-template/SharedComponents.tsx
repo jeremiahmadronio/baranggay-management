@@ -2,7 +2,11 @@ import { type TemplateData } from "./template";
 import { SAMPLE_DATA } from "../../clearance-api/template-api";
 
 // Helper to get value with priority: customData > SAMPLE_DATA > fallback
-const getValue = (key: string, customData?: Record<string, string>, fallback: string = "") => {
+const getValue = (
+  key: string,
+  customData?: Record<string, string>,
+  fallback: string = "",
+) => {
   if (customData && customData[key]) return customData[key];
   return SAMPLE_DATA[key] || fallback;
 };
@@ -185,41 +189,95 @@ export const Signatories = ({ template }: { template: TemplateData }) => {
     </div>
   );
 };
-export const PaymentDetails = ({ 
-  hasFee, 
-  customData 
-}: { 
-  hasFee: boolean; 
+export const PaymentDetails = ({
+  hasFee,
+  hasCtn,
+  fee,
+  customData,
+}: {
+  hasFee: boolean;
+  hasCtn?: boolean;
+  fee?: number;
   customData?: Record<string, string>;
 }) => {
-  if (!hasFee) return null;
+  if (!hasFee && !hasCtn) return null;
+
+  // Helper: resolve value from snake_case or UPPER_SNAKE key
+  const resolveValue = (snakeKey: string, upperKey: string) => {
+    if (customData?.[snakeKey])
+      return { value: customData[snakeKey], isCustom: true };
+    if (customData?.[upperKey])
+      return { value: customData[upperKey], isCustom: true };
+    return {
+      value: getValue(upperKey, customData),
+      isCustom: isCustomValue(upperKey, customData),
+    };
+  };
+
   return (
-    <div className="mt-6 text-[11px] space-y-1 text-gray-800">
+    <div className="mt-6 text-[10px] leading-[1.9] text-gray-800">
+      {hasCtn && (
+        <div className="flex">
+          <span className="w-[120px] font-medium flex-shrink-0">
+            Com. Tax No.
+          </span>
+          <span className="mr-1.5 flex-shrink-0">:</span>
+          {(() => {
+            const r = resolveValue("ctc_number", "COM_TAX_NO");
+            return (
+              <span
+                className={`font-bold ${r.isCustom ? "text-green-600" : "text-blue-700"}`}
+              >
+                {r.value}
+              </span>
+            );
+          })()}
+        </div>
+      )}
       <div className="flex">
-        <span className="w-[120px] font-medium">PAID UNDER O.R. NO</span>
-        <span className="mr-2">:</span>
-        <span className={`font-bold ${isCustomValue("OR_NUMBER", customData) ? "text-green-600" : "text-blue-700"}`}>
-          {getValue("OR_NUMBER", customData)}
+        <span className="w-[120px] font-medium flex-shrink-0">
+          Requested On
         </span>
-      </div>
-      <div className="flex">
-        <span className="w-[120px] font-medium">Requested On</span>
-        <span className="mr-2">:</span>
-        <span className={`font-bold ${isCustomValue("DATE_ISSUED", customData) ? "text-green-600" : "text-blue-700"}`}>
+        <span className="mr-1.5 flex-shrink-0">:</span>
+        <span
+          className={`font-bold ${isCustomValue("DATE_ISSUED", customData) ? "text-green-600" : "text-blue-700"}`}
+        >
           {getValue("DATE_ISSUED", customData)}
         </span>
       </div>
+      {hasFee && (
+        <>
+          <div className="flex">
+            <span className="w-[120px] font-medium flex-shrink-0">
+              PAID UNDER O.R. NO
+            </span>
+            <span className="mr-1.5 flex-shrink-0">:</span>
+            {(() => {
+              const r = resolveValue("or_number", "OR_NUMBER");
+              return (
+                <span
+                  className={`font-bold ${r.isCustom ? "text-green-600" : "text-blue-700"}`}
+                >
+                  {r.value}
+                </span>
+              );
+            })()}
+          </div>
+          <div className="flex">
+            <span className="w-[120px] font-medium flex-shrink-0">Amount</span>
+            <span className="mr-1.5 flex-shrink-0">:</span>
+            <span className="font-bold text-green-700">
+              ₱{(fee ?? 0).toFixed(2)}
+            </span>
+          </div>
+        </>
+      )}
       <div className="flex">
-        <span className="w-[120px] font-medium">Amount</span>
-        <span className="mr-2">:</span>
-        <span className={`font-bold ${isCustomValue("AMOUNT_PAID", customData) ? "text-green-600" : "text-blue-700"}`}>
-          {customData?.AMOUNT_PAID ? `₱${customData.AMOUNT_PAID}` : getValue("AMOUNT_PAID", customData)}
-        </span>
-      </div>
-      <div className="flex">
-        <span className="w-[120px] font-medium">Valid Until</span>
-        <span className="mr-2">:</span>
-        <span className={`font-bold ${isCustomValue("VALID_UNTIL", customData) ? "text-green-600" : "text-blue-700"}`}>
+        <span className="w-[120px] font-medium flex-shrink-0">Valid Until</span>
+        <span className="mr-1.5 flex-shrink-0">:</span>
+        <span
+          className={`font-bold ${isCustomValue("VALID_UNTIL", customData) ? "text-green-600" : "text-blue-700"}`}
+        >
           {getValue("VALID_UNTIL", customData)}
         </span>
       </div>

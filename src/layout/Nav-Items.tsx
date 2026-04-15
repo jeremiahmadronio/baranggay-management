@@ -114,7 +114,7 @@ export const clearanceNavItems: NavItemType[] = [
     path: "/clearance/revenue-and-collection",
     icon: Leaf,
   },
-  { label: "Template", path: "/clearance/template", icon: Users },
+  { label: "Create Template", path: "/clearance/template", icon: Users },
   { label: "Settings", path: "/clearance/settings", icon: Settings },
 ];
 

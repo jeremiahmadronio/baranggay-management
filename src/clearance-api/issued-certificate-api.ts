@@ -264,6 +264,181 @@ export const fetchIssuedCertificateById = async (
   }
 };
 
+/**
+ * Void an issued certificate (mark as Voided with reason)
+ */
+export const voidCertificate = async (
+  id: string,
+  reason: string,
+): Promise<IssuedCertificate> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/issued/${id}/void`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) throw new Error("Failed to void certificate");
+    return await response.json();
+  } catch (error) {
+    console.warn("API unavailable, using mock void:", error);
+    const cert = MOCK_ISSUED_CERTIFICATES.find((c) => c.id === id);
+    if (!cert) throw new Error("Certificate not found");
+    const voided: IssuedCertificate = {
+      ...cert,
+      status: "Voided",
+      voidReason: reason,
+      voidedAt: new Date().toISOString(),
+      voidedBy: "Admin",
+    };
+    // Update mock data in-place for demo
+    const idx = MOCK_ISSUED_CERTIFICATES.findIndex((c) => c.id === id);
+    if (idx >= 0) MOCK_ISSUED_CERTIFICATES[idx] = voided;
+    return voided;
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARCHIVE / RESTORE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Archive an issued certificate
+ */
+export const archiveIssuedCertificate = async (
+  id: string,
+  reason: string,
+): Promise<IssuedCertificate> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/issued/${id}/archive`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) throw new Error("Failed to archive certificate");
+    return await response.json();
+  } catch (error) {
+    console.warn("API unavailable, using mock archive:", error);
+    const cert = MOCK_ISSUED_CERTIFICATES.find((c) => c.id === id);
+    if (!cert) throw new Error("Certificate not found");
+    const archived: IssuedCertificate = {
+      ...cert,
+      isArchived: true,
+      archiveReason: reason,
+      archivedAt: new Date().toISOString(),
+      archivedBy: "Admin",
+    };
+    const idx = MOCK_ISSUED_CERTIFICATES.findIndex((c) => c.id === id);
+    if (idx >= 0) MOCK_ISSUED_CERTIFICATES[idx] = archived;
+    return archived;
+  }
+};
+
+/**
+ * Restore an archived certificate
+ */
+export const restoreIssuedCertificate = async (
+  id: string,
+): Promise<IssuedCertificate> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/issued/${id}/restore`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!response.ok) throw new Error("Failed to restore certificate");
+    return await response.json();
+  } catch (error) {
+    console.warn("API unavailable, using mock restore:", error);
+    const cert = MOCK_ISSUED_CERTIFICATES.find((c) => c.id === id);
+    if (!cert) throw new Error("Certificate not found");
+    const restored: IssuedCertificate = {
+      ...cert,
+      isArchived: false,
+      archiveReason: undefined,
+      archivedAt: undefined,
+      archivedBy: undefined,
+    };
+    const idx = MOCK_ISSUED_CERTIFICATES.findIndex((c) => c.id === id);
+    if (idx >= 0) MOCK_ISSUED_CERTIFICATES[idx] = restored;
+    return restored;
+  }
+};
+
+/**
+ * Fetch revenue report data with date range filtering
+ */
+export interface RevenueReportEntry {
+  certificateType: string;
+  totalIssued: number;
+  totalPaid: number;
+  totalFree: number;
+  totalRevenue: number;
+}
+
+export interface RevenueReport {
+  entries: RevenueReportEntry[];
+  grandTotalIssued: number;
+  grandTotalRevenue: number;
+  grandTotalPaid: number;
+  grandTotalFree: number;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export const fetchRevenueReport = async (
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<RevenueReport> => {
+  try {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append("dateFrom", dateFrom);
+    if (dateTo) params.append("dateTo", dateTo);
+    const response = await fetch(
+      `${API_BASE_URL}/issued/revenue-report?${params}`,
+    );
+    if (!response.ok) throw new Error("Failed to fetch revenue report");
+    return await response.json();
+  } catch (error) {
+    console.warn("API unavailable, building mock revenue report:", error);
+
+    let filtered = MOCK_ISSUED_CERTIFICATES.filter(
+      (c) => !c.isArchived && c.status !== "Voided",
+    );
+    if (dateFrom) filtered = filtered.filter((c) => c.dateIssued >= dateFrom);
+    if (dateTo) filtered = filtered.filter((c) => c.dateIssued <= dateTo);
+
+    const typeMap = new Map<string, RevenueReportEntry>();
+    for (const cert of filtered) {
+      const existing = typeMap.get(cert.certificateType) || {
+        certificateType: cert.certificateType,
+        totalIssued: 0,
+        totalPaid: 0,
+        totalFree: 0,
+        totalRevenue: 0,
+      };
+      existing.totalIssued++;
+      if (cert.isFree) existing.totalFree++;
+      else {
+        existing.totalPaid++;
+        existing.totalRevenue += cert.fee || 0;
+      }
+      typeMap.set(cert.certificateType, existing);
+    }
+
+    const entries = [...typeMap.values()].sort(
+      (a, b) => b.totalRevenue - a.totalRevenue,
+    );
+    return {
+      entries,
+      grandTotalIssued: entries.reduce((s, e) => s + e.totalIssued, 0),
+      grandTotalRevenue: entries.reduce((s, e) => s + e.totalRevenue, 0),
+      grandTotalPaid: entries.reduce((s, e) => s + e.totalPaid, 0),
+      grandTotalFree: entries.reduce((s, e) => s + e.totalFree, 0),
+      dateFrom,
+      dateTo,
+    };
+  }
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEGACY EXPORTS (for backward compatibility)
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -22,11 +22,13 @@ export interface CertificateSettings {
   requiresPhoto: boolean;
   requiresThumbmark: boolean;
   hasFee: boolean;
+  hasCtn?: boolean;
 }
 
 export interface TemplateData {
   id: string | number;
   title: string;
+  layoutStyle?: string; // "clearance" | "inline" from API
   bodySections: BodySection[];
   footerText: string;
   signatories: Signatory[];

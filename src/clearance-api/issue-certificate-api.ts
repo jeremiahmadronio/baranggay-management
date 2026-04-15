@@ -20,6 +20,7 @@ import {
   getEffectiveTemplate,
   replaceVariables,
   getPreviewData,
+  fetchTemplate,
 } from "./template-api";
 
 // Re-export types for convenience
@@ -57,6 +58,570 @@ const createFields = (fields: FieldInput[]): FormFieldConfig[] =>
   }));
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DYNAMIC FORM FIELD BUILDER (for templates from real API)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface FieldMeta {
+  label: string;
+  section: string;
+  type?: FormFieldConfig["type"];
+  options?: string[];
+  placeholder?: string;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  patternMessage?: string;
+}
+
+const FIELD_METADATA: Record<string, FieldMeta> = {
+  // ── Personal Information (snake_case from API + UPPER_SNAKE for legacy) ──
+  full_name: {
+    label: "Full Name",
+    section: "Personal Information",
+    maxLength: 100,
+    pattern: "^[A-Za-zÀ-ÿñÑ .,'\\-]+$",
+    patternMessage: "Letters, spaces, dots, commas, hyphens only",
+  },
+  FULL_NAME: {
+    label: "Full Name",
+    section: "Personal Information",
+    maxLength: 100,
+    pattern: "^[A-Za-zÀ-ÿñÑ .,'\\-]+$",
+    patternMessage: "Letters, spaces, dots, commas, hyphens only",
+  },
+  address: {
+    label: "Address",
+    section: "Personal Information",
+    maxLength: 200,
+  },
+  ADDRESS: {
+    label: "Address",
+    section: "Personal Information",
+    maxLength: 200,
+  },
+  age: {
+    label: "Age",
+    section: "Personal Information",
+    type: "number",
+    min: 1,
+    max: 150,
+  },
+  AGE: {
+    label: "Age",
+    section: "Personal Information",
+    type: "number",
+    min: 1,
+    max: 150,
+  },
+  civil_status: {
+    label: "Civil Status",
+    section: "Personal Information",
+    type: "select",
+    options: ["Single", "Married", "Widowed", "Separated"],
+  },
+  CIVIL_STATUS: {
+    label: "Civil Status",
+    section: "Personal Information",
+    type: "select",
+    options: ["Single", "Married", "Widowed", "Separated"],
+  },
+  date_of_birth: {
+    label: "Date of Birth",
+    section: "Personal Information",
+    type: "date",
+  },
+  DATE_OF_BIRTH: {
+    label: "Date of Birth",
+    section: "Personal Information",
+    type: "date",
+  },
+  place_of_birth: {
+    label: "Place of Birth",
+    section: "Personal Information",
+    maxLength: 100,
+  },
+  PLACE_OF_BIRTH: {
+    label: "Place of Birth",
+    section: "Personal Information",
+    maxLength: 100,
+  },
+  gender: {
+    label: "Gender",
+    section: "Personal Information",
+    type: "select",
+    options: ["Male", "Female"],
+  },
+  GENDER: {
+    label: "Gender",
+    section: "Personal Information",
+    type: "select",
+    options: ["Male", "Female"],
+  },
+  nationality: {
+    label: "Nationality",
+    section: "Personal Information",
+    maxLength: 50,
+  },
+  NATIONALITY: {
+    label: "Nationality",
+    section: "Personal Information",
+    maxLength: 50,
+  },
+  contact_no: {
+    label: "Contact No.",
+    section: "Personal Information",
+    maxLength: 15,
+    pattern: "^[0-9+\\-() ]+$",
+    patternMessage: "Numbers, +, -, (, ) only",
+  },
+  CONTACT_NO: {
+    label: "Contact No.",
+    section: "Personal Information",
+    maxLength: 15,
+    pattern: "^[0-9+\\-() ]+$",
+    patternMessage: "Numbers, +, -, (, ) only",
+  },
+  email: {
+    label: "Email Address",
+    section: "Personal Information",
+    maxLength: 100,
+  },
+  EMAIL: {
+    label: "Email Address",
+    section: "Personal Information",
+    maxLength: 100,
+  },
+  voter_status: {
+    label: "Registered Voter",
+    section: "Personal Information",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  VOTER_STATUS: {
+    label: "Registered Voter",
+    section: "Personal Information",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  tin_no: {
+    label: "TIN Number",
+    section: "Personal Information",
+    maxLength: 20,
+    pattern: "^[0-9\\-]+$",
+    patternMessage: "Numbers and dashes only",
+  },
+  TIN_NO: {
+    label: "TIN Number",
+    section: "Personal Information",
+    maxLength: 20,
+    pattern: "^[0-9\\-]+$",
+    patternMessage: "Numbers and dashes only",
+  },
+  ctc_number: {
+    label: "Community Tax Cert. No.",
+    section: "Personal Information",
+    maxLength: 30,
+  },
+
+  // ── Residency Details ──
+  residency_since: {
+    label: "Resident Since",
+    section: "Residency Details",
+    type: "date",
+  },
+  RESIDENCY_SINCE: {
+    label: "Resident Since",
+    section: "Residency Details",
+    type: "date",
+  },
+  years_of_residency: {
+    label: "Years of Residency",
+    section: "Residency Details",
+    type: "number",
+    min: 0,
+    max: 100,
+  },
+  YEARS_OF_RESIDENCY: {
+    label: "Years of Residency",
+    section: "Residency Details",
+    type: "number",
+    min: 0,
+    max: 100,
+  },
+  house_no: {
+    label: "House/Lot No.",
+    section: "Residency Details",
+    maxLength: 30,
+  },
+  HOUSE_NO: {
+    label: "House/Lot No.",
+    section: "Residency Details",
+    maxLength: 30,
+  },
+  zone_purok: {
+    label: "Zone/Purok",
+    section: "Residency Details",
+    maxLength: 30,
+  },
+  ZONE_PUROK: {
+    label: "Zone/Purok",
+    section: "Residency Details",
+    maxLength: 30,
+  },
+  precinct_no: {
+    label: "Precinct No.",
+    section: "Residency Details",
+    maxLength: 20,
+  },
+  PRECINCT_NO: {
+    label: "Precinct No.",
+    section: "Residency Details",
+    maxLength: 20,
+  },
+
+  // ── Purpose / Employment ──
+  purpose: {
+    label: "Purpose",
+    section: "Purpose / Employment",
+    placeholder: "e.g., EMPLOYMENT, TRAVEL, etc.",
+    maxLength: 100,
+  },
+  PURPOSE: {
+    label: "Purpose",
+    section: "Purpose / Employment",
+    placeholder: "e.g., EMPLOYMENT, TRAVEL, etc.",
+    maxLength: 100,
+  },
+  nature_of_work: {
+    label: "Nature of Work",
+    section: "Purpose / Employment",
+    maxLength: 100,
+  },
+  NATURE_OF_WORK: {
+    label: "Nature of Work",
+    section: "Purpose / Employment",
+    maxLength: 100,
+  },
+  occupation: {
+    label: "Occupation",
+    section: "Purpose / Employment",
+    maxLength: 80,
+  },
+  OCCUPATION: {
+    label: "Occupation",
+    section: "Purpose / Employment",
+    maxLength: 80,
+  },
+  employer: {
+    label: "Employer",
+    section: "Purpose / Employment",
+    maxLength: 100,
+  },
+  EMPLOYER: {
+    label: "Employer",
+    section: "Purpose / Employment",
+    maxLength: 100,
+  },
+  employer_address: {
+    label: "Employer Address",
+    section: "Purpose / Employment",
+    maxLength: 200,
+  },
+  EMPLOYER_ADDRESS: {
+    label: "Employer Address",
+    section: "Purpose / Employment",
+    maxLength: 200,
+  },
+  monthly_income: {
+    label: "Monthly Income",
+    section: "Purpose / Employment",
+    type: "number",
+    min: 0,
+  },
+  MONTHLY_INCOME: {
+    label: "Monthly Income",
+    section: "Purpose / Employment",
+    type: "number",
+    min: 0,
+  },
+  cert_nature: {
+    label: "Nature of Certificate",
+    section: "Purpose / Employment",
+    maxLength: 100,
+  },
+  CERT_NATURE: {
+    label: "Nature of Certificate",
+    section: "Purpose / Employment",
+    maxLength: 100,
+  },
+  relationship_to_beneficiary: {
+    label: "Relationship to Beneficiary",
+    section: "Purpose / Employment",
+    maxLength: 50,
+  },
+
+  // ── Property / Business ──
+  floor_area: {
+    label: "Floor Area (sq.m)",
+    section: "Property / Business",
+    type: "number",
+    min: 1,
+  },
+  FLOOR_AREA: {
+    label: "Floor Area (sq.m)",
+    section: "Property / Business",
+    type: "number",
+    min: 1,
+  },
+  lot_area: {
+    label: "Lot Area (sq.m)",
+    section: "Property / Business",
+    type: "number",
+    min: 1,
+  },
+  LOT_AREA: {
+    label: "Lot Area (sq.m)",
+    section: "Property / Business",
+    type: "number",
+    min: 1,
+  },
+  building_type: {
+    label: "Building Type",
+    section: "Property / Business",
+    maxLength: 50,
+  },
+  BUILDING_TYPE: {
+    label: "Building Type",
+    section: "Property / Business",
+    maxLength: 50,
+  },
+  business_name: {
+    label: "Business Name",
+    section: "Property / Business",
+    maxLength: 100,
+  },
+  BUSINESS_NAME: {
+    label: "Business Name",
+    section: "Property / Business",
+    maxLength: 100,
+  },
+  business_type: {
+    label: "Business Type",
+    section: "Property / Business",
+    maxLength: 50,
+  },
+  BUSINESS_TYPE: {
+    label: "Business Type",
+    section: "Property / Business",
+    maxLength: 50,
+  },
+  business_address: {
+    label: "Business Address",
+    section: "Property / Business",
+    maxLength: 200,
+  },
+  BUSINESS_ADDRESS: {
+    label: "Business Address",
+    section: "Property / Business",
+    maxLength: 200,
+  },
+  time: {
+    label: "Activity Time",
+    section: "Property / Business",
+    placeholder: "e.g., 12:00 PM - 5:00 PM",
+    maxLength: 50,
+  },
+  TIME: {
+    label: "Activity Time",
+    section: "Property / Business",
+    placeholder: "e.g., 12:00 PM - 5:00 PM",
+    maxLength: 50,
+  },
+
+  // ── Vehicle (Tricycle) ──
+  make: { label: "Make/Model", section: "Vehicle Information", maxLength: 50 },
+  MAKE: { label: "Make/Model", section: "Vehicle Information", maxLength: 50 },
+  vehicle_no: {
+    label: "Vehicle Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  VEHICLE_NO: {
+    label: "Vehicle Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  plate_no: {
+    label: "Plate Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+    pattern: "^[A-Za-z0-9\\- ]+$",
+    patternMessage: "Letters, numbers, dashes only",
+  },
+  PLATE_NO: {
+    label: "Plate Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+    pattern: "^[A-Za-z0-9\\- ]+$",
+    patternMessage: "Letters, numbers, dashes only",
+  },
+  motor_no: {
+    label: "Motor Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  MOTOR_NO: {
+    label: "Motor Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  battery_no: {
+    label: "Battery Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  BATTERY_NO: {
+    label: "Battery Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  charger_no: {
+    label: "Charger Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  CHARGER_NO: {
+    label: "Charger Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  body_color: {
+    label: "Body Color",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  BODY_COLOR: {
+    label: "Body Color",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  chassis_no: {
+    label: "Chassis Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  CHASSIS_NO: {
+    label: "Chassis Number",
+    section: "Vehicle Information",
+    maxLength: 30,
+  },
+  body_no: {
+    label: "Body Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+  BODY_NO: {
+    label: "Body Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+  cr_no: {
+    label: "CR Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+  CR_NO: {
+    label: "CR Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+  or_no_vehicle: {
+    label: "OR Number (Vehicle)",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+  OR_NO_VEHICLE: {
+    label: "OR Number (Vehicle)",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+  mtop_no: {
+    label: "MTOP Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+  MTOP_NO: {
+    label: "MTOP Number",
+    section: "Vehicle Information",
+    maxLength: 20,
+  },
+};
+
+/**
+ * Dynamically generate FormFieldsConfig from an array of variable names
+ * (used for templates created via the real API — issueFields are snake_case)
+ */
+export const buildFormFieldsFromVariables = (
+  variables: string[],
+  hasFee: boolean,
+  hasCtn?: boolean,
+): FormFieldsConfig => {
+  const sectionMap = new Map<string, FormFieldConfig[]>();
+
+  for (const varName of variables) {
+    const meta = FIELD_METADATA[varName];
+    if (!meta) continue;
+
+    const field: FormFieldConfig = {
+      name: varName,
+      label: meta.label,
+      type: meta.type || "text",
+      required: true,
+      options: meta.options,
+      placeholder: meta.placeholder || `Enter ${meta.label.toLowerCase()}`,
+      value: "",
+      maxLength: meta.maxLength,
+      min: meta.min,
+      max: meta.max,
+      pattern: meta.pattern,
+      patternMessage: meta.patternMessage,
+    };
+
+    if (!sectionMap.has(meta.section)) {
+      sectionMap.set(meta.section, []);
+    }
+    sectionMap.get(meta.section)!.push(field);
+  }
+
+  // Add Payment Details section when the template has a fee
+  if (hasFee) {
+    sectionMap.set(
+      "Payment Details",
+      createFields([
+        { name: "or_number", label: "OR Number" },
+        { name: "or_date", label: "OR Date", type: "date" },
+      ]),
+    );
+  }
+
+  // Add Community Tax section when the template requires CTN
+  if (hasCtn) {
+    sectionMap.set(
+      "Community Tax",
+      createFields([{ name: "ctc_number", label: "Community Tax Cert. No." }]),
+    );
+  }
+
+  return {
+    sections: Array.from(sectionMap.entries()).map(([title, fields]) => ({
+      title,
+      fields,
+    })),
+  };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // FORM FIELD CONFIGURATIONS (per certificate type)
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -89,7 +654,6 @@ export const FORM_FIELDS_CONFIG: Record<string, FormFieldsConfig> = {
         fields: createFields([
           { name: "OR_NUMBER", label: "OR Number" },
           { name: "OR_DATE", label: "OR Date", type: "date" },
-          { name: "AMOUNT_PAID", label: "Amount Paid" },
           {
             name: "COM_TAX_NO",
             label: "Community Tax Number",
@@ -162,7 +726,6 @@ export const FORM_FIELDS_CONFIG: Record<string, FormFieldsConfig> = {
         fields: createFields([
           { name: "OR_NUMBER", label: "OR Number" },
           { name: "OR_DATE", label: "OR Date", type: "date" },
-          { name: "AMOUNT_PAID", label: "Amount Paid" },
         ]),
       },
     ],
@@ -231,10 +794,7 @@ export const FORM_FIELDS_CONFIG: Record<string, FormFieldsConfig> = {
       },
       {
         title: "Payment Details",
-        fields: createFields([
-          { name: "OR_NUMBER", label: "OR Number" },
-          { name: "AMOUNT_PAID", label: "Amount Paid" },
-        ]),
+        fields: createFields([{ name: "OR_NUMBER", label: "OR Number" }]),
       },
     ],
   },
@@ -263,10 +823,7 @@ export const FORM_FIELDS_CONFIG: Record<string, FormFieldsConfig> = {
       },
       {
         title: "Payment Details",
-        fields: createFields([
-          { name: "OR_NUMBER", label: "OR Number" },
-          { name: "AMOUNT_PAID", label: "Amount Paid" },
-        ]),
+        fields: createFields([{ name: "OR_NUMBER", label: "OR Number" }]),
       },
     ],
   },
@@ -317,10 +874,7 @@ export const FORM_FIELDS_CONFIG: Record<string, FormFieldsConfig> = {
       },
       {
         title: "Payment Details",
-        fields: createFields([
-          { name: "OR_NUMBER", label: "OR Number" },
-          { name: "AMOUNT_PAID", label: "Amount Paid" },
-        ]),
+        fields: createFields([{ name: "OR_NUMBER", label: "OR Number" }]),
       },
     ],
   },
@@ -382,10 +936,7 @@ export const FORM_FIELDS_CONFIG: Record<string, FormFieldsConfig> = {
       },
       {
         title: "Payment Details",
-        fields: createFields([
-          { name: "OR_NUMBER", label: "OR Number" },
-          { name: "AMOUNT_PAID", label: "Amount Paid" },
-        ]),
+        fields: createFields([{ name: "OR_NUMBER", label: "OR Number" }]),
       },
     ],
   },
@@ -460,19 +1011,56 @@ const DEFAULT_FORM_FIELDS: FormFieldsConfig = {
 
 /**
  * Fetch issuance template (with form fields)
+ * Tries real API (via fetchTemplate) first, then builds form fields dynamically.
+ * Falls back to hardcoded FORM_FIELDS_CONFIG for legacy mock template IDs.
  */
 export const fetchIssuanceTemplate = async (
   templateId: string,
 ): Promise<IssuanceTemplate> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/issue/${templateId}`);
-    if (!response.ok)
-      throw new Error(`Failed to fetch issuance template: ${templateId}`);
-    return await response.json();
-  } catch (error) {
-    console.warn("API unavailable, building from mock data:", error);
+    // fetchTemplate already tries real API first, then falls back to mock
+    const templateData = await fetchTemplate(templateId);
 
-    // Get template data from template-api
+    // For inline templates: if variables is empty, extract {{variables}} from bodySections
+    let variables = templateData.variables;
+    if (
+      (!variables || variables.length === 0) &&
+      templateData.bodySections.length > 0
+    ) {
+      const extracted = new Set<string>();
+      for (const section of templateData.bodySections) {
+        const matches = section.text.match(/\{\{([^}]+)\}\}/g);
+        if (matches) {
+          matches.forEach((m) => extracted.add(m.replace(/[{}]/g, "")));
+        }
+      }
+      if (extracted.size > 0) {
+        variables = [...extracted];
+      }
+    }
+
+    // Use hardcoded form config if available (legacy mock IDs), otherwise build dynamically
+    const formConfig =
+      FORM_FIELDS_CONFIG[templateId] ||
+      buildFormFieldsFromVariables(
+        variables,
+        templateData.settings.hasFee,
+        templateData.settings.hasCtn,
+      );
+
+    return {
+      id: templateData.id,
+      title: templateData.title,
+      bodySections: templateData.bodySections,
+      footerText: templateData.footerText,
+      signatories: templateData.signatories,
+      settings: templateData.settings,
+      variables: variables,
+      formFields: formConfig,
+    };
+  } catch (error) {
+    console.warn("All sources failed, using mock fallback:", error);
+
     const templateData = getEffectiveTemplate(templateId);
     const formConfig = FORM_FIELDS_CONFIG[templateId] || DEFAULT_FORM_FIELDS;
 

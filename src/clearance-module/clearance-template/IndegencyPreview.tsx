@@ -1,12 +1,12 @@
-import { type TemplateData } from './template'
-import { renderTextWithVariables } from './PreviewUtils'
+import { type TemplateData } from "./template";
+import { renderTextWithVariables } from "./PreviewUtils";
 import {
   Header,
   Watermark,
   Footer,
   Signatories,
   PaymentDetails,
-} from './SharedComponents'
+} from "./SharedComponents";
 
 interface PreviewProps {
   template: TemplateData;
@@ -26,9 +26,9 @@ export function IndigencyPreview({ template, customData }: PreviewProps) {
   };
 
   const mockDay = getOrdinal(date);
-  const mockMonthYear = today.toLocaleDateString('en-US', { 
-    month: 'long', 
-    year: 'numeric' 
+  const mockMonthYear = today.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
   });
   // ------------------------
 
@@ -37,13 +37,13 @@ export function IndigencyPreview({ template, customData }: PreviewProps) {
       className="bg-white w-full max-w-[210mm] mx-auto shadow-xl relative flex flex-col border border-gray-200"
       style={{
         fontFamily: "'Times New Roman', 'Georgia', serif",
-        minHeight: '297mm',
-        aspectRatio: '210 / 297',
+        minHeight: "297mm",
+        aspectRatio: "210 / 297",
       }}
     >
       <Header />
       <Watermark />
-      
+
       <div className="px-10 pt-6 pb-4 flex-1 relative z-10 flex flex-col">
         <div className="flex items-start justify-between mb-8">
           <div className="flex-1 text-center">
@@ -60,22 +60,20 @@ export function IndigencyPreview({ template, customData }: PreviewProps) {
                 key={section.id}
                 className="text-[15px] leading-[1.8] text-gray-800 text-justify mb-8 break-words whitespace-pre-wrap"
                 style={{
-                  textIndent: '4em',
+                  textIndent: "4em",
                 }}
               >
                 {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
 
-          
-
             {/* AUTOMATED MOCK DATE SECTION */}
             <div className="mt-12 text-[15px] text-gray-900">
-              Signed this{' '}
+              Signed this{" "}
               <span className="text-blue-700 font-bold border-b border-gray-800 px-2 min-w-[40px] inline-block text-center">
                 {mockDay}
-              </span>{' '}
-              Day of{' '}
+              </span>{" "}
+              Day of{" "}
               <span className="text-blue-700 font-bold border-b border-gray-800 px-4 min-w-[120px] inline-block text-center">
                 {mockMonthYear}
               </span>
@@ -83,15 +81,18 @@ export function IndigencyPreview({ template, customData }: PreviewProps) {
           </div>
         </div>
 
-        
-        <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
-        
+        <PaymentDetails
+          hasFee={template.settings.hasFee}
+          hasCtn={template.settings.hasCtn}
+          fee={template.settings.fee}
+          customData={customData}
+        />
+
         <div className="flex justify-end mt-4">
-            <Signatories template={template} />
+          <Signatories template={template} />
         </div>
       </div>
       <Footer text={template.footerText} />
     </div>
-  )
+  );
 }
-

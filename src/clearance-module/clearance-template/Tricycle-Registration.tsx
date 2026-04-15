@@ -13,7 +13,10 @@ interface PreviewProps {
   customData?: Record<string, string>;
 }
 
-export function TricycleRegistrationPreview({ template, customData }: PreviewProps) {
+export function TricycleRegistrationPreview({
+  template,
+  customData,
+}: PreviewProps) {
   const hasPhoto = template.settings.requiresPhoto;
 
   return (
@@ -39,8 +42,12 @@ export function TricycleRegistrationPreview({ template, customData }: PreviewPro
           {hasPhoto && (
             <div className="flex-shrink-0 ml-4 absolute right-10 top-6">
               <div className="w-[72px] h-[72px] border border-gray-300 bg-blue-50/40 flex flex-col items-center justify-center">
-                <span className="text-[8px] text-gray-400 font-medium">1x1</span>
-                <span className="text-[8px] text-gray-400 font-medium">PHOTO</span>
+                <span className="text-[8px] text-gray-400 font-medium">
+                  1x1
+                </span>
+                <span className="text-[8px] text-gray-400 font-medium">
+                  PHOTO
+                </span>
               </div>
             </div>
           )}
@@ -55,7 +62,6 @@ export function TricycleRegistrationPreview({ template, customData }: PreviewPro
                   index === 0 ? "mb-4" : "mb-6"
                 }`}
               >
-    
                 {renderTextWithVariables(section.text, customData)}
               </div>
             ))}
@@ -63,7 +69,12 @@ export function TricycleRegistrationPreview({ template, customData }: PreviewPro
         </div>
 
         <div className="mt-auto">
-          <PaymentDetails hasFee={template.settings.hasFee} customData={customData} />
+          <PaymentDetails
+            hasFee={template.settings.hasFee}
+            hasCtn={template.settings.hasCtn}
+            fee={template.settings.fee}
+            customData={customData}
+          />
           <Signatories template={template} />
         </div>
       </div>

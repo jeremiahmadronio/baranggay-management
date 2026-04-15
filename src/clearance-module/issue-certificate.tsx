@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   FileText,
   Check,
@@ -10,6 +10,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
+  Search,
+  X,
 } from "lucide-react";
 import { LoadingModal } from "../reusable/LoadingModal";
 import {
@@ -26,6 +28,10 @@ import {
 import type { FormSection as FormSectionType } from "../clearance-api/types";
 import { CertificatePreview } from "./clearance-template/CertificatPreview";
 import { type TemplateData } from "./clearance-template/template";
+import {
+  searchPeople,
+  type PersonSearchResponseDTO,
+} from "../blotter-api/Resident";
 
 // ============================================
 // MAIN COMPONENT
@@ -44,6 +50,68 @@ export const IssueCertificatePage = () => {
     message: string;
     type: "success" | "error" | "warning";
   } | null>(null);
+
+  // Map resident profile to form field values
+  const mapResidentToFormData = useCallback(
+    (resident: PersonSearchResponseDTO): Record<string, string> => {
+      const fullName = [
+        resident.firstName,
+        resident.middleName,
+        resident.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      const mapped: Record<string, string> = {};
+      // snake_case keys (API templates)
+      if (fullName) {
+        mapped.full_name = fullName;
+        mapped.FULL_NAME = fullName;
+      }
+      if (resident.age) {
+        mapped.age = String(resident.age);
+        mapped.AGE = String(resident.age);
+      }
+      if (resident.civilStatus) {
+        mapped.civil_status = resident.civilStatus;
+        mapped.CIVIL_STATUS = resident.civilStatus;
+      }
+      if (resident.completeAddress) {
+        mapped.address = resident.completeAddress;
+        mapped.ADDRESS = resident.completeAddress;
+      }
+      if (resident.gender) {
+        mapped.gender = resident.gender;
+        mapped.GENDER = resident.gender;
+      }
+      if (resident.birthDate) {
+        mapped.date_of_birth = resident.birthDate;
+        mapped.DATE_OF_BIRTH = resident.birthDate;
+      }
+      if (resident.contactNumber) {
+        mapped.contact_no = resident.contactNumber;
+        mapped.CONTACT_NO = resident.contactNumber;
+      }
+      if (resident.email) {
+        mapped.email = resident.email;
+        mapped.EMAIL = resident.email;
+      }
+      return mapped;
+    },
+    [],
+  );
+
+  const handleResidentSelect = useCallback(
+    (resident: PersonSearchResponseDTO) => {
+      const residentData = mapResidentToFormData(resident);
+      setFormData((prev) => ({ ...prev, ...residentData }));
+      setNotification({
+        message: `Loaded data for ${resident.firstName} ${resident.lastName}`,
+        type: "success",
+      });
+    },
+    [mapResidentToFormData],
+  );
 
   // Load template options on mount
   useEffect(() => {
@@ -110,22 +178,17 @@ export const IssueCertificatePage = () => {
         // Auto-fill common fields to reduce human error
         const today = new Date();
         const autoFilledData: Record<string, string> = {
-          // Date and time fields
+          // Date and time fields (UPPER_SNAKE for legacy mock templates)
           DATE_ISSUED: formatDateReadable(today),
           OR_DATE: formatDateReadable(today),
           DAY: getDayWithOrdinal(today.getDate()),
           MONTH: getMonthName(today),
           YEAR: today.getFullYear().toString(),
-          // Location
           ISSUED_AT: "3S Center, Barangay Ugong, Valenzuela City",
-          // Validity
-          VALID_UNTIL: calculateValidityDate(data.settings.validityMonths || 6), // Based on template validity
+          VALID_UNTIL: calculateValidityDate(data.settings.validityMonths || 6),
+          // snake_case equivalents for API templates
+          or_date: formatDateReadable(today),
         };
-
-        // Set default amount based on template fee (format as currency)
-        if (data.settings.fee > 0) {
-          autoFilledData.AMOUNT_PAID = `₱${data.settings.fee.toFixed(2)}`;
-        }
 
         setFormData(autoFilledData);
       } catch (error) {
@@ -184,10 +247,30 @@ export const IssueCertificatePage = () => {
 
     // Validate required fields from all sections
     const missingFields: string[] = [];
+    const invalidFields: string[] = [];
     templateData.formFields.sections.forEach((section) => {
       section.fields.forEach((field) => {
-        if (field.required && !formData[field.name]?.trim()) {
+        const val = formData[field.name]?.trim() || "";
+        if (field.required && !val) {
           missingFields.push(field.label);
+          return;
+        }
+        if (!val) return;
+        if (field.maxLength && val.length > field.maxLength) {
+          invalidFields.push(`${field.label} exceeds ${field.maxLength} chars`);
+        }
+        if (field.type === "number") {
+          const num = Number(val);
+          if (isNaN(num)) invalidFields.push(`${field.label} must be a number`);
+          else if (field.min !== undefined && num < field.min)
+            invalidFields.push(`${field.label} min is ${field.min}`);
+          else if (field.max !== undefined && num > field.max)
+            invalidFields.push(`${field.label} max is ${field.max}`);
+        }
+        if (field.pattern && !new RegExp(field.pattern).test(val)) {
+          invalidFields.push(
+            `${field.label}: ${field.patternMessage || "invalid format"}`,
+          );
         }
       });
     });
@@ -195,6 +278,14 @@ export const IssueCertificatePage = () => {
     if (missingFields.length > 0) {
       setNotification({
         message: `Please fill in required fields: ${missingFields.join(", ")}`,
+        type: "warning",
+      });
+      return;
+    }
+
+    if (invalidFields.length > 0) {
+      setNotification({
+        message: `Fix errors: ${invalidFields.join(", ")}`,
         type: "warning",
       });
       return;
@@ -258,6 +349,7 @@ export const IssueCertificatePage = () => {
                 onInputChange={handleInputChange}
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
+                onResidentSelect={handleResidentSelect}
               />
             ) : (
               <div className="flex items-center justify-center bg-white rounded-lg border border-gray-200 p-12">
@@ -267,17 +359,19 @@ export const IssueCertificatePage = () => {
           </div>
 
           {/* RIGHT: Live Preview */}
-          <div className="w-full lg:w-7/12 lg:sticky lg:top-6 lg:self-start">
-            {isLoading ? (
-              <div className="flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200 p-12">
-                <p className="text-gray-400">Loading preview...</p>
-              </div>
-            ) : previewTemplate ? (
-              <CertificatePreviewWrapper
-                template={previewTemplate}
-                formData={formData}
-              />
-            ) : null}
+          <div className="w-full lg:w-7/12">
+            <div className="lg:sticky lg:top-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200 p-12">
+                  <p className="text-gray-400">Loading preview...</p>
+                </div>
+              ) : previewTemplate ? (
+                <CertificatePreviewWrapper
+                  template={previewTemplate}
+                  formData={formData}
+                />
+              ) : null}
+            </div>
           </div>
         </div>
       </main>
@@ -376,6 +470,7 @@ interface IssuanceFormProps {
   onInputChange: (key: string, value: string) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
+  onResidentSelect: (resident: PersonSearchResponseDTO) => void;
 }
 
 function IssuanceForm({
@@ -385,6 +480,7 @@ function IssuanceForm({
   onInputChange,
   onSubmit,
   isSubmitting,
+  onResidentSelect,
 }: IssuanceFormProps) {
   // Helper to get icon based on section title
   const getSectionIcon = (title: string) => {
@@ -411,6 +507,11 @@ function IssuanceForm({
         <p className="text-xs text-gray-500 mt-1">
           Fill in the required information below
         </p>
+      </div>
+
+      {/* Resident Search */}
+      <div className="px-6 pt-5 pb-2">
+        <ResidentSearchBar onSelect={onResidentSelect} />
       </div>
 
       {/* Form Body - Sections from API */}
@@ -528,6 +629,142 @@ function CertificatePreviewWrapper({
 }
 
 // ============================================
+// RESIDENT SEARCH BAR
+// ============================================
+
+function ResidentSearchBar({
+  onSelect,
+}: {
+  onSelect: (resident: PersonSearchResponseDTO) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PersonSearchResponseDTO[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSearch = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length < 2) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const data = await searchPeople(value.trim());
+        setResults(data);
+        setIsOpen(data.length > 0);
+      } catch {
+        setResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  };
+
+  const handleSelect = (resident: PersonSearchResponseDTO) => {
+    onSelect(resident);
+    setQuery(
+      `${resident.firstName} ${resident.middleName ? resident.middleName + " " : ""}${resident.lastName}`,
+    );
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+        <Search className="w-3 h-3 text-blue-500" />
+        Search Resident
+      </label>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => handleSearch(e.target.value)}
+          placeholder="Type resident name to auto-fill..."
+          className="w-full rounded-lg border border-blue-200 bg-blue-50/30 pl-9 pr-8 py-2.5 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        />
+        {query && (
+          <button
+            onClick={() => {
+              setQuery("");
+              setResults([]);
+              setIsOpen(false);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {isSearching && (
+          <Loader2 className="absolute right-8 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-500 animate-spin" />
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && results.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-white rounded-lg border border-gray-200 shadow-lg max-h-60 overflow-y-auto">
+          {results.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => handleSelect(r)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-800 truncate">
+                  {r.firstName} {r.middleName ? r.middleName + " " : ""}
+                  {r.lastName}
+                </p>
+                <p className="text-[10px] text-gray-500 truncate">
+                  {r.completeAddress}
+                  {r.age ? ` • ${r.age} yrs old` : ""}
+                  {r.civilStatus ? ` • ${r.civilStatus}` : ""}
+                </p>
+              </div>
+              {r.isResident && (
+                <span className="text-[9px] font-bold uppercase bg-green-100 text-green-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                  Resident
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isOpen && results.length === 0 && !isSearching && query.length >= 2 && (
+        <div className="absolute z-50 mt-1 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4 text-center">
+          <p className="text-xs text-gray-400">No residents found</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
 // HELPER COMPONENTS
 // ============================================
 
@@ -577,10 +814,37 @@ interface FormFieldProps {
 function FormField({ field, value, onChange }: FormFieldProps) {
   const isAutoFilled = field.autoFilled;
   const isReadOnly = field.readOnly;
+  const [touched, setTouched] = useState(false);
+
+  // Validation
+  const validationError = useMemo(() => {
+    if (!touched || isAutoFilled || isReadOnly) return null;
+    if (field.required && !value.trim()) return `${field.label} is required`;
+    if (!value.trim()) return null;
+    if (field.maxLength && value.length > field.maxLength)
+      return `Max ${field.maxLength} characters`;
+    if (field.type === "number") {
+      const num = Number(value);
+      if (isNaN(num)) return "Must be a number";
+      if (field.min !== undefined && num < field.min)
+        return `Min value is ${field.min}`;
+      if (field.max !== undefined && num > field.max)
+        return `Max value is ${field.max}`;
+    }
+    if (field.pattern) {
+      const regex = new RegExp(field.pattern);
+      if (!regex.test(value)) return field.patternMessage || "Invalid format";
+    }
+    return null;
+  }, [value, touched, field, isAutoFilled, isReadOnly]);
+
+  const hasError = !!validationError;
 
   const baseInputClass = isAutoFilled
     ? "w-full rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-700 font-medium cursor-not-allowed"
-    : "w-full rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
+    : hasError
+      ? "w-full rounded-lg border border-red-300 bg-red-50/30 px-3 py-2.5 text-sm outline-none transition-all focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100"
+      : "w-full rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
 
   // Label with auto-fill indicator
   const labelElement = (
@@ -589,6 +853,11 @@ function FormField({ field, value, onChange }: FormFieldProps) {
         {field.label}
         {field.required && !isAutoFilled && (
           <span className="text-red-500 ml-1">*</span>
+        )}
+        {field.maxLength && !isAutoFilled && (
+          <span className="text-[10px] text-gray-400 ml-1.5 font-normal">
+            ({value.length}/{field.maxLength})
+          </span>
         )}
       </span>
       {isAutoFilled && (
@@ -612,11 +881,15 @@ function FormField({ field, value, onChange }: FormFieldProps) {
     </label>
   );
 
-  // Help text element
-  const helpTextElement =
-    field.helpText && isAutoFilled ? (
-      <p className="text-[10px] text-gray-400 mt-0.5">{field.helpText}</p>
-    ) : null;
+  // Error / help text element
+  const bottomText = validationError ? (
+    <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1">
+      <AlertCircle className="w-3 h-3" />
+      {validationError}
+    </p>
+  ) : field.helpText && isAutoFilled ? (
+    <p className="text-[10px] text-gray-400 mt-0.5">{field.helpText}</p>
+  ) : null;
 
   if (field.type === "select" && field.options && !isAutoFilled) {
     return (
@@ -625,6 +898,7 @@ function FormField({ field, value, onChange }: FormFieldProps) {
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setTouched(true)}
           className={baseInputClass}
           disabled={isReadOnly}
         >
@@ -635,7 +909,7 @@ function FormField({ field, value, onChange }: FormFieldProps) {
             </option>
           ))}
         </select>
-        {helpTextElement}
+        {bottomText}
       </div>
     );
   }
@@ -647,12 +921,14 @@ function FormField({ field, value, onChange }: FormFieldProps) {
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setTouched(true)}
           placeholder={field.placeholder}
           rows={3}
+          maxLength={field.maxLength}
           className={baseInputClass}
           readOnly={isReadOnly}
         />
-        {helpTextElement}
+        {bottomText}
       </div>
     );
   }
@@ -672,12 +948,16 @@ function FormField({ field, value, onChange }: FormFieldProps) {
         }
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={() => setTouched(true)}
         placeholder={field.placeholder}
+        maxLength={field.type !== "number" ? field.maxLength : undefined}
+        min={field.min}
+        max={field.max}
         className={baseInputClass}
         readOnly={isReadOnly}
         tabIndex={isReadOnly ? -1 : 0}
       />
-      {helpTextElement}
+      {bottomText}
     </div>
   );
 }

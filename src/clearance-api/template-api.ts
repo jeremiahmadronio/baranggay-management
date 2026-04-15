@@ -4,9 +4,83 @@ import type {
   BodySection,
   Signatory,
 } from "./types";
+import {
+  clearanceTemplateApi,
+  type TemplateResponseDTO,
+  type SignatoryDTO,
+} from "../service/clearance-api/Template";
 
 // Re-export types for convenience
 export type { TemplateData, TemplateOption, BodySection, Signatory };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DTO → INTERNAL TYPE MAPPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** API body section shape: { text, order } */
+interface ApiBodySection {
+  text: string;
+  order: number;
+}
+
+const mapDtoToTemplateOption = (dto: TemplateResponseDTO): TemplateOption => ({
+  id: dto.id,
+  name: dto.certTitle,
+  isFree: !dto.hasFee || dto.certFee === 0,
+});
+
+const mapDtoToTemplateData = (dto: TemplateResponseDTO): TemplateData => ({
+  id: dto.id,
+  title: dto.certTitle,
+  layoutStyle: dto.layoutStyle || "clearance",
+  bodySections: Array.isArray(dto.bodySections)
+    ? (dto.bodySections as ApiBodySection[])
+        .sort((a, b) => a.order - b.order)
+        .map((s, i) => ({
+          id: `body-${i + 1}`,
+          text: s.text,
+          isEditable: true,
+        }))
+    : [],
+  footerText: dto.certTagline || "",
+  signatories: Array.isArray(dto.signatories)
+    ? dto.signatories.map((s: SignatoryDTO) => ({
+        name: s.signatoryName,
+        position: s.signatoryTitle,
+      }))
+    : [],
+  settings: {
+    fee: dto.certFee ?? 0,
+    validityMonths: dto.validityMonths ?? 6,
+    requiresPhoto: dto.requiresPhoto ?? false,
+    requiresThumbmark: dto.requiresThumbmark ?? false,
+    hasFee: dto.hasFee ?? false,
+    hasCtn: dto.hascTn ?? false,
+    ctnFee: 0,
+  },
+  variables: Array.isArray(dto.issueFields)
+    ? (dto.issueFields as string[])
+    : [],
+});
+
+// Module-level cache to avoid repeated API calls in the same session
+let _apiCache: TemplateResponseDTO[] | null = null;
+let _apiCacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function fetchApiTemplates(): Promise<TemplateResponseDTO[]> {
+  if (_apiCache && Date.now() - _apiCacheTime < CACHE_TTL) return _apiCache;
+  const dtos = await clearanceTemplateApi.getAllTemplates();
+  _apiCache = dtos;
+  _apiCacheTime = Date.now();
+  return dtos;
+}
+
+/** Call after creating/archiving/restoring to invalidate the cache */
+export const invalidateTemplateCache = () => {
+  _apiCache = null;
+  _apiCacheTime = 0;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -90,6 +164,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: true,
       requiresThumbmark: true,
       hasFee: true,
+      hasCtn: true,
+      ctnFee: 0,
     },
     variables: [
       ...DEFAULT_VARIABLES,
@@ -128,6 +204,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: true,
       requiresThumbmark: false,
       hasFee: false,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: DEFAULT_VARIABLES,
   },
@@ -158,6 +236,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: DEFAULT_VARIABLES,
   },
@@ -198,6 +278,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: false,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: [...DEFAULT_VARIABLES, "DAY", "MONTH", "YEAR"],
   },
@@ -230,6 +312,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: true,
       requiresThumbmark: false,
       hasFee: true,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: [
       ...DEFAULT_VARIABLES,
@@ -269,6 +353,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: [
       "FULL_NAME",
@@ -310,6 +396,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: ["FULL_NAME", "YEAR", "FLOOR_AREA", "DAY", "MONTH"],
   },
@@ -342,6 +430,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: true,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: [
       "FULL_NAME",
@@ -382,6 +472,8 @@ const MOCK_TEMPLATES: Record<string, TemplateData> = {
       requiresPhoto: false,
       requiresThumbmark: false,
       hasFee: false,
+      hasCtn: false,
+      ctnFee: 0,
     },
     variables: [
       "FULL_NAME",
@@ -413,6 +505,8 @@ const DEFAULT_TEMPLATE: TemplateData = {
     requiresPhoto: false,
     requiresThumbmark: false,
     hasFee: false,
+    hasCtn: false,
+    ctnFee: 0,
   },
   variables: DEFAULT_VARIABLES,
 };
@@ -468,29 +562,31 @@ export const getEffectiveTemplate = (
 
 /**
  * Fetch all template options (for dropdown/selector)
+ * Tries real API first, falls back to mock data
  */
 export const fetchTemplateOptions = async (): Promise<TemplateOption[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/templates/options`);
-    if (!response.ok) throw new Error("Failed to fetch template options");
-    return await response.json();
+    const dtos = await fetchApiTemplates();
+    return dtos.map(mapDtoToTemplateOption);
   } catch (error) {
-    console.warn("API unavailable, using mock data:", error);
+    console.warn("Real API unavailable, using mock data:", error);
     return MOCK_TEMPLATE_OPTIONS;
   }
 };
 
 /**
  * Fetch a single template by ID (for editing)
+ * Tries real API first, falls back to localStorage/mock
  */
 export const fetchTemplate = async (
   templateId: string | number,
 ): Promise<TemplateData> => {
   const id = String(templateId);
   try {
-    const response = await fetch(`${API_BASE_URL}/templates/${id}`);
-    if (!response.ok) throw new Error(`Failed to fetch template: ${id}`);
-    return await response.json();
+    const dtos = await fetchApiTemplates();
+    const dto = dtos.find((d) => String(d.id) === id);
+    if (dto) return mapDtoToTemplateData(dto);
+    throw new Error(`Template ${id} not found in API`);
   } catch (error) {
     console.warn("API unavailable, using mock/stored data:", error);
     return getEffectiveTemplate(id);
@@ -551,6 +647,96 @@ export const resetTemplate = async (
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARCHIVE / RESTORE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ARCHIVED_STORAGE_KEY = "barangay_archived_templates";
+
+const getArchivedIds = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(ARCHIVED_STORAGE_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveArchivedIds = (ids: Set<string>) => {
+  localStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify([...ids]));
+};
+
+/**
+ * Archive a template (soft-delete)
+ */
+export const archiveTemplate = async (
+  templateId: string | number,
+  _reason?: string,
+): Promise<boolean> => {
+  const id = String(templateId);
+  try {
+    const response = await fetch(`${API_BASE_URL}/templates/${id}/archive`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: _reason }),
+    });
+    if (!response.ok) throw new Error(`Failed to archive template: ${id}`);
+    return true;
+  } catch (error) {
+    console.warn("API unavailable, archiving locally:", error);
+    const ids = getArchivedIds();
+    ids.add(id);
+    saveArchivedIds(ids);
+    return true;
+  }
+};
+
+/**
+ * Restore an archived template
+ */
+export const restoreTemplate = async (
+  templateId: string | number,
+): Promise<boolean> => {
+  const id = String(templateId);
+  try {
+    const response = await fetch(`${API_BASE_URL}/templates/${id}/restore`, {
+      method: "PATCH",
+    });
+    if (!response.ok) throw new Error(`Failed to restore template: ${id}`);
+    return true;
+  } catch (error) {
+    console.warn("API unavailable, restoring locally:", error);
+    const ids = getArchivedIds();
+    ids.delete(id);
+    saveArchivedIds(ids);
+    return true;
+  }
+};
+
+/**
+ * Fetch template options with archive status
+ * Tries real API first, falls back to mock + localStorage archive tracking
+ */
+export const fetchTemplateOptionsWithStatus = async (): Promise<
+  (TemplateOption & { isArchived: boolean })[]
+> => {
+  try {
+    const dtos = await fetchApiTemplates();
+    const archivedIds = getArchivedIds();
+    return dtos.map((dto) => ({
+      ...mapDtoToTemplateOption(dto),
+      isArchived: archivedIds.has(String(dto.id)),
+    }));
+  } catch (error) {
+    console.warn("API unavailable, using mock data:", error);
+    const archivedIds = getArchivedIds();
+    return MOCK_TEMPLATE_OPTIONS.map((t) => ({
+      ...t,
+      isArchived: archivedIds.has(String(t.id)),
+    }));
+  }
+};
+
 export const extractVariables = (text: string): string[] => {
   const matches = text.match(/\{\{[^}]+\}\}/g);
   return matches ? matches.map((m) => m.replace(/[{}]/g, "")) : [];
@@ -574,9 +760,29 @@ export const SAMPLE_DATA: Record<string, string> = {
   RESIDENCY_SINCE: "2015",
   DATE_OF_BIRTH: "March 15, 1991",
   PLACE_OF_BIRTH: "Valenzuela City",
+  GENDER: "Male",
+  NATIONALITY: "Filipino",
+  CONTACT_NO: "0917-123-4567",
+  EMAIL: "juan.delacruz@email.com",
+  VOTER_STATUS: "Yes",
+  TIN_NO: "123-456-789-000",
+
+  // Residency
+  YEARS_OF_RESIDENCY: "9",
+  HOUSE_NO: "Blk 5, Lot 10",
+  ZONE_PUROK: "Purok 3",
+  PRECINCT_NO: "0012-A",
+
+  // Purpose / Employment
+  PURPOSE: "EMPLOYMENT",
+  NATURE_OF_WORK: "Electrical Installation",
+  OCCUPATION: "Electrician",
+  EMPLOYER: "MERALCO",
+  EMPLOYER_ADDRESS: "Ortigas Ave., Pasig City",
+  MONTHLY_INCOME: "₱25,000.00",
+  CERT_NATURE: "Electrical Clearance (MERALCO)",
 
   // Payment/OR Info
-  PURPOSE: "EMPLOYMENT",
   OR_NUMBER: "2026-0147",
   DATE_ISSUED: "March 9, 2026",
   AMOUNT_PAID: "₱50.00",
@@ -584,6 +790,15 @@ export const SAMPLE_DATA: Record<string, string> = {
   ISSUED_AT: "Valenzuela City",
   OR_DATE: "March 9, 2026",
   VALID_UNTIL: "September 9, 2026",
+
+  // Property / Business Info
+  FLOOR_AREA: "120",
+  LOT_AREA: "200",
+  BUILDING_TYPE: "Residential",
+  BUSINESS_NAME: "JDC Trading",
+  BUSINESS_TYPE: "General Merchandise",
+  BUSINESS_ADDRESS: "456 Sampaguita St., Ugong",
+  TIME: "12:00 PM - 5:00 PM",
 
   // Vehicle Info
   MAKE: "HONDA",
@@ -598,12 +813,6 @@ export const SAMPLE_DATA: Record<string, string> = {
   CR_NO: "CR-12345",
   OR_NO_VEHICLE: "OR-67890",
   MTOP_NO: "MTOP-2026-001",
-
-  // Property/Technical Info
-  FLOOR_AREA: "120",
-  CERT_NATURE: "Electrical Clearance (MERALCO)",
-  NATURE_OF_WORK: "Electrical Installation",
-  TIME: "12:00 PM - 5:00 PM",
 
   // Date Components
   DAY: "9th",

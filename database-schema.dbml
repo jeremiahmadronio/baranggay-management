@@ -1,0 +1,225 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// BARANGAY MANAGEMENT SYSTEM — DATABASE SCHEMA (DBML)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Normalized design: person → resident → issued_certificates → revenue
+// Person can exist without being a resident.
+// Resident always links to a person.
+// Issued certificates link to person (basic info) OR resident (full info).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE: PEOPLE & RESIDENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+Table person {
+  id bigserial [primary key]
+  photo bytea
+  last_name varchar(200) [not null]
+  first_name varchar(200) [not null]
+  middle_name varchar(200)
+  suffix varchar(20)                        // Jr., Sr., III, etc.
+  email varchar(255)
+  contact_number varchar(50)
+  age smallint
+  birth_date date
+  birth_place varchar(300)
+  gender varchar(50)
+  civil_status varchar(100)
+  nationality varchar(100) [default: 'Filipino']
+  occupation varchar(200)
+  employer varchar(200)
+  employer_address varchar(300)
+  monthly_income decimal(12,2)
+  tin_no varchar(50)
+  complete_address varchar(500)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table residents {
+  id bigserial [primary key]
+  person_id bigint [ref: > person.id, not null, unique]
+  barangay_id_number varchar(200) [unique]
+  household_number varchar(200)
+  house_lot_no varchar(200)
+  zone_purok varchar(200)
+  precinct_number varchar(200)
+  is_voter boolean [default: false]
+  is_head_of_family boolean [default: false]
+  citizenship varchar(200) [default: 'Filipino']
+  date_of_residency date
+  years_of_residency smallint
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH & DEPARTMENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+Table department {
+  id serial [primary key]
+  name varchar(100) [unique, not null]
+  description text
+  created_at timestamp [default: `now()`]
+}
+
+Table users {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  username varchar(100) [unique, not null]
+  password_hash varchar(255) [not null]
+  full_name varchar(255) [not null]
+  role varchar(50) [not null]              // admin, clerk, etc.
+  dept_id integer [ref: > department.id]
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLEARANCE & CERTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+Table certificate_template {
+  id serial [primary key]
+  cert_title varchar(100) [unique, not null]
+  design_format varchar(20) [default: 'clearance'] // 'clearance' | 'inline'
+  cert_fee decimal(12,2) [default: 0]
+  validity_months integer [default: 6]
+  requires_photo boolean [default: false]
+  requires_thumbmark boolean [default: false]
+  cert_body jsonb                           // [{ id, text, isEditable }]
+  signatories jsonb                         // [{ name, position }]
+  variables jsonb                           // ["FULL_NAME","ADDRESS",...]
+  cert_tagline text                         // footer text
+  is_archived boolean [default: false]       // soft-delete for archive
+  archive_reason text                        // why it was archived
+  archived_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  dept_id integer [ref: > department.id]
+}
+
+// ─── cert_body example ──────────────────────────────────────────────────────
+// [
+//   { "id": "body-1", "text": "This is to CERTIFY that...", "isEditable": true },
+//   { "id": "body-2", "text": "This is to further certify...", "isEditable": true }
+// ]
+//
+// ─── signatories example ────────────────────────────────────────────────────
+// [
+//   { "name": "MARICEL PINEDA - EMPERADOR", "position": "Punong Barangay" },
+//   { "name": "JOHN DOE", "position": "Secretary" }
+// ]
+//
+// ─── variables example ──────────────────────────────────────────────────────
+// ["FULL_NAME","ADDRESS","AGE","CIVIL_STATUS","DATE_OF_BIRTH","PURPOSE"]
+
+Table issued_certificates {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  template_id integer [ref: > certificate_template.id, not null]
+  person_id bigint [ref: > person.id]       // link to person for basic info lookup
+  resident_id bigint [ref: > residents.id]  // optional: only if requestor is a resident
+  requestor_name varchar(255) [not null]    // denormalized for quick display / walk-ins
+  certificate_data jsonb                    // snapshot of all filled fields at time of issue
+  is_free boolean [default: false]
+  issued_by_id uuid [ref: > users.id]
+  dept_id integer [ref: > department.id]
+  status varchar(20) [default: 'Released']  // Released, Pending, Cancelled, Voided
+  issued_at timestamp [default: `now()`]
+  expiry_date date
+  // Void info
+  void_reason text
+  voided_at timestamp
+  voided_by_id uuid [ref: > users.id]
+}
+
+// ─── certificate_data example ───────────────────────────────────────────────
+// {
+//   "FULL_NAME": "JUAN P. DELA CRUZ",
+//   "ADDRESS": "123 Rizal St., Purok 3",
+//   "AGE": "35",
+//   "PURPOSE": "EMPLOYMENT",
+//   "OR_NUMBER": "2026-0147",
+//   ...
+// }
+// This is a snapshot — even if person data changes later, the cert keeps
+// the exact values used at issuance time.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REVENUE & COLLECTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+Table revenue_records {
+  id bigserial [primary key]
+  certificate_id uuid [ref: - issued_certificates.id] // 1:1 with issued cert
+  or_number varchar(50) [unique, not null]
+  or_date date
+  amount decimal(12,2) [not null]
+  com_tax_no varchar(50)
+  payment_method varchar(50) [default: 'Cash'] // Cash, GCash, etc.
+  payment_date timestamp [default: `now()`]
+  collected_by_id uuid [ref: > users.id]
+  dept_id integer [ref: > department.id]
+  remarks text
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VEHICLE (for tricycle registration certs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+Table vehicle {
+  id bigserial [primary key]
+  owner_id bigint [ref: > person.id, not null]
+  make varchar(100)
+  vehicle_no varchar(100)
+  plate_no varchar(50)
+  motor_no varchar(100)
+  battery_no varchar(100)
+  charger_no varchar(100)
+  chassis_no varchar(100)
+  body_no varchar(100)
+  body_color varchar(50)
+  cr_no varchar(100)
+  or_no varchar(100)
+  mtop_no varchar(100)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RELATIONSHIPS SUMMARY
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+//  person ──1:1──▶ residents          (optional: person may not be a resident)
+//  person ──1:N──▶ issued_certificates (a person can have many certs)
+//  person ──1:N──▶ vehicle             (a person can own multiple vehicles)
+//
+//  residents ──1:N──▶ issued_certificates (optional link for resident-specific data)
+//
+//  certificate_template ──1:N──▶ issued_certificates
+//
+//  issued_certificates ──1:1──▶ revenue_records (if paid cert)
+//
+//  users ──1:N──▶ issued_certificates (issued_by)
+//  users ──1:N──▶ revenue_records     (collected_by)
+//
+//  department ──1:N──▶ certificate_template, issued_certificates, revenue_records, users
+//
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP FLOW (when issuing a certificate)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+//  1. Clerk searches by name → hits `person` table
+//  2. If person found:
+//     - Auto-fill basic info (name, address, age, etc.) from person record
+//     - Check if person has a `residents` record → auto-fill residency fields
+//     - Check if person has `vehicle` records → auto-fill vehicle fields
+//  3. If person NOT found (walk-in):
+//     - Clerk types requestor_name manually
+//     - certificate_data stores all typed values as JSON snapshot
+//     - Optionally create a new person record for future lookups
+//  4. On save:
+//     - Insert issued_certificates (with person_id if linked)
+//     - Insert revenue_records (if paid cert, with OR number)
+//

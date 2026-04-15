@@ -6,7 +6,9 @@ interface PreviewContextType {
   customData: Record<string, string>;
 }
 
-export const PreviewContext = createContext<PreviewContextType>({ customData: {} });
+export const PreviewContext = createContext<PreviewContextType>({
+  customData: {},
+});
 
 export const usePreviewData = () => {
   const context = useContext(PreviewContext);
@@ -30,17 +32,35 @@ export const PreviewDataProvider: React.FC<{
 // ============================================
 
 /**
+ * Lookup a value in a data map, trying the key as-is, then UPPER_SNAKE, then lower_snake.
+ * Handles the mismatch between API snake_case keys and SAMPLE_DATA UPPER_SNAKE keys.
+ */
+const resolveKey = (
+  key: string,
+  source: Record<string, string>,
+): string | undefined => {
+  if (source[key]) return source[key];
+  const upper = key.toUpperCase();
+  if (source[upper]) return source[upper];
+  const lower = key.toLowerCase();
+  if (source[lower]) return source[lower];
+  return undefined;
+};
+
+/**
  * Get field value with info about data source
  * Returns the value from customData if available, otherwise from SAMPLE_DATA
  */
 export const getFieldValue = (
   key: string,
-  customData?: Record<string, string>
+  customData?: Record<string, string>,
 ): { value: string; isCustom: boolean } => {
-  if (customData && customData[key]) {
-    return { value: customData[key], isCustom: true };
+  if (customData) {
+    const customVal = resolveKey(key, customData);
+    if (customVal) return { value: customVal, isCustom: true };
   }
-  return { value: SAMPLE_DATA[key] || "___________", isCustom: false };
+  const sampleVal = resolveKey(key, SAMPLE_DATA);
+  return { value: sampleVal || "___________", isCustom: false };
 };
 
 /**
@@ -54,7 +74,9 @@ export const DataValue: React.FC<{
 }> = ({ fieldKey, customData, className = "" }) => {
   const { value, isCustom } = getFieldValue(fieldKey, customData);
   return (
-    <span className={`font-bold ${isCustom ? "text-green-700" : "text-blue-700"} ${className}`}>
+    <span
+      className={`font-bold ${isCustom ? "text-green-700" : "text-blue-700"} ${className}`}
+    >
       {value}
     </span>
   );
@@ -62,7 +84,7 @@ export const DataValue: React.FC<{
 
 export const renderTextWithVariables = (
   text: string,
-  customData?: Record<string, string>
+  customData?: Record<string, string>,
 ) => {
   const mergedData = { ...SAMPLE_DATA, ...customData };
   const lines = text.split("\n");
@@ -72,8 +94,9 @@ export const renderTextWithVariables = (
       const match = part.match(/\{\{([^}]+)\}\}/);
       if (match) {
         const variableName = match[1];
-        const value = mergedData[variableName] || variableName;
-        const isCustomValue = customData && customData[variableName];
+        const value = resolveKey(variableName, mergedData) || variableName;
+        const isCustomValue =
+          customData && resolveKey(variableName, customData);
         return (
           <span
             key={index}
