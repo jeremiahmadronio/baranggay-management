@@ -17,8 +17,14 @@ import type {
   NotesResponseDTO,
   ResponseNewFtjsSummaryDTO,
   TimelineResponseDTO,
-} from "../../service/ftjs/FirstTimeJobSeeker";
-import { formatDate, formatDateTime, InfoItem, StatusPill } from "./shared";
+} from "../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
+import {
+  formatDate,
+  formatDateTime,
+  getFtjsExpiryDate,
+  InfoItem,
+  StatusPill,
+} from "./shared";
 
 interface FtjsRecordModalProps {
   isOpen: boolean;
@@ -30,6 +36,11 @@ interface FtjsRecordModalProps {
   onEdit?: () => void;
   onAddNote?: () => void;
   onRequestReissue?: () => void;
+  viewOnly?: boolean;
+  mode?: "modal" | "inline";
+  headerLabel?: string;
+  closeSubtitle?: string;
+  showCloseAction?: boolean;
 }
 
 function EmptyState({ text }: { text: string }) {
@@ -56,24 +67,25 @@ function QuickActionCard({
   onClick: () => void;
 }) {
   const tones = {
-    blue: "bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100/70",
-    amber: "bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100/70",
+    blue: "border-blue-100 bg-blue-50/50 hover:bg-blue-50 text-blue-700",
+    amber:
+      "border-gray-200 bg-gray-50/50 hover:bg-gray-50 text-gray-700",
     violet:
-      "bg-violet-50 border-violet-100 text-violet-700 hover:bg-violet-100/70",
-    slate: "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/80",
+      "border-green-100 bg-green-50/50 hover:bg-green-50 text-green-700",
+    slate: "border-gray-200 bg-gray-50/50 hover:bg-gray-50 text-gray-700",
   } as const;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border p-4 text-left transition-colors ${tones[tone]}`}
+      className={`flex flex-col items-start rounded-xl border p-4 text-left transition-colors ${tones[tone]}`}
     >
-      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-white/80 border border-current/10 mb-3">
+      <div className="mb-3 inline-flex items-center justify-center rounded-lg bg-white/80 p-2">
         {icon}
       </div>
       <p className="text-sm font-semibold">{title}</p>
-      <p className="text-xs mt-1 opacity-80">{subtitle}</p>
+      <p className="mt-1 text-xs text-gray-400">{subtitle}</p>
     </button>
   );
 }
@@ -112,6 +124,11 @@ export function FtjsRecordModal({
   onEdit,
   onAddNote,
   onRequestReissue,
+  viewOnly = false,
+  mode = "modal",
+  headerLabel = "FTJS Management View",
+  closeSubtitle = "Return to FTJS management",
+  showCloseAction = true,
 }: FtjsRecordModalProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
@@ -121,23 +138,22 @@ export function FtjsRecordModal({
     }
   }, [isOpen, record?.id]);
 
-  return (
-    <FormModalShell
-      isOpen={isOpen}
-      onClose={onClose}
-      title={record?.trackingNumber || "FTJS Request Details"}
-      maxWidthClass="max-w-7xl"
-      bodyClassName="bg-slate-50/80"
-    >
-      {!record ? (
-        <EmptyState text="No FTJS record selected." />
-      ) : (
-        <div className="space-y-5">
+  const showQuickActions =
+    (!viewOnly && !!onEdit) ||
+    (!viewOnly && !!onAddNote) ||
+    (!viewOnly && !!onRequestReissue) ||
+    showCloseAction;
+  const expiryDate = record ? getFtjsExpiryDate(record.dateSubmitted) : null;
+
+  const content = !record ? (
+    <EmptyState text="No FTJS record selected." />
+  ) : (
+    <div className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-blue-50 px-5 py-5 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
               <div>
                 <p className="text-xs font-medium text-slate-500 mb-1">
-                  FTJS Management View
+                  {headerLabel}
                 </p>
                 <h3 className="text-2xl font-bold text-slate-900">
                   {record.trackingNumber}
@@ -154,6 +170,12 @@ export function FtjsRecordModal({
                   Submitted:{" "}
                   <span className="font-medium text-slate-900">
                     {formatDate(record.dateSubmitted)}
+                  </span>
+                </div>
+                <div className="text-sm text-slate-600">
+                  Expires:{" "}
+                  <span className="font-medium text-slate-900">
+                    {expiryDate ? formatDate(expiryDate.toISOString()) : "—"}
                   </span>
                 </div>
                 <div className="text-sm text-slate-600">
@@ -202,42 +224,46 @@ export function FtjsRecordModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {onEdit ? (
-              <QuickActionCard
-                title="Edit Request"
-                subtitle="Update FTJS details"
-                icon={<FilePenLine className="w-5 h-5" />}
-                tone="blue"
-                onClick={onEdit}
-              />
-            ) : null}
-            {onAddNote ? (
-              <QuickActionCard
-                title="Add Note"
-                subtitle="Log internal observation"
-                icon={<NotebookPen className="w-5 h-5" />}
-                tone="amber"
-                onClick={onAddNote}
-              />
-            ) : null}
-            {onRequestReissue ? (
-              <QuickActionCard
-                title="Request Re-issuance"
-                subtitle="Create a new certificate request"
-                icon={<RefreshCw className="w-5 h-5" />}
-                tone="violet"
-                onClick={onRequestReissue}
-              />
-            ) : null}
-            <QuickActionCard
-              title="Close View"
-              subtitle="Return to FTJS management"
-              icon={<X className="w-5 h-5" />}
-              tone="slate"
-              onClick={onClose}
-            />
-          </div>
+          {showQuickActions ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {!viewOnly && onEdit ? (
+                <QuickActionCard
+                  title="Edit Request"
+                  subtitle="Update FTJS details"
+                  icon={<FilePenLine className="w-5 h-5" />}
+                  tone="blue"
+                  onClick={onEdit}
+                />
+              ) : null}
+              {!viewOnly && onAddNote ? (
+                <QuickActionCard
+                  title="Add Note"
+                  subtitle="Log internal observation"
+                  icon={<NotebookPen className="w-5 h-5" />}
+                  tone="amber"
+                  onClick={onAddNote}
+                />
+              ) : null}
+              {!viewOnly && onRequestReissue ? (
+                <QuickActionCard
+                  title="Request Re-issuance"
+                  subtitle="Create a new certificate request"
+                  icon={<RefreshCw className="w-5 h-5" />}
+                  tone="violet"
+                  onClick={onRequestReissue}
+                />
+              ) : null}
+              {showCloseAction ? (
+                <QuickActionCard
+                  title="Close View"
+                  subtitle={closeSubtitle}
+                  icon={<X className="w-5 h-5" />}
+                  tone="slate"
+                  onClick={onClose}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           {activeTab === "overview" ? (
             <>
@@ -464,7 +490,7 @@ export function FtjsRecordModal({
                       className="rounded-xl border border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="bg-violet-100 text-violet-700 p-2 rounded-lg">
+                        <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
                           <RefreshCw className="w-4 h-4" />
                         </div>
                         <div>
@@ -501,7 +527,25 @@ export function FtjsRecordModal({
             </DetailPanel>
           ) : null}
         </div>
-      )}
+  );
+
+  if (!isOpen) {
+    return null;
+  }
+
+  if (mode === "inline") {
+    return <div className="space-y-5">{content}</div>;
+  }
+
+  return (
+    <FormModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title={record?.trackingNumber || "FTJS Request Details"}
+      maxWidthClass="max-w-7xl"
+      bodyClassName="bg-slate-50/80"
+    >
+      {content}
     </FormModalShell>
   );
 }

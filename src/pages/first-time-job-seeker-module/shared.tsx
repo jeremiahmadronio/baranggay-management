@@ -101,6 +101,34 @@ export function formatDate(dateStr?: string | null) {
   });
 }
 
+export function getFtjsExpiryDate(dateStr?: string | null) {
+  if (!dateStr) return null;
+  const submittedDate = new Date(dateStr);
+  if (Number.isNaN(submittedDate.getTime())) return null;
+
+  const expiryDate = new Date(submittedDate);
+  expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+  return expiryDate;
+}
+
+export function isFtjsExpired(
+  dateStr?: string | null,
+  referenceDate: Date = new Date(),
+) {
+  const expiryDate = getFtjsExpiryDate(dateStr);
+  if (!expiryDate) return false;
+  return referenceDate.getTime() >= expiryDate.getTime();
+}
+
+export function buildFtjsAutoArchiveReason(dateStr?: string | null) {
+  const expiryDate = getFtjsExpiryDate(dateStr);
+  if (!expiryDate) {
+    return "Automatically archived after the FTJS 1-year validation period ended.";
+  }
+
+  return `Automatically archived after the FTJS 1-year validation period ended on ${formatDate(expiryDate.toISOString())}.`;
+}
+
 export function formatDateTime(dateStr?: string | null) {
   if (!dateStr) return "—";
   const date = new Date(dateStr);
@@ -124,9 +152,28 @@ export function formatCurrency(value?: number | null) {
 }
 
 export function formatStatusLabel(value?: string | null) {
-  return String(value || "UNKNOWN")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+  const normalized = String(value || "UNKNOWN")
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, "_");
+
+  const labels: Record<string, string> = {
+    PENDING: "Pending Review",
+    FOR_REVIEW: "Under Review",
+    APPROVED: "Approved for Issuance",
+    ISSUED: "Certificate Issued",
+    RE_ISSUANCE: "Re-issuance Request",
+    REISSUANCE: "Re-issuance Request",
+    ARCHIVED: "Archived Record",
+    REJECTED: "Rejected Application",
+  };
+
+  return (
+    labels[normalized] ||
+    normalized
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (match) => match.toUpperCase())
+  );
 }
 
 export function getStatusBadgeClass(statusRaw?: string | null) {
@@ -144,9 +191,9 @@ export function getStatusBadgeClass(statusRaw?: string | null) {
     case "ISSUED":
       return "bg-emerald-50 text-emerald-700 border border-emerald-200";
     case "RE_ISSUANCE":
-      return "bg-violet-50 text-violet-700 border border-violet-200";
+      return "bg-blue-50 text-blue-700 border border-blue-200";
     case "REISSUANCE":
-      return "bg-violet-50 text-violet-700 border border-violet-200";
+      return "bg-blue-50 text-blue-700 border border-blue-200";
     case "ARCHIVED":
       return "bg-slate-100 text-slate-700 border border-slate-200";
     case "REJECTED":
@@ -236,6 +283,101 @@ export const VALID_ID_OPTIONS = [
   "Voter's ID",
   "Barangay ID",
 ];
+
+export type FtjsValidIdConfig = {
+  acceptsIdNumber: boolean;
+  requiresIdNumber: boolean;
+  requiresSchoolAddress: boolean;
+  idNumberLabel: string;
+  idNumberPlaceholder: string;
+  idNumberHint?: string;
+};
+
+const DEFAULT_FTJS_VALID_ID_CONFIG: FtjsValidIdConfig = {
+  acceptsIdNumber: false,
+  requiresIdNumber: false,
+  requiresSchoolAddress: false,
+  idNumberLabel: "ID Number",
+  idNumberPlaceholder: "Select a valid ID type first",
+  idNumberHint: "ID number is only required for IDs with a standard printed identifier.",
+};
+
+const FTJS_VALID_ID_CONFIGS: Record<string, FtjsValidIdConfig> = {
+  "PhilSys ID": {
+    acceptsIdNumber: true,
+    requiresIdNumber: true,
+    requiresSchoolAddress: false,
+    idNumberLabel: "PhilSys Card Number",
+    idNumberPlaceholder: "Enter PhilSys card number",
+  },
+  UMID: {
+    acceptsIdNumber: true,
+    requiresIdNumber: true,
+    requiresSchoolAddress: false,
+    idNumberLabel: "UMID / CRN",
+    idNumberPlaceholder: "Enter UMID or CRN",
+  },
+  Passport: {
+    acceptsIdNumber: true,
+    requiresIdNumber: true,
+    requiresSchoolAddress: false,
+    idNumberLabel: "Passport Number",
+    idNumberPlaceholder: "Enter passport number",
+  },
+  "Driver's License": {
+    acceptsIdNumber: true,
+    requiresIdNumber: true,
+    requiresSchoolAddress: false,
+    idNumberLabel: "License Number",
+    idNumberPlaceholder: "Enter driver's license number",
+  },
+  "Postal ID": {
+    acceptsIdNumber: true,
+    requiresIdNumber: true,
+    requiresSchoolAddress: false,
+    idNumberLabel: "Postal ID Number",
+    idNumberPlaceholder: "Enter postal ID number",
+  },
+  "National ID": {
+    acceptsIdNumber: true,
+    requiresIdNumber: true,
+    requiresSchoolAddress: false,
+    idNumberLabel: "National ID Number",
+    idNumberPlaceholder: "Enter national ID number",
+  },
+  "School ID": {
+    acceptsIdNumber: true,
+    requiresIdNumber: false,
+    requiresSchoolAddress: true,
+    idNumberLabel: "Student No.",
+    idNumberPlaceholder: "Student No. is optional for School ID",
+    idNumberHint: "School address is required. Student number may be added if available.",
+  },
+  "Voter's ID": {
+    acceptsIdNumber: false,
+    requiresIdNumber: false,
+    requiresSchoolAddress: false,
+    idNumberLabel: "ID Number",
+    idNumberPlaceholder: "ID number is not required for Voter's ID",
+    idNumberHint: "Voter's ID can be submitted without an ID number in this form.",
+  },
+  "Barangay ID": {
+    acceptsIdNumber: true,
+    requiresIdNumber: true,
+    requiresSchoolAddress: false,
+    idNumberLabel: "Barangay ID Number",
+    idNumberPlaceholder: "Enter barangay ID number",
+  },
+};
+
+export function getFtjsValidIdConfig(validIdType?: string | null) {
+  if (!validIdType) return DEFAULT_FTJS_VALID_ID_CONFIG;
+
+  return FTJS_VALID_ID_CONFIGS[validIdType] ?? {
+    ...DEFAULT_FTJS_VALID_ID_CONFIG,
+    idNumberPlaceholder: "Enter ID number",
+  };
+}
 
 export const PURPOSE_OPTIONS = [
   { label: "NBI Clearance", value: "NBI_CLEARANCE" },

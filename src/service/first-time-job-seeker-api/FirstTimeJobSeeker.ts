@@ -1,6 +1,7 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const FTJS_URL = `${BASE}/api/v1/ftjs`;
 const RESIDENT_URL = `${BASE}/api/v1/resident`;
+const PERMISSION_URL = `${BASE}/api/v1/permission`;
 
 class ApiError extends Error {
   status: number;
@@ -26,17 +27,15 @@ export interface FtjsRequestDTO {
   contactNumber?: string;
   email?: string;
 
+  schoolAddress?: string;
   educationalAttainment: string;
   course?: string;
   institution?: string;
 
   validIdType?: string;
   idNumber?: string;
-
-  dateSubmitted?: string; // "YYYY-MM-DD"
+  oathFiles: number[]; // byte[]
   purpose: string;
-
-  oathFiles?: number[]; // byte[] as number array
 }
 
 export interface NotesRequestDTO {
@@ -60,6 +59,7 @@ export interface FtjsEditRequestDTO {
   address?: string;
   contactNumber?: string;
   email?: string;
+  schoolAddress?: string;
   educationalAttainment?: string;
   course?: string;
   institution?: string;
@@ -70,7 +70,7 @@ export interface FtjsEditRequestDTO {
 }
 
 export interface StatusUpdateDTO {
-  newStatus: string;
+  isArchived: boolean;
   remarks: string;
 }
 
@@ -88,6 +88,65 @@ export interface PersonSearchResponseDTO {
   completeAddress: string;
   isResident: boolean;
   barangayIdNumber: string | null;
+}
+
+export interface UserAccessPermission {
+  userId: string;
+  username: string;
+  role: string;
+  department: string;
+  permissions: string[];
+}
+
+export const FTJS_PERMISSIONS = {
+  REGISTER_APPLICANT: "Register New Applicant",
+  ISSUE_CERTIFICATE: "Issue FTJS Certificate",
+  VIEW_RECORDS: "View FTJS Records",
+  UPDATE_APPLICANT_INFO: "Update Applicant Info",
+} as const;
+
+const FTJS_PERMISSION_ALIASES: Record<string, string[]> = {
+  [FTJS_PERMISSIONS.REGISTER_APPLICANT]: ["Register new Applicant"],
+  [FTJS_PERMISSIONS.ISSUE_CERTIFICATE]: ["Issue ftjs Certificate"],
+  [FTJS_PERMISSIONS.VIEW_RECORDS]: ["View ftjs Records"],
+  [FTJS_PERMISSIONS.UPDATE_APPLICANT_INFO]: ["Update Applicant Info"],
+};
+
+function normalizePermissionName(value?: string | null): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/[&/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "");
+}
+
+export function hasFtjsPermission(
+  user: Pick<UserAccessPermission, "permissions"> | null | undefined,
+  permission: string,
+): boolean {
+  if (!user?.permissions?.length) return false;
+
+  const normalizedOwnedPermissions = user.permissions.map((entry) =>
+    normalizePermissionName(entry),
+  );
+
+  const candidates = [
+    permission,
+    ...(FTJS_PERMISSION_ALIASES[permission] || []),
+  ].map((entry) => normalizePermissionName(entry));
+
+  return candidates.some((candidate) =>
+    normalizedOwnedPermissions.includes(candidate),
+  );
+}
+
+export function hasAnyFtjsPermission(
+  user: Pick<UserAccessPermission, "permissions"> | null | undefined,
+  permissions: string[],
+): boolean {
+  return permissions.some((permission) => hasFtjsPermission(user, permission));
 }
 
 // =====================================================================
@@ -117,7 +176,7 @@ export interface FtjsFullResponseDTO {
   email: string;
   fullAddress: string;
   isRegisteredResident: boolean;
-
+  schoolAddress: string;
   educationalAttainment: string;
   course: string;
   institution: string;
@@ -233,6 +292,9 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const ftjsApi = {
+  getMyAccess: (): Promise<UserAccessPermission> =>
+    apiFetch<UserAccessPermission>(`${PERMISSION_URL}/my-access`),
+
   // resident search for FTJS entry
   searchResidents: (query: string): Promise<PersonSearchResponseDTO[]> => {
     if (!query || query.trim().length < 2) {
@@ -313,7 +375,7 @@ export const ftjsApi = {
 
   // archive and restore ftjs request
   updateStatus: (id: number, dto: StatusUpdateDTO): Promise<string> =>
-    apiFetch<string>(`${FTJS_URL}/update-status/${id}/`, {
+    apiFetch<string>(`${FTJS_URL}/update-status/${id}`, {
       method: "PATCH",
       body: JSON.stringify(dto),
     }),

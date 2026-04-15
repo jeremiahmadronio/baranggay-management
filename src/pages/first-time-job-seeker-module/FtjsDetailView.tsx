@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
   ArrowLeftIcon,
@@ -11,17 +10,18 @@ import {
   FilePenLine,
   FileText,
   Files,
-  History,
+  History as HistoryIcon,
   NotebookPen,
   Plus,
+  Printer,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
-import { ArchiveReasonModal } from "../../hooks/archive-modal";
-import { ActionModal, FormModalShell } from "../../reusable";
-import { CenteredLoader } from "../../hooks/LoadingStates";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ftjsApi,
+  FTJS_PERMISSIONS,
+  hasFtjsPermission,
   type FtjsEditRequestDTO,
   type FtjsFullResponseDTO,
   type NotesResponseDTO,
@@ -29,19 +29,32 @@ import {
   type ResponseNewFtjsFullDetailsDTO,
   type ResponseNewFtjsSummaryDTO,
   type TimelineResponseDTO,
-} from "../../service/ftjs/FirstTimeJobSeeker";
+} from "../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
+import { ArchiveReasonModal } from "../../hooks/archive-modal";
+import { CenteredLoader } from "../../hooks/LoadingStates";
+import { ActionModal } from "../../hooks/SuccessModal";
+import { FormModalShell } from "../../reusable/FormModalShell";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 import {
+  buildFtjsAutoArchiveReason,
   EDUCATIONAL_ATTAINMENT_OPTIONS,
   FieldShell,
   fileToByteArray,
   formatDate,
   formatDateTime,
+  formatStatusLabel,
   GENDER_OPTIONS,
+  getFtjsValidIdConfig,
+  getFtjsExpiryDate,
   InfoItem,
+  isFtjsExpired,
   isEditableFtjsStatus,
   StatusPill,
+  toDateInputValue,
   VALID_ID_OPTIONS,
 } from "./shared";
+import { generateFtjsCertificate } from "./generateFtjsCertificate";
+import { useFtjsAccess } from "./useFtjsAccess";
 
 type TabKey = "overview" | "documents" | "notes" | "timeline" | "reissuance";
 
@@ -52,6 +65,7 @@ type FeedbackState = {
 } | null;
 
 type EditFormState = {
+  submittedDate: string;
   gender: string;
   address: string;
   contactNumber: string;
@@ -61,6 +75,7 @@ type EditFormState = {
   institution: string;
   validIdType: string;
   idNumber: string;
+  schoolAddress: string;
   purpose: string;
   oathFile: File | null;
 };
@@ -83,6 +98,14 @@ const INITIAL_REISSUE_FORM: ReissueFormState = {
 
 function createEditForm(record: FtjsFullResponseDTO | null): EditFormState {
   return {
+    submittedDate: record?.dateSubmitted
+      ? (() => {
+          const submittedDate = new Date(record.dateSubmitted);
+          return Number.isNaN(submittedDate.getTime())
+            ? ""
+            : toDateInputValue(submittedDate);
+        })()
+      : "",
     gender: record?.gender || "",
     address: record?.fullAddress || "",
     contactNumber: record?.contactNumber || "",
@@ -92,6 +115,7 @@ function createEditForm(record: FtjsFullResponseDTO | null): EditFormState {
     institution: record?.institution || "",
     validIdType: record?.validIdType || "",
     idNumber: record?.idNumber || "",
+    schoolAddress: record?.schoolAddress || "",
     purpose: record?.purpose || "",
     oathFile: null,
   };
@@ -129,57 +153,330 @@ function DetailPanel({
   );
 }
 
-function detectFileType(bytes?: number[] | null) {
-  if (!bytes || bytes.length < 4) {
+function QuickActionCard({
+  title,
+  subtitle,
+  icon,
+  tone,
+  onClick,
+  disabled = false,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  tone: "blue" | "amber" | "sky" | "rose" | "slate";
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const tones = {
+    blue: "border-blue-100 bg-blue-50/50 hover:bg-blue-50 text-blue-700",
+    amber: "border-gray-200 bg-gray-50/50 hover:bg-gray-50 text-gray-700",
+    sky: "border-green-100 bg-green-50/50 hover:bg-green-50 text-green-700",
+    rose: "border-red-100 bg-red-50/50 hover:bg-red-50 text-red-700",
+    slate: "border-gray-200 bg-gray-50/50 hover:bg-gray-50 text-gray-700",
+  } as const;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col items-start rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-500 disabled:opacity-50 ${tones[tone]}`}
+    >
+      <span className="mb-3 inline-flex items-center justify-center rounded-lg bg-white/80 p-2">
+        {icon}
+      </span>
+      <span className="text-sm font-semibold leading-tight">{title}</span>
+      <span className="mt-1 text-xs text-gray-400 leading-tight">
+        {subtitle}
+      </span>
+    </button>
+  );
+}
+
+type DetectedFileType = {
+  mime: string;
+  extension: string;
+  label: string;
+  previewMode: "browser" | "text" | "download";
+};
+
+function normalizeList<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function normalizeBytes(value?: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is number =>
+        typeof item === "number" && Number.isFinite(item),
+    );
+  }
+
+  if (value instanceof Uint8Array) {
+    return Array.from(value);
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return [];
+  }
+
+  if (trimmedValue.startsWith("[")) {
+    try {
+      const parsedValue = JSON.parse(trimmedValue);
+      return normalizeBytes(parsedValue);
+    } catch {
+      return [];
+    }
+  }
+
+  const base64Value = trimmedValue.includes(",")
+    ? trimmedValue.slice(trimmedValue.indexOf(",") + 1)
+    : trimmedValue;
+
+  try {
+    return Array.from(atob(base64Value), (char) => char.charCodeAt(0));
+  } catch {
+    return [];
+  }
+}
+
+function matchesSignature(bytes: number[], signature: number[]) {
+  return signature.every((value, index) => bytes[index] === value);
+}
+
+function containsAsciiFragment(bytes: number[], fragment: string, limit = 8192) {
+  const safeChars = bytes
+    .slice(0, limit)
+    .map((value) =>
+      value >= 32 && value <= 126 ? String.fromCharCode(value) : " ",
+    )
+    .join("");
+
+  return safeChars.includes(fragment);
+}
+
+function isLikelyText(bytes: number[]) {
+  const sample = bytes.slice(0, 512);
+  if (!sample.length) return false;
+
+  const printable = sample.filter((value) => {
+    return value === 9 || value === 10 || value === 13 || (value >= 32 && value <= 126);
+  }).length;
+
+  return printable / sample.length > 0.85;
+}
+
+function detectFileType(bytes?: unknown): DetectedFileType {
+  const normalizedBytes = normalizeBytes(bytes);
+
+  if (normalizedBytes.length < 4) {
     return {
       mime: "application/octet-stream",
       extension: "bin",
       label: "Document",
+      previewMode: "download",
+    };
+  }
+
+  if (matchesSignature(normalizedBytes, [0x25, 0x50, 0x44, 0x46])) {
+    return {
+      mime: "application/pdf",
+      extension: "pdf",
+      label: "PDF",
+      previewMode: "browser",
+    };
+  }
+
+  if (matchesSignature(normalizedBytes, [0x89, 0x50, 0x4e, 0x47])) {
+    return {
+      mime: "image/png",
+      extension: "png",
+      label: "PNG",
+      previewMode: "browser",
+    };
+  }
+
+  if (normalizedBytes[0] === 0xff && normalizedBytes[1] === 0xd8) {
+    return {
+      mime: "image/jpeg",
+      extension: "jpg",
+      label: "JPG",
+      previewMode: "browser",
+    };
+  }
+
+  if (matchesSignature(normalizedBytes, [0x47, 0x49, 0x46, 0x38])) {
+    return {
+      mime: "image/gif",
+      extension: "gif",
+      label: "GIF",
+      previewMode: "browser",
     };
   }
 
   if (
-    bytes[0] === 0x25 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x44 &&
-    bytes[3] === 0x46
+    normalizedBytes.length >= 12 &&
+    matchesSignature(normalizedBytes.slice(0, 4), [0x52, 0x49, 0x46, 0x46]) &&
+    matchesSignature(normalizedBytes.slice(8, 12), [0x57, 0x45, 0x42, 0x50])
   ) {
-    return { mime: "application/pdf", extension: "pdf", label: "PDF" };
+    return {
+      mime: "image/webp",
+      extension: "webp",
+      label: "WEBP",
+      previewMode: "browser",
+    };
+  }
+
+  if (matchesSignature(normalizedBytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])) {
+    return {
+      mime: "application/msword",
+      extension: "doc",
+      label: "Word Document",
+      previewMode: "download",
+    };
   }
 
   if (
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47
+    matchesSignature(normalizedBytes, [0x50, 0x4b, 0x03, 0x04]) &&
+    (containsAsciiFragment(normalizedBytes, "word/") ||
+      containsAsciiFragment(normalizedBytes, "[Content_Types].xml"))
   ) {
-    return { mime: "image/png", extension: "png", label: "PNG" };
+    return {
+      mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      extension: "docx",
+      label: "Word Document",
+      previewMode: "download",
+    };
   }
 
-  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
-    return { mime: "image/jpeg", extension: "jpg", label: "JPG" };
+  if (isLikelyText(normalizedBytes)) {
+    return {
+      mime: "text/plain;charset=utf-8",
+      extension: "txt",
+      label: "Text File",
+      previewMode: "text",
+    };
   }
 
   return {
     mime: "application/octet-stream",
     extension: "bin",
     label: "Document",
+    previewMode: "download",
   };
 }
 
-function openBytesInBrowser(bytes?: number[] | null, _baseName?: string) {
-  if (!bytes?.length) return;
-  const file = detectFileType(bytes);
-  const blob = new Blob([new Uint8Array(bytes)], { type: file.mime });
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function openBytesInBrowser(bytes?: unknown, baseName = "document") {
+  const normalizedBytes = normalizeBytes(bytes);
+  if (!normalizedBytes.length) return;
+
+  const file = detectFileType(normalizedBytes);
+  const blob = new Blob([new Uint8Array(normalizedBytes)], { type: file.mime });
   const url = URL.createObjectURL(blob);
-  window.open(url, "_blank", "noopener,noreferrer");
+
+  if (file.previewMode === "browser") {
+    window.open(url, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return;
+  }
+
+  if (file.previewMode === "text") {
+    const text = new TextDecoder().decode(new Uint8Array(normalizedBytes));
+    const previewWindow = window.open("", "_blank", "noopener,noreferrer");
+
+    if (previewWindow) {
+      previewWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(baseName)}.${file.extension}</title>
+    <style>
+      body { font-family: Segoe UI, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
+      .wrap { max-width: 960px; margin: 0 auto; padding: 24px; }
+      .meta { margin-bottom: 16px; padding: 16px; border: 1px solid #cbd5e1; border-radius: 12px; background: white; }
+      pre { white-space: pre-wrap; word-break: break-word; padding: 18px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="meta">
+        <strong>${escapeHtml(file.label)}</strong><br />
+        ${escapeHtml(baseName)}.${file.extension}
+      </div>
+      <pre>${escapeHtml(text)}</pre>
+    </div>
+  </body>
+</html>`);
+      previewWindow.document.close();
+    } else {
+      downloadByteFile(normalizedBytes, baseName);
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return;
+  }
+
+  const previewWindow = window.open("", "_blank", "noopener,noreferrer");
+
+  if (previewWindow) {
+    previewWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(baseName)}.${file.extension}</title>
+    <style>
+      body { font-family: Segoe UI, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 24px; }
+      .card { padding: 20px; border: 1px solid #cbd5e1; border-radius: 14px; background: white; }
+      .title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+      .muted { color: #475569; margin-bottom: 20px; }
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .button { display: inline-block; padding: 10px 14px; border-radius: 10px; text-decoration: none; border: 1px solid #cbd5e1; color: #0f172a; }
+      .button.primary { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="title">${escapeHtml(file.label)}</div>
+        <div class="muted">Preview is not supported directly in the browser for this attachment. Use one of the actions below to open the original file with the correct type.</div>
+        <div class="actions">
+          <a class="button primary" href="${url}" target="_blank" rel="noopener noreferrer">Open Raw File</a>
+          <a class="button" href="${url}" download="${escapeHtml(baseName)}.${file.extension}">Download ${escapeHtml(file.label)}</a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`);
+    previewWindow.document.close();
+  } else {
+    downloadByteFile(normalizedBytes, baseName);
+  }
+
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function downloadByteFile(bytes?: number[] | null, baseName = "document") {
-  if (!bytes?.length) return;
-  const file = detectFileType(bytes);
-  const blob = new Blob([new Uint8Array(bytes)], { type: file.mime });
+function downloadByteFile(bytes?: unknown, baseName = "document") {
+  const normalizedBytes = normalizeBytes(bytes);
+  if (!normalizedBytes.length) return;
+
+  const file = detectFileType(normalizedBytes);
+  const blob = new Blob([new Uint8Array(normalizedBytes)], { type: file.mime });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -194,6 +491,7 @@ export default function FtjsDetailViewPage() {
   const { ftjsId } = useParams();
   const navigate = useNavigate();
   const parsedId = Number(ftjsId);
+  const { accessLoading, userAccess } = useFtjsAccess();
 
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [record, setRecord] = useState<FtjsFullResponseDTO | null>(null);
@@ -227,6 +525,18 @@ export default function FtjsDetailViewPage() {
     useState<ResponseNewFtjsFullDetailsDTO | null>(null);
 
   const editable = record ? isEditableFtjsStatus(record.status) : false;
+  const canViewRecords = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.VIEW_RECORDS,
+  );
+  const canUpdateApplicantInfo = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.UPDATE_APPLICANT_INFO,
+  );
+  const canIssueCertificate = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.ISSUE_CERTIFICATE,
+  );
 
   async function loadRecord() {
     if (!Number.isFinite(parsedId)) {
@@ -246,10 +556,27 @@ export default function FtjsDetailViewPage() {
           ftjsApi.getReplacementSummary(parsedId),
         ]);
 
+      const normalizedStatus = String(recordRes.status || "")
+        .trim()
+        .toUpperCase();
+
+      if (
+        canUpdateApplicantInfo &&
+        normalizedStatus !== "ARCHIVED" &&
+        isFtjsExpired(recordRes.dateSubmitted)
+      ) {
+        await ftjsApi.updateStatus(recordRes.id, {
+          isArchived: true,
+          remarks: buildFtjsAutoArchiveReason(recordRes.dateSubmitted),
+        });
+        navigate("/first-time-job-seeker/archive", { replace: true });
+        return;
+      }
+
       setRecord(recordRes);
-      setNotes(notesRes);
-      setTimeline(timelineRes);
-      setReplacements(replacementsRes);
+      setNotes(normalizeList<NotesResponseDTO>(notesRes));
+      setTimeline(normalizeList<TimelineResponseDTO>(timelineRes));
+      setReplacements(normalizeList<ResponseNewFtjsSummaryDTO>(replacementsRes));
       setEditForm(createEditForm(recordRes));
     } catch (loadError) {
       setError(
@@ -263,8 +590,28 @@ export default function FtjsDetailViewPage() {
   }
 
   useEffect(() => {
-    loadRecord();
-  }, [parsedId]);
+    if (!accessLoading && canViewRecords) {
+      loadRecord();
+      return;
+    }
+
+    if (!accessLoading) {
+      setLoading(false);
+    }
+  }, [accessLoading, canUpdateApplicantInfo, canViewRecords, parsedId]);
+
+  if (accessLoading) {
+    return <CenteredLoader minHeight="min-h-[70vh]" />;
+  }
+
+  if (!canViewRecords) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to view FTJS records."
+        hint="Ask your administrator to grant the View FTJS Records permission."
+      />
+    );
+  }
 
   if (loading) {
     return <CenteredLoader minHeight="min-h-[70vh]" />;
@@ -292,8 +639,56 @@ export default function FtjsDetailViewPage() {
   }
 
   const currentRecord = record;
+  const expiryDate = getFtjsExpiryDate(currentRecord.dateSubmitted);
+  const isExpired = isFtjsExpired(currentRecord.dateSubmitted);
+  const editValidIdConfig = getFtjsValidIdConfig(editForm.validIdType);
+  const editAcceptsIdNumber = editValidIdConfig.acceptsIdNumber;
+  const editRequiresSchoolAddress = editValidIdConfig.requiresSchoolAddress;
+  const editRequiresIdNumber = editValidIdConfig.requiresIdNumber;
+
+  function printCertificateForDate(dateSource?: string | Date | null) {
+    const issuedDate = dateSource ? new Date(dateSource) : new Date();
+
+    generateFtjsCertificate({
+      fullName: currentRecord.fullName,
+      address: currentRecord.fullAddress || "Barangay Ugong, Valenzuela City",
+      purpose: currentRecord.purpose || "employment requirement",
+      dateIssued: Number.isNaN(issuedDate.getTime()) ? new Date() : issuedDate,
+    });
+  }
+
+  function handlePrintCertificate() {
+    if (!canIssueCertificate) {
+      setFeedback({
+        type: "danger",
+        title: "Permission required",
+        message: "You do not have permission to issue or print FTJS certificates.",
+      });
+      return;
+    }
+
+    printCertificateForDate(currentRecord.dateSubmitted);
+  }
 
   async function handleSubmitEdit() {
+    if (!canUpdateApplicantInfo) {
+      setFeedback({
+        type: "danger",
+        title: "Permission required",
+        message: "You do not have permission to update FTJS applicant information.",
+      });
+      return;
+    }
+
+    if (editRequiresIdNumber && !editForm.idNumber.trim()) {
+      setFeedback({
+        type: "danger",
+        title: "Incomplete ID details",
+        message: `${editValidIdConfig.idNumberLabel} is required for the selected valid ID.`,
+      });
+      return;
+    }
+
     try {
       setEditSubmitting(true);
       const payload: FtjsEditRequestDTO = {
@@ -301,11 +696,12 @@ export default function FtjsDetailViewPage() {
         address: editForm.address || undefined,
         contactNumber: editForm.contactNumber || undefined,
         email: editForm.email || undefined,
+        schoolAddress: editForm.schoolAddress || undefined,
         educationalAttainment: editForm.educationalAttainment || undefined,
         course: editForm.course || undefined,
         institution: editForm.institution || undefined,
         validIdType: editForm.validIdType || undefined,
-        idNumber: editForm.idNumber || undefined,
+        idNumber: editAcceptsIdNumber ? editForm.idNumber || undefined : undefined,
         purpose: editForm.purpose || undefined,
         oathFiles: editForm.oathFile
           ? await fileToByteArray(editForm.oathFile)
@@ -335,6 +731,15 @@ export default function FtjsDetailViewPage() {
   }
 
   async function handleSubmitNote() {
+    if (!canUpdateApplicantInfo) {
+      setFeedback({
+        type: "danger",
+        title: "Permission required",
+        message: "You do not have permission to update FTJS applicant information.",
+      });
+      return;
+    }
+
     if (!noteValue.trim()) return;
 
     try {
@@ -368,6 +773,15 @@ export default function FtjsDetailViewPage() {
   }
 
   async function handleSubmitReissue() {
+    if (!canIssueCertificate) {
+      setFeedback({
+        type: "danger",
+        title: "Permission required",
+        message: "You do not have permission to issue FTJS certificates.",
+      });
+      return;
+    }
+
     if (!reissueForm.reason.trim() || !reissueForm.dateOfLoss) return;
 
     try {
@@ -384,11 +798,12 @@ export default function FtjsDetailViewPage() {
       };
 
       await ftjsApi.requestNewCertificate(payload);
+      printCertificateForDate(new Date());
       setFeedback({
         type: "success",
         title: "Re-issuance requested",
         message:
-          "The FTJS replacement / reissuance request was submitted successfully.",
+          "The FTJS replacement / reissuance request was submitted successfully and the certificate PDF was prepared for printing.",
       });
       setReissueOpen(false);
       setReissueForm(INITIAL_REISSUE_FORM);
@@ -409,9 +824,18 @@ export default function FtjsDetailViewPage() {
   }
 
   async function handleArchive(reason: string) {
+    if (!canUpdateApplicantInfo) {
+      setFeedback({
+        type: "danger",
+        title: "Permission required",
+        message: "You do not have permission to update FTJS applicant information.",
+      });
+      return;
+    }
+
     try {
       await ftjsApi.updateStatus(currentRecord.id, {
-        newStatus: "ARCHIVED",
+        isArchived: true,
         remarks: reason,
       });
 
@@ -489,6 +913,12 @@ export default function FtjsDetailViewPage() {
                   </span>
                 </div>
                 <div className="text-sm text-slate-600">
+                  {isExpired ? "Expired:" : "Expires:"}{" "}
+                  <span className="font-medium text-slate-900">
+                    {expiryDate ? formatDate(expiryDate.toISOString()) : "—"}
+                  </span>
+                </div>
+                <div className="text-sm text-slate-600">
                   Issuance Count:{" "}
                   <span className="font-medium text-slate-900">
                     {record.issuanceCount}
@@ -538,22 +968,39 @@ export default function FtjsDetailViewPage() {
 
         {activeTab === "overview" ? (
           <>
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              <QuickActionCard
+                title="Edit Request"
+                subtitle="Update FTJS request details"
+                icon={<FilePenLine className="w-5 h-5" />}
+                tone="blue"
                 onClick={() => setEditOpen(true)}
-                disabled={!editable}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FilePenLine className="w-4 h-4" /> Edit Request
-              </button>
-              <button
-                type="button"
+                disabled={!editable || !canUpdateApplicantInfo}
+              />
+              <QuickActionCard
+                title="Print Certificate"
+                subtitle="Generate the official FTJS certificate copy"
+                icon={<Printer className="w-5 h-5" />}
+                tone="amber"
+                onClick={handlePrintCertificate}
+                disabled={!canIssueCertificate}
+              />
+              <QuickActionCard
+                title="Create Re-issuance Request"
+                subtitle="Prepare a replacement certificate request"
+                icon={<RefreshCw className="w-5 h-5" />}
+                tone="sky"
+                onClick={() => setReissueOpen(true)}
+                disabled={!editable || !canIssueCertificate}
+              />
+              <QuickActionCard
+                title="Archive Request"
+                subtitle="Move this FTJS request to archive"
+                icon={<Archive className="w-5 h-5" />}
+                tone="rose"
                 onClick={() => setArchiveOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-700 border border-rose-200 bg-rose-50 rounded-lg hover:bg-rose-100"
-              >
-                <Archive className="w-4 h-4" /> Archive Request
-              </button>
+                disabled={!canUpdateApplicantInfo}
+              />
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -607,6 +1054,10 @@ export default function FtjsDetailViewPage() {
                   <InfoItem
                     label="Date Submitted"
                     value={formatDate(record.dateSubmitted)}
+                  />
+                  <InfoItem
+                    label={isExpired ? "Expired On" : "Valid Until"}
+                    value={expiryDate ? formatDate(expiryDate.toISOString()) : "—"}
                   />
                   <InfoItem
                     label="Verified By"
@@ -673,13 +1124,19 @@ export default function FtjsDetailViewPage() {
                     <p className="text-sm text-slate-700">
                       This request is currently marked as{" "}
                       <span className="font-semibold">
-                        {record.status.replace(/_/g, " ")}
+                        {formatStatusLabel(record.status)}
                       </span>{" "}
                       and has{" "}
                       <span className="font-semibold">
                         {record.issuanceCount}
                       </span>{" "}
                       recorded issuance{record.issuanceCount === 1 ? "" : "s"}.
+                    </p>
+                    <p className="text-sm text-slate-700 mt-2">
+                      This certificate is valid for 1 year from submission and {isExpired ? "expired" : "will expire"} on{" "}
+                      <span className="font-semibold">
+                        {expiryDate ? formatDate(expiryDate.toISOString()) : "—"}
+                      </span>.
                     </p>
                   </div>
 
@@ -763,7 +1220,8 @@ export default function FtjsDetailViewPage() {
               <button
                 type="button"
                 onClick={() => setNoteOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100"
+                disabled={!canUpdateApplicantInfo}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" /> Add Note
               </button>
@@ -791,7 +1249,7 @@ export default function FtjsDetailViewPage() {
         ) : null}
 
         {activeTab === "timeline" ? (
-          <DetailPanel title="Timeline" icon={<History className="w-4 h-4" />}>
+          <DetailPanel title="Timeline" icon={<HistoryIcon className="w-4 h-4" />}>
             <div className="space-y-3">
               {timeline.length === 0 ? (
                 <EmptyState text="No timeline events yet." />
@@ -831,8 +1289,8 @@ export default function FtjsDetailViewPage() {
               <button
                 type="button"
                 onClick={() => setReissueOpen(true)}
-                disabled={!editable}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 border border-violet-200 bg-violet-50 rounded-lg hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!editable || !canIssueCertificate}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" /> New Request
               </button>
@@ -844,33 +1302,44 @@ export default function FtjsDetailViewPage() {
                 {replacements.map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-xl border border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white"
+                    className="rounded-xl border border-gray-200 bg-white p-4"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="bg-violet-100 text-violet-700 p-2 rounded-lg">
-                        <RefreshCw className="w-4 h-4" />
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-lg bg-cyan-100 p-2 text-cyan-700">
+                          <RefreshCw className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            Re-issuance #{item.issuanceCount}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Requested on {formatDate(item.dateSubmitted)}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">
+                            {item.reason}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          Re-issuance #{item.issuanceCount}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Requested on {formatDate(item.dateSubmitted)}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">
-                          {item.reason}
-                        </p>
+
+                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => printCertificateForDate(item.dateSubmitted)}
+                          disabled={!canIssueCertificate}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Printer className="w-4 h-4" /> Print FTJS Certificate
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openReplacementDetail(item.id)}
+                          disabled={replacementDetailLoading}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          <Eye className="w-4 h-4" /> View Details
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 min-w-[220px] md:justify-end">
-                      <button
-                        type="button"
-                        onClick={() => openReplacementDetail(item.id)}
-                        disabled={replacementDetailLoading}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        <Eye className="w-4 h-4" /> View Details
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -904,155 +1373,254 @@ export default function FtjsDetailViewPage() {
             </div>
           }
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FieldShell label="Gender">
-              <select
-                value={editForm.gender}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    gender: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">Select gender</option>
-                {GENDER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </FieldShell>
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2">
+              <FieldShell label="Applicant Name">
+                <input
+                  type="text"
+                  value={currentRecord.fullName}
+                  readOnly
+                  className="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-700"
+                />
+              </FieldShell>
 
-            <FieldShell label="Contact Number">
-              <input
-                type="text"
-                value={editForm.contactNumber}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    contactNumber: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </FieldShell>
-
-            <FieldShell label="Email">
-              <input
-                type="email"
-                value={editForm.email}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    email: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </FieldShell>
-
-            <FieldShell label="Educational Attainment">
-              <select
-                value={editForm.educationalAttainment}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    educationalAttainment: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">Select attainment</option>
-                {EDUCATIONAL_ATTAINMENT_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </FieldShell>
-
-            <FieldShell label="Course">
-              <input
-                type="text"
-                value={editForm.course}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    course: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </FieldShell>
-
-            <FieldShell label="Institution">
-              <input
-                type="text"
-                value={editForm.institution}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    institution: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </FieldShell>
-
-            <FieldShell label="Valid ID Type">
-              <select
-                value={editForm.validIdType}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    validIdType: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">Select ID type</option>
-                {VALID_ID_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </FieldShell>
-
-            <FieldShell label="ID Number">
-              <input
-                type="text"
-                value={editForm.idNumber}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    idNumber: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </FieldShell>
-
-            <div className="md:col-span-2">
-              <FieldShell label="Address">
-                <textarea
-                  value={editForm.address}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      address: event.target.value,
-                    }))
-                  }
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+              <FieldShell label="Date Submitted">
+                <input
+                  type="date"
+                  value={editForm.submittedDate}
+                  readOnly
+                  className="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-700"
                 />
               </FieldShell>
             </div>
 
-            <div className="md:col-span-2">
-              <FieldShell label="Reason for Request">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-slate-900">Personal Information</h4>
+                <p className="mt-1 text-xs text-slate-500">
+                  Match the original FTJS request details before saving changes.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FieldShell label="Gender">
+                  <select
+                    value={editForm.gender}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        gender: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Select gender</option>
+                    {GENDER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </FieldShell>
+
+                <FieldShell label="Contact Number">
+                  <input
+                    type="text"
+                    value={editForm.contactNumber}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        contactNumber: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </FieldShell>
+
+                <FieldShell label="Email">
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        email: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </FieldShell>
+
+                <div className="md:col-span-2">
+                  <FieldShell label="Complete Address">
+                    <textarea
+                      value={editForm.address}
+                      onChange={(event) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          address: event.target.value,
+                        }))
+                      }
+                      rows={3}
+                      className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </FieldShell>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-slate-900">Educational &amp; Identity Details</h4>
+                <p className="mt-1 text-xs text-slate-500">
+                  Keep this section aligned with the original FTJS entry fields.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FieldShell label="Educational Attainment">
+                  <select
+                    value={editForm.educationalAttainment}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        educationalAttainment: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Select attainment</option>
+                    {EDUCATIONAL_ATTAINMENT_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </FieldShell>
+
+                <FieldShell label="Course">
+                  <input
+                    type="text"
+                    value={editForm.course}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        course: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </FieldShell>
+
+                <FieldShell label="Institution">
+                  <input
+                    type="text"
+                    value={editForm.institution}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        institution: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </FieldShell>
+
+                <FieldShell label="Valid ID Type">
+                  <select
+                    value={editForm.validIdType}
+                    onChange={(event) => {
+                      const nextValidIdType = event.target.value;
+                      const nextConfig = getFtjsValidIdConfig(nextValidIdType);
+
+                      setEditForm((prev) => ({
+                        ...prev,
+                        validIdType: nextValidIdType,
+                        schoolAddress: nextConfig.requiresSchoolAddress
+                          ? prev.schoolAddress
+                          : "",
+                        idNumber: nextConfig.acceptsIdNumber
+                          ? prev.idNumber
+                          : "",
+                      }));
+                    }}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Select ID type</option>
+                    {VALID_ID_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </FieldShell>
+
+                <FieldShell
+                  label={editValidIdConfig.idNumberLabel}
+                  required={editRequiresIdNumber}
+                >
+                  <input
+                    type="text"
+                    value={editForm.idNumber}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        idNumber: event.target.value,
+                      }))
+                    }
+                    placeholder={editValidIdConfig.idNumberPlaceholder}
+                    disabled={!editForm.validIdType || !editAcceptsIdNumber}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  {editValidIdConfig.idNumberHint ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {editValidIdConfig.idNumberHint}
+                    </p>
+                  ) : null}
+                </FieldShell>
+
+                {editRequiresSchoolAddress ? (
+                  <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/70 p-4">
+                    <FieldShell label="School Address">
+                      <textarea
+                        value={editForm.schoolAddress}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            schoolAddress: event.target.value,
+                          }))
+                        }
+                        rows={3}
+                        className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </FieldShell>
+                  </div>
+                ) : null}
+
+                <div className="md:col-span-2">
+                  <FieldShell label="Replace Oath File">
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt"
+                      onChange={(event) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          oathFile: event.target.files?.[0] ?? null,
+                        }))
+                      }
+                      className="w-full text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  </FieldShell>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-slate-900">Reason for Request</h4>
+              </div>
+
+              <FieldShell label="Reason / Purpose">
                 <textarea
                   value={editForm.purpose}
                   onChange={(event) =>
@@ -1061,24 +1629,8 @@ export default function FtjsDetailViewPage() {
                       purpose: event.target.value,
                     }))
                   }
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
-                />
-              </FieldShell>
-            </div>
-
-            <div className="md:col-span-2">
-              <FieldShell label="Replace Oath File">
-                <input
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      oathFile: event.target.files?.[0] ?? null,
-                    }))
-                  }
-                  className="w-full text-sm text-gray-700 file:mr-4 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  rows={4}
+                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
               </FieldShell>
             </div>
@@ -1143,7 +1695,7 @@ export default function FtjsDetailViewPage() {
                   !reissueForm.dateOfLoss
                 }
                 onClick={handleSubmitReissue}
-                className="px-5 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 disabled:opacity-60"
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
                 {reissueSubmitting ? "Submitting..." : "Submit Request"}
               </button>
@@ -1215,14 +1767,14 @@ export default function FtjsDetailViewPage() {
             <FieldShell label="Affidavit Attachment">
               <input
                 type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
+                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt"
                 onChange={(event) =>
                   setReissueForm((prev) => ({
                     ...prev,
                     affidavitFile: event.target.files?.[0] ?? null,
                   }))
                 }
-                className="w-full text-sm text-gray-700 file:mr-4 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                className="w-full text-sm text-gray-700 file:mr-4 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
             </FieldShell>
           </div>
@@ -1249,20 +1801,6 @@ export default function FtjsDetailViewPage() {
           maxWidthClass="max-w-3xl"
           footer={
             <div className="flex items-center justify-end gap-3">
-              {replacementDetail?.fileAttach?.length ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    downloadByteFile(
-                      replacementDetail.fileAttach,
-                      `${record.trackingNumber}_replacement_affidavit_${replacementDetail.id}`,
-                    )
-                  }
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100"
-                >
-                  <Download className="w-4 h-4" /> Download Attachment
-                </button>
-              ) : null}
               <button
                 type="button"
                 onClick={() => {

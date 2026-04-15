@@ -189,7 +189,6 @@ export default function VawcCaseTable() {
   }, []);
 
   const canViewCases = hasVawcPermission(userAccess, VAWC_PERMISSIONS.VIEW_CASES);
-  const canManageReports = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_REPORTS);
 
   useEffect(() => {
     if (!accessLoading && canViewCases) {
@@ -367,17 +366,6 @@ export default function VawcCaseTable() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-7xl px-4 py-8">
-
-        <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
-          <button
-            disabled={!canManageReports}
-            className="rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            title={canManageReports ? 'Export records' : 'You do not have permission to manage reports'}
-          >
-            Export Records
-          </button>
-        </div>
-
         <div className="mb-8">
           <KPIGrid columns={4}>
             <KPICard

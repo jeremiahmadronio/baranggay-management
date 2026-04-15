@@ -15,10 +15,7 @@ import {
 import {
   ArrowRight,
   Archive,
-  Calendar,
   CheckCircle,
-  Clock,
-  FileBadge2,
   FolderArchive,
 } from "lucide-react";
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
@@ -33,15 +30,20 @@ import {
   type FtjsRecentIssueDTO,
   type StatusCountDTO,
   type TrendResponseDTO,
-} from "../../service/ftjs/FirstTimeJobSeekerDashboard";
+} from "../../service/first-time-job-seeker-api/FirstTimeJobSeekerDashboard";
 import {
-  CHART_COLORS,
+  FTJS_PERMISSIONS,
+  hasFtjsPermission,
+} from "../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
+import {
   formatDateTime,
   formatStatusLabel,
   getStatusBadgeClass,
   getStatusDescription,
   SectionCard,
 } from "./shared";
+import { useFtjsAccess } from "./useFtjsAccess";
 
 const DONUT_COLORS = [
   "#2563EB",
@@ -62,14 +64,170 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
+};
+
+function normalizeMonthName(value: string): string {
+  return value.slice(0, 3).toLowerCase();
+}
+
+function getMonthStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function formatMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMonthLabel(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short" });
+}
+
+function getDayStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDayKey(date: Date): string {
+  return date.toLocaleDateString("en-CA");
+}
+
+function formatDayLabel(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function parseTrendPointDate(label: string, fallbackYear?: number): Date | null {
+  const directDate = new Date(label);
+  if (!Number.isNaN(directDate.getTime())) {
+    return directDate;
+  }
+
+  const trimmed = label.trim();
+  const monthDayYearMatch = trimmed.match(/^([A-Za-z]{3,9})\s+(\d{1,2})(?:,\s*(\d{4}))?$/);
+  if (monthDayYearMatch) {
+    const month = MONTH_INDEX[normalizeMonthName(monthDayYearMatch[1])];
+    if (month !== undefined) {
+      const year = monthDayYearMatch[3]
+        ? Number(monthDayYearMatch[3])
+        : (fallbackYear ?? new Date().getFullYear());
+      return new Date(year, month, Number(monthDayYearMatch[2]));
+    }
+  }
+
+  const monthOnlyMatch = trimmed.match(/^([A-Za-z]{3,9})(?:\s+(\d{4}))?$/);
+  if (monthOnlyMatch) {
+    const month = MONTH_INDEX[normalizeMonthName(monthOnlyMatch[1])];
+    if (month !== undefined) {
+      const year = monthOnlyMatch[2]
+        ? Number(monthOnlyMatch[2])
+        : (fallbackYear ?? new Date().getFullYear());
+      return new Date(year, month, 1);
+    }
+  }
+
+  return null;
+}
+
+function buildLastSixMonthsTrend(data: TrendResponseDTO[]): TrendResponseDTO[] {
+  const currentMonth = getMonthStart(new Date());
+  const buckets: Array<{ key: string; label: string }> = [];
+  const cursor = new Date(currentMonth);
+  cursor.setMonth(cursor.getMonth() - 5);
+
+  while (cursor <= currentMonth) {
+    buckets.push({
+      key: formatMonthKey(cursor),
+      label: formatMonthLabel(cursor),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const totals = new Map<string, number>();
+  data.forEach((item) => {
+    const parsedDate = parseTrendPointDate(item.label, currentMonth.getFullYear());
+    if (!parsedDate) return;
+    const key = formatMonthKey(getMonthStart(parsedDate));
+    totals.set(key, (totals.get(key) || 0) + (item.total || 0));
+  });
+
+  return buckets.map((bucket) => ({
+    label: bucket.label,
+    total: totals.get(bucket.key) || 0,
+  }));
+}
+
+function buildRecentWeekTrend(
+  data: TrendResponseDTO[],
+  recentIssues: FtjsRecentIssueDTO[],
+): TrendResponseDTO[] {
+  const today = getDayStart(new Date());
+  const startDay = new Date(today);
+  startDay.setDate(today.getDate() - 6);
+  const endDay = new Date(today);
+
+  const buckets: Array<{ key: string; label: string }> = [];
+  const cursor = new Date(startDay);
+  while (cursor <= endDay) {
+    buckets.push({
+      key: formatDayKey(cursor),
+      label: formatDayLabel(cursor),
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const totals = new Map<string, number>();
+  data.forEach((item) => {
+    const parsedDate = parseTrendPointDate(item.label, endDay.getFullYear());
+    if (!parsedDate) return;
+    const day = getDayStart(parsedDate);
+    if (day < startDay || day > endDay) return;
+    const key = formatDayKey(day);
+    totals.set(key, (totals.get(key) || 0) + (item.total || 0));
+  });
+
+  const hasWeeklyTotals = Array.from(totals.values()).some((value) => value > 0);
+  if (!hasWeeklyTotals) {
+    recentIssues.forEach((item) => {
+      const parsedDate = new Date(item.createdAt);
+      if (Number.isNaN(parsedDate.getTime())) return;
+      const day = getDayStart(parsedDate);
+      if (day < startDay || day > endDay) return;
+      const key = formatDayKey(day);
+      totals.set(key, (totals.get(key) || 0) + 1);
+    });
+  }
+
+  return buckets.map((bucket) => ({
+    label: bucket.label,
+    total: totals.get(bucket.key) || 0,
+  }));
+}
+
 export default function FtjsDashboardPage() {
   const navigate = useNavigate();
+  const { accessLoading, userAccess } = useFtjsAccess();
   const [stats, setStats] = useState<DashboardStatsResponseDTO | null>(null);
   const [lastSixMonths, setLastSixMonths] = useState<TrendResponseDTO[]>([]);
   const [lastWeek, setLastWeek] = useState<TrendResponseDTO[]>([]);
   const [distribution, setDistribution] = useState<StatusCountDTO[]>([]);
   const [recentIssues, setRecentIssues] = useState<FtjsRecentIssueDTO[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const canViewRecords = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.VIEW_RECORDS,
+  );
 
   useEffect(() => {
     async function fetchDashboard() {
@@ -105,18 +263,48 @@ export default function FtjsDashboardPage() {
       }
     }
 
-    fetchDashboard();
-  }, []);
+    if (!accessLoading && canViewRecords) {
+      fetchDashboard();
+      return;
+    }
+
+    if (!accessLoading) {
+      setLoading(false);
+    }
+  }, [accessLoading, canViewRecords]);
 
   const totalStatuses = useMemo(
     () => distribution.reduce((sum, item) => sum + (item.total || 0), 0),
     [distribution],
   );
 
+  const normalizedSixMonths = useMemo(
+    () => buildLastSixMonthsTrend(lastSixMonths),
+    [lastSixMonths],
+  );
+
+  const normalizedLastWeek = useMemo(
+    () => buildRecentWeekTrend(lastWeek, recentIssues),
+    [lastWeek, recentIssues],
+  );
+
   const cardValue = (value?: number | null) => {
     if (loading) return <CircleLoader size="sm" />;
     return value ?? 0;
   };
+
+  if (accessLoading) {
+    return <CenteredLoader minHeight="min-h-[70vh]" />;
+  }
+
+  if (!canViewRecords) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to view FTJS records."
+        hint="Ask your administrator to grant the View FTJS Records permission."
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -160,12 +348,10 @@ export default function FtjsDashboardPage() {
             <div className="h-72">
               {loading ? (
                 <CenteredLoader minHeight="min-h-[288px]" />
-              ) : lastSixMonths.length === 0 ? (
-                <NoRecords text="No FTJS trend data available." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={lastSixMonths}
+                    data={normalizedSixMonths}
                     margin={{ top: 8, right: 8, left: -16, bottom: 4 }}
                   >
                     <CartesianGrid
@@ -177,6 +363,8 @@ export default function FtjsDashboardPage() {
                       dataKey="label"
                       tick={{ fontSize: 12, fill: "#4B5563" }}
                       tickLine={false}
+                      interval={0}
+                      minTickGap={12}
                     />
                     <YAxis
                       allowDecimals={false}
@@ -192,14 +380,12 @@ export default function FtjsDashboardPage() {
                       }}
                       formatter={(value?: number) => [value ?? 0, "Total"]}
                     />
-                    <Bar dataKey="total" radius={[6, 6, 0, 0]} barSize={42}>
-                      {lastSixMonths.map((_, index) => (
-                        <Cell
-                          key={index}
-                          fill={CHART_COLORS[index % CHART_COLORS.length]}
-                        />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="total"
+                      fill="#2563EB"
+                      radius={[6, 6, 0, 0]}
+                      barSize={42}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -364,20 +550,18 @@ export default function FtjsDashboardPage() {
           </SectionCard>
 
           <SectionCard
-            title="Last Week Activity"
-            subtitle="Daily FTJS counts for the past seven days"
+            title="Recent Week Activity"
+            subtitle="Daily FTJS counts for the last 7 days"
             className="lg:col-span-4"
           >
             {loading ? (
               <CenteredLoader minHeight="min-h-[240px]" />
-            ) : lastWeek.length === 0 ? (
-              <NoRecords text="No FTJS weekly activity yet." />
             ) : (
               <div className="space-y-4">
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={lastWeek}
+                      data={normalizedLastWeek}
                       margin={{ top: 8, right: 0, left: -28, bottom: 0 }}
                     >
                       <CartesianGrid
@@ -389,6 +573,7 @@ export default function FtjsDashboardPage() {
                         dataKey="label"
                         tick={{ fontSize: 12, fill: "#64748B" }}
                         tickLine={false}
+                        interval={0}
                       />
                       <YAxis
                         allowDecimals={false}
@@ -412,84 +597,9 @@ export default function FtjsDashboardPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-
-                <div className="space-y-3">
-                  {lastWeek.map((item) => (
-                    <div
-                      key={`${item.label}-${item.total}`}
-                      className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 bg-gray-50/60"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
-                          <Calendar className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {item.label}
-                          </p>
-                          <p className="text-xs text-gray-500">Daily total</p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {item.total}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
           </SectionCard>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            type="button"
-            onClick={() => navigate("/first-time-job-seeker/entry")}
-            className="bg-white rounded-lg border border-gray-200 p-5 text-left hover:border-blue-300 hover:bg-blue-50/30 transition-colors"
-          >
-            <div className="inline-flex items-center justify-center p-3 rounded-lg bg-blue-100 text-blue-700 mb-3">
-              <FileBadge2 className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-semibold text-gray-900">
-              Create New FTJS Entry
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Encode new first-time job seeker request using the FTJS entry
-              workflow.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/first-time-job-seeker/management")}
-            className="bg-white rounded-lg border border-gray-200 p-5 text-left hover:border-violet-300 hover:bg-violet-50/30 transition-colors"
-          >
-            <div className="inline-flex items-center justify-center p-3 rounded-lg bg-violet-100 text-violet-700 mb-3">
-              <Clock className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-semibold text-gray-900">
-              Manage Active Requests
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Review, annotate, edit, and process FTJS records in one place.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/first-time-job-seeker/reports")}
-            className="bg-white rounded-lg border border-gray-200 p-5 text-left hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors"
-          >
-            <div className="inline-flex items-center justify-center p-3 rounded-lg bg-emerald-100 text-emerald-700 mb-3">
-              <Archive className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-semibold text-gray-900">
-              Open FTJS Reports
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Inspect archive totals, trend charts, and report case listings.
-            </p>
-          </button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, RotateCcw } from "lucide-react";
+import { ArrowLeftIcon, Eye, RotateCcw } from "lucide-react";
 import { TableFilter, Table, type TableColumn } from "../../reusable";
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { ActionModal } from "../../hooks/SuccessModal";
@@ -8,18 +8,23 @@ import { CenteredLoader } from "../../hooks/LoadingStates";
 import FtjsRecordModal from "./FtjsRecordModal";
 import {
   ftjsApi,
+  FTJS_PERMISSIONS,
+  hasFtjsPermission,
   type ArchiveResponseDTO,
   type ArchiveTableResponseDTO,
   type FtjsFullResponseDTO,
   type NotesResponseDTO,
   type ResponseNewFtjsSummaryDTO,
   type TimelineResponseDTO,
-} from "../../service/ftjs/FirstTimeJobSeeker";
+} from "../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 import { formatDate, paginateItems, SectionCard, StatusPill } from "./shared";
+import { useFtjsAccess } from "./useFtjsAccess";
 
 const PAGE_SIZE = 10;
 
 export default function FtjsArchivePage() {
+  const { accessLoading, userAccess } = useFtjsAccess();
   const [stats, setStats] = useState<ArchiveResponseDTO | null>(null);
   const [records, setRecords] = useState<ArchiveTableResponseDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +49,14 @@ export default function FtjsArchivePage() {
     useState<ArchiveTableResponseDTO | null>(null);
   const [restoreSuccessOpen, setRestoreSuccessOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const canViewRecords = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.VIEW_RECORDS,
+  );
+  const canUpdateApplicantInfo = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.UPDATE_APPLICANT_INFO,
+  );
 
   const fetchArchive = useCallback(async () => {
     try {
@@ -65,8 +78,15 @@ export default function FtjsArchivePage() {
   }, []);
 
   useEffect(() => {
-    fetchArchive();
-  }, [fetchArchive]);
+    if (!accessLoading && canViewRecords) {
+      fetchArchive();
+      return;
+    }
+
+    if (!accessLoading) {
+      setLoading(false);
+    }
+  }, [accessLoading, canViewRecords, fetchArchive]);
 
   async function openRecord(item: ArchiveTableResponseDTO) {
     try {
@@ -100,9 +120,16 @@ export default function FtjsArchivePage() {
   async function handleRestoreSubmit(reason: string) {
     if (!restoreEntry) return;
 
+    if (!canUpdateApplicantInfo) {
+      setErrorMessage(
+        "You do not have permission to update FTJS applicant information.",
+      );
+      return;
+    }
+
     try {
       await ftjsApi.updateStatus(restoreEntry.id, {
-        newStatus: "RESTORED",
+        isArchived: false,
         remarks: reason,
       });
       setRestoreEntry(null);
@@ -167,6 +194,14 @@ export default function FtjsArchivePage() {
   useEffect(() => {
     if (page > totalPages - 1) setPage(0);
   }, [page, totalPages]);
+
+  const clearSelectedRecord = useCallback(() => {
+    setSelectedArchive(null);
+    setDetailRecord(null);
+    setDetailNotes([]);
+    setDetailTimeline([]);
+    setDetailReplacements([]);
+  }, []);
 
   const columns: TableColumn<ArchiveTableResponseDTO>[] = [
     {
@@ -245,7 +280,8 @@ export default function FtjsArchivePage() {
               event.stopPropagation();
               setRestoreEntry(item);
             }}
-            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+            disabled={!canUpdateApplicantInfo}
+            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Restore FTJS record"
           >
             <RotateCcw className="w-4 h-4" />
@@ -254,6 +290,19 @@ export default function FtjsArchivePage() {
       ),
     },
   ];
+
+  if (accessLoading) {
+    return <CenteredLoader minHeight="min-h-[70vh]" />;
+  }
+
+  if (!canViewRecords) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to view FTJS archive records."
+        hint="Ask your administrator to grant the View FTJS Records permission."
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -273,6 +322,70 @@ export default function FtjsArchivePage() {
           <SectionCard title="Loading FTJS archive">
             <CenteredLoader minHeight="min-h-[320px]" />
           </SectionCard>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedArchive) {
+    return (
+      <div className="min-h-screen bg-slate-50/60">
+        <div className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+          <button
+            onClick={clearSelectedRecord}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <ArrowLeftIcon className="w-4 h-4" /> Back to FTJS Archive
+          </button>
+
+          {detailLoading || !detailRecord ? (
+            <CenteredLoader minHeight="min-h-[70vh]" />
+          ) : (
+            <FtjsRecordModal
+              isOpen={!!selectedArchive}
+              onClose={clearSelectedRecord}
+              record={detailRecord}
+              notes={detailNotes}
+              timeline={detailTimeline}
+              replacements={detailReplacements}
+              viewOnly
+              mode="inline"
+              headerLabel="FTJS Archive View"
+              closeSubtitle="Return to FTJS archive"
+              showCloseAction={false}
+            />
+          )}
+
+          {restoreEntry ? (
+            <ArchiveReasonModal
+              isOpen={!!restoreEntry}
+              onClose={() => setRestoreEntry(null)}
+              title="Restore FTJS Record"
+              subjectName={restoreEntry.trackingNumber}
+              subjectLabel="request"
+              submitLabel="Restore"
+              placeholder="Provide a reason for restoring this FTJS record..."
+              onSubmit={handleRestoreSubmit}
+            />
+          ) : null}
+
+          <ActionModal
+            isOpen={restoreSuccessOpen}
+            onClose={() => setRestoreSuccessOpen(false)}
+            title="FTJS record restored"
+            type="success"
+          >
+            Archived FTJS record has been restored successfully.
+          </ActionModal>
+
+          <ActionModal
+            isOpen={!!errorMessage}
+            onClose={() => setErrorMessage(null)}
+            title="FTJS Archive"
+            type="danger"
+          >
+            {errorMessage}
+          </ActionModal>
         </div>
       </div>
     );
@@ -360,21 +473,6 @@ export default function FtjsArchivePage() {
           }}
         />
 
-        <FtjsRecordModal
-          isOpen={!!selectedArchive && !detailLoading}
-          onClose={() => {
-            setSelectedArchive(null);
-            setDetailRecord(null);
-            setDetailNotes([]);
-            setDetailTimeline([]);
-            setDetailReplacements([]);
-          }}
-          record={detailRecord}
-          notes={detailNotes}
-          timeline={detailTimeline}
-          replacements={detailReplacements}
-        />
-
         {restoreEntry ? (
           <ArchiveReasonModal
             isOpen={!!restoreEntry}
@@ -386,12 +484,6 @@ export default function FtjsArchivePage() {
             placeholder="Provide a reason for restoring this FTJS record..."
             onSubmit={handleRestoreSubmit}
           />
-        ) : null}
-
-        {detailLoading ? (
-          <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-            <CenteredLoader minHeight="min-h-[120px]" />
-          </div>
         ) : null}
 
         <ActionModal

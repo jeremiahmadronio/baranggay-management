@@ -52,9 +52,14 @@ export function Layout({ userRole }: LayoutProps) {
   const isLuponCaseDetailRoute =
     location.pathname.startsWith("/lupongtagapamayapa/cases/") &&
     location.pathname.split("/").length === 4;
+  const isFtjsDetailRoute = /^\/first-time-job-seeker\/management\/\d+$/.test(
+    location.pathname,
+  );
 
   const fallbackTitle = isLuponCaseDetailRoute
     ? "Case Details"
+    : isFtjsDetailRoute
+      ? "FTJS Details"
     : location.pathname.split("/").pop()?.replace(/-/g, " ");
 
   const pageTitle = currentNavItem?.label || fallbackTitle || "Dashboard";

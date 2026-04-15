@@ -57,12 +57,12 @@ import EditTemplate from "./clearance-module/clearance-template/EditTemplate";
 import { ClearanceSettings } from "./clearance-module/settings";
 
 //FTJS
-import FtjsDashboardPage from "./pages/ftjs/Dashboard";
-import FtjsEntryPage from "./pages/ftjs/ftjsentry";
-import FtjsManagementPage from "./pages/ftjs/ftjsManagement";
-import FtjsArchivePage from "./pages/ftjs/Archive";
-import FtjsReportPage from "./pages/ftjs/report";
-import FtjsDetailViewPage from "./pages/ftjs/FtjsDetailView";
+import FtjsDashboardPage from "./pages/first-time-job-seeker-module/Dashboard";
+import FtjsEntryPage from "./pages/first-time-job-seeker-module/ftjsentry";
+import FtjsManagementPage from "./pages/first-time-job-seeker-module/ftjsManagement";
+import FtjsArchivePage from "./pages/first-time-job-seeker-module/Archive";
+import FtjsReportPage from "./pages/first-time-job-seeker-module/report";
+import FtjsDetailViewPage from "./pages/first-time-job-seeker-module/FtjsDetailView";
 
 //LUPON
 import LupongTagapamayapaDashboard from "./pages/lupon-module/lupon-pages/dashboard";

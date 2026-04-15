@@ -11,16 +11,23 @@ import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { CenteredLoader } from "../../hooks/LoadingStates";
 import {
   ftjsApi,
+  FTJS_PERMISSIONS,
+  hasFtjsPermission,
   type FtjsStatsResponseDTO,
   type FtjsTableDTO,
-} from "../../service/ftjs/FirstTimeJobSeeker";
+} from "../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 import {
+  buildFtjsAutoArchiveReason,
   formatDate,
+  formatStatusLabel,
+  isFtjsExpired,
   isResidentText,
   paginateItems,
   SectionCard,
   StatusPill,
 } from "./shared";
+import { useFtjsAccess } from "./useFtjsAccess";
 
 const PAGE_SIZE = 10;
 
@@ -40,6 +47,7 @@ function isArchivedStatus(status?: string | null) {
 
 export default function FtjsManagementPage() {
   const navigate = useNavigate();
+  const { accessLoading, userAccess } = useFtjsAccess();
   const [stats, setStats] = useState<FtjsStatsResponseDTO | null>(null);
   const [records, setRecords] = useState<FtjsTableDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,18 +57,69 @@ export default function FtjsManagementPage() {
   const [residentFilter, setResidentFilter] = useState("");
   const [page, setPage] = useState(0);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const canViewRecords = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.VIEW_RECORDS,
+  );
+  const canUpdateApplicantInfo = hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.UPDATE_APPLICANT_INFO,
+  );
+
+  async function archiveExpiredRecords(recordsRes: FtjsTableDTO[]) {
+    const expiredRecords = recordsRes.filter((record) => {
+      return !isArchivedStatus(record.status) && isFtjsExpired(record.dateSubmitted);
+    });
+
+    if (!expiredRecords.length) {
+      return recordsRes;
+    }
+
+    const results = await Promise.allSettled(
+      expiredRecords.map((record) =>
+        ftjsApi.updateStatus(record.id, {
+          isArchived: true,
+          remarks: buildFtjsAutoArchiveReason(record.dateSubmitted),
+        }),
+      ),
+    );
+
+    const archivedIds = new Set<number>();
+
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        archivedIds.add(expiredRecords[index].id);
+        return;
+      }
+
+      console.error(
+        `Failed to auto-archive FTJS record ${expiredRecords[index].id}:`,
+        result.reason,
+      );
+    });
+
+    return recordsRes.filter((record) => !archivedIds.has(record.id));
+  }
 
   async function refreshData() {
     try {
       setLoading(true);
-      const [statsRes, recordsRes] = await Promise.all([
+      const [statsRes, recordsRes, archiveRecordsRes] = await Promise.all([
         ftjsApi.getStats(),
         ftjsApi.getTableSummary(),
+        ftjsApi.getArchiveTable(),
       ]);
+
+      const archivedIds = new Set(archiveRecordsRes.map((record) => record.id));
+      const visibleRecords = recordsRes.filter((record) => !archivedIds.has(record.id));
+
+      const activeRecords = canUpdateApplicantInfo
+        ? await archiveExpiredRecords(visibleRecords)
+        : visibleRecords;
 
       setStats(statsRes);
       setRecords(
-        recordsRes.filter((record) => !isArchivedStatus(record.status)),
+        activeRecords.filter((record) => !isArchivedStatus(record.status)),
       );
     } catch (error) {
       console.error(
@@ -79,8 +138,15 @@ export default function FtjsManagementPage() {
   }
 
   useEffect(() => {
-    refreshData();
-  }, []);
+    if (!accessLoading && canViewRecords) {
+      refreshData();
+      return;
+    }
+
+    if (!accessLoading) {
+      setLoading(false);
+    }
+  }, [accessLoading, canUpdateApplicantInfo, canViewRecords]);
 
   const filteredRecords = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -126,7 +192,7 @@ export default function FtjsManagementPage() {
     )
       .sort()
       .map((status) => ({
-        label: status.replace(/_/g, " "),
+        label: formatStatusLabel(status),
         value: status,
       }));
   }, [records]);
@@ -211,6 +277,19 @@ export default function FtjsManagementPage() {
     },
   ];
 
+  if (accessLoading) {
+    return <CenteredLoader minHeight="min-h-[70vh]" />;
+  }
+
+  if (!canViewRecords) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to view FTJS records."
+        hint="Ask your administrator to grant the View FTJS Records permission."
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50/50">
@@ -262,7 +341,7 @@ export default function FtjsManagementPage() {
           <KPICard
             title="Re-issuances"
             value={stats?.reIssuances ?? 0}
-            color="violet"
+            color="blue"
             icon={KPIIcons.total}
             subtitle="Replacement certificates processed"
           />
