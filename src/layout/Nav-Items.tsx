@@ -48,6 +48,7 @@ export const rootAdminNavItems: NavItemType[] = [
     path: "/rootadmin/admin-management",
     icon: Users,
   },
+  {label: "Backup Management", path: "/rootadmin/backup-management", icon: Users},
   { label: "Audit Logs", path: "/rootadmin/audit-logs", icon: ScrollText },
   { label: "Settings", path: "/rootadmin/account-settings", icon: Settings },
 ];
