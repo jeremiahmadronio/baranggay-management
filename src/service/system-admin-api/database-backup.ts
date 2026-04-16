@@ -2,18 +2,20 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const BACKUP_URL = `${BASE}/api/admin/backups`;
 
 export interface BackupResponseDTO {
+  id?: string | null;
   fileName: string;
-  label?: string;
+  label?: string | null;
+  createdBy?: string | null;
   createdAt: string;
-  sizeBytes: number;
+  fileSizeKb: number;
   encrypted: boolean;
 }
 
 export interface BackupSchedule {
-  frequency: string;   // "DAILY" o "WEEKLY"
-  hour: number;        // 0-23
-  minute: number;      // 0-59
-  dayOfWeek?: string;  // "MON", "TUE", etc.
+  frequency: string; // "DAILY" o "WEEKLY"
+  hour: number; // 0-23
+  minute: number; // 0-59
+  dayOfWeek?: string; // "MON", "TUE", etc.
   enabled: boolean;
 }
 
@@ -61,7 +63,7 @@ export const backupApi = {
   triggerManualBackup: (
     label?: string,
     passphrase?: string,
-    reason: string = "Manual Backup"
+    reason: string = "Manual Backup",
   ): Promise<string> => {
     const params = new URLSearchParams({ reason });
     if (label) params.append("label", label);
@@ -77,7 +79,7 @@ export const backupApi = {
   deleteBackup: (
     fileName: string,
     passphrase: string,
-    reason: string = "Manual Cleanup"
+    reason: string = "Manual Cleanup",
   ): Promise<string> => {
     const params = new URLSearchParams({ fileName, passphrase, reason });
     return apiFetch<string>(`${BACKUP_URL}/delete?${params.toString()}`, {
@@ -96,7 +98,7 @@ export const backupApi = {
 
   downloadBackup: async (
     fileName: string,
-    passphrase?: string
+    passphrase?: string,
   ): Promise<Blob> => {
     const token = localStorage.getItem("token");
     const params = new URLSearchParams({ fileName });
@@ -108,7 +110,7 @@ export const backupApi = {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -126,7 +128,7 @@ export const backupApi = {
 
   restoreFromCloud: (
     fileName: string,
-    passphrase?: string
+    passphrase?: string,
   ): Promise<string> => {
     const params = new URLSearchParams({ fileName });
     if (passphrase) params.append("passphrase", passphrase);

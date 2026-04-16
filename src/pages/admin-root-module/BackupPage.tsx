@@ -4,16 +4,11 @@ import {
   RefreshCw,
   Plus,
   Upload,
-  Calendar,
   Download,
-  RotateCcw,
   Trash2,
   Lock,
   Unlock,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  HardDrive,
+  Calendar,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -23,27 +18,44 @@ import {
   type BackupSchedule,
 } from "../../service/system-admin-api/database-backup";
 import { formatDate } from "./utils/formatter";
-import { Modal } from "./modal/BackupModal";
+import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
+import { TableFilter } from "../../hooks/TableFilter";
+import { ActionModal } from "../../hooks/SuccessModal";
+import { FormModalShell, FormFieldLabel } from "../../reusable/FormModalShell";
 
-const formatFileSize = (sizeKb: number | null | undefined): string => {
+const formatFileSize = (
+  sizeKb: number | null | undefined,
+  format: "gb" | "adaptive" = "gb",
+): string => {
   if (!sizeKb) return "—";
-  const kb = sizeKb;
-  const mb = kb / 1024;
-  const gb = mb / 1024;
 
-  if (gb >= 1) {
-    return `${gb.toFixed(2)} GB`;
-  } else if (mb >= 1) {
-    return `${mb.toFixed(2)} MB`;
-  } else {
-    return `${kb.toFixed(2)} KB`;
+  if (format === "gb") {
+    const gb = sizeKb / (1024 * 1024);
+    return `${gb.toFixed(4)} GB`;
   }
+
+  // Adaptive format: KiB, MiB, GiB
+  if (sizeKb < 1024) {
+    return `${sizeKb.toFixed(2)} KiB`;
+  }
+  const mib = sizeKb / 1024;
+  if (mib < 1024) {
+    return `${mib.toFixed(2)} MiB`;
+  }
+  const gib = mib / 1024;
+  return `${gib.toFixed(2)} GiB`;
+};
+
+const formatBackupFileName = (backup: BackupResponseDTO): string => {
+  if (backup.label) {
+    return `${formatDate(backup.createdAt)}`;
+  }
+  return formatDate(backup.createdAt);
 };
 export function BackupPage() {
   const [backups, setBackups] = useState<BackupResponseDTO[]>([]);
   const [stats, setStats] = useState<BackupStatsDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   // Modal States
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -73,9 +85,32 @@ export function BackupPage() {
   });
   const [actionPassphrase, setActionPassphrase] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Restore Mode States
+  const [restoreMode, setRestoreMode] = useState<"upload" | "fromTable">(
+    "upload",
+  );
+  const [restoreSearch, setRestoreSearch] = useState("");
+  const [selectedRestoreFile, setSelectedRestoreFile] =
+    useState<BackupResponseDTO | null>(null);
+  const [restorePassphrase, setRestorePassphrase] = useState("");
+  // Table Search & Pagination States
+  const [tableSearch, setTableSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+  // Success/Error Modal States
+  const [successModal, setSuccessModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({ isOpen: false, title: "", message: "" });
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({ isOpen: false, title: "", message: "" });
   const fetchData = async () => {
     try {
-      setIsRefreshing(true);
       const [backupsData, statsData] = await Promise.all([
         backupApi.listBackups().catch(() => []),
         backupApi.getStats().catch(() => null),
@@ -85,7 +120,6 @@ export function BackupPage() {
     } catch (error: any) {
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   };
   useEffect(() => {
@@ -104,27 +138,83 @@ export function BackupPage() {
         label: "",
         passphrase: "",
       });
+      setSuccessModal({
+        isOpen: true,
+        title: "Backup Created",
+        message: "Your database backup has been created successfully.",
+      });
       fetchData();
     } catch (error: any) {
+      setErrorModal({
+        isOpen: true,
+        title: "Backup Failed",
+        message: error.message || "Failed to create backup. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
   const handleUploadRestore = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadForm.file) return;
-    setIsSubmitting(true);
-    try {
-      await backupApi.restoreFromUpload(uploadForm.file, uploadForm.passphrase);
-      setIsUploadOpen(false);
-      setUploadForm({
-        file: null,
-        passphrase: "",
-      });
-      fetchData();
-    } catch (error: any) {
-    } finally {
-      setIsSubmitting(false);
+    if (restoreMode === "upload") {
+      if (!uploadForm.file) return;
+      setIsSubmitting(true);
+      try {
+        await backupApi.restoreFromUpload(
+          uploadForm.file,
+          uploadForm.passphrase,
+        );
+        setIsUploadOpen(false);
+        setUploadForm({
+          file: null,
+          passphrase: "",
+        });
+        setSuccessModal({
+          isOpen: true,
+          title: "Database Restored",
+          message:
+            "Your database has been restored successfully from the uploaded backup.",
+        });
+        fetchData();
+      } catch (error: any) {
+        setErrorModal({
+          isOpen: true,
+          title: "Restore Failed",
+          message:
+            error.message || "Failed to restore database. Please try again.",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      if (!selectedRestoreFile) return;
+      setIsSubmitting(true);
+      try {
+        await backupApi.restoreFromCloud(
+          selectedRestoreFile.fileName,
+          restorePassphrase,
+        );
+        setIsUploadOpen(false);
+        setSelectedRestoreFile(null);
+        setRestorePassphrase("");
+        setRestoreSearch("");
+        setRestoreMode("upload");
+        setSuccessModal({
+          isOpen: true,
+          title: "Database Restored",
+          message: "Your database has been restored successfully.",
+        });
+        fetchData();
+      } catch (error: any) {
+        setErrorModal({
+          isOpen: true,
+          title: "Restore Failed",
+          message:
+            error.message || "Failed to restore database. Please try again.",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
   const handleUpdateSchedule = async (e: React.FormEvent) => {
@@ -133,8 +223,19 @@ export function BackupPage() {
     try {
       await backupApi.updateSchedule(scheduleForm);
       setIsScheduleOpen(false);
+      setSuccessModal({
+        isOpen: true,
+        title: "Schedule Updated",
+        message: "Your backup schedule has been updated successfully.",
+      });
       fetchData();
     } catch (error: any) {
+      setErrorModal({
+        isOpen: true,
+        title: "Update Failed",
+        message:
+          error.message || "Failed to update schedule. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -147,8 +248,18 @@ export function BackupPage() {
     try {
       if (type === "delete") {
         await backupApi.deleteBackup(backup.fileName, actionPassphrase);
+        setSuccessModal({
+          isOpen: true,
+          title: "Backup Deleted",
+          message: "The backup has been deleted successfully.",
+        });
       } else if (type === "restore") {
         await backupApi.restoreFromCloud(backup.fileName, actionPassphrase);
+        setSuccessModal({
+          isOpen: true,
+          title: "Database Restored",
+          message: "Your database has been restored successfully.",
+        });
       } else if (type === "download") {
         const blob = await backupApi.downloadBackup(
           backup.fileName,
@@ -162,11 +273,27 @@ export function BackupPage() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        setSuccessModal({
+          isOpen: true,
+          title: "Download Complete",
+          message: "Your backup file has been downloaded successfully.",
+        });
       }
       setActionModal(null);
       setActionPassphrase("");
       if (type !== "download") fetchData();
     } catch (error: any) {
+      const actionName =
+        type === "delete"
+          ? "Delete"
+          : type === "restore"
+            ? "Restore"
+            : "Download";
+      setErrorModal({
+        isOpen: true,
+        title: `${actionName} Failed`,
+        message: error.message || `Failed to ${type} backup. Please try again.`,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -194,88 +321,52 @@ export function BackupPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-6 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl border border-blue-400/30 shadow-md">
-              <Database className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Database Backups
-              </h1>
-              <p className="text-gray-500 text-sm mt-1">
-                Manage and monitor your database backup operations
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => fetchData()}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors disabled:opacity-50 shadow-sm hover:shadow-md"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </button>
-        </div>
-
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
+        <KPIGrid columns={4}>
+          {/* Storage Usage */}
+          <KPICard
             title="Storage Used"
-            icon={<HardDrive className="w-5 h-5 text-purple-500" />}
-            value={stats ? `${stats.storageUsedGb.toFixed(2)} GB` : "—"}
-            subtext={stats ? `of ${stats.storageLimitGb} GB limit` : "—"}
-          >
-            {stats && (
-              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-3">
-                <div
-                  className="bg-purple-500 h-1.5 rounded-full"
-                  style={{
-                    width: `${Math.min((stats.storageUsedGb / stats.storageLimitGb) * 100, 100)}%`,
-                  }}
-                ></div>
-              </div>
-            )}
-          </StatCard>
-
-          <StatCard
-            title="Auto Backup"
-            icon={<Clock className="w-5 h-5 text-blue-500" />}
-            value={stats?.autoBackupFrequency || "Disabled"}
-            subtext="Current schedule"
+            value={stats ? `${stats.storageUsedGb.toFixed(4)} GB` : "—"}
+            icon={KPIIcons.chart}
+            subtitle={stats ? `of ${stats.storageLimitGb.toFixed(2)} GB` : "—"}
+            color="blue"
           />
 
-          <StatCard
+          {/* Auto Backup Frequency */}
+          <KPICard
+            title="Backup Schedule"
+            value={stats?.autoBackupFrequency || "—"}
+            icon={KPIIcons.clock}
+            subtitle="Current schedule"
+            color="emerald"
+          />
+
+          {/* Next Backup Time */}
+          <KPICard
             title="Next Backup"
-            icon={<Calendar className="w-5 h-5 text-orange-500" />}
-            value={formatDate(stats?.nextBackupTime)}
-            subtext="Scheduled time"
+            value={formatDate(stats?.nextBackupTime) || "—"}
+            icon={KPIIcons.month}
+            subtitle="Scheduled"
+            color="amber"
           />
 
-          <StatCard
+          {/* Last Backup Status */}
+          <KPICard
             title="Last Backup"
+            value={formatDate(stats?.lastBackupDate) || "—"}
             icon={
-              stats?.lastBackupStatus === "SUCCESS" ? (
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
-              ) : stats?.lastBackupStatus === "FAILED" ? (
-                <XCircle className="w-5 h-5 text-red-500" />
-              ) : (
-                <Database className="w-5 h-5 text-gray-400" />
-              )
+              stats?.lastBackupStatus === "Success"
+                ? KPIIcons.check
+                : KPIIcons.alert
             }
-            value={formatDate(stats?.lastBackupDate)}
-            subtext={
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${stats?.lastBackupStatus === "SUCCESS" ? "bg-green-50 text-green-600" : stats?.lastBackupStatus === "FAILED" ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-500"}`}
-              >
-                {stats?.lastBackupStatus || "UNKNOWN"}
-              </span>
+            color={stats?.lastBackupStatus === "Success" ? "emerald" : "rose"}
+            subtitle={
+              stats?.lastBackupStatus === "Success"
+                ? "Backup successful"
+                : "Backup failed"
             }
           />
-        </div>
+        </KPIGrid>
 
         {/* Action Bar */}
         <div className="flex flex-wrap gap-3 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
@@ -299,45 +390,104 @@ export function BackupPage() {
           </button>
         </div>
 
+        {/* Table Filter & Search */}
+        <TableFilter
+          showSearch={true}
+          showFilterButton={false}
+          showClearButton={true}
+          searchValue={tableSearch}
+          onSearchChange={(value) => {
+            setTableSearch(value);
+            setCurrentPage(1);
+          }}
+          onClearClick={() => {
+            setTableSearch("");
+            setStatusFilter("");
+            setCurrentPage(1);
+          }}
+          filters={[
+            {
+              label: "Security",
+              key: "security",
+              value: statusFilter,
+              options: [
+                { value: "encrypted", label: "Encrypted" },
+                { value: "decrypted", label: "Decrypted" },
+              ],
+            },
+          ]}
+          onFilterChange={(_, value) => {
+            setStatusFilter(value);
+            setCurrentPage(1);
+          }}
+          searchPlaceholder="Search by file name..."
+        />
+
         {/* Backup List Table */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gradient-to-r from-blue-50 to-blue-100 text-gray-700 border-b-2 border-gray-200">
+              <thead className="bg-white border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 font-semibold text-gray-800">
-                    File Name
+                  <th className="px-6 py-3 font-semibold text-gray-700 text-sm">
+                    Display Name
                   </th>
-                  <th className="px-6 py-4 font-semibold text-gray-800">
+                  <th className="px-6 py-3 font-semibold text-gray-700 text-sm">
                     Label
                   </th>
-                  <th className="px-6 py-4 font-semibold text-gray-800">
-                    Created At
+                  <th className="px-6 py-3 font-semibold text-gray-700 text-sm">
+                    Created
                   </th>
-                  <th className="px-6 py-4 font-semibold text-gray-800">
+                  <th className="px-6 py-3 font-semibold text-gray-700 text-sm">
                     Size
                   </th>
-                  <th className="px-6 py-4 font-semibold text-gray-800 text-center">
+                  <th className="px-6 py-3 font-semibold text-gray-700 text-sm text-center">
                     Security
                   </th>
-                  <th className="px-6 py-4 font-semibold text-gray-800 text-right">
+                  <th className="px-6 py-3 font-semibold text-gray-700 text-sm text-right">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {backups.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-12 text-center text-gray-400"
-                    >
-                      <Database className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p>No backups found.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  backups.map((backup) => (
+                {(() => {
+                  const filtered = backups
+                    .filter((backup) =>
+                      backup.fileName
+                        .toLowerCase()
+                        .includes(tableSearch.toLowerCase()),
+                    )
+                    .filter((backup) => {
+                      if (!statusFilter) return true;
+                      if (statusFilter === "encrypted") return backup.encrypted;
+                      if (statusFilter === "decrypted")
+                        return !backup.encrypted;
+                      return true;
+                    })
+                    .sort(
+                      (a, b) =>
+                        new Date(b.createdAt).getTime() -
+                        new Date(a.createdAt).getTime(),
+                    );
+                  const start = (currentPage - 1) * itemsPerPage;
+                  const end = start + itemsPerPage;
+                  const paginated = filtered.slice(start, end);
+
+                  if (filtered.length === 0) {
+                    return (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-6 py-12 text-center text-gray-400"
+                        >
+                          <Database className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                          <p>No backups found.</p>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return paginated.map((backup) => (
                     <motion.tr
                       initial={{
                         opacity: 0,
@@ -348,15 +498,19 @@ export function BackupPage() {
                         y: 0,
                       }}
                       key={backup.fileName}
-                      className="hover:bg-blue-50/50 transition-colors"
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <td
-                        className="px-6 py-4 font-mono text-gray-700 max-w-[250px] truncate"
-                        title={backup.fileName}
-                      >
+                      <td className="px-6 py-4" title={backup.fileName}>
                         <div className="flex items-center gap-2">
                           <Download className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span>{backup.fileName}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {formatBackupFileName(backup)}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {backup.fileName}
+                            </p>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -365,34 +519,24 @@ export function BackupPage() {
                             {backup.label}
                           </span>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400">Auto</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
+                      <td className="px-6 py-4 text-gray-600 text-sm">
                         {formatDate(backup.createdAt)}
                       </td>
                       <td className="px-6 py-4 text-gray-600 font-medium">
-                        {formatFileSize(backup.fileSizeKb)}
+                        {formatFileSize(backup.fileSizeKb, "adaptive")}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {backup.encrypted ? (
-                          <div
-                            title="Encrypted"
-                            className="flex justify-center"
-                          >
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-green-100">
-                              <Lock className="w-4 h-4 text-green-600" />
-                            </span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-medium">
+                            <Lock className="w-3 h-3" /> Encrypted
+                          </span>
                         ) : (
-                          <div
-                            title="Not Encrypted"
-                            className="flex justify-center"
-                          >
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100">
-                              <Unlock className="w-4 h-4 text-gray-500" />
-                            </span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium">
+                            <Unlock className="w-3 h-3" /> Decrypted
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -404,13 +548,7 @@ export function BackupPage() {
                           >
                             <Download className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => openActionModal("restore", backup)}
-                            className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            title="Restore"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
+
                           <button
                             onClick={() => openActionModal("delete", backup)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -421,27 +559,121 @@ export function BackupPage() {
                         </div>
                       </td>
                     </motion.tr>
-                  ))
-                )}
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {(() => {
+            const filtered = backups
+              .filter((backup) =>
+                backup.fileName
+                  .toLowerCase()
+                  .includes(tableSearch.toLowerCase()),
+              )
+              .filter((backup) => {
+                if (!statusFilter) return true;
+                if (statusFilter === "encrypted") return backup.encrypted;
+                if (statusFilter === "decrypted") return !backup.encrypted;
+                return true;
+              })
+              .sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              );
+            const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+            if (totalPages <= 1) return null;
+
+            return (
+              <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <p className="text-sm text-gray-600">
+                  Showing{" "}
+                  <span className="font-medium">
+                    {(currentPage - 1) * itemsPerPage + 1}
+                  </span>
+                  -
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filtered.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filtered.length}</span>
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white"
+                            : "border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
-      {/* Modals */}
-
       {/* Create Backup Modal */}
-      <Modal
+      <FormModalShell
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         title="Create Manual Backup"
+        maxWidthClass="max-w-2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCreateOpen(false)}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                handleCreateBackup(e as any);
+              }}
+              disabled={isSubmitting}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? "Creating..." : "Create Backup"}
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleCreateBackup} className="space-y-4">
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Label (Optional)
-            </label>
+            <FormFieldLabel label="Label" />
             <input
               type="text"
               value={createForm.label}
@@ -451,14 +683,15 @@ export function BackupPage() {
                   label: e.target.value,
                 })
               }
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="e.g., Before major update"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Optional - helps identify your backup
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Passphrase (Optional)
-            </label>
+            <FormFieldLabel label="Passphrase" />
             <input
               type="password"
               value={createForm.passphrase}
@@ -468,103 +701,264 @@ export function BackupPage() {
                   passphrase: e.target.value,
                 })
               }
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Encrypt backup with passphrase"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Optional - encrypt your backup for extra security
+            </p>
           </div>
-          <div className="pt-4 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(false)}
-              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-            >
-              {isSubmitting ? "Creating..." : "Create Backup"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      </FormModalShell>
 
       {/* Upload & Restore Modal */}
-      <Modal
+      <FormModalShell
         isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
-        title="Upload & Restore"
-      >
-        <form onSubmit={handleUploadRestore} className="space-y-4">
-          <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-center">
-            <input
-              type="file"
-              id="file-upload"
-              className="hidden"
-              onChange={(e) =>
-                setUploadForm({
-                  ...uploadForm,
-                  file: e.target.files?.[0] || null,
-                })
-              }
-            />
-            <label
-              htmlFor="file-upload"
-              className="cursor-pointer flex flex-col items-center justify-center gap-2"
-            >
-              <Upload className="w-8 h-8 text-gray-400" />
-              <span className="text-sm text-gray-500">
-                {uploadForm.file
-                  ? uploadForm.file.name
-                  : "Click to select backup file"}
-              </span>
-            </label>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Passphrase (If encrypted)
-            </label>
-            <input
-              type="password"
-              value={uploadForm.passphrase}
-              onChange={(e) =>
-                setUploadForm({
-                  ...uploadForm,
-                  passphrase: e.target.value as any,
-                })
-              }
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter passphrase to decrypt"
-            />
-          </div>
-          <div className="pt-4 flex justify-end gap-3">
+        onClose={() => {
+          setIsUploadOpen(false);
+          setRestoreMode("upload");
+          setSelectedRestoreFile(null);
+          setRestoreSearch("");
+          setRestorePassphrase("");
+        }}
+        title="Restore Database"
+        maxWidthClass="max-w-2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => setIsUploadOpen(false)}
-              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+              onClick={() => {
+                setIsUploadOpen(false);
+                setRestoreMode("upload");
+                setSelectedRestoreFile(null);
+                setRestoreSearch("");
+                setRestorePassphrase("");
+              }}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
             >
               Cancel
             </button>
             <button
-              type="submit"
-              disabled={isSubmitting || !uploadForm.file}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              type="button"
+              onClick={(e) => {
+                handleUploadRestore(e as any);
+              }}
+              disabled={
+                isSubmitting ||
+                (restoreMode === "upload"
+                  ? !uploadForm.file
+                  : !selectedRestoreFile)
+              }
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
             >
               {isSubmitting ? "Restoring..." : "Restore Database"}
             </button>
           </div>
-        </form>
-      </Modal>
+        }
+      >
+        <div className="space-y-5">
+          {/* Mode Tabs */}
+          <div className="flex gap-2 border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => {
+                setRestoreMode("upload");
+                setSelectedRestoreFile(null);
+                setRestoreSearch("");
+              }}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                restoreMode === "upload"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Upload File
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRestoreMode("fromTable");
+                setUploadForm({ file: null, passphrase: "" });
+              }}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                restoreMode === "fromTable"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              From Backups List
+            </button>
+          </div>
+
+          {/* Upload Mode */}
+          {restoreMode === "upload" && (
+            <div className="space-y-4">
+              <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-center">
+                <input
+                  type="file"
+                  id="file-upload"
+                  className="hidden"
+                  onChange={(e) =>
+                    setUploadForm({
+                      ...uploadForm,
+                      file: e.target.files?.[0] || null,
+                    })
+                  }
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer flex flex-col items-center justify-center gap-2"
+                >
+                  <Upload className="w-8 h-8 text-gray-400" />
+                  <span className="text-sm text-gray-500">
+                    {uploadForm.file
+                      ? uploadForm.file.name
+                      : "Click to select backup file"}
+                  </span>
+                </label>
+              </div>
+              <div>
+                <FormFieldLabel label="Passphrase" />
+                <input
+                  type="password"
+                  value={uploadForm.passphrase}
+                  onChange={(e) =>
+                    setUploadForm({
+                      ...uploadForm,
+                      passphrase: e.target.value as any,
+                    })
+                  }
+                  className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter passphrase to decrypt"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Required if backup is encrypted
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* From Table Mode */}
+          {restoreMode === "fromTable" && (
+            <div className="space-y-4">
+              <div>
+                <FormFieldLabel label="Search & Select Backup" />
+                <input
+                  type="text"
+                  placeholder="Search by file name..."
+                  value={restoreSearch}
+                  onChange={(e) => setRestoreSearch(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-3"
+                />
+
+                <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-lg bg-white">
+                  {backups
+                    .filter((backup) =>
+                      backup.fileName
+                        .toLowerCase()
+                        .includes(restoreSearch.toLowerCase()),
+                    )
+                    .map((backup) => (
+                      <div
+                        key={backup.fileName}
+                        onClick={() => setSelectedRestoreFile(backup)}
+                        className={`p-3 cursor-pointer border-b border-gray-200 hover:bg-blue-50 transition-colors ${
+                          selectedRestoreFile?.fileName === backup.fileName
+                            ? "bg-blue-100 border-l-4 border-l-blue-600"
+                            : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {formatBackupFileName(backup)}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1 truncate">
+                              {backup.fileName}
+                            </p>
+                          </div>
+                          {backup.encrypted && (
+                            <Lock className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  {backups.filter((backup) =>
+                    backup.fileName
+                      .toLowerCase()
+                      .includes(restoreSearch.toLowerCase()),
+                  ).length === 0 && (
+                    <div className="p-6 text-center text-gray-400">
+                      <Database className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No backups found</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedRestoreFile && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm font-medium text-blue-900">
+                    Selected: {selectedRestoreFile.fileName}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <FormFieldLabel
+                  label="Passphrase"
+                  required={selectedRestoreFile?.encrypted}
+                />
+                <input
+                  type="password"
+                  required={selectedRestoreFile?.encrypted}
+                  value={restorePassphrase}
+                  onChange={(e) => setRestorePassphrase(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter passphrase to decrypt"
+                />
+                {selectedRestoreFile?.encrypted && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Required - this backup is encrypted
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </FormModalShell>
 
       {/* Schedule Settings Modal */}
-      <Modal
+      <FormModalShell
         isOpen={isScheduleOpen}
         onClose={() => setIsScheduleOpen(false)}
         title="Schedule Settings"
+        maxWidthClass="max-w-2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsScheduleOpen(false)}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                handleUpdateSchedule(e as any);
+              }}
+              disabled={isSubmitting}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? "Saving..." : "Save Schedule"}
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleUpdateSchedule} className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
             <div>
               <p className="font-medium text-gray-900">Enable Auto Backups</p>
@@ -657,7 +1051,7 @@ export function BackupPage() {
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Backup Time
               </label>
-              <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-500 mb-2">
                     Select Hour
@@ -672,44 +1066,36 @@ export function BackupPage() {
                     }
                     className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-medium focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {String(i).padStart(2, "0")}:00
-                      </option>
-                    ))}
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = i === 0 ? 12 : i > 12 ? i - 12 : i;
+                      const period = i < 12 ? "AM" : "PM";
+                      return (
+                        <option key={i} value={i}>
+                          {hour} {period}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 Schedule will run at{" "}
                 <span className="font-semibold text-gray-700">
-                  {String(scheduleForm.hour).padStart(2, "0")}:00
+                  {scheduleForm.hour === 0
+                    ? "12 AM"
+                    : scheduleForm.hour < 12
+                      ? `${scheduleForm.hour} AM`
+                      : scheduleForm.hour === 12
+                        ? "12 PM"
+                        : `${scheduleForm.hour - 12} PM`}
                 </span>
               </p>
             </div>
           </div>
+        </div>
+      </FormModalShell>
 
-          <div className="pt-4 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setIsScheduleOpen(false)}
-              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-            >
-              {isSubmitting ? "Saving..." : "Save Schedule"}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Action Modal (Delete/Restore/Download) */}
-      <Modal
+      <FormModalShell
         isOpen={!!actionModal}
         onClose={() => setActionModal(null)}
         title={
@@ -719,56 +1105,30 @@ export function BackupPage() {
               ? "Restore Database"
               : "Download Backup"
         }
-      >
-        <form onSubmit={handleAction} className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-500 mb-1">Selected File:</p>
-            <p className="font-mono text-sm text-gray-900 break-all">
-              {actionModal?.backup.fileName}
-            </p>
-          </div>
-
-          {actionModal?.type === "delete" && (
-            <p className="text-sm text-red-600">
-              Warning: This action cannot be undone. The backup file will be
-              permanently deleted.
-            </p>
-          )}
-          {actionModal?.type === "restore" && (
-            <p className="text-sm text-orange-600">
-              Warning: Restoring will overwrite the current database. Make sure
-              you know what you are doing.
-            </p>
-          )}
-
-          {actionModal?.backup.encrypted && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Passphrase Required
-              </label>
-              <input
-                type="password"
-                required
-                value={actionPassphrase}
-                onChange={(e) => setActionPassphrase(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter decryption passphrase"
-              />
-            </div>
-          )}
-
-          <div className="pt-4 flex justify-end gap-3">
+        maxWidthClass="max-w-2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setActionModal(null)}
-              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
             >
               Cancel
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={(e) => {
+                handleAction(e as any);
+              }}
               disabled={isSubmitting}
-              className={`px-4 py-2 text-white rounded-lg text-sm font-medium disabled:opacity-50 ${actionModal?.type === "delete" ? "bg-red-600 hover:bg-red-700" : actionModal?.type === "restore" ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700"}`}
+              className={`px-6 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 ${
+                actionModal?.type === "delete"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : actionModal?.type === "restore"
+                    ? "bg-orange-600 hover:bg-orange-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+              }`}
             >
               {isSubmitting
                 ? "Processing..."
@@ -779,49 +1139,73 @@ export function BackupPage() {
                     : "Download"}
             </button>
           </div>
-        </form>
-      </Modal>
-    </div>
-  );
-}
-function StatCard({
-  title,
-  icon,
-  value,
-  subtext,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  value: React.ReactNode;
-  subtext: React.ReactNode;
-  children?: React.ReactNode;
-}) {
-  return (
-    <motion.div
-      initial={{
-        opacity: 0,
-        y: 20,
-      }}
-      animate={{
-        opacity: 1,
-        y: 0,
-      }}
-      className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col shadow-sm"
-    >
-      <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
-          {icon}
+        }
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-600 mb-1">Selected Backup:</p>
+            <p className="font-medium text-gray-900 break-all">
+              {actionModal?.backup.fileName}
+            </p>
+          </div>
+
+          {actionModal?.type === "delete" && (
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <p className="text-sm text-red-700 font-medium">
+                Warning: This action cannot be undone. The backup file will be
+                permanently deleted.
+              </p>
+            </div>
+          )}
+          {actionModal?.type === "restore" && (
+            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+              <p className="text-sm text-amber-700 font-medium">
+                Warning: Restoring will overwrite the current database. Make
+                sure you know what you are doing.
+              </p>
+            </div>
+          )}
+
+          {actionModal?.backup.encrypted && (
+            <div>
+              <FormFieldLabel label="Passphrase" required />
+              <input
+                type="password"
+                required
+                value={actionPassphrase}
+                onChange={(e) => setActionPassphrase(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter decryption passphrase"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Required to decrypt this backup
+              </p>
+            </div>
+          )}
         </div>
-        <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-      </div>
-      <div className="mt-auto">
-        <p className="text-2xl font-bold text-gray-900 tracking-tight">
-          {value}
-        </p>
-        <div className="text-sm text-gray-400 mt-1">{subtext}</div>
-        {children}
-      </div>
-    </motion.div>
+      </FormModalShell>
+
+      {/* Success Modal */}
+      <ActionModal
+        isOpen={successModal.isOpen}
+        onClose={() =>
+          setSuccessModal({ isOpen: false, title: "", message: "" })
+        }
+        title={successModal.title}
+        type="success"
+      >
+        {successModal.message}
+      </ActionModal>
+
+      {/* Error Modal */}
+      <ActionModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: "", message: "" })}
+        title={errorModal.title}
+        type="danger"
+      >
+        {errorModal.message}
+      </ActionModal>
+    </div>
   );
 }
