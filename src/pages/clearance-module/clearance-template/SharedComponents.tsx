@@ -1,5 +1,5 @@
 import { type TemplateData } from "./template";
-import { SAMPLE_DATA } from "../../clearance-api/template-api";
+import { SAMPLE_DATA } from "../../../clearance-api/template-api";
 
 // Helper to get value with priority: customData > SAMPLE_DATA > fallback
 const getValue = (

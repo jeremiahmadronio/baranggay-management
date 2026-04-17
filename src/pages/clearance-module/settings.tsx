@@ -10,9 +10,9 @@ import {
   fetchTemplateOptionsWithStatus,
   archiveTemplate,
   restoreTemplate,
-} from "../clearance-api/template-api";
-import type { TemplateOption } from "../clearance-api/types";
-import { ConfirmModal } from "../reusable";
+} from "../../clearance-api/template-api";
+import type { TemplateOption } from "../../clearance-api/types";
+import { ConfirmModal } from "../../reusable";
 
 type TemplateWithStatus = TemplateOption & { isArchived: boolean };
 
