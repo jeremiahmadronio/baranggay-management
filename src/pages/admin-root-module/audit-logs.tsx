@@ -7,10 +7,10 @@ import {
   CalendarDays,
 } from "lucide-react";
 
-import { KPICard, KPIGrid } from "../hooks/KPICard";
-import { Table, type TableColumn } from "../hooks/Table";
-import { TableFilter } from "../hooks/TableFilter";
-import { ViewModal } from "../reusable/DetailView";
+import { KPICard, KPIGrid } from "../../hooks/KPICard";
+import { Table, type TableColumn } from "../../hooks/Table";
+import { TableFilter } from "../../hooks/TableFilter";
+import { ViewModal } from "../../reusable/DetailView";
 
 import {
   getAuditStats,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, AlertTriangle, ChevronDown, Loader2 } from "lucide-react";
-import { FormModalShell, FormSectionTitle } from "../reusable";
+import { FormModalShell, FormSectionTitle } from "../../reusable";
 import {
   getDepartmentOptions,
   getAdminRoleOptions,

@@ -123,9 +123,7 @@ const ALL_FIELD_GROUPS: {
   { label: "Vehicle (Tricycle)", icon: Car, fields: AVAILABLE_VEHICLE_FIELDS },
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 export default function CreateTemplate() {
   // --- State ---

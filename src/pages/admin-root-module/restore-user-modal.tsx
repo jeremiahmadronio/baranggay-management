@@ -1,40 +1,48 @@
-import React, { useState } from 'react'
-import { X, RotateCcw, Loader2 } from 'lucide-react'
-import { updateUserStatus, Statuses, type AdminTable } from '../admin-root-api/admin-management'
+import React, { useState } from "react";
+import { X, RotateCcw, Loader2 } from "lucide-react";
+import {
+  updateUserStatus,
+  Statuses,
+  type AdminTable,
+} from "../admin-root-api/admin-management";
 
 interface RestoreUserModalProps {
-  admin: AdminTable
-  onClose: () => void
+  admin: AdminTable;
+  onClose: () => void;
 }
 
 export function RestoreUserModal({ admin, onClose }: RestoreUserModalProps) {
-  const [reason,  setReason]  = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose()
-  }
+    if (e.target === e.currentTarget) onClose();
+  };
 
   const handleConfirm = async () => {
-    setError(null)
+    setError(null);
     if (!reason.trim()) {
-      setError('Reason is required for accountability.')
-      return
+      setError("Reason is required for accountability.");
+      return;
     }
     try {
-      setLoading(true)
+      setLoading(true);
       await updateUserStatus(admin.id, Statuses.ACTIVE, {
         reason,
         lockUntil: null,
-      })
-      onClose()
+      });
+      onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to restore account. Please try again.')
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to restore account. Please try again.",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div
@@ -43,8 +51,14 @@ export function RestoreUserModal({ admin, onClose }: RestoreUserModalProps) {
     >
       <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md relative">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Restore User Account</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition" aria-label="Close modal">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Restore User Account
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            aria-label="Close modal"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -55,10 +69,15 @@ export function RestoreUserModal({ admin, onClose }: RestoreUserModalProps) {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-900">
-              Restore <span className="font-semibold">{admin.firstName} {admin.lastName}</span>'s account?
+              Restore{" "}
+              <span className="font-semibold">
+                {admin.firstName} {admin.lastName}
+              </span>
+              's account?
             </p>
             <p className="text-sm text-blue-500 mt-1">
-              Their account will be set back to <strong>Active</strong>. They will regain access to the system immediately.
+              Their account will be set back to <strong>Active</strong>. They
+              will regain access to the system immediately.
             </p>
           </div>
         </div>
@@ -69,7 +88,7 @@ export function RestoreUserModal({ admin, onClose }: RestoreUserModalProps) {
           </label>
           <textarea
             value={reason}
-            onChange={e => setReason(e.target.value)}
+            onChange={(e) => setReason(e.target.value)}
             placeholder="Enter reason for restoring this account..."
             rows={4}
             className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -96,10 +115,10 @@ export function RestoreUserModal({ admin, onClose }: RestoreUserModalProps) {
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? 'Processing...' : 'Confirm Restore'}
+            {loading ? "Processing..." : "Confirm Restore"}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

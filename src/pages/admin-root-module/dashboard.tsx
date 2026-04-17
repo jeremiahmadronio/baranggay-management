@@ -9,9 +9,9 @@ import type {
   DashboardStats,
   RecentActions,
 } from "../admin-root-api/dashboard-api";
-import { KPIGrid, KPICard, KPIIcons } from "../hooks/KPICard";
-import { ResponsiveTable } from "../reusable/RecentSystemActions";
-import type { ColumnDef } from "../reusable/RecentSystemActions";
+import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
+import { ResponsiveTable } from "../../reusable/RecentSystemActions";
+import type { ColumnDef } from "../../reusable/RecentSystemActions";
 import { ArrowLeft, RefreshCcw, ShieldAlert, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
