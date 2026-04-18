@@ -11,6 +11,7 @@ import {
   type TemplateData,
   type TemplateOption,
 } from "../../../clearance-api/template-api";
+import { ActionModal } from "../../../reusable";
 import { Loader2 } from "lucide-react";
 export default function EditTemplate() {
   const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([]);
@@ -20,8 +21,32 @@ export default function EditTemplate() {
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState<{
     message: string;
-    type: "success" | "error" | "warning";
+    type: "error" | "warning";
   } | null>(null);
+  const [actionModal, setActionModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "danger" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success",
+  });
+
+  const showActionModal = (
+    title: string,
+    message: string,
+    type: "success" | "danger" | "info" = "success",
+  ) => {
+    setActionModal({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
   const requiredVarsMap = useRef<Record<string, string[]>>({});
   useEffect(() => {
     const loadOptions = async () => {
@@ -131,10 +156,7 @@ export default function EditTemplate() {
     setIsSaving(true);
     try {
       await saveTemplate(templateData.id, templateData);
-      setNotification({
-        message: "Template saved successfully!",
-        type: "success",
-      });
+      showActionModal("Template Saved", "Template saved successfully!", "success");
     } catch (error) {
       setNotification({
         message: "Failed to save template",
@@ -166,10 +188,7 @@ export default function EditTemplate() {
         })),
       };
       setTemplateData(enrichedData);
-      setNotification({
-        message: "Template reset to original",
-        type: "success",
-      });
+      showActionModal("Template Reset", "Template reset to original", "success");
     } catch (error) {
       console.error("Failed to reset", error);
       setNotification({
@@ -224,11 +243,25 @@ export default function EditTemplate() {
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed bottom-6 right-6 px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium transition-all transform translate-y-0 max-w-sm ${notification.type === "success" ? "bg-green-600" : notification.type === "warning" ? "bg-amber-500" : "bg-red-600"}`}
+          className={`fixed bottom-6 right-6 px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium transition-all transform translate-y-0 max-w-sm ${notification.type === "warning" ? "bg-amber-500" : "bg-red-600"}`}
         >
           {notification.message}
         </div>
       )}
+
+      <ActionModal
+        isOpen={actionModal.isOpen}
+        onClose={() =>
+          setActionModal((prev) => ({
+            ...prev,
+            isOpen: false,
+          }))
+        }
+        title={actionModal.title}
+        type={actionModal.type}
+      >
+        <p>{actionModal.message}</p>
+      </ActionModal>
     </div>
   );
 }

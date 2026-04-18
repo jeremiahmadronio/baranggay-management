@@ -16,6 +16,7 @@ export interface NavItemType {
   label: string;
   path: string;
   icon: LucideIcon;
+  children?: NavItemType[];
 }
 
 // User type nav items
@@ -116,7 +117,23 @@ export const clearanceNavItems: NavItemType[] = [
     icon: Leaf,
   },
   { label: "Create Template", path: "/clearance/template", icon: Users },
-  { label: "Settings", path: "/clearance/settings", icon: Settings },
+  {
+    label: "Archived",
+    path: "/clearance/settings",
+    icon: Archive,
+    children: [
+      {
+        label: "Archived Certificates",
+        path: "/clearance/settings?view=certificates",
+        icon: FileText,
+      },
+      {
+        label: "Archived Templates",
+        path: "/clearance/settings?view=templates",
+        icon: Archive,
+      },
+    ],
+  },
 ];
 
 // VAWC navigation items

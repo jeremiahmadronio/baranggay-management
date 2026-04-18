@@ -32,11 +32,17 @@ export interface TemplateResponseDTO {
   certTagline: string;
   bodySections: unknown;
   issueFields: unknown;
+  requiresPhoto?: boolean;
+  requiresThumbmark?: boolean;
   hasFee: boolean;
   certFee: number;
   hascTn: boolean;
   validityMonths: number;
   signatories: SignatoryDTO[];
+  isArchived?: boolean;
+  archived?: boolean;
+  archiveStatus?: string;
+  status?: string;
 }
 
 export interface IssuanceRequestDTO {
@@ -198,4 +204,4 @@ export const clearanceTemplateApi = {
   // GET /archive-stats
   getArchiveStats: (): Promise<ArchiveStatsResponseDTO> =>
     apiFetch<ArchiveStatsResponseDTO>(`${CLEARANCE_TEMPLATE_URL}/archive-stats`),
-};
+};                                    

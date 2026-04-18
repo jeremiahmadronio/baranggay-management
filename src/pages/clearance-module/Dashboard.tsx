@@ -1,403 +1,844 @@
-<<<<<<< HEAD
-import React from "react";
-=======
 import React, { useEffect } from "react";
->>>>>>> 09c4e5e5c7b9a3bb84a9c7ef1c538cee62fe5905
 import { useNavigate } from "react-router-dom";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   KPICard,
   KPIGrid,
   KPIIcons,
-<<<<<<< HEAD
+  ResponsiveTable,
+  type ColumnDef,
+  LoadingModal,
 } from "../../reusable";
-import { LoadingModal } from "../../reusable";
+
 import {
   clearanceDashboardApi,
   type DashboardStatsResponseDTO,
-  type TopTemplateResponseDTO,
   type RecentRequestResponseDTO,
+  type TopTemplateResponseDTO,
   type WeeklyIssuedTrendDTO,
 } from "../../service/clearance-api/dashboard";
-import { LayoutList, Plus } from "lucide-react";
+import { clearanceTemplateApi } from "../../service/clearance-api/Template";
+import { revenueApi } from "../../service/clearance-api/revenue";
+import { fetchTemplateOptionsWithStatus } from "../../clearance-api/template-api";
+import {
+  fetchIssuedCertificates,
+  fetchIssuedStats,
+} from "../../clearance-api/issued-certificate-api";
 
-export const ClearanceDashboard = () => {
-  const navigate = useNavigate();
-  const [stats, setStats] = React.useState<DashboardStatsResponseDTO | null>(null);
-  const [recentIssued, setRecentIssued] = React.useState<RecentRequestResponseDTO[]>([]);
-  const [topTemplates, setTopTemplates] = React.useState<TopTemplateResponseDTO[]>([]);
-  const [weeklyTrend, setWeeklyTrend] = React.useState<WeeklyIssuedTrendDTO[]>([]);
-  const [loading, setLoading] = React.useState(true);
+import { ArrowRight } from "lucide-react";
 
-  const numberFormat = (num?: number) => (num ?? 0).toLocaleString();
-  const revenueFormat = (num?: number) =>
-    num !== undefined ? num.toLocaleString("en-PH", { style: "currency", currency: "PHP" }) : "₱0.00";
+const toNumber = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
 
-  React.useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      clearanceDashboardApi.getStats(),
-      clearanceDashboardApi.getRecentIssued(),
-      clearanceDashboardApi.getTopTemplates(),
-      clearanceDashboardApi.getWeeklyTrend(),
-    ])
-      .then(([stats, recent, top, trend]) => {
-        setStats(stats);
-        setRecentIssued(recent);
-        setTopTemplates(top);
-        setWeeklyTrend(trend);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+const unwrapObject = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== "object") return {};
+  const raw = value as Record<string, unknown>;
+  if (raw.data && typeof raw.data === "object") {
+    return raw.data as Record<string, unknown>;
+  }
+  return raw;
+};
 
-  if (loading) {
-    return <LoadingModal isOpen={true} message="Loading dashboard data..." />;
+const unwrapArray = <T,>(value: unknown): T[] => {
+  if (Array.isArray(value)) return value as T[];
+  if (!value || typeof value !== "object") return [];
+
+  const raw = value as Record<string, unknown>;
+  if (Array.isArray(raw.content)) return raw.content as T[];
+  if (Array.isArray(raw.data)) return raw.data as T[];
+  if (raw.data && typeof raw.data === "object") {
+    const nested = raw.data as Record<string, unknown>;
+    if (Array.isArray(nested.content)) return nested.content as T[];
+    if (Array.isArray(nested.items)) return nested.items as T[];
+  }
+  return [];
+};
+
+const normalizeStats = (value: unknown): DashboardStatsResponseDTO => {
+  const raw = unwrapObject(value);
+  return {
+    totalIssuedToday: toNumber(
+      raw.totalIssuedToday ?? raw.totalIssued ?? raw.totalCertificatesToday,
+    ),
+    revenueToday: toNumber(raw.revenueToday ?? raw.totalRevenueToday),
+    totalArchiveToday: toNumber(raw.totalArchiveToday ?? raw.totalArchivedToday),
+    totalFreeCertsReleaseToday: toNumber(
+      raw.totalFreeCertsReleaseToday ?? raw.totalFreeCertificatesToday,
+    ),
+  };
+};
+
+const normalizeWeeklyTrend = (value: unknown): WeeklyIssuedTrendDTO[] => {
+  const items = unwrapArray<Record<string, unknown>>(value);
+  return items.map((item) => ({
+    date: String(item.date ?? item.label ?? item.day ?? ""),
+    count: toNumber(item.count ?? item.issuanceCount ?? item.totalIssued),
+  }));
+};
+
+const normalizeTopTemplates = (value: unknown): TopTemplateResponseDTO[] => {
+  const items = unwrapArray<Record<string, unknown>>(value);
+  return items.map((item) => ({
+    certificateTitle: String(
+      item.certificateTitle ?? item.certTitle ?? item.templateName ?? "",
+    ),
+    issuanceCount: toNumber(item.issuanceCount ?? item.count ?? item.totalIssued),
+  }));
+};
+
+const normalizeRecentIssued = (value: unknown): RecentRequestResponseDTO[] => {
+  const items = unwrapArray<Record<string, unknown>>(value);
+  return items.map((item) => ({
+    requestorName: String(
+      item.requestorName ?? item.requesterName ?? item.residentName ?? "",
+    ),
+    certificateType: String(
+      item.certificateType ?? item.certTitle ?? item.templateName ?? "",
+    ),
+    date: String(item.date ?? item.dateIssued ?? item.requestedAt ?? ""),
+    status: String(item.status ?? item.certificateStatus ?? "PENDING"),
+  }));
+};
+
+const normalizeIssuedRows = (value: unknown) => {
+  const raw = unwrapObject(value);
+  const list = Array.isArray(raw.content)
+    ? (raw.content as Array<Record<string, unknown>>)
+    : unwrapArray<Record<string, unknown>>(value);
+
+  return list.map((item) => ({
+    id: String(item.id ?? ""),
+    requesterName: String(item.requesterName ?? item.requestorName ?? ""),
+    certificateType: String(
+      item.certificateType ?? item.certTitle ?? item.templateName ?? "",
+    ),
+    dateIssued: String(item.dateIssued ?? item.date ?? item.requestedAt ?? ""),
+    status: String(item.status ?? ""),
+    fee: toNumber(item.fee ?? item.amount ?? item.certFee ?? item.totalFee ?? 0),
+    isFree: (() => {
+      const fee = toNumber(item.fee ?? item.amount ?? item.certFee ?? item.totalFee ?? 0);
+      const rawIsFree = item.isFree;
+      if (typeof rawIsFree === "boolean") {
+        return fee > 0 ? false : rawIsFree;
+      }
+      return fee <= 0;
+    })(),
+    isArchived: Boolean(item.isArchived ?? false),
+  }));
+};
+
+const normalizeSummaryRows = (value: unknown) => {
+  const items = unwrapArray<Record<string, unknown>>(value);
+  return items.map((item) => ({
+    id: toNumber(item.id),
+    certNumber: String(item.certNumber ?? item.certificateNumber ?? ""),
+    requestor: String(item.requestor ?? item.requestorName ?? item.requesterName ?? ""),
+    certificateTitle: String(
+      item.certificateTitle ?? item.certTitle ?? item.templateName ?? "",
+    ),
+    fee: toNumber(item.fee ?? item.amount ?? item.totalFee),
+    status: String(item.status ?? ""),
+    requestedAt: String(item.requestedAt ?? item.dateIssued ?? item.date ?? ""),
+  }));
+};
+
+const normalizeArchiveRows = (value: unknown) => {
+  const items = unwrapArray<Record<string, unknown>>(value);
+  return items.map((item) => ({
+    id: toNumber(item.id),
+    certTitle: String(item.certTitle ?? item.certificateTitle ?? item.templateName ?? ""),
+    status: String(item.status ?? ""),
+    archivedAt: String(
+      item.archivedAt ?? item.archiveDate ?? item.dateArchived ?? item.updatedAt ?? item.date ?? "",
+    ),
+  }));
+};
+
+const normalizeArchiveStats = (value: unknown) => {
+  const raw = unwrapObject(value);
+  return {
+    totalArchiveIssued: toNumber(raw.totalArchiveIssued ?? raw.totalArchivedIssued),
+    totalArchiveTemplate: toNumber(raw.totalArchiveTemplate ?? raw.totalArchivedTemplate),
+  };
+};
+
+const normalizeIssuedStats = (value: unknown) => {
+  const raw = unwrapObject(value);
+  return {
+    totalRevenue: toNumber(raw.totalRevenue),
+  };
+};
+
+const normalizeDailyCollections = (value: unknown) => {
+  const items = unwrapArray<Record<string, unknown>>(value);
+  return items.map((item) => ({
+    date: String(item.date ?? item.label ?? ""),
+    totalCertIssue: toNumber(item.totalCertIssue ?? item.totalIssued ?? item.issuedCount),
+    totalCollections: toNumber(item.totalCollections ?? item.collections ?? item.revenue),
+  }));
+};
+
+const parseDateValue = (value: string): Date | null => {
+  const raw = value.trim();
+  if (!raw) return null;
+
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) {
+    const fromEpoch = new Date(numeric);
+    if (!Number.isNaN(fromEpoch.getTime())) return fromEpoch;
   }
 
+  const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, y, m, d] = dateOnlyMatch;
+    const localDate = new Date(Number(y), Number(m) - 1, Number(d));
+    if (!Number.isNaN(localDate.getTime())) return localDate;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const asDate = (value: string): Date | null => {
+  return parseDateValue(value);
+};
+
+const isSameDate = (value: string, target: Date): boolean => {
+  const parsed = asDate(value);
+  if (!parsed) return false;
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        <KPIGrid columns={4}>
-          <KPICard
-            title="Issued Today"
-            value={numberFormat(stats?.totalIssuedToday)}
-            subtitle="Certificates issued today"
-            color="blue"
-            icon={KPIIcons.issued}
-          />
-          <KPICard
-            title="Revenue Today"
-            value={revenueFormat(stats?.revenueToday)}
-            subtitle="Today's revenue"
-            color="emerald"
-            icon={KPIIcons.revenue}
-          />
-          <KPICard
-            title="Archived Today"
-            value={numberFormat(stats?.totalArchiveToday)}
-            subtitle="Archived certificates"
-            color="rose"
-            icon={KPIIcons.pending}
-          />
-          <KPICard
-            title="Free Certs Released"
-            value={numberFormat(stats?.totalFreeCertsReleaseToday)}
-            subtitle="Free certificates"
-            color="amber"
-            icon={KPIIcons.month}
-          />
-        </KPIGrid>
+    parsed.getFullYear() === target.getFullYear() &&
+    parsed.getMonth() === target.getMonth() &&
+    parsed.getDate() === target.getDate()
+  );
+};
 
-        {/* Weekly Trend Section */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-[15px] font-bold text-gray-700 uppercase tracking-widest mb-4">Weekly Issued Trend</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Issued Count</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {weeklyTrend.length === 0 ? (
-                  <tr>
-                    <td colSpan={2} className="px-5 py-10 text-center text-sm text-gray-500">No trend data to display.</td>
-                  </tr>
-                ) : (
-                  weeklyTrend.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-5 py-4 whitespace-nowrap">{new Date(item.date).toLocaleDateString("en-PH", { dateStyle: "medium" })}</td>
-                      <td className="px-5 py-4 text-center">{numberFormat(item.count)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+const isVoidedStatus = (status: string): boolean => {
+  const normalized = status.trim().toUpperCase();
+  return normalized.includes("VOID") || normalized.includes("CANCEL");
+};
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Recent Issued Certificates</h2>
-                <p className="text-sm text-gray-500 mt-1">Latest certificates issued</p>
-              </div>
-              <button
-                onClick={() => navigate("/clearance/issued-certificates")}
-                className="text-sm font-semibold text-blue-700 hover:text-blue-800 transition-colors"
-              >
-                View All →
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Resident Name</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Certificate Type</th>
-                    <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Date Issued</th>
-                    <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {recentIssued.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center text-sm text-gray-500">No recent certificates to display.</td>
-                    </tr>
-                  ) : (
-                    recentIssued.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-4 whitespace-nowrap">{item.requestorName}</td>
-                        <td className="px-5 py-4">{item.certificateType}</td>
-                        <td className="px-5 py-4 text-center">{new Date(item.date).toLocaleDateString("en-PH", { dateStyle: "medium" })}</td>
-                        <td className="px-5 py-4 text-center">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === "Issued" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+const pickMetric = (primary: number, fallback: number): number =>
+  primary > 0 ? primary : fallback;
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">Top Certificates</h3>
-            <div className="space-y-5">
-              {topTemplates.length > 0 ? (
-                topTemplates.map((cert, index) => {
-                  const maxCount = Math.max(...topTemplates.map((c) => c.issuanceCount));
-                  const percentage = (cert.issuanceCount / maxCount) * 100;
-                  return (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-semibold text-gray-700">{cert.certificateTitle}</span>
-                        <span className="font-bold text-blue-600">{cert.issuanceCount}</span>
-                      </div>
-                      <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${percentage}%` }} />
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-xs text-gray-400 text-center py-4">No data available</p>
-              )}
-=======
-  ResponsiveTable,
-  type ColumnDef,
-} from "../../reusable";
-import { LoadingModal } from "../../reusable";
-import {
-  type ClearanceStats,
-  fetchClearanceStats,
-  type RecentCertificate,
-  fetchRecentCertificates,
-  type TopCertificateType,
-  fetchTopCertificateTypes,
-} from "../../clearance-api/dashboard-api";
-import { LayoutList, Plus } from "lucide-react";
+const formatDateYmd = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const deriveTopFromSummary = (
+  rows: Array<{ certificateTitle: string; status: string }>,
+): TopTemplateResponseDTO[] => {
+  const grouped = new Map<string, number>();
+  rows.forEach((row) => {
+    if (!row.certificateTitle || isVoidedStatus(row.status)) return;
+    grouped.set(row.certificateTitle, (grouped.get(row.certificateTitle) ?? 0) + 1);
+  });
+
+  return [...grouped.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([certificateTitle, issuanceCount]) => ({ certificateTitle, issuanceCount }));
+};
+
+const deriveTrendFromSummary = (
+  rows: Array<{ requestedAt: string; status: string }>,
+): WeeklyIssuedTrendDTO[] => {
+  const today = new Date();
+  const days: Date[] = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+
+  const counts = new Map<string, number>(
+    days.map((d) => [formatDateYmd(d), 0]),
+  );
+
+  rows.forEach((row) => {
+    if (isVoidedStatus(row.status)) return;
+    const parsed = asDate(row.requestedAt);
+    if (!parsed) return;
+    const key = formatDateYmd(parsed);
+    if (counts.has(key)) {
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  });
+
+  return days.map((d) => {
+    const key = formatDateYmd(d);
+    return { date: key, count: counts.get(key) ?? 0 };
+  });
+};
+
+const deriveRecentFromSummary = (
+  rows: Array<{
+    requestor: string;
+    certificateTitle: string;
+    requestedAt: string;
+    status: string;
+  }>,
+): RecentRequestResponseDTO[] => {
+  return [...rows]
+    .sort((a, b) => {
+      const ad = asDate(a.requestedAt)?.getTime() ?? 0;
+      const bd = asDate(b.requestedAt)?.getTime() ?? 0;
+      return bd - ad;
+    })
+    .slice(0, 10)
+    .map((row) => ({
+      requestorName: row.requestor,
+      certificateType: row.certificateTitle,
+      date: row.requestedAt,
+      status: row.status || "PENDING",
+    }));
+};
+
+const deriveTopFromIssued = (
+  rows: Array<{ certificateType: string; status: string; isArchived: boolean }>,
+): TopTemplateResponseDTO[] => {
+  const grouped = new Map<string, number>();
+  rows.forEach((row) => {
+    if (!row.certificateType || row.isArchived || isVoidedStatus(row.status)) return;
+    grouped.set(row.certificateType, (grouped.get(row.certificateType) ?? 0) + 1);
+  });
+
+  return [...grouped.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([certificateTitle, issuanceCount]) => ({ certificateTitle, issuanceCount }));
+};
+
+const deriveTrendFromIssued = (
+  rows: Array<{ dateIssued: string; status: string; isArchived: boolean }>,
+): WeeklyIssuedTrendDTO[] => {
+  const today = new Date();
+  const days: Date[] = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+
+  const counts = new Map<string, number>(days.map((d) => [formatDateYmd(d), 0]));
+
+  rows.forEach((row) => {
+    if (row.isArchived || isVoidedStatus(row.status)) return;
+    const parsed = asDate(row.dateIssued);
+    if (!parsed) return;
+    const key = formatDateYmd(parsed);
+    if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+
+  return days.map((d) => ({ date: formatDateYmd(d), count: counts.get(formatDateYmd(d)) ?? 0 }));
+};
+
+const deriveRecentFromIssued = (
+  rows: Array<{
+    requesterName: string;
+    certificateType: string;
+    dateIssued: string;
+    status: string;
+    isArchived: boolean;
+  }>,
+): RecentRequestResponseDTO[] => {
+  return [...rows]
+    .filter((row) => !row.isArchived)
+    .sort((a, b) => {
+      const ad = asDate(a.dateIssued)?.getTime() ?? 0;
+      const bd = asDate(b.dateIssued)?.getTime() ?? 0;
+      return bd - ad;
+    })
+    .slice(0, 10)
+    .map((row) => ({
+      requestorName: row.requesterName,
+      certificateType: row.certificateType,
+      date: row.dateIssued,
+      status: row.status || "PENDING",
+    }));
+};
+
+function SectionCard({
+  title,
+  subtitle,
+  className,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`bg-white rounded-lg border border-gray-200 p-5 ${className || ""}`}>
+      <div className="mb-5">
+        <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+        {subtitle ? <p className="text-sm text-gray-500 mt-1">{subtitle}</p> : null}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export const ClearanceDashboard = () => {
-  const [kpiData, setKpiData] = React.useState<ClearanceStats | null>(null);
-  const [recentCerts, setRecentCerts] = React.useState<RecentCertificate[]>([]);
-  const [topCertTypes, setTopCertTypes] = React.useState<TopCertificateType[]>(
+  const [kpiData, setKpiData] = React.useState<DashboardStatsResponseDTO | null>(
+    null,
+  );
+  const [recentCerts, setRecentCerts] = React.useState<RecentRequestResponseDTO[]>(
+    [],
+  );
+  const [topCertTypes, setTopCertTypes] = React.useState<TopTemplateResponseDTO[]>(
+    [],
+  );
+  const [weeklyTrend, setWeeklyTrend] = React.useState<WeeklyIssuedTrendDTO[]>(
     [],
   );
   const [loading, setLoading] = React.useState(true);
+  const [errorMessage, setErrorMessage] = React.useState("");
 
-  //revenue formatter
+  const navigate = useNavigate();
+
   const revenueFormatted = new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
-    minimumFractionDigits: 2,
-  }).format(kpiData?.TotalRevenue || 0);
+  }).format(kpiData?.revenueToday || 0);
 
-  //number formatter
   const numberFormatted = (num: number) =>
     new Intl.NumberFormat("en-US").format(num);
 
-  //navigation
-  const navigate = useNavigate();
-
-  //table
-  const columns: ColumnDef<RecentCertificate>[] = [
-    { header: "Resident Name", accessorKey: "name" },
-    { header: "Certificate Type", accessorKey: "type" },
+  const columns: ColumnDef<RecentRequestResponseDTO>[] = [
+    { header: "Resident Name", accessorKey: "requestorName" },
+    { header: "Certificate Type", accessorKey: "certificateType" },
     {
       header: "Date Issued",
-      render: (row) =>
-        new Intl.DateTimeFormat("en-PH", {
-          dateStyle: "medium",
-        }).format(new Date(row.dateIssued)),
+      render: (row) => {
+        const parsed = asDate(row.date);
+        return parsed
+          ? parsed.toLocaleDateString("en-PH")
+          : row.date || "-";
+      },
     },
     {
       header: "Status",
-      render: () => (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
-          Issued
-        </span>
-      ),
+      render: (row) => {
+        const normalizedStatus = String(row.status || "").trim().toUpperCase();
+        const isReleased = normalizedStatus.includes("RELEASE") || normalizedStatus === "ISSUED";
+
+        return (
+          <span
+            className={`px-2 py-1 text-xs rounded border ${
+              isReleased
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-amber-50 text-amber-700 border-amber-200"
+            }`}
+          >
+            {row.status}
+          </span>
+        );
+      },
     },
   ];
 
-  // Fetching api
   useEffect(() => {
-    const loadAllData = async () => {
+    const load = async () => {
       setLoading(true);
+      setErrorMessage("");
       try {
-        const [stats, certs, topTypes] = await Promise.all([
-          fetchClearanceStats(),
-          fetchRecentCertificates(),
-          fetchTopCertificateTypes(),
+        const today = new Date();
+        const todayYmd = formatDateYmd(today);
+
+        const [
+          stats,
+          certs,
+          top,
+          trend,
+          summary,
+          archives,
+          archiveStats,
+          dailyCollections,
+          issuedList,
+          issuedStats,
+          templateOptions,
+        ] = await Promise.allSettled([
+          clearanceDashboardApi.getStats(),
+          clearanceDashboardApi.getRecentIssued(),
+          clearanceDashboardApi.getTopTemplates(),
+          clearanceDashboardApi.getWeeklyTrend(),
+          clearanceTemplateApi.getSummaryTable(),
+          clearanceTemplateApi.getAllArchives(),
+          clearanceTemplateApi.getArchiveStats(),
+          revenueApi.getDailyCollections(todayYmd, todayYmd),
+          fetchIssuedCertificates(0, 500),
+          fetchIssuedStats(),
+          fetchTemplateOptionsWithStatus(),
         ]);
 
-        setKpiData(stats);
-        setRecentCerts(certs);
-        setTopCertTypes(topTypes);
-      } catch (error) {
-        console.error("Error loading dashboard:", error);
+        const failedSections: string[] = [];
+        const summaryRows =
+          summary.status === "fulfilled" ? normalizeSummaryRows(summary.value) : [];
+        const archiveRows =
+          archives.status === "fulfilled" ? normalizeArchiveRows(archives.value) : [];
+        const archiveStatRow =
+          archiveStats.status === "fulfilled"
+            ? normalizeArchiveStats(archiveStats.value)
+            : { totalArchiveIssued: 0, totalArchiveTemplate: 0 };
+        const dailyRows =
+          dailyCollections.status === "fulfilled"
+            ? normalizeDailyCollections(dailyCollections.value)
+            : [];
+        const issuedRows =
+          issuedList.status === "fulfilled" ? normalizeIssuedRows(issuedList.value) : [];
+        const issuedStatsRow =
+          issuedStats.status === "fulfilled"
+            ? normalizeIssuedStats(issuedStats.value)
+            : { totalRevenue: 0 };
+        const archivedTemplateCountFromOptions =
+          templateOptions.status === "fulfilled"
+            ? templateOptions.value.filter((option) => option.isArchived).length
+            : 0;
+
+        const issuedTodayFallbackFromSummary = summaryRows.filter(
+          (row) => isSameDate(row.requestedAt, today) && !isVoidedStatus(row.status),
+        ).length;
+        const issuedTodayFallbackFromIssued = issuedRows.filter(
+          (row) =>
+            isSameDate(row.dateIssued, today) &&
+            !isVoidedStatus(row.status),
+        ).length;
+        const freeTodayFallbackFromSummary = summaryRows.filter(
+          (row) =>
+            isSameDate(row.requestedAt, today) &&
+            !isVoidedStatus(row.status) &&
+            row.fee <= 0,
+        ).length;
+        const freeTodayFallbackFromIssued = issuedRows.filter(
+          (row) =>
+            isSameDate(row.dateIssued, today) &&
+            !row.isArchived &&
+            !isVoidedStatus(row.status) &&
+            (row.isFree || row.fee <= 0),
+        ).length;
+        const revenueTodayFallbackFromSummary = summaryRows
+          .filter(
+            (row) => isSameDate(row.requestedAt, today) && !isVoidedStatus(row.status),
+          )
+          .reduce((sum, row) => sum + row.fee, 0);
+        const revenueTodayFallbackFromIssued = issuedRows
+          .filter(
+            (row) =>
+              isSameDate(row.dateIssued, today) &&
+              !row.isArchived &&
+              !isVoidedStatus(row.status),
+          )
+          .reduce((sum, row) => sum + row.fee, 0);
+        const totalRevenueFallbackFromIssued = issuedRows
+          .filter((row) => !row.isArchived && !isVoidedStatus(row.status))
+          .reduce((sum, row) => sum + row.fee, 0);
+
+        const dailyToday = dailyRows.filter((row) => isSameDate(row.date, today));
+        const issuedTodayFallbackFromDaily = dailyToday.reduce(
+          (sum, row) => sum + row.totalCertIssue,
+          0,
+        );
+        const revenueTodayFallbackFromDaily = dailyToday.reduce(
+          (sum, row) => sum + row.totalCollections,
+          0,
+        );
+        const archivedTodayFallbackFromArchives = archiveRows.filter((row) =>
+          isSameDate(row.archivedAt, today),
+        ).length;
+        const archivedTodayFallbackFromIssued = issuedRows.filter(
+          (row) => row.isArchived && isSameDate(row.dateIssued, today),
+        ).length;
+        const archivedIssuedTotalFromRows = issuedRows.filter((row) => row.isArchived).length;
+        const archivedIssuedTotalFromArchiveTable = archiveRows.length;
+        const archivedIssuedTotal = Math.max(
+          archiveStatRow.totalArchiveIssued,
+          archivedIssuedTotalFromRows,
+          archivedIssuedTotalFromArchiveTable,
+        );
+        const archivedTemplateTotal = Math.max(
+          archivedTemplateCountFromOptions,
+          archiveStatRow.totalArchiveTemplate,
+        );
+        const archivedTotalFallback = archivedIssuedTotal + archivedTemplateTotal;
+
+        const fallbackKpi: DashboardStatsResponseDTO = {
+          totalIssuedToday:
+            issuedTodayFallbackFromSummary > 0
+              ? issuedTodayFallbackFromSummary
+              : issuedTodayFallbackFromIssued > 0
+                ? issuedTodayFallbackFromIssued
+                : issuedTodayFallbackFromDaily,
+          revenueToday:
+            revenueTodayFallbackFromDaily > 0
+              ? revenueTodayFallbackFromDaily
+              : revenueTodayFallbackFromSummary > 0
+                ? revenueTodayFallbackFromSummary
+                : revenueTodayFallbackFromIssued > 0
+                  ? revenueTodayFallbackFromIssued
+                  : totalRevenueFallbackFromIssued > 0
+                    ? totalRevenueFallbackFromIssued
+                    : issuedStatsRow.totalRevenue,
+          totalArchiveToday:
+            archivedTodayFallbackFromArchives > 0 || archivedTodayFallbackFromIssued > 0
+              ? archivedTodayFallbackFromArchives + archivedTodayFallbackFromIssued
+              : archivedTotalFallback,
+          totalFreeCertsReleaseToday:
+            freeTodayFallbackFromSummary > 0
+              ? freeTodayFallbackFromSummary
+              : freeTodayFallbackFromIssued,
+        };
+
+        const derivedRecent = deriveRecentFromSummary(summaryRows);
+        const derivedTop = deriveTopFromSummary(summaryRows);
+        const derivedTrend = deriveTrendFromSummary(summaryRows);
+        const derivedRecentFromIssued = deriveRecentFromIssued(issuedRows);
+        const derivedTopFromIssued = deriveTopFromIssued(issuedRows);
+        const derivedTrendFromIssued = deriveTrendFromIssued(issuedRows);
+
+        if (summary.status === "rejected") failedSections.push("summary table");
+        if (archives.status === "rejected") failedSections.push("archive table");
+        if (archiveStats.status === "rejected") failedSections.push("archive stats");
+        if (dailyCollections.status === "rejected") failedSections.push("daily collections");
+        if (issuedList.status === "rejected") failedSections.push("issued records");
+        if (issuedStats.status === "rejected") failedSections.push("issued stats");
+        if (templateOptions.status === "rejected") failedSections.push("template options");
+
+        if (stats.status === "fulfilled") {
+          const normalizedStats = normalizeStats(stats.value);
+          setKpiData({
+            totalIssuedToday: pickMetric(
+              normalizedStats.totalIssuedToday,
+              fallbackKpi.totalIssuedToday,
+            ),
+            revenueToday: pickMetric(normalizedStats.revenueToday, fallbackKpi.revenueToday),
+            totalArchiveToday: pickMetric(
+              normalizedStats.totalArchiveToday,
+              fallbackKpi.totalArchiveToday,
+            ),
+            totalFreeCertsReleaseToday: pickMetric(
+              normalizedStats.totalFreeCertsReleaseToday,
+              fallbackKpi.totalFreeCertsReleaseToday,
+            ),
+          });
+        } else {
+          setKpiData(fallbackKpi);
+          failedSections.push("stats");
+        }
+
+        if (certs.status === "fulfilled") {
+          const normalizedRecent = normalizeRecentIssued(certs.value);
+          setRecentCerts(
+            normalizedRecent.length > 0
+              ? normalizedRecent
+              : derivedRecent.length > 0
+                ? derivedRecent
+                : derivedRecentFromIssued,
+          );
+        } else {
+          setRecentCerts(derivedRecent.length > 0 ? derivedRecent : derivedRecentFromIssued);
+          failedSections.push("recent issued");
+        }
+
+        if (top.status === "fulfilled") {
+          const normalizedTop = normalizeTopTemplates(top.value);
+          setTopCertTypes(
+            normalizedTop.length > 0
+              ? normalizedTop
+              : derivedTop.length > 0
+                ? derivedTop
+                : derivedTopFromIssued,
+          );
+        } else {
+          setTopCertTypes(derivedTop.length > 0 ? derivedTop : derivedTopFromIssued);
+          failedSections.push("top templates");
+        }
+
+        if (trend.status === "fulfilled") {
+          const normalizedTrend = normalizeWeeklyTrend(trend.value);
+          setWeeklyTrend(
+            normalizedTrend.length > 0
+              ? normalizedTrend
+              : derivedTrend.some((row) => row.count > 0)
+                ? derivedTrend
+                : derivedTrendFromIssued,
+          );
+        } else {
+          setWeeklyTrend(
+            derivedTrend.some((row) => row.count > 0) ? derivedTrend : derivedTrendFromIssued,
+          );
+          failedSections.push("weekly trend");
+        }
+
+        if (failedSections.length > 0) {
+          const totalSections = 11;
+          setErrorMessage(
+            failedSections.length >= totalSections
+              ? "Unable to load dashboard data. Please try again."
+              : `Some dashboard sections failed to load: ${failedSections.join(", ")}.`,
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load clearance dashboard", err);
+        setErrorMessage("Unable to load all dashboard data. Showing available data.");
       } finally {
         setLoading(false);
       }
     };
 
-    loadAllData();
+    load();
   }, []);
 
-  if (loading)
-    return <LoadingModal isOpen={true} message="Loading dashboard data..." />;
+  if (loading) return <LoadingModal isOpen message="Loading dashboard..." />;
 
   return (
-    <div className="p-4 w-full">
-      <div className="max-w-[1600px] mx-auto w-full space-y-6">
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        {errorMessage && (
+          <div className="bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-4 py-3 text-sm">
+            {errorMessage}
+          </div>
+        )}
+
         <KPIGrid columns={4}>
           <KPICard
             title="Issued Today"
-            value={numberFormatted(kpiData?.IssuedToday || 0)}
+            value={numberFormatted(kpiData?.totalIssuedToday || 0)}
             icon={KPIIcons.issued}
             color="amber"
-            subtitle="Certificates issued"
+            subtitle="Certificates issued today"
           />
           <KPICard
-            title="This Month"
-            value={numberFormatted(kpiData?.IssuedThisMonth || 0)}
-            icon={KPIIcons.month}
-            color="emerald"
-            subtitle="Certificate issued"
-          />
-          <KPICard
-            title="Total Revenue"
+            title="Revenue"
             value={revenueFormatted}
             icon={KPIIcons.revenue}
             color="blue"
-            trend={
-              kpiData
-                ? {
-                    value: `${kpiData.RevenueGrowth}%`,
-                    direction: kpiData.RevenueDirection,
-                    label: "vs last month",
-                  }
-                : undefined
-            }
+            subtitle="Today, with fallback from issued records"
           />
           <KPICard
-            title="Pending Requests"
-            value={numberFormatted(kpiData?.PendingRequests || 0)}
+            title="Archived Records"
+            value={numberFormatted(kpiData?.totalArchiveToday || 0)}
+            icon={KPIIcons.month}
+            color="emerald"
+            subtitle="Archived certificates and templates"
+          />
+          <KPICard
+            title="Free Certificates"
+            value={numberFormatted(kpiData?.totalFreeCertsReleaseToday || 0)}
             icon={KPIIcons.pending}
             color="rose"
-            subtitle="Pending clearance requests"
+            subtitle="Released free certificates"
           />
         </KPIGrid>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-8">
-            <ResponsiveTable
-              title="Recent Issued Certificates"
-              data={recentCerts}
-              columns={columns}
-              onViewAll={() => navigate("/clearance/issued-certificates")}
-              onRowClick={(item) => alert(`Viewing ${item.name}`)}
-            />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <SectionCard
+            title="Issuance Trend (Weekly)"
+            subtitle="Daily clearance issuance count"
+            className="lg:col-span-8"
+          >
+            <div className="h-64">
+              {weeklyTrend.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-gray-500">
+                  No issuance trend data available.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) =>
+                        new Date(value).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      }
+                      fontSize={12}
+                    />
+                    <YAxis allowDecimals={false} fontSize={12} />
+                    <Tooltip
+                      formatter={(value) => [numberFormatted(Number(value)), "Issued"]}
+                      labelFormatter={(value) =>
+                        new Date(value).toLocaleDateString("en-PH", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      }
+                    />
+                    <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} barSize={36} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </SectionCard>
 
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4">
-                Quick Actions
-              </h3>
-
-              <div className="flex flex-col gap-2.5">
-                <button
-                  className="group w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 px-4 rounded-xl flex items-center justify-between transition-all active:scale-[0.98] shadow-sm shadow-blue-100"
-                  onClick={() => navigate("/clearance/issue-certificate")}
-                >
-                  <div className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    <span>Issue Certificate</span>
+          <div className="bg-white rounded-lg border border-gray-200 lg:col-span-4 flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Top Certificates</h3>
+              <p className="text-sm text-gray-500 mt-1">Most frequently issued templates</p>
+            </div>
+            <div className="p-5 space-y-3 flex-1">
+              {topCertTypes.length === 0 ? (
+                <p className="text-sm text-gray-500">No top template data available.</p>
+              ) : (
+                topCertTypes.map((item, index) => (
+                  <div
+                    key={`${item.certificateTitle}-${index}`}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="text-sm text-gray-700 truncate">{item.certificateTitle}</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {numberFormatted(item.issuanceCount)}
+                    </span>
                   </div>
-                </button>
-
-                <button
-                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-semibold py-2.5 px-4 rounded-xl flex items-center gap-2 transition-all active:scale-[0.98] border border-transparent hover:border-slate-200"
-                  onClick={() => navigate("/clearance/issued-certificates")}
-                >
-                  <LayoutList className="w-4 h-4 text-slate-400" />
-                  <span>View All Records</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">
-                Top Certificates
-              </h3>
-              <div className="space-y-5">
-                {topCertTypes.length > 0 ? (
-                  topCertTypes.map((cert, index) => {
-                    const maxCount = Math.max(
-                      ...topCertTypes.map((c) => c.count),
-                    );
-                    const percentage = (cert.count / maxCount) * 100;
-                    return (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-semibold text-gray-700">
-                            {cert.type}
-                          </span>
-                          <span className="font-bold text-blue-600">
-                            {cert.count}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-blue-500 h-full rounded-full transition-all duration-1000"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-xs text-gray-400 text-center py-4">
-                    No data available
-                  </p>
-                )}
-              </div>
->>>>>>> 09c4e5e5c7b9a3bb84a9c7ef1c538cee62fe5905
+                ))
+              )}
             </div>
           </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="p-5 border-b border-gray-200 flex justify-between items-center">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Recent Issued Certificates</h3>
+              <p className="text-sm text-gray-500 mt-1">Latest certificate records from clearance API</p>
+            </div>
+            <button
+              className="text-sm font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1"
+              onClick={() => navigate("/clearance/issued-certificates")}
+            >
+              View All <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          <ResponsiveTable
+            title=""
+            data={recentCerts}
+            columns={columns}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-<<<<<<< HEAD
 export default ClearanceDashboard;
-=======
-export default ClearanceDashboard;
->>>>>>> 09c4e5e5c7b9a3bb84a9c7ef1c538cee62fe5905
