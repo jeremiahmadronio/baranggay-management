@@ -8,13 +8,49 @@ export type { IssuedStats, IssuedCertificate, PagedResponse };
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const API_BASE_URL = "/api/clearance";
+const MOCK_ISSUED_STORAGE_KEY = "clearance.mockIssuedCertificates";
+
+const toLocalDateTimeString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+};
+
+const readStoredMockIssuedCertificates = (): IssuedCertificate[] => {
+  try {
+    const raw = localStorage.getItem(MOCK_ISSUED_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as IssuedCertificate[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredMockIssuedCertificates = (rows: IssuedCertificate[]) => {
+  try {
+    localStorage.setItem(MOCK_ISSUED_STORAGE_KEY, JSON.stringify(rows));
+  } catch {
+    // ignore local storage errors in fallback mode
+  }
+};
+
+const getMockIssuedCertificates = (): IssuedCertificate[] => {
+  const stored = readStoredMockIssuedCertificates();
+  if (stored.length > 0) return stored;
+  return [...MOCK_ISSUED_CERTIFICATES];
+};
 
 const MOCK_STATS: IssuedStats = {
-  totalIssued: 150,
-  totalRevenue: 7500,
-  totalFreeCertificates: 50,
-  totalPaidCertificates: 100,
-  revenueGrowth: 5,
+  totalIssued: 0,
+  totalRevenue: 0,
+  totalFreeCertificates: 0,
+  totalPaidCertificates: 0,
+  revenueGrowth: 0,
   revenueDirection: "up",
 };
 
@@ -22,142 +58,7 @@ const MOCK_STATS: IssuedStats = {
 // MOCK DATA - Table (matches DB schema: issued_certificates + JOINs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const MOCK_ISSUED_CERTIFICATES: IssuedCertificate[] = [
-  {
-    id: "a1b2c3d4-1111-1111-1111-111111111111",
-    templateId: 1,
-    certificateType: "Barangay Clearance",
-    requesterName: "Jeremiah Madronio",
-    isFree: false,
-    dateIssued: "2024-06-01",
-    status: "Released",
-    issuedBy: "Admin",
-    fee: 50,
-    orNumber: "OR-2024-0001",
-  },
-  {
-    id: "a1b2c3d4-2222-2222-2222-222222222222",
-    templateId: 4,
-    certificateType: "First Time Job Seeker",
-    requesterName: "Jere Madronio",
-    isFree: true,
-    dateIssued: "2024-06-02",
-    status: "Released",
-    issuedBy: "Admin",
-  },
-  {
-    id: "a1b2c3d4-3333-3333-3333-333333333333",
-    templateId: 1,
-    certificateType: "Barangay Clearance",
-    requesterName: "Jer Madronio",
-    isFree: false,
-    dateIssued: "2024-06-03",
-    status: "Pending",
-    issuedBy: "",
-  },
-  {
-    id: "a1b2c3d4-4444-4444-4444-444444444444",
-    templateId: 1,
-    certificateType: "Barangay Clearance",
-    requesterName: "Jerem Madronio",
-    isFree: false,
-    dateIssued: "2024-06-04",
-    status: "Released",
-    issuedBy: "Admin",
-    fee: 50,
-    orNumber: "OR-2024-0004",
-  },
-  {
-    id: "a1b2c3d4-5555-5555-5555-555555555555",
-    templateId: 2,
-    certificateType: "Certificate of Indigency",
-    requesterName: "Jane Doe",
-    isFree: true,
-    dateIssued: "2024-06-05",
-    status: "Released",
-    issuedBy: "Admin",
-  },
-  {
-    id: "a1b2c3d4-6666-6666-6666-666666666666",
-    templateId: 4,
-    certificateType: "First Time Job Seeker",
-    requesterName: "John Smith",
-    isFree: true,
-    dateIssued: "2024-06-06",
-    status: "Pending",
-    issuedBy: "",
-  },
-  {
-    id: "a1b2c3d4-7777-7777-7777-777777777777",
-    templateId: 5,
-    certificateType: "Tricycle Registration",
-    requesterName: "Alice Johnson",
-    isFree: false,
-    dateIssued: "2024-06-07",
-    status: "Released",
-    issuedBy: "Admin",
-    fee: 100,
-    orNumber: "OR-2024-0007",
-  },
-  {
-    id: "a1b2c3d4-8888-8888-8888-888888888888",
-    templateId: 6,
-    certificateType: "Tricycle Registration Unit",
-    requesterName: "Bob Brown",
-    isFree: false,
-    dateIssued: "2024-06-08",
-    status: "Released",
-    issuedBy: "Admin",
-    fee: 150,
-    orNumber: "OR-2024-0008",
-  },
-  {
-    id: "a1b2c3d4-9999-9999-9999-999999999999",
-    templateId: 9,
-    certificateType: "Working Clearance",
-    requesterName: "Charlie Davis",
-    isFree: true,
-    dateIssued: "2024-06-09",
-    status: "Pending",
-    issuedBy: "",
-  },
-  {
-    id: "a1b2c3d4-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-    templateId: 7,
-    certificateType: "Certificate of Improvement",
-    requesterName: "Diana Evans",
-    isFree: false,
-    dateIssued: "2024-06-10",
-    status: "Released",
-    issuedBy: "Admin",
-    fee: 100,
-    orNumber: "OR-2024-0010",
-  },
-  {
-    id: "a1b2c3d4-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-    templateId: 3,
-    certificateType: "Certificate of Residency",
-    requesterName: "Eduardo Franco",
-    isFree: false,
-    dateIssued: "2024-06-11",
-    status: "Released",
-    issuedBy: "Admin",
-    fee: 30,
-    orNumber: "OR-2024-0011",
-  },
-  {
-    id: "a1b2c3d4-cccc-cccc-cccc-cccccccccccc",
-    templateId: 8,
-    certificateType: "Technical Permit",
-    requesterName: "Fiona Garcia",
-    isFree: false,
-    dateIssued: "2024-06-12",
-    status: "Released",
-    issuedBy: "Admin",
-    fee: 100,
-    orNumber: "OR-2024-0012",
-  },
-];
+const MOCK_ISSUED_CERTIFICATES: IssuedCertificate[] = [];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // API FUNCTIONS
@@ -173,7 +74,18 @@ export const fetchIssuedStats = async (): Promise<IssuedStats> => {
     return await response.json();
   } catch (error) {
     console.warn("API unavailable, using mock data:", error);
-    return MOCK_STATS;
+    const rows = getMockIssuedCertificates().filter((c) => !c.isArchived);
+    const paidRows = rows.filter((c) => !c.isFree);
+    const freeRows = rows.filter((c) => c.isFree);
+    const totalRevenue = paidRows.reduce((sum, c) => sum + (c.fee || 0), 0);
+
+    return {
+      ...MOCK_STATS,
+      totalIssued: rows.length,
+      totalRevenue,
+      totalFreeCertificates: freeRows.length,
+      totalPaidCertificates: paidRows.length,
+    };
   }
 };
 
@@ -215,7 +127,7 @@ export const fetchIssuedCertificates = async (
     console.warn("API unavailable, using mock data:", error);
 
     // Filter mock data
-    let filtered = [...MOCK_ISSUED_CERTIFICATES];
+    let filtered = getMockIssuedCertificates();
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter(
@@ -260,7 +172,7 @@ export const fetchIssuedCertificateById = async (
     return await response.json();
   } catch (error) {
     console.warn("API unavailable, using mock data:", error);
-    return MOCK_ISSUED_CERTIFICATES.find((c) => c.id === id) || null;
+    return getMockIssuedCertificates().find((c) => c.id === id) || null;
   }
 };
 
@@ -281,18 +193,18 @@ export const voidCertificate = async (
     return await response.json();
   } catch (error) {
     console.warn("API unavailable, using mock void:", error);
-    const cert = MOCK_ISSUED_CERTIFICATES.find((c) => c.id === id);
+    const rows = getMockIssuedCertificates();
+    const cert = rows.find((c) => c.id === id);
     if (!cert) throw new Error("Certificate not found");
     const voided: IssuedCertificate = {
       ...cert,
       status: "Voided",
       voidReason: reason,
-      voidedAt: new Date().toISOString(),
+      voidedAt: toLocalDateTimeString(new Date()),
       voidedBy: "Admin",
     };
-    // Update mock data in-place for demo
-    const idx = MOCK_ISSUED_CERTIFICATES.findIndex((c) => c.id === id);
-    if (idx >= 0) MOCK_ISSUED_CERTIFICATES[idx] = voided;
+    const updatedRows = rows.map((item) => (item.id === id ? voided : item));
+    writeStoredMockIssuedCertificates(updatedRows);
     return voided;
   }
 };
@@ -318,17 +230,18 @@ export const archiveIssuedCertificate = async (
     return await response.json();
   } catch (error) {
     console.warn("API unavailable, using mock archive:", error);
-    const cert = MOCK_ISSUED_CERTIFICATES.find((c) => c.id === id);
+    const rows = getMockIssuedCertificates();
+    const cert = rows.find((c) => c.id === id);
     if (!cert) throw new Error("Certificate not found");
     const archived: IssuedCertificate = {
       ...cert,
       isArchived: true,
       archiveReason: reason,
-      archivedAt: new Date().toISOString(),
+      archivedAt: toLocalDateTimeString(new Date()),
       archivedBy: "Admin",
     };
-    const idx = MOCK_ISSUED_CERTIFICATES.findIndex((c) => c.id === id);
-    if (idx >= 0) MOCK_ISSUED_CERTIFICATES[idx] = archived;
+    const updatedRows = rows.map((item) => (item.id === id ? archived : item));
+    writeStoredMockIssuedCertificates(updatedRows);
     return archived;
   }
 };
@@ -348,7 +261,8 @@ export const restoreIssuedCertificate = async (
     return await response.json();
   } catch (error) {
     console.warn("API unavailable, using mock restore:", error);
-    const cert = MOCK_ISSUED_CERTIFICATES.find((c) => c.id === id);
+    const rows = getMockIssuedCertificates();
+    const cert = rows.find((c) => c.id === id);
     if (!cert) throw new Error("Certificate not found");
     const restored: IssuedCertificate = {
       ...cert,
@@ -357,8 +271,8 @@ export const restoreIssuedCertificate = async (
       archivedAt: undefined,
       archivedBy: undefined,
     };
-    const idx = MOCK_ISSUED_CERTIFICATES.findIndex((c) => c.id === id);
-    if (idx >= 0) MOCK_ISSUED_CERTIFICATES[idx] = restored;
+    const updatedRows = rows.map((item) => (item.id === id ? restored : item));
+    writeStoredMockIssuedCertificates(updatedRows);
     return restored;
   }
 };

@@ -7,7 +7,6 @@ import {
   ChevronUp,
   Printer,
   AlertCircle,
-  CheckCircle,
   type LucideIcon,
   FileText,
   User,
@@ -33,7 +32,11 @@ import {
   clearanceTemplateApi,
   type TemplateRequestDTO,
 } from "../../../service/clearance-api/Template";
-import { invalidateTemplateCache } from "../../../clearance-api/template-api";
+import {
+  invalidateTemplateCache,
+  registerCreatedTemplateLocally,
+} from "../../../clearance-api/template-api";
+import { ActionModal, ConfirmModal } from "../../../reusable";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AVAILABLE FIELDS (user picks from these)
@@ -123,6 +126,12 @@ const ALL_FIELD_GROUPS: {
   { label: "Vehicle (Tricycle)", icon: Car, fields: AVAILABLE_VEHICLE_FIELDS },
 ];
 
+const MAX_BODY_SECTIONS = 6;
+const MAX_TITLE_LENGTH = 80;
+const MAX_SIGNATORY_NAME_LENGTH = 80;
+const MAX_SIGNATORY_POSITION_LENGTH = 60;
+const MAX_SELECTED_FIELDS = 16;
+
 
 
 export default function CreateTemplate() {
@@ -157,6 +166,31 @@ export default function CreateTemplate() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [isCreateConfirmOpen, setIsCreateConfirmOpen] = useState(false);
+  const [actionModal, setActionModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "danger" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success",
+  });
+
+  const showActionModal = (
+    title: string,
+    message: string,
+    type: "success" | "danger" | "info" = "success",
+  ) => {
+    setActionModal({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["design", "title", "body", "fields"]),
@@ -175,13 +209,30 @@ export default function CreateTemplate() {
     setSelectedFields((prev) => {
       const next = new Set(prev);
       if (next.has(fieldName)) next.delete(fieldName);
-      else next.add(fieldName);
+      else if (next.size < MAX_SELECTED_FIELDS) next.add(fieldName);
+      else {
+        setNotification({
+          message: `Maximum of ${MAX_SELECTED_FIELDS} issue fields only.`,
+          type: "error",
+        });
+        setTimeout(() => setNotification(null), 3000);
+      }
       return next;
     });
   }, []);
 
   // --- Body section handlers ---
-  const addBodySection = () => setBodySections((prev) => [...prev, ""]);
+  const addBodySection = () => {
+    if (bodySections.length >= MAX_BODY_SECTIONS) {
+      setNotification({
+        message: `Maximum of ${MAX_BODY_SECTIONS} body sections only.`,
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+    setBodySections((prev) => [...prev, ""]);
+  };
   const removeBodySection = (index: number) => {
     if (bodySections.length <= 1) return;
     setBodySections((prev) => prev.filter((_, i) => i !== index));
@@ -263,6 +314,69 @@ export default function CreateTemplate() {
       return;
     }
 
+    if (title.trim().length > MAX_TITLE_LENGTH) {
+      setNotification({
+        message: `Certificate title should not exceed ${MAX_TITLE_LENGTH} characters.`,
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (bodySections.some((section) => !section.trim())) {
+      setNotification({
+        message: "All body sections must have content.",
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (designFormat === "clearance" && selectedFields.size === 0) {
+      setNotification({
+        message: "Select at least one issue field for clearance format.",
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (selectedFields.size > MAX_SELECTED_FIELDS) {
+      setNotification({
+        message: `Maximum of ${MAX_SELECTED_FIELDS} issue fields only.`,
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (signatories.some((s) => !s.name.trim() || !s.position.trim())) {
+      setNotification({
+        message: "All signatories must include name and position.",
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (hasFee && (fee < 1 || fee > 9999)) {
+      setNotification({
+        message: "Fee must be between 1 and 9999 for paid certificates.",
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (validityMonths < 1 || validityMonths > 24) {
+      setNotification({
+        message: "Validity months must be between 1 and 24.",
+        type: "error",
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
     setIsSaving(true);
     try {
       // For inline templates, extract {{variables}} from body text as issueFields
@@ -278,13 +392,41 @@ export default function CreateTemplate() {
         finalIssueFields = [...new Set([...finalIssueFields, ...bodyVars])];
       }
 
-      const dto: TemplateRequestDTO = {
-        certTitle: title.toUpperCase(),
+      const localTemplatePayload = {
+        title: title.trim().toUpperCase(),
         layoutStyle: designFormat,
-        certTagline: footerText,
         bodySections: bodySections.map((text, i) => ({
           id: `body-${i + 1}`,
-          text,
+          text: text.trim(),
+          isEditable: true,
+        })),
+        footerText: footerText.trim(),
+        signatories: signatories.map((s) => ({
+          name: s.name.trim(),
+          position: s.position.trim(),
+        })),
+        settings: {
+          fee: hasFee ? fee : 0,
+          validityMonths: Math.min(24, Math.max(1, validityMonths)),
+          requiresPhoto,
+          requiresThumbmark,
+          hasFee,
+          hasCtn,
+          ctnFee: 0,
+        },
+        variables: finalIssueFields,
+      };
+
+      // Always store a local copy so the issue page can immediately list this template.
+      registerCreatedTemplateLocally(localTemplatePayload);
+
+      const dto: TemplateRequestDTO = {
+        certTitle: title.trim().toUpperCase(),
+        layoutStyle: designFormat,
+        certTagline: footerText.trim(),
+        bodySections: bodySections.map((text, i) => ({
+          id: `body-${i + 1}`,
+          text: text.trim(),
           isEditable: true,
         })),
         issueFields: finalIssueFields,
@@ -293,27 +435,28 @@ export default function CreateTemplate() {
         hasFee,
         hasCtn,
         certFee: hasFee ? fee : 0,
-        validityMonths,
-        footerText,
+        validityMonths: Math.min(24, Math.max(1, validityMonths)),
+        footerText: footerText.trim(),
         signatories: signatories.map((s) => ({
-          signatoryName: s.name,
-          signatoryTitle: s.position,
+          signatoryName: s.name.trim(),
+          signatoryTitle: s.position.trim(),
         })),
       };
 
       await clearanceTemplateApi.createTemplate(dto);
       invalidateTemplateCache(); // clear cache so new template shows in dropdowns
-      setNotification({
-        message: "Template created successfully!",
-        type: "success",
-      });
-      setTimeout(() => setNotification(null), 3000);
+      showActionModal(
+        "Template Created",
+        "Template created successfully and is now available in Issue Certificate.",
+        "success",
+      );
     } catch {
-      setNotification({
-        message: "Failed to save template. Please try again.",
-        type: "error",
-      });
-      setTimeout(() => setNotification(null), 3000);
+      invalidateTemplateCache();
+      showActionModal(
+        "Template Saved Locally",
+        "API is unavailable, but the template is saved locally and available in Issue Certificate options.",
+        "success",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -322,18 +465,6 @@ export default function CreateTemplate() {
   return (
     <div className="min-h-screen font-sans text-gray-900 pb-12 bg-gray-50">
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
-        {/* Page Header */}
-        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 mb-6">
-          <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-blue-600" />
-            Create New Certificate Template
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Pick a template design, configure the details — the live preview
-            updates in real-time.
-          </p>
-        </div>
-
         <div className="flex flex-col lg:flex-row gap-6">
           {/* ═════════════════════ LEFT: Form Builder ═════════════════════ */}
           <div className="w-full lg:w-5/12 space-y-4">
@@ -407,6 +538,7 @@ export default function CreateTemplate() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                maxLength={MAX_TITLE_LENGTH}
                 placeholder={
                   designFormat === "clearance"
                     ? "e.g., BARANGAY CLEARANCE"
@@ -414,6 +546,9 @@ export default function CreateTemplate() {
                 }
                 className="w-full p-2.5 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase"
               />
+              <p className="text-right text-[10px] text-gray-400 mt-1">
+                {title.length}/{MAX_TITLE_LENGTH}
+              </p>
             </EditorSection>
 
             {/* ── Certificate Body ── */}
@@ -637,7 +772,9 @@ export default function CreateTemplate() {
                         min={1}
                         max={24}
                         onChange={(e) =>
-                          setValidityMonths(parseInt(e.target.value) || 6)
+                          setValidityMonths(
+                            Math.min(24, Math.max(1, parseInt(e.target.value) || 1)),
+                          )
                         }
                         className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                       />
@@ -713,6 +850,7 @@ export default function CreateTemplate() {
                           updateSignatory(idx, "name", e.target.value)
                         }
                         placeholder="Full Name (e.g., MARICEL PINEDA - EMPERADOR)"
+                        maxLength={MAX_SIGNATORY_NAME_LENGTH}
                         className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 font-semibold uppercase"
                       />
                       <input
@@ -722,6 +860,7 @@ export default function CreateTemplate() {
                           updateSignatory(idx, "position", e.target.value)
                         }
                         placeholder="Position (e.g., Punong Barangay)"
+                        maxLength={MAX_SIGNATORY_POSITION_LENGTH}
                         className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 italic"
                       />
                     </div>
@@ -741,7 +880,7 @@ export default function CreateTemplate() {
             {/* Save Button */}
             <div className="pt-2">
               <button
-                onClick={handleSave}
+                onClick={() => setIsCreateConfirmOpen(true)}
                 disabled={isSaving || !title.trim()}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold text-sm transition-all ${
                   title.trim()
@@ -783,21 +922,43 @@ export default function CreateTemplate() {
         </div>
       </main>
 
-      {/* Toast */}
-      {notification && (
+      {/* Error Toast */}
+      {notification && notification.type === "error" && (
         <div
-          className={`fixed bottom-6 right-6 px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium max-w-sm flex items-center gap-2 ${
-            notification.type === "success" ? "bg-green-600" : "bg-red-600"
-          }`}
+          className="fixed bottom-6 right-6 px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium max-w-sm flex items-center gap-2 bg-red-600"
         >
-          {notification.type === "success" ? (
-            <CheckCircle className="w-4 h-4" />
-          ) : (
-            <AlertCircle className="w-4 h-4" />
-          )}
+          <AlertCircle className="w-4 h-4" />
           <span>{notification.message}</span>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={isCreateConfirmOpen}
+        onCancel={() => setIsCreateConfirmOpen(false)}
+        onConfirm={() => {
+          setIsCreateConfirmOpen(false);
+          void handleSave();
+        }}
+        title="Create Template"
+        message="Are you sure you want to create this template?"
+        confirmText="Create"
+        cancelText="Cancel"
+        type="info"
+      />
+
+      <ActionModal
+        isOpen={actionModal.isOpen}
+        onClose={() =>
+          setActionModal((prev) => ({
+            ...prev,
+            isOpen: false,
+          }))
+        }
+        title={actionModal.title}
+        type={actionModal.type}
+      >
+        <p>{actionModal.message}</p>
+      </ActionModal>
     </div>
   );
 }

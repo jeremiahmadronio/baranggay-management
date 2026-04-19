@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   KPICard,
   KPIGrid,
@@ -6,418 +6,637 @@ import {
   LoadingModal,
   Table,
   TableFilter,
-  StatusBadge,
   type TableColumn,
 } from "../../reusable";
-import type { StatusType } from "../../reusable/StatusBadge";
 import {
-  type IssuedCertificate,
-  type IssuedStats,
-  fetchIssuedStats,
-  fetchIssuedCertificates,
-  fetchRevenueReport,
-  type RevenueReportEntry,
-  type RevenueReport,
-} from "../../clearance-api/issued-certificate-api";
+  revenueApi,
+  type DailyCollectionResponseDTO,
+  type RevenueResponseByCertificate,
+  type RevenueStatsResponseDTO,
+  type RevenueTrendDTO,
+} from "../../service/clearance-api/revenue";
+import { fetchIssuedCertificates } from "../../clearance-api/issued-certificate-api";
+import { clearanceTemplateApi } from "../../service/clearance-api/Template";
 
-// ── Status helpers ──
-const statusMap: Record<string, StatusType> = {
-  Released: "success",
-  Pending: "pending",
-  Cancelled: "danger",
-  Voided: "danger",
+type RevenueIssuedRow = {
+  certificateType: string;
+  dateIssued: string;
+  status: string;
+  isArchived: boolean;
+  fee: number;
+};
+
+const toNumber = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
+
+const unwrapData = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === "object") {
+    const maybeWrapped = value as Record<string, unknown>;
+    if (maybeWrapped.data && typeof maybeWrapped.data === "object") {
+      return maybeWrapped.data as Record<string, unknown>;
+    }
+    return maybeWrapped;
+  }
+  return {};
+};
+
+const normalizeRevenueStats = (value: unknown): RevenueStatsResponseDTO => {
+  const raw = unwrapData(value);
+
+  return {
+    totalRevenue: toNumber(raw.totalRevenue ?? raw.totalCollections),
+    totalRevenueThisWeek: toNumber(
+      raw.totalRevenueThisWeek ?? raw.totalCollectionsThisWeek,
+    ),
+    totalRevenueThisMonth: toNumber(
+      raw.totalRevenueThisMonth ?? raw.totalCollectionsThisMonth,
+    ),
+    totalRevenueThisYear: toNumber(
+      raw.totalRevenueThisYear ?? raw.totalCollectionsThisYear,
+    ),
+  };
+};
+
+const normalizeArrayPayload = <T,>(value: unknown): T[] => {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === "object") {
+    const raw = value as Record<string, unknown>;
+    if (Array.isArray(raw.content)) return raw.content as T[];
+    if (Array.isArray(raw.data)) return raw.data as T[];
+    if (raw.data && typeof raw.data === "object") {
+      const nested = raw.data as Record<string, unknown>;
+      if (Array.isArray(nested.content)) return nested.content as T[];
+      if (Array.isArray(nested.items)) return nested.items as T[];
+    }
+  }
+  return [];
+};
+
+const isVoidedStatus = (statusRaw: string): boolean => {
+  const status = String(statusRaw || "").trim().toUpperCase();
+  return status.includes("VOID") || status.includes("CANCEL");
+};
+
+const normalizeRevenueByTypeRows = (value: unknown): RevenueResponseByCertificate[] => {
+  return normalizeArrayPayload<Record<string, unknown>>(value).map((row) => {
+    const fee = toNumber(row.fee ?? row.amount ?? 0);
+    const count = toNumber(row.count ?? row.totalCertIssue ?? 0);
+    const totalRevenue = toNumber(
+      row.totalRevenue ?? row.totalCollections ?? fee * count,
+    );
+    return {
+      certificateTitle: String(
+        row.certificateTitle ?? row.certTitle ?? row.templateName ?? "",
+      ),
+      count,
+      fee,
+      totalRevenue,
+    };
+  });
+};
+
+const normalizeIssuedRevenueRows = (value: unknown): RevenueIssuedRow[] => {
+  const raw = value as { content?: unknown };
+  const rows = Array.isArray(raw?.content)
+    ? (raw.content as Array<Record<string, unknown>>)
+    : normalizeArrayPayload<Record<string, unknown>>(value);
+
+  return rows.map((row) => {
+    const fee = toNumber(row.fee ?? row.amount ?? row.certFee ?? row.totalFee ?? 0);
+    const rawIsFree = row.isFree;
+    const isFree =
+      typeof rawIsFree === "boolean"
+        ? fee > 0
+          ? false
+          : rawIsFree
+        : fee <= 0;
+
+    return {
+      certificateType: String(
+        row.certificateType ?? row.certTitle ?? row.templateName ?? "",
+      ),
+      dateIssued: String(row.dateIssued ?? row.requestedAt ?? row.date ?? ""),
+      status: String(row.status ?? ""),
+      isArchived: Boolean(row.isArchived ?? false),
+      fee: isFree ? 0 : fee,
+    };
+  });
+};
+
+const normalizeSummaryRevenueRows = (value: unknown): RevenueIssuedRow[] => {
+  const rows = normalizeArrayPayload<Record<string, unknown>>(value);
+  return rows.map((row) => ({
+    certificateType: String(
+      row.certificateType ?? row.certTitle ?? row.templateName ?? "",
+    ),
+    dateIssued: String(row.dateIssued ?? row.requestedAt ?? row.date ?? ""),
+    status: String(row.status ?? ""),
+    isArchived: false,
+    fee: toNumber(row.fee ?? row.amount ?? row.totalFee ?? 0),
+  }));
+};
+
+const isInDateRange = (dateValue: string, from: string, to: string): boolean => {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const dateOnly = `${y}-${m}-${d}`;
+
+  if (from && dateOnly < from) return false;
+  if (to && dateOnly > to) return false;
+  return true;
+};
+
+const buildRevenueByTypeFromIssued = (
+  rows: RevenueIssuedRow[],
+  from: string,
+  to: string,
+): RevenueResponseByCertificate[] => {
+  const map = new Map<string, RevenueResponseByCertificate>();
+
+  rows.forEach((row) => {
+    if (!row.certificateType || row.isArchived || isVoidedStatus(row.status)) return;
+    if (!isInDateRange(row.dateIssued, from, to)) return;
+
+    const existing = map.get(row.certificateType) || {
+      certificateTitle: row.certificateType,
+      count: 0,
+      fee: 0,
+      totalRevenue: 0,
+    };
+
+    const nextCount = existing.count + 1;
+    const nextFee = row.fee > 0 ? row.fee : existing.fee;
+    const nextRevenue = existing.totalRevenue + row.fee;
+
+    map.set(row.certificateType, {
+      certificateTitle: row.certificateType,
+      count: nextCount,
+      fee: nextFee,
+      totalRevenue: nextRevenue,
+    });
+  });
+
+  return [...map.values()].sort((a, b) => b.totalRevenue - a.totalRevenue);
+};
+
+const buildDailyCollectionsFromIssued = (
+  rows: RevenueIssuedRow[],
+  from: string,
+  to: string,
+): DailyCollectionResponseDTO[] => {
+  const map = new Map<string, DailyCollectionResponseDTO>();
+
+  rows.forEach((row) => {
+    if (row.isArchived || isVoidedStatus(row.status)) return;
+    if (!isInDateRange(row.dateIssued, from, to)) return;
+
+    const date = new Date(row.dateIssued);
+    if (Number.isNaN(date.getTime())) return;
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+      date.getDate(),
+    ).padStart(2, "0")}`;
+
+    const existing = map.get(key) || {
+      date: key,
+      totalCertIssue: 0,
+      totalCollections: 0,
+      oRNumberStartToEnd: "-",
+    };
+
+    map.set(key, {
+      ...existing,
+      totalCertIssue: existing.totalCertIssue + 1,
+      totalCollections: existing.totalCollections + row.fee,
+    });
+  });
+
+  return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+};
+
+const buildRevenueTrendFromDaily = (
+  dailyRows: DailyCollectionResponseDTO[],
+): RevenueTrendDTO[] => {
+  return dailyRows.map((row) => ({
+    label: row.date,
+    revenue: row.totalCollections,
+  }));
+};
+
+const buildStatsFromIssued = (rows: RevenueIssuedRow[]): RevenueStatsResponseDTO => {
+  const active = rows.filter((row) => !row.isArchived && !isVoidedStatus(row.status));
+  const total = active.reduce((sum, row) => sum + row.fee, 0);
+
+  return {
+    totalRevenue: total,
+    totalRevenueThisWeek: total,
+    totalRevenueThisMonth: total,
+    totalRevenueThisYear: total,
+  };
 };
 
 export const RevenueAndCollectionPage = () => {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"transactions" | "report">(
-    "transactions",
-  );
+  const [isApplying, setIsApplying] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // ─── KPI ───
-  const [stats, setStats] = useState<IssuedStats | null>(null);
-
-  // ─── Transactions table ───
-  const [transactions, setTransactions] = useState<IssuedCertificate[]>([]);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const pageSize = 10;
-
-  // ─── Filters ───
-  const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  // ─── Report ───
-  const [report, setReport] = useState<RevenueReport | null>(null);
-  const [reportDateFrom, setReportDateFrom] = useState("");
-  const [reportDateTo, setReportDateTo] = useState("");
+  const [stats, setStats] = useState<RevenueStatsResponseDTO | null>(null);
+  const [revenueByType, setRevenueByType] = useState<
+    RevenueResponseByCertificate[]
+  >([]);
+  const [topRevenue, setTopRevenue] = useState<RevenueResponseByCertificate[]>(
+    [],
+  );
+  const [dailyCollections, setDailyCollections] = useState<
+    DailyCollectionResponseDTO[]
+  >([]);
+  const [revenueTrend, setRevenueTrend] = useState<RevenueTrendDTO[]>([]);
 
-  // ─── Formatters ───
   const peso = (n: number) =>
     new Intl.NumberFormat("en-PH", {
       style: "currency",
       currency: "PHP",
-      minimumFractionDigits: 2,
-    }).format(n);
-  const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
+    }).format(n || 0);
 
-  // ─── Load transactions ───
-  const loadTransactions = useCallback(async () => {
-    try {
-      const result = await fetchIssuedCertificates(
-        page,
-        pageSize,
-        search || undefined,
-      );
-      let filtered = result.content.filter(
-        (c) => !c.isArchived && c.status !== "Voided",
-      );
-      if (dateFrom) filtered = filtered.filter((c) => c.dateIssued >= dateFrom);
-      if (dateTo) filtered = filtered.filter((c) => c.dateIssued <= dateTo);
-      setTransactions(filtered);
-      setTotalPages(Math.ceil(filtered.length / pageSize) || 1);
-      setTotalItems(filtered.length);
-    } catch (err) {
-      console.error("Failed to load transactions:", err);
+  const formatNumber = (n: number) => new Intl.NumberFormat("en-US").format(n);
+
+  const todayISO = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const firstDayOfMonthISO = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}-01`;
+  }, []);
+
+  const apiDateFrom = dateFrom || firstDayOfMonthISO;
+  const apiDateTo = dateTo || todayISO;
+
+  const applyRangeLabel = useMemo(() => {
+    if (!dateFrom && !dateTo) {
+      return `Default: ${new Date(firstDayOfMonthISO).toLocaleDateString("en-PH")} - ${new Date(todayISO).toLocaleDateString("en-PH")}`;
     }
-  }, [page, search, dateFrom, dateTo]);
+    if (dateFrom && !dateTo) return `From ${new Date(dateFrom).toLocaleDateString("en-PH")}`;
+    if (!dateFrom && dateTo) return `Up to ${new Date(dateTo).toLocaleDateString("en-PH")}`;
+    return `${new Date(dateFrom).toLocaleDateString("en-PH")} - ${new Date(dateTo).toLocaleDateString("en-PH")}`;
+  }, [dateFrom, dateTo, firstDayOfMonthISO, todayISO]);
 
-  // ─── Load report ───
-  const loadReport = useCallback(async () => {
-    try {
-      const data = await fetchRevenueReport(
-        reportDateFrom || undefined,
-        reportDateTo || undefined,
-      );
-      setReport(data);
-    } catch (err) {
-      console.error("Failed to load report:", err);
-    }
-  }, [reportDateFrom, reportDateTo]);
+  const loadData = useCallback(
+    async (isInitial = false) => {
+      if (isInitial) setLoading(true);
+      else setIsApplying(true);
+      setErrorMessage("");
 
-  // ─── Initial load ───
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
       try {
-        const [s] = await Promise.all([
-          fetchIssuedStats(),
-          loadTransactions(),
-          loadReport(),
-        ]);
-        setStats(s);
-      } catch (err) {
-        console.error("Init error:", err);
+        const [statsRes, byTypeRes, topRes, dailyRes, trendRes, issuedRes, summaryRes] =
+          await Promise.allSettled([
+            revenueApi.getRevenueStats(),
+            revenueApi.getRevenueByCertificateType(apiDateFrom, apiDateTo),
+            revenueApi.getTop5Revenue(apiDateFrom, apiDateTo),
+            revenueApi.getDailyCollections(apiDateFrom, apiDateTo),
+            revenueApi.getRevenueTrend(apiDateFrom, apiDateTo),
+            fetchIssuedCertificates(0, 1000),
+            clearanceTemplateApi.getSummaryTable(),
+          ]);
+
+        const failedSections: string[] = [];
+        const issuedRows =
+          issuedRes.status === "fulfilled"
+            ? normalizeIssuedRevenueRows(issuedRes.value)
+            : [];
+        const summaryRows =
+          summaryRes.status === "fulfilled"
+            ? normalizeSummaryRevenueRows(summaryRes.value)
+            : [];
+        const fallbackSourceRows = issuedRows.length > 0 ? issuedRows : summaryRows;
+        const fallbackByType = buildRevenueByTypeFromIssued(
+          fallbackSourceRows,
+          apiDateFrom,
+          apiDateTo,
+        );
+        const fallbackDaily = buildDailyCollectionsFromIssued(
+          fallbackSourceRows,
+          apiDateFrom,
+          apiDateTo,
+        );
+        const fallbackTrend = buildRevenueTrendFromDaily(fallbackDaily);
+        const fallbackStats = buildStatsFromIssued(fallbackSourceRows);
+
+        if (statsRes.status === "fulfilled") {
+          const normalizedStats = normalizeRevenueStats(statsRes.value);
+          setStats(
+            normalizedStats.totalRevenue > 0 || fallbackStats.totalRevenue <= 0
+              ? normalizedStats
+              : fallbackStats,
+          );
+        }
+        else {
+          setStats(fallbackStats.totalRevenue > 0 ? fallbackStats : null);
+          failedSections.push("stats");
+        }
+
+        if (byTypeRes.status === "fulfilled") {
+          const normalizedByType = normalizeRevenueByTypeRows(byTypeRes.value);
+          const apiHasRevenue = normalizedByType.some(
+            (row) => row.totalRevenue > 0 || row.count > 0,
+          );
+          setRevenueByType(apiHasRevenue ? normalizedByType : fallbackByType);
+        }
+        else {
+          setRevenueByType(fallbackByType);
+          failedSections.push("revenue by template");
+        }
+
+        if (topRes.status === "fulfilled") {
+          const normalizedTop = normalizeRevenueByTypeRows(topRes.value);
+          const apiHasRevenue = normalizedTop.some(
+            (row) => row.totalRevenue > 0 || row.count > 0,
+          );
+          setTopRevenue(apiHasRevenue ? normalizedTop : fallbackByType.slice(0, 5));
+        }
+        else {
+          setTopRevenue(fallbackByType.slice(0, 5));
+          failedSections.push("top templates");
+        }
+
+        if (dailyRes.status === "fulfilled") {
+          const normalizedDaily = normalizeArrayPayload<DailyCollectionResponseDTO>(
+            dailyRes.value,
+          );
+          const apiHasRevenue = normalizedDaily.some(
+            (row) => toNumber(row.totalCollections) > 0 || toNumber(row.totalCertIssue) > 0,
+          );
+          setDailyCollections(apiHasRevenue ? normalizedDaily : fallbackDaily);
+        }
+        else {
+          setDailyCollections(fallbackDaily);
+          failedSections.push("daily collections");
+        }
+
+        if (trendRes.status === "fulfilled") {
+          const normalizedTrend = normalizeArrayPayload<RevenueTrendDTO>(trendRes.value);
+          const apiHasRevenue = normalizedTrend.some(
+            (row) => toNumber(row.revenue) > 0,
+          );
+          setRevenueTrend(apiHasRevenue ? normalizedTrend : fallbackTrend);
+        }
+        else {
+          setRevenueTrend(fallbackTrend);
+          failedSections.push("trend summary");
+        }
+
+        if (issuedRes.status === "rejected") failedSections.push("issued records");
+        if (summaryRes.status === "rejected") failedSections.push("summary records");
+
+        if (failedSections.length > 0) {
+          setErrorMessage(
+            failedSections.length === 7
+              ? "Failed to load revenue report data. Please try again."
+              : `Some revenue sections failed to load: ${failedSections.join(", ")}.`,
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load revenue report data", error);
+        setErrorMessage("Failed to load some revenue report data. Please try again.");
       } finally {
         setLoading(false);
+        setIsApplying(false);
       }
-    };
-    init();
-  }, [loadTransactions, loadReport]);
+    },
+    [apiDateFrom, apiDateTo],
+  );
 
-  // ─── Transaction columns ───
-  const txColumns: TableColumn<IssuedCertificate>[] = [
+  useEffect(() => {
+    loadData(true);
+  }, [loadData]);
+
+  const clearFilters = () => {
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const byTypeColumns: TableColumn<RevenueResponseByCertificate>[] = [
     {
-      key: "dateIssued",
-      header: "Date",
-      width: "100px",
-      render: (item) => (
-        <span className="text-xs text-gray-600">
-          {new Date(item.dateIssued).toLocaleDateString("en-PH", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </span>
-      ),
+      key: "certificateTitle",
+      header: "Certificate Type",
+      render: (item) => <span className="font-medium">{item.certificateTitle}</span>,
     },
     {
-      key: "requesterName",
-      header: "Requestor",
-      render: (item) => (
-        <span className="text-sm font-medium text-gray-900">
-          {item.requesterName}
-        </span>
-      ),
-    },
-    {
-      key: "certificateType",
-      header: "Certificate",
-      render: (item) => (
-        <span className="text-xs text-gray-600">{item.certificateType}</span>
-      ),
-    },
-    {
-      key: "orNumber",
-      header: "OR No.",
-      width: "120px",
-      render: (item) => (
-        <span className="text-xs font-mono text-gray-600">
-          {item.orNumber || (item.isFree ? "FREE" : "—")}
-        </span>
-      ),
+      key: "count",
+      header: "Issued",
+      align: "right",
+      render: (item) => <span>{formatNumber(item.count)}</span>,
     },
     {
       key: "fee",
-      header: "Amount",
-      width: "100px",
+      header: "Fee",
       align: "right",
-      render: (item) => (
-        <span
-          className={`text-xs font-semibold ${item.isFree ? "text-green-600" : "text-gray-800"}`}
-        >
-          {item.isFree ? "Free" : item.fee ? peso(item.fee) : "—"}
-        </span>
-      ),
+      render: (item) => <span>{peso(item.fee)}</span>,
     },
     {
-      key: "status",
-      header: "Status",
-      width: "100px",
-      align: "center",
-      render: (item) => (
-        <StatusBadge
-          status={statusMap[item.status] || "default"}
-          label={item.status}
-          size="sm"
-        />
-      ),
+      key: "totalRevenue",
+      header: "Total Revenue",
+      align: "right",
+      render: (item) => <span className="font-semibold">{peso(item.totalRevenue)}</span>,
     },
   ];
 
-  // ─── Report columns ───
-  const reportColumns: TableColumn<RevenueReportEntry>[] = [
+  const topColumns: TableColumn<RevenueResponseByCertificate>[] = [
     {
-      key: "certificateType",
-      header: "Certificate Type",
-      render: (item) => (
-        <span className="text-sm font-medium text-gray-900">
-          {item.certificateType}
-        </span>
-      ),
+      key: "certificateTitle",
+      header: "Top Template",
+      render: (item) => <span className="font-medium">{item.certificateTitle}</span>,
     },
     {
-      key: "totalIssued",
-      header: "Total Issued",
-      width: "110px",
-      align: "center",
-      render: (item) => (
-        <span className="text-xs font-semibold text-gray-700">
-          {fmt(item.totalIssued)}
-        </span>
-      ),
-    },
-    {
-      key: "totalPaid",
-      header: "Paid",
-      width: "80px",
-      align: "center",
-      render: (item) => (
-        <span className="text-xs text-gray-600">{fmt(item.totalPaid)}</span>
-      ),
-    },
-    {
-      key: "totalFree",
-      header: "Free",
-      width: "80px",
-      align: "center",
-      render: (item) => (
-        <span className="text-xs text-green-600">{fmt(item.totalFree)}</span>
-      ),
+      key: "count",
+      header: "Issued",
+      align: "right",
+      render: (item) => <span>{formatNumber(item.count)}</span>,
     },
     {
       key: "totalRevenue",
       header: "Revenue",
-      width: "120px",
       align: "right",
-      render: (item) => (
-        <span className="text-sm font-bold text-blue-700">
-          {peso(item.totalRevenue)}
-        </span>
-      ),
+      render: (item) => <span className="font-semibold">{peso(item.totalRevenue)}</span>,
     },
   ];
 
-  if (loading)
-    return <LoadingModal isOpen={true} message="Loading revenue data..." />;
+  const collectionColumns: TableColumn<DailyCollectionResponseDTO>[] = [
+    {
+      key: "date",
+      header: "Date",
+      render: (item) => (
+        <span>{new Date(item.date).toLocaleDateString("en-PH")}</span>
+      ),
+    },
+    {
+      key: "totalCertIssue",
+      header: "Certificates Issued",
+      align: "right",
+      render: (item) => <span>{formatNumber(item.totalCertIssue)}</span>,
+    },
+    {
+      key: "totalCollections",
+      header: "Collections",
+      align: "right",
+      render: (item) => <span className="font-semibold">{peso(item.totalCollections)}</span>,
+    },
+    {
+      key: "oRNumberStartToEnd",
+      header: "OR Number Range",
+      render: (item) => <span>{item.oRNumberStartToEnd || "-"}</span>,
+    },
+  ];
+
+  const trendColumns: TableColumn<RevenueTrendDTO>[] = [
+    {
+      key: "label",
+      header: "Period",
+      render: (item) => <span>{item.label}</span>,
+    },
+    {
+      key: "revenue",
+      header: "Revenue",
+      align: "right",
+      render: (item) => <span className="font-semibold">{peso(item.revenue)}</span>,
+    },
+  ];
+
+  if (loading) return <LoadingModal isOpen message="Loading revenue report..." />;
 
   return (
-    <div className="p-4 w-full">
-      <div className="max-w-[1600px] mx-auto w-full space-y-6">
-        {/* KPI Cards */}
+    <div className="min-h-screen bg-gray-50/60">
+      <div className="max-w-7xl mx-auto p-4 space-y-6">
+        {errorMessage && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+            {errorMessage}
+          </div>
+        )}
+
         <KPIGrid columns={4}>
           <KPICard
             title="Total Revenue"
             value={peso(stats?.totalRevenue || 0)}
             icon={KPIIcons.revenue}
             color="blue"
-            trend={
-              stats
-                ? {
-                    value: `${stats.revenueGrowth}%`,
-                    direction: stats.revenueDirection,
-                    label: "vs last month",
-                  }
-                : undefined
-            }
+            subtitle="Overall collected amount"
           />
           <KPICard
-            title="Total Issued"
-            value={fmt(stats?.totalIssued || 0)}
-            icon={KPIIcons.total}
-            color="amber"
-            subtitle="All certificates"
-          />
-          <KPICard
-            title="Paid Certificates"
-            value={fmt(stats?.totalPaidCertificates || 0)}
-            icon={KPIIcons.card}
+            title="This Week"
+            value={peso(stats?.totalRevenueThisWeek || 0)}
+            icon={KPIIcons.month}
             color="emerald"
-            subtitle="With fee collected"
+            subtitle="Weekly collections"
           />
           <KPICard
-            title="Free Certificates"
-            value={fmt(stats?.totalFreeCertificates || 0)}
-            icon={KPIIcons.gift}
+            title="This Month"
+            value={peso(stats?.totalRevenueThisMonth || 0)}
+            icon={KPIIcons.issued}
+            color="amber"
+            subtitle="Monthly collections"
+          />
+          <KPICard
+            title="This Year"
+            value={peso(stats?.totalRevenueThisYear || 0)}
+            icon={KPIIcons.total}
             color="rose"
-            subtitle="No fee"
+            subtitle="Year-to-date revenue"
           />
         </KPIGrid>
 
-        {/* Tab Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab("transactions")}
-              className={`px-6 py-3 text-sm font-semibold transition-colors border-b-2 ${
-                activeTab === "transactions"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Transactions
-            </button>
-            <button
-              onClick={() => setActiveTab("report")}
-              className={`px-6 py-3 text-sm font-semibold transition-colors border-b-2 ${
-                activeTab === "report"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Revenue Report
-            </button>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Revenue and Collections Report</h2>
+              <p className="text-sm text-gray-500">Coverage: {applyRangeLabel}</p>
+            </div>
           </div>
 
-          {/* TRANSACTIONS TAB */}
-          {activeTab === "transactions" && (
-            <>
-              <div className="p-4 border-b border-gray-200">
-                <TableFilter
-                  searchPlaceholder="Search by name, type, or OR number..."
-                  searchValue={search}
-                  onSearchChange={(v) => {
-                    setSearch(v);
-                    setPage(0);
-                  }}
-                  dateRange={{
-                    startLabel: "Date From",
-                    endLabel: "Date To",
-                    startValue: dateFrom,
-                    endValue: dateTo,
-                    onStartChange: (v) => {
-                      setDateFrom(v);
-                      setPage(0);
-                    },
-                    onEndChange: (v) => {
-                      setDateTo(v);
-                      setPage(0);
-                    },
-                  }}
-                  showFilterButton={false}
-                  showClearButton={!!(search || dateFrom || dateTo)}
-                  onClearClick={() => {
-                    setSearch("");
-                    setDateFrom("");
-                    setDateTo("");
-                    setPage(0);
-                  }}
-                />
-              </div>
+          <TableFilter
+            showSearch={false}
+            dateRange={{
+              startLabel: "Start Date",
+              endLabel: "End Date",
+              startValue: dateFrom,
+              endValue: dateTo,
+              maxDate: todayISO,
+              onStartChange: setDateFrom,
+              onEndChange: setDateTo,
+            }}
+            onFilterClick={() => loadData(false)}
+            onClearClick={clearFilters}
+            filterButtonText={isApplying ? "Applying..." : "Apply Date Range"}
+            clearButtonText="Clear Dates"
+            showFilterButton
+            showClearButton
+            disabled={isApplying}
+          />
+        </div>
 
-              <Table<IssuedCertificate>
-                columns={txColumns}
-                data={transactions}
-                keyExtractor={(item) => item.id}
-                emptyMessage="No transactions found."
-                hoverable
-                pagination={{
-                  currentPage: page + 1,
-                  totalPages,
-                  totalItems,
-                  itemsPerPage: pageSize,
-                  onPageChange: (p) => setPage(p - 1),
-                }}
-              />
-            </>
-          )}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-8 bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Revenue by Certificate Type</h3>
+            <Table
+              columns={byTypeColumns}
+              data={revenueByType}
+              keyExtractor={(item) => item.certificateTitle}
+              minRows={6}
+              emptyMessage="No revenue data found for selected period"
+            />
+          </div>
 
-          {/* REPORT TAB */}
-          {activeTab === "report" && (
-            <>
-              <div className="p-4 border-b border-gray-200">
-                <TableFilter
-                  showSearch={false}
-                  dateRange={{
-                    startLabel: "Start Date",
-                    endLabel: "End Date",
-                    startValue: reportDateFrom,
-                    endValue: reportDateTo,
-                    onStartChange: setReportDateFrom,
-                    onEndChange: setReportDateTo,
-                  }}
-                  showFilterButton={false}
-                  showClearButton={!!(reportDateFrom || reportDateTo)}
-                  onClearClick={() => {
-                    setReportDateFrom("");
-                    setReportDateTo("");
-                  }}
-                />
-              </div>
+          <div className="xl:col-span-4 bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Top 5 Revenue Templates</h3>
+            <Table
+              columns={topColumns}
+              data={topRevenue}
+              keyExtractor={(item) => item.certificateTitle}
+              minRows={6}
+              emptyMessage="No top templates available"
+            />
+          </div>
+        </div>
 
-              <Table<RevenueReportEntry>
-                columns={reportColumns}
-                data={report?.entries || []}
-                keyExtractor={(item) => item.certificateType}
-                emptyMessage="No revenue data for the selected period."
-                hoverable
-              />
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-8 bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Daily Collection Log</h3>
+            <Table
+              columns={collectionColumns}
+              data={dailyCollections}
+              keyExtractor={(item) => `${item.date}-${item.oRNumberStartToEnd}`}
+              minRows={6}
+              emptyMessage="No daily collection records for selected period"
+            />
+          </div>
 
-              {/* Grand Total Row */}
-              {report && report.entries.length > 0 && (
-                <div className="border-t-2 border-gray-300 bg-gray-50 px-4 py-3 flex items-center text-sm">
-                  <span className="flex-1 font-bold text-gray-800">
-                    GRAND TOTAL
-                  </span>
-                  <span className="w-[110px] text-center font-bold text-gray-700">
-                    {fmt(report.grandTotalIssued)}
-                  </span>
-                  <span className="w-[80px] text-center font-semibold text-gray-600">
-                    {fmt(report.grandTotalPaid)}
-                  </span>
-                  <span className="w-[80px] text-center font-semibold text-green-600">
-                    {fmt(report.grandTotalFree)}
-                  </span>
-                  <span className="w-[120px] text-right font-bold text-blue-700 text-base">
-                    {peso(report.grandTotalRevenue)}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
+          <div className="xl:col-span-4 bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Revenue Trend Summary</h3>
+            <Table
+              columns={trendColumns}
+              data={revenueTrend}
+              keyExtractor={(item, index) => `${item.label}-${index}`}
+              minRows={6}
+              emptyMessage="No trend data for selected period"
+            />
+          </div>
         </div>
       </div>
     </div>

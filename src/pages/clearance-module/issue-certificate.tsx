@@ -3,18 +3,20 @@ import {
   FileText,
   Check,
   Printer,
+  Archive,
   User,
   ClipboardList,
   Wallet,
   Car,
   Loader2,
   AlertCircle,
-  CheckCircle,
   Search,
   X,
 } from "lucide-react";
 import { LoadingModal } from "../../reusable/LoadingModal";
+import { ActionModal, ConfirmModal } from "../../reusable";
 import {
+  archiveTemplate,
   fetchTemplateOptions,
   getPreviewData,
   type TemplateOption,
@@ -46,10 +48,54 @@ export const IssueCertificatePage = () => {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isArchivingTemplate, setIsArchivingTemplate] = useState(false);
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
   const [notification, setNotification] = useState<{
     message: string;
-    type: "success" | "error" | "warning";
+    type: "error" | "warning";
   } | null>(null);
+  const [actionModal, setActionModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "danger" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "success",
+  });
+  const [formResetSignal, setFormResetSignal] = useState(0);
+  const printContentRef = useRef<HTMLDivElement | null>(null);
+  const pendingPrintWindowRef = useRef<Window | null>(null);
+
+  const showActionModal = (
+    title: string,
+    message: string,
+    type: "success" | "danger" | "info" = "success",
+  ) => {
+    setActionModal({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const loadTemplateOptions = useCallback(async () => {
+    const options = await fetchTemplateOptions();
+    setTemplateOptions(options);
+    setSelectedTemplateId((prev) => {
+      if (!options.length) return "";
+      if (prev && options.some((o) => String(o.id) === String(prev))) {
+        return prev;
+      }
+      const fallbackId =
+        options.find((o) => String(o.id) === "barangay-clearance")?.id ||
+        options[0].id;
+      return String(fallbackId);
+    });
+  }, []);
 
   // Map resident profile to form field values
   const mapResidentToFormData = useCallback(
@@ -105,10 +151,6 @@ export const IssueCertificatePage = () => {
     (resident: PersonSearchResponseDTO) => {
       const residentData = mapResidentToFormData(resident);
       setFormData((prev) => ({ ...prev, ...residentData }));
-      setNotification({
-        message: `Loaded data for ${resident.firstName} ${resident.lastName}`,
-        type: "success",
-      });
     },
     [mapResidentToFormData],
   );
@@ -117,14 +159,7 @@ export const IssueCertificatePage = () => {
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const options = await fetchTemplateOptions();
-        setTemplateOptions(options);
-        if (options.length > 0) {
-          const defaultId =
-            options.find((o) => String(o.id) === "barangay-clearance")?.id ||
-            options[0].id;
-          setSelectedTemplateId(String(defaultId));
-        }
+        await loadTemplateOptions();
       } catch (error) {
         console.error("Failed to load options", error);
         setNotification({
@@ -136,7 +171,35 @@ export const IssueCertificatePage = () => {
       }
     };
     loadOptions();
-  }, []);
+  }, [loadTemplateOptions]);
+
+  useEffect(() => {
+    const refreshOptions = async () => {
+      try {
+        await loadTemplateOptions();
+      } catch {
+        // avoid disruptive notifications for background refresh
+      }
+    };
+
+    const handleFocus = () => {
+      void refreshOptions();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshOptions();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [loadTemplateOptions]);
 
   // Helper function to format date as "Month Day, Year" (e.g., "March 8, 2026")
   const formatDateReadable = (date: Date): string => {
@@ -166,6 +229,74 @@ export const IssueCertificatePage = () => {
     return formatDateReadable(date);
   };
 
+  const computeAgeFromBirthDate = (birthDateValue: string): number | null => {
+    if (!birthDateValue) return null;
+    const birthDate = new Date(birthDateValue);
+    if (Number.isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age -= 1;
+    }
+
+    return age >= 0 ? age : null;
+  };
+
+  const computeFullYearsBetween = (from: Date, to: Date): number => {
+    let years = to.getFullYear() - from.getFullYear();
+    const monthDiff = to.getMonth() - from.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && to.getDate() < from.getDate())) {
+      years -= 1;
+    }
+
+    return years;
+  };
+
+  const toInputDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const computeYearsOfResidency = (residencySinceValue: string): number | null => {
+    if (!residencySinceValue) return null;
+
+    const parsedDate = new Date(residencySinceValue);
+    let startDate: Date;
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      startDate = parsedDate;
+    } else {
+      const yearOnly = Number(residencySinceValue);
+      if (!Number.isFinite(yearOnly)) return null;
+      startDate = new Date(yearOnly, 0, 1);
+    }
+
+    const years = computeFullYearsBetween(startDate, new Date());
+    return years >= 0 ? years : null;
+  };
+
+  const computeResidencySinceFromYears = (yearsValue: string): string | null => {
+    if (!yearsValue.trim()) return "";
+
+    const parsedYears = Number(yearsValue);
+    if (!Number.isFinite(parsedYears) || parsedYears < 0) return null;
+
+    const wholeYears = Math.floor(parsedYears);
+    const today = new Date();
+    const residencySince = new Date(today);
+    residencySince.setFullYear(today.getFullYear() - wholeYears);
+    return toInputDate(residencySince);
+  };
+
   // Load selected template
   useEffect(() => {
     if (!selectedTemplateId) return;
@@ -186,6 +317,10 @@ export const IssueCertificatePage = () => {
           YEAR: today.getFullYear().toString(),
           ISSUED_AT: "3S Center, Barangay Ugong, Valenzuela City",
           VALID_UNTIL: calculateValidityDate(data.settings.validityMonths || 6),
+          amount: String(data.settings.fee || 0),
+          fee: String(data.settings.fee || 0),
+          AMOUNT: String(data.settings.fee || 0),
+          AMOUNT_PAID: String(data.settings.fee || 0),
           // snake_case equivalents for API templates
           or_date: formatDateReadable(today),
         };
@@ -234,12 +369,184 @@ export const IssueCertificatePage = () => {
   }, [templateData, formData]);
 
   const handleInputChange = (key: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value };
+      const normalizedKey = key.trim().toLowerCase();
+
+      if (normalizedKey === "date_of_birth") {
+        const computedAge = computeAgeFromBirthDate(value);
+        if (computedAge !== null) {
+          next.age = String(computedAge);
+          next.AGE = String(computedAge);
+        }
+      }
+
+      if (normalizedKey === "residency_since") {
+        const computedYears = computeYearsOfResidency(value);
+        if (computedYears !== null) {
+          next.years_of_residency = String(computedYears);
+          next.YEARS_OF_RESIDENCY = String(computedYears);
+        } else if (!value.trim()) {
+          next.years_of_residency = "";
+          next.YEARS_OF_RESIDENCY = "";
+        }
+      }
+
+      if (normalizedKey === "years_of_residency") {
+        const computedResidencySince = computeResidencySinceFromYears(value);
+        if (computedResidencySince !== null) {
+          next.residency_since = computedResidencySince;
+          next.RESIDENCY_SINCE = computedResidencySince;
+        }
+      }
+
+      return next;
+    });
   };
 
   const handleTemplateSelect = (id: string) => {
     setSelectedTemplateId(id);
     setFormData({});
+  };
+
+  const triggerAutoPrint = useCallback((targetWindow?: Window | null) => {
+    const source = printContentRef.current;
+    if (!source) return;
+
+    const styleTags = Array.from(
+      document.querySelectorAll('style, link[rel="stylesheet"]'),
+    )
+      .map((node) => node.outerHTML)
+      .join("\n");
+
+    const printWindow =
+      targetWindow && !targetWindow.closed
+        ? targetWindow
+        : window.open("", "_blank", "width=900,height=1200");
+    if (!printWindow) {
+      setNotification({
+        message: "Certificate issued, but print popup was blocked.",
+        type: "warning",
+      });
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Certificate Print</title>
+          ${styleTags}
+          <style>
+            html,
+            body {
+              width: 210mm;
+              min-height: 297mm;
+              margin: 0;
+              padding: 0;
+              margin-inline: auto;
+              background: #fff;
+            }
+
+            #print-root {
+              width: 210mm;
+              min-height: 297mm;
+              margin: 0 auto;
+              box-sizing: border-box;
+              overflow: hidden;
+            }
+
+            #print-root,
+            #print-root * {
+              color: #000 !important;
+            }
+
+            * {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            @page {
+              size: 210mm 297mm;
+              margin: 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="print-root">
+            ${source.innerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+
+    const doPrint = () => {
+      printWindow.print();
+      printWindow.onafterprint = () => {
+        printWindow.close();
+      };
+    };
+
+    if (printWindow.document.readyState === "complete") {
+      doPrint();
+    } else {
+      printWindow.addEventListener("load", doPrint, { once: true });
+    }
+  }, []);
+
+  const archiveSelectedTemplate = async () => {
+    if (!selectedTemplateId) {
+      setNotification({
+        message: "Select a template first before archiving.",
+        type: "warning",
+      });
+      return;
+    }
+
+    const selectedTemplate = templateOptions.find(
+      (option) => String(option.id) === String(selectedTemplateId),
+    );
+
+    setIsArchivingTemplate(true);
+    try {
+      await archiveTemplate(
+        selectedTemplateId,
+        `Archived from Issue Certificate: ${selectedTemplate?.name || selectedTemplateId}`,
+      );
+      await loadTemplateOptions();
+      setTemplateData(null);
+
+      showActionModal(
+        "Template Archived",
+        `"${selectedTemplate?.name || "Selected template"}" moved to Archived Templates.`,
+        "success",
+      );
+    } catch {
+      showActionModal(
+        "Archive Failed",
+        "Unable to archive this template right now. Please try again.",
+        "danger",
+      );
+    } finally {
+      setIsArchivingTemplate(false);
+    }
+  };
+
+  const handleArchivedButtonClick = () => {
+    if (!selectedTemplateId) {
+      setNotification({
+        message: "Select a template first before archiving.",
+        type: "warning",
+      });
+      return;
+    }
+
+    setIsArchiveConfirmOpen(true);
   };
 
   const handleSubmit = async () => {
@@ -291,28 +598,55 @@ export const IssueCertificatePage = () => {
       return;
     }
 
+    // Open print window while still in direct user interaction to avoid popup blockers.
+    pendingPrintWindowRef.current = window.open(
+      "",
+      "_blank",
+      "width=900,height=1200",
+    );
+
     setIsSubmitting(true);
     try {
+      const feeValue = templateData.settings.hasFee
+        ? Number(templateData.settings.fee || 0)
+        : 0;
+      const feeText = String(feeValue);
+      const payloadFormData = {
+        ...formData,
+        amount: formData.amount || feeText,
+        fee: formData.fee || feeText,
+        AMOUNT: formData.AMOUNT || feeText,
+        AMOUNT_PAID: formData.AMOUNT_PAID || feeText,
+      };
+
       const result = await issueCertificate({
         templateId: selectedTemplateId,
-        formData,
+        formData: payloadFormData,
         issuedBy: "Admin", // TODO: Get from auth context
+        certificateType: templateData.title,
       });
       if (result.success) {
-        setNotification({
-          message: result.message || "Certificate issued successfully!",
-          type: "success",
-        });
-        setFormData({}); // Reset form after successful submission
+        triggerAutoPrint(pendingPrintWindowRef.current);
+        showActionModal(
+          "Certificate Issued",
+          result.message || "Certificate issued successfully!",
+          "success",
+        );
+        setFormData({}); // Clear values for next issuance
+        setFormResetSignal((prev) => prev + 1); // Reset per-field touched state
       } else {
         throw new Error(result.message || "Failed to issue certificate");
       }
     } catch (error) {
+      if (pendingPrintWindowRef.current && !pendingPrintWindowRef.current.closed) {
+        pendingPrintWindowRef.current.close();
+      }
       setNotification({
         message: "Failed to issue certificate. Please try again.",
         type: "error",
       });
     } finally {
+      pendingPrintWindowRef.current = null;
       setIsSubmitting(false);
     }
   };
@@ -332,6 +666,8 @@ export const IssueCertificatePage = () => {
           options={templateOptions}
           selectedId={selectedTemplateId}
           onSelect={handleTemplateSelect}
+          onArchivedClick={handleArchivedButtonClick}
+          isArchivingTemplate={isArchivingTemplate}
         />
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -350,6 +686,7 @@ export const IssueCertificatePage = () => {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
                 onResidentSelect={handleResidentSelect}
+                resetSignal={formResetSignal}
               />
             ) : (
               <div className="flex items-center justify-center bg-white rounded-lg border border-gray-200 p-12">
@@ -369,6 +706,7 @@ export const IssueCertificatePage = () => {
                 <CertificatePreviewWrapper
                   template={previewTemplate}
                   formData={formData}
+                  printContentRef={printContentRef}
                 />
               ) : null}
             </div>
@@ -380,16 +718,9 @@ export const IssueCertificatePage = () => {
       {notification && (
         <div
           className={`fixed bottom-6 right-6 px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium transition-all transform translate-y-0 max-w-sm flex items-center space-x-2 ${
-            notification.type === "success"
-              ? "bg-green-600"
-              : notification.type === "warning"
-                ? "bg-amber-500"
-                : "bg-red-600"
+            notification.type === "warning" ? "bg-amber-500" : "bg-red-600"
           }`}
         >
-          {notification.type === "success" && (
-            <CheckCircle className="w-4 h-4" />
-          )}
           {notification.type === "warning" && (
             <AlertCircle className="w-4 h-4" />
           )}
@@ -397,6 +728,38 @@ export const IssueCertificatePage = () => {
           <span>{notification.message}</span>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={isArchiveConfirmOpen}
+        onCancel={() => setIsArchiveConfirmOpen(false)}
+        onConfirm={() => {
+          setIsArchiveConfirmOpen(false);
+          void archiveSelectedTemplate();
+        }}
+        title="Archive Template"
+        message={`Are you sure you want to archive "${
+          templateOptions.find(
+            (option) => String(option.id) === String(selectedTemplateId),
+          )?.name || "selected template"
+        }"?`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        type="warning"
+      />
+
+      <ActionModal
+        isOpen={actionModal.isOpen}
+        onClose={() =>
+          setActionModal((prev) => ({
+            ...prev,
+            isOpen: false,
+          }))
+        }
+        title={actionModal.title}
+        type={actionModal.type}
+      >
+        <p>{actionModal.message}</p>
+      </ActionModal>
     </div>
   );
 };
@@ -409,51 +772,64 @@ interface TemplateSelectorProps {
   options: TemplateOption[];
   selectedId: string;
   onSelect: (id: string) => void;
+  onArchivedClick: () => void | Promise<void>;
+  isArchivingTemplate: boolean;
 }
 
 function TemplateSelector({
   options,
   selectedId,
   onSelect,
+  onArchivedClick,
+  isArchivingTemplate,
 }: TemplateSelectorProps) {
+  const renderTemplateButton = (option: TemplateOption) => {
+    const isSelected = selectedId === String(option.id);
+
+    return (
+      <button
+        key={String(option.id)}
+        onClick={() => onSelect(String(option.id))}
+        className={`
+          relative flex items-center p-3 text-left text-sm rounded-md border transition-all
+          ${
+            isSelected
+              ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500"
+              : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700"
+          }
+        `}
+      >
+        <FileText
+          className={`w-4 h-4 mr-2 ${isSelected ? "text-blue-500" : "text-gray-400"}`}
+        />
+        <span className="truncate flex-1">{option.name}</span>
+        {isSelected && (
+          <div className="absolute top-0 right-0 -mt-1 -mr-1 bg-blue-500 text-white rounded-full p-0.5">
+            <Check className="w-3 h-3" />
+          </div>
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-      <h3 className="text-sm font-semibold text-gray-700 mb-4">
-        Select Certificate Template to Issue:
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h3 className="text-sm font-semibold text-gray-700">
+          Select Certificate Template to Issue:
+        </h3>
+        <button
+          type="button"
+          onClick={onArchivedClick}
+          disabled={isArchivingTemplate || !selectedId}
+          className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
+        >
+          <Archive className="w-3.5 h-3.5" />
+          {isArchivingTemplate ? "Archiving..." : "Archive Selected"}
+        </button>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {options.map((option) => {
-          const isSelected = selectedId === String(option.id);
-          return (
-            <button
-              key={String(option.id)}
-              onClick={() => onSelect(String(option.id))}
-              className={`
-                relative flex items-center p-3 text-left text-sm rounded-md border transition-all
-                ${
-                  isSelected
-                    ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500"
-                    : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700"
-                }
-              `}
-            >
-              <FileText
-                className={`w-4 h-4 mr-2 ${isSelected ? "text-blue-500" : "text-gray-400"}`}
-              />
-              <span className="truncate flex-1">{option.name}</span>
-              {option.isFree && (
-                <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 rounded">
-                  Free
-                </span>
-              )}
-              {isSelected && (
-                <div className="absolute top-0 right-0 -mt-1 -mr-1 bg-blue-500 text-white rounded-full p-0.5">
-                  <Check className="w-3 h-3" />
-                </div>
-              )}
-            </button>
-          );
-        })}
+        {options.map((option) => renderTemplateButton(option))}
       </div>
     </div>
   );
@@ -471,6 +847,7 @@ interface IssuanceFormProps {
   onSubmit: () => void;
   isSubmitting: boolean;
   onResidentSelect: (resident: PersonSearchResponseDTO) => void;
+  resetSignal: number;
 }
 
 function IssuanceForm({
@@ -481,6 +858,7 @@ function IssuanceForm({
   onSubmit,
   isSubmitting,
   onResidentSelect,
+  resetSignal,
 }: IssuanceFormProps) {
   // Helper to get icon based on section title
   const getSectionIcon = (title: string) => {
@@ -530,6 +908,7 @@ function IssuanceForm({
                   field={field}
                   value={formData[field.name] || ""}
                   onChange={(value) => onInputChange(field.name, value)}
+                  resetSignal={resetSignal}
                 />
               ))}
             </div>
@@ -591,11 +970,13 @@ function IssuanceForm({
 interface CertificatePreviewWrapperProps {
   template: TemplateData;
   formData: Record<string, string>;
+  printContentRef: React.RefObject<HTMLDivElement | null>;
 }
 
 function CertificatePreviewWrapper({
   template,
   formData,
+  printContentRef,
 }: CertificatePreviewWrapperProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -608,16 +989,13 @@ function CertificatePreviewWrapper({
               : "Fill the form to see your data"}
           </p>
         </div>
-        <div className="flex space-x-2">
-          <button className="flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
-            <Printer className="w-3.5 h-3.5 mr-1.5" />
-            Print
-          </button>
-        </div>
       </div>
 
       {/* Certificate Paper */}
-      <div className="p-3 md:p-5 rounded-lg bg-gray-100/50 border border-gray-200">
+      <div
+        ref={printContentRef}
+        className="p-3 md:p-5 rounded-lg bg-gray-100/50 border border-gray-200"
+      >
         <CertificatePreview
           template={template}
           customData={formData}
@@ -809,12 +1187,19 @@ interface FormFieldProps {
   field: FormFieldConfig;
   value: string;
   onChange: (value: string) => void;
+  resetSignal: number;
 }
 
-function FormField({ field, value, onChange }: FormFieldProps) {
+function FormField({ field, value, onChange, resetSignal }: FormFieldProps) {
   const isAutoFilled = field.autoFilled;
   const isReadOnly = field.readOnly;
   const [touched, setTouched] = useState(false);
+  const now = new Date();
+  const todayDateOnly = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  useEffect(() => {
+    setTouched(false);
+  }, [resetSignal]);
 
   // Validation
   const validationError = useMemo(() => {
@@ -952,7 +1337,7 @@ function FormField({ field, value, onChange }: FormFieldProps) {
         placeholder={field.placeholder}
         maxLength={field.type !== "number" ? field.maxLength : undefined}
         min={field.min}
-        max={field.max}
+        max={field.type === "date" ? todayDateOnly : field.max}
         className={baseInputClass}
         readOnly={isReadOnly}
         tabIndex={isReadOnly ? -1 : 0}

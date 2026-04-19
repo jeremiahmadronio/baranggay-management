@@ -15,6 +15,7 @@ interface DateRangeConfig {
   endLabel?: string;
   startValue?: string;
   endValue?: string;
+  maxDate?: string;
   onStartChange?: (value: string) => void;
   onEndChange?: (value: string) => void;
 }
@@ -55,9 +56,11 @@ export const TableFilter = ({
   disabled = false,
 }: TableFilterProps) => {
   const handleStartChange = (v: string) => {
-    dateRange?.onStartChange?.(v);
+    const clamped =
+      dateRange?.maxDate && v && v > dateRange.maxDate ? dateRange.maxDate : v;
+    dateRange?.onStartChange?.(clamped);
     // Auto-clamp: if new start > current end, clear end
-    if (dateRange?.endValue && v > dateRange.endValue) {
+    if (dateRange?.endValue && clamped > dateRange.endValue) {
       dateRange?.onEndChange?.("");
     }
   };
@@ -65,6 +68,7 @@ export const TableFilter = ({
   const handleEndChange = (v: string) => {
     // Ignore if before start
     if (dateRange?.startValue && v && v < dateRange.startValue) return;
+    if (dateRange?.maxDate && v && v > dateRange.maxDate) return;
     dateRange?.onEndChange?.(v);
   };
 
@@ -135,7 +139,7 @@ export const TableFilter = ({
               <input
                 type="date"
                 value={dateRange.startValue ?? ""}
-                max={dateRange.endValue || undefined}
+                max={dateRange.maxDate || dateRange.endValue || undefined}
                 onChange={(e) => handleStartChange(e.target.value)}
                 disabled={disabled}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600"
@@ -150,6 +154,7 @@ export const TableFilter = ({
                 type="date"
                 value={dateRange.endValue ?? ""}
                 min={dateRange.startValue || undefined}
+                max={dateRange.maxDate || undefined}
                 onChange={(e) => handleEndChange(e.target.value)}
                 disabled={disabled}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600"

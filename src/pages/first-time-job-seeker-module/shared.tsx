@@ -129,10 +129,35 @@ export function buildFtjsAutoArchiveReason(dateStr?: string | null) {
   return `Automatically archived after the FTJS 1-year validation period ended on ${formatDate(expiryDate.toISOString())}.`;
 }
 
+function parseFtjsDateTime(dateStr?: string | null) {
+  if (!dateStr) return null;
+
+  const normalizedDateStr = String(dateStr).trim();
+  if (!normalizedDateStr) return null;
+
+  const canonicalDateStr = normalizedDateStr.replace(" ", "T");
+
+  const hasExplicitTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(
+    canonicalDateStr,
+  );
+  const isTimezoneLessDateTime =
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/.test(
+      canonicalDateStr,
+    );
+
+  const parsedDate = new Date(
+    !hasExplicitTimezone && isTimezoneLessDateTime
+      ? `${canonicalDateStr}Z`
+      : canonicalDateStr,
+  );
+
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
 export function formatDateTime(dateStr?: string | null) {
   if (!dateStr) return "—";
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return String(dateStr);
+  const date = parseFtjsDateTime(dateStr);
+  if (!date) return String(dateStr);
   return date.toLocaleString("en-PH", {
     year: "numeric",
     month: "short",

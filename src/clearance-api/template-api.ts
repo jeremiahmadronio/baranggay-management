@@ -8,6 +8,7 @@ import {
   clearanceTemplateApi,
   type TemplateResponseDTO,
   type SignatoryDTO,
+  type ArchiveSummaryResponseDTO,
 } from "../service/clearance-api/Template";
 
 // Re-export types for convenience
@@ -28,6 +29,84 @@ const mapDtoToTemplateOption = (dto: TemplateResponseDTO): TemplateOption => ({
   name: dto.certTitle,
   isFree: !dto.hasFee || dto.certFee === 0,
 });
+
+const normalizeTemplateName = (name: string) => name.trim().toLowerCase();
+
+const normalizeTemplateNameKey = (name: string) =>
+  normalizeTemplateName(name).replace(/[^a-z0-9]/g, "");
+
+const isNameLikelyMatch = (left: string, right: string): boolean => {
+  const a = normalizeTemplateNameKey(left);
+  const b = normalizeTemplateNameKey(right);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return a.includes(b) || b.includes(a);
+};
+
+const dtoArchivedFlag = (dto: TemplateResponseDTO): boolean | null => {
+  const raw = dto as unknown as Record<string, unknown>;
+
+  const booleanLikeKeys = [
+    "isArchived",
+    "archived",
+    "isVoid",
+    "voided",
+    "isActive",
+  ] as const;
+
+  for (const key of booleanLikeKeys) {
+    const value = raw[key];
+    if (typeof value === "boolean") {
+      if (key === "isActive") return !value;
+      return value;
+    }
+    if (typeof value === "number") {
+      if (key === "isActive") return value === 0;
+      return value === 1;
+    }
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "1", "yes", "y"].includes(normalized)) {
+        if (key === "isActive") return false;
+        return true;
+      }
+      if (["false", "0", "no", "n"].includes(normalized)) {
+        if (key === "isActive") return true;
+        return false;
+      }
+    }
+  }
+
+  const statusCandidates = [
+    raw.archiveStatus,
+    raw.status,
+    raw.templateStatus,
+    raw.clearanceStatus,
+    raw.recordStatus,
+    raw.state,
+  ].filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+
+  for (const statusRaw of statusCandidates) {
+    const status = statusRaw.trim().toUpperCase();
+    if (
+      status.includes("ARCHIVE") ||
+      [
+        "VOID",
+        "VOIDED",
+        "INACTIVE",
+        "DEACTIVATED",
+        "DISABLED",
+        "DELETED",
+      ].includes(status)
+    ) {
+      return true;
+    }
+    if (["ACTIVE", "RESTORED", "ENABLED"].includes(status)) return false;
+  }
+
+  return null;
+};
+
 
 const mapDtoToTemplateData = (dto: TemplateResponseDTO): TemplateData => ({
   id: dto.id,
@@ -52,8 +131,8 @@ const mapDtoToTemplateData = (dto: TemplateResponseDTO): TemplateData => ({
   settings: {
     fee: dto.certFee ?? 0,
     validityMonths: dto.validityMonths ?? 6,
-    requiresPhoto: dto.requiresPhoto ?? false,
-    requiresThumbmark: dto.requiresThumbmark ?? false,
+    requiresPhoto: false,
+    requiresThumbmark: false,
     hasFee: dto.hasFee ?? false,
     hasCtn: dto.hascTn ?? false,
     ctnFee: 0,
@@ -69,7 +148,15 @@ let _apiCacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function fetchApiTemplates(): Promise<TemplateResponseDTO[]> {
-  if (_apiCache && Date.now() - _apiCacheTime < CACHE_TTL) return _apiCache;
+  return fetchApiTemplatesWithCache(false);
+}
+
+async function fetchApiTemplatesWithCache(
+  forceRefresh: boolean,
+): Promise<TemplateResponseDTO[]> {
+  if (!forceRefresh && _apiCache && Date.now() - _apiCacheTime < CACHE_TTL) {
+    return _apiCache;
+  }
   const dtos = await clearanceTemplateApi.getAllTemplates();
   _apiCache = dtos;
   _apiCacheTime = Date.now();
@@ -88,6 +175,7 @@ export const invalidateTemplateCache = () => {
 
 const API_BASE_URL = "/api/clearance";
 const STORAGE_KEY = "barangay_templates";
+const CUSTOM_TEMPLATE_IDS_KEY = "barangay_custom_template_ids";
 
 const DEFAULT_SIGNATORIES = {
   PUNONG_BARANGAY: {
@@ -524,12 +612,116 @@ const getStoredTemplate = (templateId: string): TemplateData | null => {
   }
 };
 
+const getCustomTemplateIds = (): string[] => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TEMPLATE_IDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === "string")
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveCustomTemplateIds = (ids: string[]) => {
+  try {
+    localStorage.setItem(CUSTOM_TEMPLATE_IDS_KEY, JSON.stringify(ids));
+  } catch {
+    // ignore storage errors
+  }
+};
+
+const addCustomTemplateId = (id: string) => {
+  const ids = getCustomTemplateIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    saveCustomTemplateIds(ids);
+  }
+};
+
 const storeTemplate = (templateId: string, data: TemplateData): void => {
   try {
     localStorage.setItem(`${STORAGE_KEY}_${templateId}`, JSON.stringify(data));
   } catch (error) {
     console.warn("Failed to save to localStorage:", error);
   }
+};
+
+const slugifyTitle = (title: string): string => {
+  const slug = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "template";
+};
+
+const generateLocalTemplateId = (title: string): string => {
+  const base = `custom-${slugifyTitle(title)}`;
+  const ids = new Set<string>([
+    ...Object.keys(MOCK_TEMPLATES),
+    ...getCustomTemplateIds(),
+  ]);
+
+  if (!ids.has(base)) return base;
+
+  let counter = 2;
+  while (ids.has(`${base}-${counter}`)) {
+    counter += 1;
+  }
+  return `${base}-${counter}`;
+};
+
+const readLocalTemplateOptions = (): TemplateOption[] => {
+  const ids = getCustomTemplateIds();
+  const options: TemplateOption[] = [];
+
+  for (const id of ids) {
+    const tpl = getStoredTemplate(id);
+    if (!tpl) continue;
+    options.push({
+      id,
+      name: tpl.title,
+      isFree: !tpl.settings.hasFee || tpl.settings.fee === 0,
+    });
+  }
+
+  return options;
+};
+
+const mergeTemplateOptions = <T extends TemplateOption>(
+  primary: T[],
+  secondary: T[],
+): T[] => {
+  const byId = new Map<string, T>();
+  const seenNames = new Set<string>();
+
+  for (const item of primary) {
+    byId.set(String(item.id), item);
+    seenNames.add(normalizeTemplateName(item.name));
+  }
+
+  for (const item of secondary) {
+    const id = String(item.id);
+    const normalizedName = normalizeTemplateName(item.name);
+    if (!byId.has(id) && !seenNames.has(normalizedName)) {
+      byId.set(id, item);
+      seenNames.add(normalizedName);
+    }
+  }
+
+  return [...byId.values()];
+};
+
+export const registerCreatedTemplateLocally = (
+  data: Omit<TemplateData, "id">,
+): TemplateData => {
+  const id = generateLocalTemplateId(data.title);
+  const localTemplate: TemplateData = { ...data, id };
+  storeTemplate(id, localTemplate);
+  addCustomTemplateId(id);
+  return localTemplate;
 };
 
 /**
@@ -565,13 +757,10 @@ export const getEffectiveTemplate = (
  * Tries real API first, falls back to mock data
  */
 export const fetchTemplateOptions = async (): Promise<TemplateOption[]> => {
-  try {
-    const dtos = await fetchApiTemplates();
-    return dtos.map(mapDtoToTemplateOption);
-  } catch (error) {
-    console.warn("Real API unavailable, using mock data:", error);
-    return MOCK_TEMPLATE_OPTIONS;
-  }
+  const withStatus = await fetchTemplateOptionsWithStatus();
+  return withStatus
+    .filter((option) => !option.isArchived)
+    .map(({ isArchived: _isArchived, ...option }) => option);
 };
 
 /**
@@ -652,6 +841,7 @@ export const resetTemplate = async (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ARCHIVED_STORAGE_KEY = "barangay_archived_templates";
+const ARCHIVED_TEMPLATE_SNAPSHOTS_KEY = "barangay_archived_template_snapshots";
 
 const getArchivedIds = (): Set<string> => {
   try {
@@ -666,6 +856,111 @@ const saveArchivedIds = (ids: Set<string>) => {
   localStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify([...ids]));
 };
 
+const getArchivedTemplateSnapshots = (): Record<string, TemplateOption> => {
+  try {
+    const raw = localStorage.getItem(ARCHIVED_TEMPLATE_SNAPSHOTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, TemplateOption>;
+    if (!parsed || typeof parsed !== "object") return {};
+
+    const result: Record<string, TemplateOption> = {};
+    for (const [id, option] of Object.entries(parsed)) {
+      if (
+        option &&
+        typeof option === "object" &&
+        typeof option.name === "string" &&
+        typeof option.isFree === "boolean"
+      ) {
+        result[id] = {
+          id,
+          name: option.name,
+          isFree: option.isFree,
+        };
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+};
+
+const saveArchivedTemplateSnapshots = (
+  snapshots: Record<string, TemplateOption>,
+) => {
+  try {
+    localStorage.setItem(
+      ARCHIVED_TEMPLATE_SNAPSHOTS_KEY,
+      JSON.stringify(snapshots),
+    );
+  } catch {
+    // ignore storage errors
+  }
+};
+
+const setArchivedTemplateSnapshot = (option: TemplateOption) => {
+  const id = String(option.id);
+  const snapshots = getArchivedTemplateSnapshots();
+  snapshots[id] = {
+    id,
+    name: option.name,
+    isFree: option.isFree,
+  };
+  saveArchivedTemplateSnapshots(snapshots);
+};
+
+const removeArchivedTemplateSnapshot = (templateId: string) => {
+  const snapshots = getArchivedTemplateSnapshots();
+  if (templateId in snapshots) {
+    delete snapshots[templateId];
+    saveArchivedTemplateSnapshots(snapshots);
+  }
+};
+
+const getArchivedSnapshotOptions = (archivedIds: Set<string>): TemplateOption[] => {
+  const snapshots = getArchivedTemplateSnapshots();
+  const fromIds = [...archivedIds]
+    .map((id) => snapshots[id])
+    .filter((option): option is TemplateOption => Boolean(option));
+
+  const allSnapshots = Object.values(snapshots).filter(
+    (option): option is TemplateOption => Boolean(option),
+  );
+
+  return mergeTemplateOptions(fromIds, allSnapshots);
+};
+
+const resolveTemplateOptionById = async (
+  templateId: string,
+): Promise<TemplateOption> => {
+  const id = String(templateId);
+
+  const localTemplate = getStoredTemplate(id);
+  if (localTemplate) {
+    return {
+      id,
+      name: localTemplate.title,
+      isFree: !localTemplate.settings.hasFee || localTemplate.settings.fee === 0,
+    };
+  }
+
+  try {
+    const dtos = await fetchApiTemplatesWithCache(false);
+    const dto = dtos.find((item) => String(item.id) === id);
+    if (dto) return mapDtoToTemplateOption(dto);
+  } catch {
+    // ignore and continue to fallback
+  }
+
+  const mock = MOCK_TEMPLATE_OPTIONS.find((option) => String(option.id) === id);
+  if (mock) return mock;
+
+  return {
+    id,
+    name: `Template ${id}`,
+    isFree: false,
+  };
+};
+
 /**
  * Archive a template (soft-delete)
  */
@@ -674,19 +969,28 @@ export const archiveTemplate = async (
   _reason?: string,
 ): Promise<boolean> => {
   const id = String(templateId);
+  const snapshot = await resolveTemplateOptionById(id);
   try {
-    const response = await fetch(`${API_BASE_URL}/templates/${id}/archive`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: _reason }),
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) {
+      throw new Error(`Template ID ${id} is not numeric for API archive.`);
+    }
+    await clearanceTemplateApi.toggleArchiveTemplate(numericId, {
+      remarks: _reason || "Archived via clearance settings",
     });
-    if (!response.ok) throw new Error(`Failed to archive template: ${id}`);
+    const ids = getArchivedIds();
+    ids.add(id);
+    saveArchivedIds(ids);
+    setArchivedTemplateSnapshot(snapshot);
+    invalidateTemplateCache();
     return true;
   } catch (error) {
     console.warn("API unavailable, archiving locally:", error);
     const ids = getArchivedIds();
     ids.add(id);
     saveArchivedIds(ids);
+    setArchivedTemplateSnapshot(snapshot);
+    invalidateTemplateCache();
     return true;
   }
 };
@@ -699,16 +1003,26 @@ export const restoreTemplate = async (
 ): Promise<boolean> => {
   const id = String(templateId);
   try {
-    const response = await fetch(`${API_BASE_URL}/templates/${id}/restore`, {
-      method: "PATCH",
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) {
+      throw new Error(`Template ID ${id} is not numeric for API restore.`);
+    }
+    await clearanceTemplateApi.restoreVoid(numericId, {
+      remarks: "Restored via clearance settings",
     });
-    if (!response.ok) throw new Error(`Failed to restore template: ${id}`);
+    const ids = getArchivedIds();
+    ids.delete(id);
+    saveArchivedIds(ids);
+    removeArchivedTemplateSnapshot(id);
+    invalidateTemplateCache();
     return true;
   } catch (error) {
     console.warn("API unavailable, restoring locally:", error);
     const ids = getArchivedIds();
     ids.delete(id);
     saveArchivedIds(ids);
+    removeArchivedTemplateSnapshot(id);
+    invalidateTemplateCache();
     return true;
   }
 };
@@ -720,20 +1034,98 @@ export const restoreTemplate = async (
 export const fetchTemplateOptionsWithStatus = async (): Promise<
   (TemplateOption & { isArchived: boolean })[]
 > => {
+  const localOptions = readLocalTemplateOptions();
   try {
-    const dtos = await fetchApiTemplates();
+    const [dtos, archiveRows] = await Promise.all([
+      fetchApiTemplatesWithCache(true),
+      clearanceTemplateApi
+        .getAllArchives()
+        .catch(() => [] as ArchiveSummaryResponseDTO[]),
+    ]);
+
     const archivedIds = getArchivedIds();
-    return dtos.map((dto) => ({
+    const archivedSnapshotOptions = getArchivedSnapshotOptions(archivedIds);
+    const archivedSnapshotIds = new Set(
+      archivedSnapshotOptions.map((option) => String(option.id)),
+    );
+    const archivedApiIds = new Set(
+      archiveRows
+        .map((row) => String(row.id ?? ""))
+        .filter((id) => id.length > 0),
+    );
+    const archivedNames = new Set(
+      archiveRows
+        .map((row) => normalizeTemplateName(String(row.certTitle || "")))
+        .filter(Boolean),
+    );
+
+    const apiOptions = dtos.map((dto) => ({
       ...mapDtoToTemplateOption(dto),
-      isArchived: archivedIds.has(String(dto.id)),
+      isArchived: (() => {
+        const fromDto = dtoArchivedFlag(dto);
+        if (fromDto !== null) return fromDto;
+        return (
+          archivedApiIds.has(String(dto.id)) ||
+          archivedSnapshotIds.has(String(dto.id)) ||
+          archivedIds.has(String(dto.id)) ||
+          archivedNames.has(normalizeTemplateName(dto.certTitle)) ||
+          [...archivedNames].some((name) => isNameLikelyMatch(name, dto.certTitle))
+        );
+      })(),
     }));
+
+    const localWithStatus = localOptions.map((option) => ({
+      ...option,
+      isArchived:
+        archivedApiIds.has(String(option.id)) ||
+        archivedSnapshotIds.has(String(option.id)) ||
+        archivedIds.has(String(option.id)) ||
+        archivedNames.has(normalizeTemplateName(option.name)) ||
+        [...archivedNames].some((name) => isNameLikelyMatch(name, option.name)),
+    }));
+
+    const archivedSnapshotWithStatus = archivedSnapshotOptions.map((option) => ({
+      ...option,
+      isArchived: true,
+    }));
+
+    const mergedSecondary = mergeTemplateOptions(
+      localWithStatus,
+      archivedSnapshotWithStatus,
+    );
+
+    return mergeTemplateOptions(apiOptions, mergedSecondary);
   } catch (error) {
     console.warn("API unavailable, using mock data:", error);
     const archivedIds = getArchivedIds();
-    return MOCK_TEMPLATE_OPTIONS.map((t) => ({
+    const archivedSnapshotOptions = getArchivedSnapshotOptions(archivedIds);
+    const archivedSnapshotIds = new Set(
+      archivedSnapshotOptions.map((option) => String(option.id)),
+    );
+    const mockOptions = MOCK_TEMPLATE_OPTIONS.map((t) => ({
       ...t,
-      isArchived: archivedIds.has(String(t.id)),
+      isArchived:
+        archivedIds.has(String(t.id)) || archivedSnapshotIds.has(String(t.id)),
     }));
+
+    const localWithStatus = localOptions.map((option) => ({
+      ...option,
+      isArchived:
+        archivedIds.has(String(option.id)) ||
+        archivedSnapshotIds.has(String(option.id)),
+    }));
+
+    const archivedSnapshotWithStatus = archivedSnapshotOptions.map((option) => ({
+      ...option,
+      isArchived: true,
+    }));
+
+    const mergedSecondary = mergeTemplateOptions(
+      localWithStatus,
+      archivedSnapshotWithStatus,
+    );
+
+    return mergeTemplateOptions(mockOptions, mergedSecondary);
   }
 };
 

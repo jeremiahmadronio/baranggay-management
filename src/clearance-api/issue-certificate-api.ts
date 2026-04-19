@@ -31,6 +31,26 @@ export type { FormFieldConfig, FormFieldsConfig, IssuanceTemplate };
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const API_BASE_URL = "/api/clearance";
+const MOCK_ISSUED_STORAGE_KEY = "clearance.mockIssuedCertificates";
+
+const readMockIssuedCertificates = (): Array<Record<string, unknown>> => {
+  try {
+    const raw = localStorage.getItem(MOCK_ISSUED_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeMockIssuedCertificates = (rows: Array<Record<string, unknown>>) => {
+  try {
+    localStorage.setItem(MOCK_ISSUED_STORAGE_KEY, JSON.stringify(rows));
+  } catch {
+    // ignore storage errors in fallback mode
+  }
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPERS - Create field configs
@@ -1051,6 +1071,7 @@ export const fetchIssuanceTemplate = async (
     return {
       id: templateData.id,
       title: templateData.title,
+      layoutStyle: templateData.layoutStyle,
       bodySections: templateData.bodySections,
       footerText: templateData.footerText,
       signatories: templateData.signatories,
@@ -1067,6 +1088,7 @@ export const fetchIssuanceTemplate = async (
     return {
       id: templateData.id,
       title: templateData.title,
+      layoutStyle: templateData.layoutStyle,
       bodySections: templateData.bodySections,
       footerText: templateData.footerText,
       signatories: templateData.signatories,
@@ -1115,6 +1137,7 @@ export interface IssueCertificatePayload {
   templateId: string;
   formData: Record<string, string>;
   issuedBy: string;
+  certificateType?: string;
 }
 
 export interface IssueCertificateResponse {
@@ -1122,6 +1145,16 @@ export interface IssueCertificateResponse {
   certificateNumber: string;
   message: string;
 }
+
+const toLocalDateTimeString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+};
 
 export const issueCertificate = async (
   payload: IssueCertificatePayload,
@@ -1139,7 +1172,41 @@ export const issueCertificate = async (
 
     // Generate mock certificate number
     const timestamp = Date.now();
+    const issuedNow = new Date(timestamp);
     const certNumber = `CERT-${payload.templateId.toUpperCase().substring(0, 3)}-${timestamp}`;
+
+    const requesterName =
+      payload.formData.full_name ||
+      payload.formData.FULL_NAME ||
+      "Unknown Requestor";
+
+    const amountRaw =
+      payload.formData.amount ||
+      payload.formData.fee ||
+      payload.formData.AMOUNT ||
+      payload.formData.AMOUNT_PAID ||
+      payload.formData.certFee ||
+      "";
+    const amount = Number(amountRaw);
+    const isFree = !Number.isFinite(amount) || amount <= 0;
+
+    const mockIssuedRecord: Record<string, unknown> = {
+      id: `mock-${timestamp}`,
+      templateId: payload.templateId,
+      certificateType: payload.certificateType || `Template ${payload.templateId}`,
+      requesterName,
+      certificateData: payload.formData,
+      isFree,
+      issuedBy: payload.issuedBy,
+      status: "Released",
+      dateIssued: toLocalDateTimeString(issuedNow),
+      orNumber: isFree ? undefined : `OR-MOCK-${String(timestamp).slice(-6)}`,
+      fee: isFree ? 0 : amount,
+      isArchived: false,
+    };
+
+    const existing = readMockIssuedCertificates();
+    writeMockIssuedCertificates([mockIssuedRecord, ...existing]);
 
     return {
       success: true,
