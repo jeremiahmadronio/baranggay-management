@@ -13,7 +13,7 @@ import {
 import type {
   BlotterDocketViewDTO,
   MediationProcessDTO,
-} from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/DocketView";
 import { isTerminalStatus } from "../shared/StatusBadge";
 import { InfoRow } from "../shared/InfoRow";
 import { SectionCard } from "../shared/SectionCard";

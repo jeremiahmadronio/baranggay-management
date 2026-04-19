@@ -9,7 +9,7 @@ import {
 import {
   getFullBlotterRecord,
   type BlotterRecordViewDTO,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/RecordView";
 import { CenteredLoader } from "../../hooks/LoadingStates";
 import { InfoRow } from "./shared/InfoRow";
 import { SectionCard } from "./shared/SectionCard";

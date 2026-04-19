@@ -10,23 +10,23 @@ import type {
   DocketTableParams,
   BlotterSummaryDTO,
   BlotterStatsDTO,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/DocketView";
 import {
   getDocketTable,
   getDocketStats,
   archiveCase,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
   getMyAccess,
   hasBlotterPermission,
   type UserSecurityProfile,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterPermission";
 import {
   getNatureOfComplaintOptions,
   type NatureOptionDTO,
-} from "../../service/blotter-api/blotter-api";
-import { referToLupon } from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterFormComplaint";
+import { referToLupon } from "../../service/blotter-api/ForwardToLupon";
 import {
   ReferToLuponModal,
   type PangkatMember,

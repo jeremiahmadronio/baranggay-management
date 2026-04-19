@@ -7,8 +7,14 @@ import {
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
 import {
   type WitnessEntry,
+  
+} from "../../../service/blotter-api/BlotterFormComplaint";
+
+import {
+  
   type PersonSearchResponseDTO,
-} from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/Resident";
+
 
 const MAX_WITNESS_FULL_NAME_LENGTH = 80;
 const MAX_WITNESS_ADDRESS_LENGTH = 180;

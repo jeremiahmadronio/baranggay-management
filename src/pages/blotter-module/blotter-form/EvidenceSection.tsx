@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SectionCard, FormInput } from "../reusable/FormComponents";
-import { type EvidenceOptionDTO } from "../../../service/blotter-api/blotter-api";
+import { type EvidenceOptionDTO } from "../../../service/blotter-api/BlotterFormComplaint";
 
 const MAX_CUSTOM_EVIDENCE_LENGTH = 200;
 interface EvidenceSectionProps {

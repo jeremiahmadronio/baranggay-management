@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ResidentProfileViewDTO } from "../../service/blotter-api/blotter-api";
+import type { ResidentProfileViewDTO } from "../../service/blotter-api/Resident";
 
 interface ResidentProfilePageProps {
   residentId: number;

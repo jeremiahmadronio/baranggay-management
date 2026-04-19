@@ -22,13 +22,13 @@ import {
   type ChartDataDTO,
   type StatusStatDTO,
   type SettlementEfficiencyDTO,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterReports";
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import {
   BLOTTER_PERMISSIONS,
   getMyAccess,
   hasBlotterPermission,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterPermission";
 import {
   CenteredLoader,
   CircleLoader,

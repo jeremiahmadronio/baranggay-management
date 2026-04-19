@@ -1,4 +1,4 @@
-import { referToLupon } from "../../service/blotter-api/blotter-api";
+import { referToLupon } from "../../service/blotter-api/ForwardToLupon";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeftIcon, AlertCircleIcon } from "lucide-react";
 import type {
@@ -7,19 +7,19 @@ import type {
   HearingViewDTO,
   CaseNoteViewDTO,
   HearingFullDetailsDTO,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/DocketView";
 import {
   getFullBlotterDocket,
   getMediationProcess,
   getHearingView,
   getCaseNotes,
   updateCaseStatus,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
   getMyAccess,
   hasBlotterPermission,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterPermission";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { HearingsTab } from "./tabs/HearingTab";
 import { NotesTab } from "./tabs/NotesTab";

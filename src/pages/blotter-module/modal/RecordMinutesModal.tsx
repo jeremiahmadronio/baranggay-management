@@ -9,8 +9,8 @@ import {
 import type {
   HearingViewDTO,
   RecordMinutesRequest,
-} from "../../../service/blotter-api/blotter-api";
-import { recordHearingMinutes } from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/DocketView";
+import { recordHearingMinutes } from "../../../service/blotter-api/DocketView";
 import { formatDate, formatTime } from "../shared/utils";
 
 interface RecordMinutesModalProps {

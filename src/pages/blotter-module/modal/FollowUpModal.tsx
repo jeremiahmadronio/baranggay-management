@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { X, Send, AlertCircle, ShieldOffIcon } from "lucide-react";
-import { recordHearingFollowUp } from "../../../service/blotter-api/blotter-api";
+import { recordHearingFollowUp } from "../../../service/blotter-api/DocketView";
 
 export interface Props {
   hearingId: number;

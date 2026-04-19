@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileTextIcon, PlusIcon, SendIcon, UserIcon } from "lucide-react";
-import type { CaseNoteViewDTO } from "../../../service/blotter-api/blotter-api";
-import { addCaseNote } from "../../../service/blotter-api/blotter-api";
+import type { CaseNoteViewDTO } from "../../../service/blotter-api/DocketView";
+import { addCaseNote } from "../../../service/blotter-api/DocketView";
 import { isTerminalStatus } from "../shared/StatusBadge";
 import { SectionCard } from "../shared/SectionCard";
 import { formatDateTime } from "../shared/utils";

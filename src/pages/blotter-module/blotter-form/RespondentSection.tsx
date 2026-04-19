@@ -6,7 +6,7 @@ import {
   SectionDivider,
 } from "../reusable/FormComponents";
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
-import { type PersonSearchResponseDTO } from "../../../service/blotter-api/blotter-api";
+import { type PersonSearchResponseDTO } from "../../../service/blotter-api/Resident";
 import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS } from "./ComplaintSection";
 
 export const RELATIONSHIP_OPTIONS = [

@@ -5,7 +5,7 @@ import {
   FormSelect,
 } from "../reusable/FormComponents";
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
-import { type PersonSearchResponseDTO } from "../../../service/blotter-api/blotter-api";
+import { type PersonSearchResponseDTO } from "../../../service/blotter-api/Resident";
 
 export const GENDER_OPTIONS = [
   { value: "Male", label: "Male" },

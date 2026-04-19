@@ -1,8 +1,8 @@
-import { getMyAccess } from "../../service/blotter-api/blotter-api";
+import { getMyAccess } from "../../service/blotter-api/BlotterPermission";
 import {
   BLOTTER_PERMISSIONS,
   hasBlotterPermission,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterPermission";
 import { useEffect, useState } from "react";
 import { ActionModal } from "./reusable/SuccessModal";
 import {
@@ -30,12 +30,12 @@ import {
   getOfficerOptions,
   submitForTheRecord,
   submitFormalComplaint,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterFormComplaint";
 import type {
   EvidenceOptionDTO,
   OfficerOptionDTO,
   WitnessEntry,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterFormComplaint";
 function generateBlotterNumber(): string {
   const year = new Date().getFullYear();
   return `${year}-BLT-${Math.floor(Math.random() * 10000)

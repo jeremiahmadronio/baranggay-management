@@ -8,11 +8,11 @@ import {
   getResidentTable,
   getResidentProfile,
   getResidentStats,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/Resident";
 import type {
   ResidentSummary,
   ResidentStatsDTO,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/Resident";
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 
 function useDebounce<T>(value: T, delay = 400): T {

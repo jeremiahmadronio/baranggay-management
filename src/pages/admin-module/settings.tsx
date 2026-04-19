@@ -6,7 +6,7 @@ import {
 import {
   getSettingsPreview,
   updateSettings,
-} from "../admin-root-api/admin-management";
+} from "../../service/admin-root-api/admin-management";
 
 const ACCOUNT_SECTIONS: SettingsSectionConfig[] = [
   {

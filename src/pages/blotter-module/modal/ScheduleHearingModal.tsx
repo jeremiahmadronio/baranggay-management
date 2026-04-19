@@ -13,12 +13,12 @@ import type {
   ScheduleHearingRequest,
   CalendarMarkerDTO,
   BusySlotDTO,
-} from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/DocketView";
 import {
   scheduleHearing,
   getMarkers,
   getBusySlots,
-} from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/DocketView";
 import { generatePaanyaya } from "../modal/GeneratePaanyaya";
 
 // ── Constants ──

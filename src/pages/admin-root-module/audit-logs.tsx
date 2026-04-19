@@ -21,7 +21,7 @@ import {
   type AuditLogStats,
   type AuditFilterOptions,
   type AuditTableView,
-} from "../admin-root-api/audit-logs";
+} from "../../service/admin-root-api/audit-logs";
 
 const HIDDEN_FIELDS = new Set([
   "id",

@@ -20,7 +20,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { KPICard, KPIGrid } from "../../hooks/KPICard";
-import * as api from "../../service/blotter-api/blotter-api";
+import * as api from "../../service/blotter-api/Dashboard";
 import { useNavigate } from "react-router-dom";
 import {
   CenteredLoader,

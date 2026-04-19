@@ -3,7 +3,7 @@ import { X, Lock, LockOpen, Loader2 } from "lucide-react";
 import {
   toggleUserLock,
   type AdminTable,
-} from "../admin-root-api/admin-management";
+} from "../../service/admin-root-api/admin-management";
 
 interface LockUserModalProps {
   admin: AdminTable;

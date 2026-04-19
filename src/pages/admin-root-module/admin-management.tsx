@@ -3,7 +3,7 @@ import {
   Pencil,
   Lock,
   LockOpen,
-  Trash2,
+  Archive,
   Eye,
   ShieldAlert,
   RotateCcw,
@@ -11,20 +11,23 @@ import {
 import CreateAdminModal from "./create-admin-modal";
 import { EditUserModal } from "./edit-user-modal";
 import { ViewUserModal } from "./view-user-modal";
-import { LockUserModal } from "./lock-user-modal";
-import { DeleteUserModal } from "./delete-user-modal";
-import { RestoreUserModal } from "./restore-user-modal";
+import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import { Table, type TableColumn } from "../../hooks/Table";
 import { TableFilter } from "../../hooks/TableFilter";
-import { StatusBadge, getStatusFromValue } from "../../reusable/StatusBadge";
+
 import {
   getAdminStats,
   getAdminTable,
   type AdminStats,
   type AdminTable,
-} from "../admin-root-api/admin-management";
+} from "../../service/admin-root-api/admin-management";
 import { NoticeBanner } from "../../reusable/Notification";
+import { StatusUpdateModal } from "../../reusable/StatusUpdateModal";
+import {
+  archiveAdmin,
+  restoreArchive,
+} from "../../service/admin-root-api/admin-management";
 
 function AnimatedCounter({ target }: { target: number | null | undefined }) {
   const safeTarget = target ?? 0;
@@ -92,8 +95,8 @@ const buildColumns = (
   onView: (a: AdminTable) => void,
   onEdit: (a: AdminTable) => void,
   onLock: (a: AdminTable) => void,
-  onDelete: (a: AdminTable) => void,
-  onRestore: (a: AdminTable) => void,
+  onArchive: (a: AdminTable) => void,
+  onUnarchive: (a: AdminTable) => void,
 ): TableColumn<AdminTable>[] => [
   {
     key: "profile",
@@ -132,14 +135,41 @@ const buildColumns = (
     header: "Status",
     align: "center",
     render: (item) => {
-      const rawStatus = item.isLocked ? "locked" : item.status || "unknown";
-      const statusType =
-        rawStatus.toLowerCase() === "locked"
-          ? "danger"
-          : getStatusFromValue(rawStatus);
-      const label =
-        rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
-      return <StatusBadge status={statusType} label={label} size="sm" />;
+      // Custom pill style for status
+      const status = (item.status || "").toUpperCase();
+      if (item.isLocked) {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+            LOCKED
+          </span>
+        );
+      }
+      if (status === "ACTIVE") {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+            ACTIVE
+          </span>
+        );
+      }
+      if (status === "INACTIVE") {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+            INACTIVE
+          </span>
+        );
+      }
+      if (status === "PENDING") {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+            PENDING
+          </span>
+        );
+      }
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+          {status || "UNKNOWN"}
+        </span>
+      );
     },
   },
   {
@@ -156,7 +186,7 @@ const buildColumns = (
     header: "Actions",
     align: "center",
     render: (item) => {
-      const isInactive = item.status?.toUpperCase() === "INACTIVE";
+      const isArchived = item.status?.toUpperCase() === "ARCHIVED";
       const LockIcon = item.isLocked ? LockOpen : Lock;
       const lockTitle = item.isLocked ? "Unlock" : "Lock";
 
@@ -195,12 +225,12 @@ const buildColumns = (
             <LockIcon className="w-4 h-4 text-amber-400 hover:text-amber-600" />
           </button>
 
-          {isInactive ? (
+          {isArchived ? (
             <button
-              title="Restore"
+              title="Unarchive"
               onClick={(e) => {
                 e.stopPropagation();
-                onRestore(item);
+                onUnarchive(item);
               }}
               className="p-1.5 rounded-md hover:bg-blue-50 transition"
             >
@@ -208,14 +238,14 @@ const buildColumns = (
             </button>
           ) : (
             <button
-              title="Deactivate"
+              title="Archive"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(item);
+                onArchive(item);
               }}
               className="p-1.5 rounded-md hover:bg-rose-50 transition"
             >
-              <Trash2 className="w-4 h-4 text-rose-400 hover:text-rose-600" />
+              <Archive className="w-4 h-4 text-rose-400 hover:text-rose-600" />
             </button>
           )}
         </div>
@@ -225,7 +255,7 @@ const buildColumns = (
 ];
 
 export default function AdminManagement() {
-  console.log("AdminManagement component rendering...");
+  // ...existing code...
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -245,8 +275,12 @@ export default function AdminManagement() {
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openLock, setOpenLock] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [openRestore, setOpenRestore] = useState(false);
+  const [openArchive, setOpenArchive] = useState(false);
+  const [openUnarchive, setOpenUnarchive] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<AdminTable | null>(null);
+  const [unarchiveTarget, setUnarchiveTarget] = useState<AdminTable | null>(
+    null,
+  );
 
   useEffect(() => {
     async function fetchStats() {
@@ -275,23 +309,19 @@ export default function AdminManagement() {
         search: search || undefined,
         status: statusFilter || undefined,
       });
-      console.log("Admin Table API Response:", result);
-      console.log(
-        "totalPages:",
-        result.totalPages,
-        "totalElements:",
-        result.totalElements,
-        "content.length:",
-        result.content?.length,
-      );
-
       const content = result.content || [];
-      setTableData(content);
+      // Filter out archived admins
+      const visibleTableData = content.filter(
+        (item) => (item.status || "").toUpperCase() !== "ARCHIVED",
+      );
+      setTableData(visibleTableData);
 
       // Use totalElements from API, or fallback to content.length
       const totalElementsFromApi = result.totalElements ?? 0;
       const actualTotalItems =
-        totalElementsFromApi > 0 ? totalElementsFromApi : content.length;
+        totalElementsFromApi > 0
+          ? totalElementsFromApi
+          : visibleTableData.length;
 
       // Use totalPages from API, or calculate from totalElements
       const totalPagesFromApi = result.totalPages ?? 0;
@@ -335,21 +365,22 @@ export default function AdminManagement() {
     setSelectedAdmin(a);
     setOpenLock(true);
   };
-  const handleDelete = (a: AdminTable) => {
-    setSelectedAdmin(a);
-    setOpenDelete(true);
+
+  const handleArchive = (a: AdminTable) => {
+    setArchiveTarget(a);
+    setOpenArchive(true);
   };
-  const handleRestore = (a: AdminTable) => {
-    setSelectedAdmin(a);
-    setOpenRestore(true);
+  const handleUnarchive = (a: AdminTable) => {
+    setUnarchiveTarget(a);
+    setOpenUnarchive(true);
   };
 
   const columns = buildColumns(
     handleView,
     handleEdit,
     handleLock,
-    handleDelete,
-    handleRestore,
+    handleArchive,
+    handleUnarchive,
   );
 
   return (
@@ -495,33 +526,78 @@ export default function AdminManagement() {
       )}
 
       {openLock && selectedAdmin && (
-        <LockUserModal
-          admin={selectedAdmin}
+        <ArchiveReasonModal
+          isOpen={openLock}
           onClose={() => {
             setOpenLock(false);
             setSelectedAdmin(null);
             fetchTable();
           }}
+          onSubmit={async (reason) => {
+            // Lock or unlock depending on current state
+            const willLock = !selectedAdmin.isLocked;
+            await import("../../service/admin-root-api/admin-management").then(
+              ({ toggleUserLock }) =>
+                toggleUserLock(selectedAdmin.id, willLock, {
+                  reason,
+                  lockUntil: null,
+                }),
+            );
+            setOpenLock(false);
+            setSelectedAdmin(null);
+            fetchTable();
+          }}
+          title={
+            selectedAdmin.isLocked
+              ? "Unlock Admin Account"
+              : "Lock Admin Account"
+          }
+          subjectName={selectedAdmin.firstName + " " + selectedAdmin.lastName}
+          subjectLabel="admin"
+          submitLabel={selectedAdmin.isLocked ? "Unlock" : "Lock"}
+          placeholder={`Enter reason for ${selectedAdmin.isLocked ? "unlocking" : "locking"} this account...`}
         />
       )}
 
-      {openDelete && selectedAdmin && (
-        <DeleteUserModal
-          admin={selectedAdmin}
+      {openArchive && archiveTarget && (
+        <StatusUpdateModal
+          isOpen={openArchive}
           onClose={() => {
-            setOpenDelete(false);
-            setSelectedAdmin(null);
+            setOpenArchive(false);
+            setArchiveTarget(null);
+          }}
+          title="Archive Admin Account"
+          mode="reason-only"
+          subjectName={archiveTarget.firstName + " " + archiveTarget.lastName}
+          subjectLabel="admin"
+          submitLabel="Archive"
+          onSubmit={async ({ reason }) => {
+            await archiveAdmin(archiveTarget.id, { remarks: reason });
+            setOpenArchive(false);
+            setArchiveTarget(null);
             fetchTable();
           }}
         />
       )}
 
-      {openRestore && selectedAdmin && (
-        <RestoreUserModal
-          admin={selectedAdmin}
+      {openUnarchive && unarchiveTarget && (
+        <StatusUpdateModal
+          isOpen={openUnarchive}
           onClose={() => {
-            setOpenRestore(false);
-            setSelectedAdmin(null);
+            setOpenUnarchive(false);
+            setUnarchiveTarget(null);
+          }}
+          title="Unarchive Admin Account"
+          mode="reason-only"
+          subjectName={
+            unarchiveTarget.firstName + " " + unarchiveTarget.lastName
+          }
+          subjectLabel="admin"
+          submitLabel="Unarchive"
+          onSubmit={async ({ reason }) => {
+            await restoreArchive(unarchiveTarget.id, { remarks: reason });
+            setOpenUnarchive(false);
+            setUnarchiveTarget(null);
             fetchTable();
           }}
         />

@@ -7,15 +7,17 @@ import { TableFilter } from "../../hooks/TableFilter";
 import {
   getPagedBlotters,
   getRecordStats,
-  archiveCase,
+  type RecordTableParams,
+  type FtrSummaryStatsDTO,
+} from "../../service/blotter-api/RecordView";
+import { archiveCase } from "../../service/blotter-api/DocketView";
+import {
   BLOTTER_PERMISSIONS,
   getMyAccess,
   hasBlotterPermission,
   type UserSecurityProfile,
-  type RecordBlotterSummaryDTO,
-  type RecordTableParams,
-  type FtrSummaryStatsDTO,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterPermission";
+import { type BlotterSummaryDTO as RecordBlotterSummaryDTO } from "../../service/blotter-api/DocketView";
 import { CircleLoader } from "../../hooks/LoadingStates";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { ActionModal } from "./reusable/SuccessModal";

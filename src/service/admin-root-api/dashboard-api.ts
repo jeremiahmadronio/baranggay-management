@@ -3,8 +3,8 @@ const BASE_URL = `${BASE}/api/v1/dashboard`;
 
 export interface DashboardStats {
   totalUser: number;
-  totalActiveUser: number;
-  totalCritical: number;
+  totalActiveResident: number;
+  totalActiveEmployee: number;
   totalAuditEntry: number;
   auditGrowth: number;
   auditDirection: "up" | "down" | "neutral";

@@ -12,12 +12,12 @@ import {
   PrinterIcon,
   XCircleIcon,
 } from "lucide-react";
-import type { HearingViewDTO } from "../../../service/blotter-api/blotter-api";
+import type { HearingViewDTO } from "../../../service/blotter-api/DocketView";
 import { HEARING_STATUS_CONFIG, isTerminalStatus } from "../shared/StatusBadge";
 import { SectionCard } from "../shared/SectionCard";
 import { formatDate, formatTime } from "../shared/utils";
 import { generatePaanyaya } from "../modal/GeneratePaanyaya";
-import { updateHearingStatus } from "../../../service/blotter-api/blotter-api";
+import { updateHearingStatus } from "../../../service/blotter-api/HearingUpdate";
 import { ActionModal } from "../../../reusable";
 import { ArchiveReasonModal } from "../../../hooks/archive-modal";
 import {

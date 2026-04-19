@@ -17,7 +17,7 @@ import { HEARING_STATUS_CONFIG, isTerminalStatus } from "../shared/StatusBadge";
 import { SectionCard } from "../shared/SectionCard";
 import { formatDate, formatTime } from "../lib/Utils";
 import { generatePaanyaya } from "../modal/GeneratePaanyaya";
-import { updateHearingStatus } from "../../../blotter-api/HearingUpdate";
+import { updateHearingStatus } from "../../../service/blotter-api/HearingUpdate";
 import { ActionModal } from "../../../reusable";
 import { HearingViewModal } from "../modal/HearingViewModal";
 import { RecordMinutesModal } from "../modal/RecordMinutesModal";

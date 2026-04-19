@@ -3,12 +3,12 @@ import {
   getDashboardStats,
   getActivityOverview,
   getRecentActions,
-} from "../admin-root-api/dashboard-api";
+} from "../../service/admin-root-api/dashboard-api";
 import type {
   ActivityOverview,
   DashboardStats,
   RecentActions,
-} from "../admin-root-api/dashboard-api";
+} from "../../service/admin-root-api/dashboard-api";
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import { ResponsiveTable } from "../../reusable/RecentSystemActions";
 import type { ColumnDef } from "../../reusable/RecentSystemActions";
@@ -180,10 +180,7 @@ export default function RootAdminDashboard() {
             Failed to load dashboard
           </h3>
 
-          <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-            {error ||
-              "Nagkaroon ng problema sa pagkuha ng data mula sa server. Pakisuri ang iyong koneksyon."}
-          </p>
+          
 
           <div className="flex flex-col gap-3">
             <button
@@ -215,20 +212,20 @@ export default function RootAdminDashboard() {
       {/* ── KPI Cards ── */}
       <KPIGrid columns={4}>
         <KPICard
-          title="Total Admin Users"
+          title="Total Users"
           value={<AnimatedCounter target={stats.totalUser} />}
           icon={KPIIcons.users}
           color="blue"
         />
         <KPICard
-          title="Active Admin Users"
-          value={<AnimatedCounter target={stats.totalActiveUser} />}
+          title="Total Residents"
+          value={<AnimatedCounter target={stats.totalActiveResident} />}
           icon={KPIIcons.clock}
           color="emerald"
         />
         <KPICard
-          title="Security Alerts"
-          value={<AnimatedCounter target={stats.totalCritical} />}
+          title="Total Employee"
+          value={<AnimatedCounter target={stats.totalActiveEmployee} />}
           icon={<ShieldAlert className="w-6 h-6" />}
           color="rose"
         />

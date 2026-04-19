@@ -1,20 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { XIcon, SearchIcon, UserIcon, ChevronDownIcon } from "lucide-react";
 import type {
-  BlotterDocketViewDTO,
   EditComplaintEntry,
   EvidenceOptionDTO,
   NatureOptionDTO,
   OfficerOptionDTO,
-  PersonSearchResponseDTO,
   WitnessEntry,
-} from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/BlotterFormComplaint";
+
+import type {
+  BlotterDocketViewDTO,
+} from "../../../service/blotter-api/DocketView";
+
+import type {
+  PersonSearchResponseDTO
+} from "../../../service/blotter-api/Resident";
+
 import {
   getEvidenceTypeOptions,
   getNatureOfComplaintOptions,
   getOfficerOptions,
   updateCaseInformation,
-} from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/BlotterFormComplaint";
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
 import { formatDate } from "../shared/utils";
 

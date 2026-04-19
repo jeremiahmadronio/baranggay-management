@@ -1,151 +1,147 @@
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, AlertTriangle, ChevronDown, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Search, X, CheckCircle2 } from "lucide-react";
 import { FormModalShell, FormSectionTitle } from "../../reusable";
 import {
   getDepartmentOptions,
-  getAdminRoleOptions,
+  getPermissionOptions,
   createAdminAccount,
+  searchPeople,
+  checkEmailAvailability,
   type DepartmentOptions,
-  type RoleOptions,
+ 
   type CreateAdmin,
-} from "../admin-root-api/admin-management";
+  type PersonSearchResponseDTO,
+} from "../../service/admin-root-api/admin-management";
 
-interface PwReq {
-  label: string;
-  test: (v: string) => boolean;
-}
-
-const PW_REQS: PwReq[] = [
-  { label: "At least 8 characters", test: (v) => v.length >= 8 },
-  { label: "One uppercase letter", test: (v) => /[A-Z]/.test(v) },
-  { label: "One lowercase letter", test: (v) => /[a-z]/.test(v) },
-  { label: "One number", test: (v) => /[0-9]/.test(v) },
-  { label: "One special character", test: (v) => /[^A-Za-z0-9]/.test(v) },
-];
-
-const isPasswordValid = (v: string) => PW_REQS.every((r) => r.test(v));
-
-interface FormData {
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  contactNumber: string;
-  roleId: number | "";
-}
-
-type Errors = Partial<Record<keyof FormData | "departments", string>>;
+type Errors = Partial<
+  Record<"systemEmail" | "departments" | "permissions", string>
+>;
 
 interface Props {
   onClose: () => void;
 }
 
+
+
+interface FormData {
+  personId: number | null;
+  systemEmail: string;
+  departmentIds: number[];
+  permissionIds: number[];
+  activateImmediately: boolean;
+  allDepartments: boolean;
+}
+
 export default function CreateAdminModal({ onClose }: Props) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [showPassword, setShowPassword] = useState(false);
-  const [pwFocused, setPwFocused] = useState(false);
-  const [accessScope, setAccessScope] = useState<"all" | "specific">(
-    "specific",
-  );
-  const [selectedDeptIds, setSelectedDeptIds] = useState<number[]>([]);
-  const [activateImmediately, setActivateImmediately] = useState(true);
+  const [formData, setFormData] = useState<FormData>({
+    personId: null,
+    systemEmail: "",
+    departmentIds: [],
+    permissionIds: [],
+    activateImmediately: true,
+    allDepartments: false,
+  });
+
+  const [departments, setDepartments] = useState<DepartmentOptions[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [selectedResidentName, setSelectedResidentName] = useState<string>("");
 
-  const [departments, setDepartments] = useState<DepartmentOptions[]>([]);
-  const [roles, setRoles] = useState<RoleOptions[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(true);
+  // Resident search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<PersonSearchResponseDTO[]>(
+    [],
+  );
+  const [searchLoading, setSearchLoading] = useState(false);
 
-  const [formData, setFormData] = useState<FormData>({
-    username: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    contactNumber: "",
-    roleId: "",
-  });
+  // Email availability check
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false);
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [emailCheckTimeout, setEmailCheckTimeout] =
+    useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    Promise.all([getDepartmentOptions(), getAdminRoleOptions()])
-      .then(([depts, roleList]) => {
+    Promise.all([getDepartmentOptions(), getPermissionOptions()])
+      .then(([depts, ]) => {
         setDepartments(depts);
-        setRoles(roleList);
+        
       })
       .catch(console.error)
       .finally(() => setLoadingOptions(false));
   }, []);
 
-  const handleChange = (field: keyof FormData, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
   const toggleDept = (id: number) => {
-    setSelectedDeptIds((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id],
-    );
+    setFormData((prev) => ({
+      ...prev,
+      departmentIds: prev.departmentIds.includes(id)
+        ? prev.departmentIds.filter((d) => d !== id)
+        : [...prev.departmentIds, id],
+    }));
     if (errors.departments)
       setErrors((prev) => ({ ...prev, departments: undefined }));
   };
 
-  const validateStep1 = (): boolean => {
-    const e: Errors = {};
-    if (!formData.username.trim()) e.username = "Username is required.";
-    else if (formData.username.trim().length < 3)
-      e.username = "Username must be at least 3 characters.";
 
-    if (!formData.firstName.trim()) e.firstName = "First name is required.";
-    if (!formData.lastName.trim()) e.lastName = "Last name is required.";
 
-    if (!formData.email.trim()) {
-      e.email = "Email address is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      e.email = "Please enter a valid email address.";
+  const handleSearchResident = async (query: string) => {
+    setSearchQuery(query);
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
     }
 
-    if (!formData.password.trim()) {
-      e.password = "Password is required.";
-    } else if (!isPasswordValid(formData.password)) {
-      e.password = "Password does not meet all requirements.";
+    try {
+      setSearchLoading(true);
+      const results = await searchPeople(query);
+      setSearchResults(results);
+    } catch (err) {
+      console.error("Search error:", err);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
     }
-
-    if (!formData.contactNumber.trim()) {
-      e.contactNumber = "Contact number is required.";
-    } else if (!/^(09|\+639)\d{9}$/.test(formData.contactNumber)) {
-      e.contactNumber = "Enter a valid PH number (e.g. 09171234567).";
-    }
-
-    if (formData.roleId === "") e.roleId = "Please select a role.";
-
-    setErrors(e);
-    return Object.keys(e).length === 0;
   };
 
-  const validateStep2 = (): boolean => {
+  const handleSelectResident = (resident: PersonSearchResponseDTO) => {
+    setFormData((prev) => ({
+      ...prev,
+      personId: resident.id,
+    }));
+    setSelectedResidentName(`${resident.firstName} ${resident.lastName}`);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
+  const validate = (): boolean => {
     const e: Errors = {};
-    if (accessScope === "specific" && selectedDeptIds.length === 0)
-      e.departments = "Please select at least one department.";
+    if (!formData.personId) {
+      e.systemEmail = "Please select a resident.";
+    }
+    if (!formData.systemEmail.trim()) {
+      e.systemEmail = "System email is required.";
+    }
+    if (emailTaken) {
+      e.systemEmail = "This email is already taken.";
+    }
+    if (!formData.allDepartments && formData.departmentIds.length === 0) {
+      e.departments =
+        "Please select at least one department or check 'All Departments'.";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!validateStep2()) return;
+    if (!validate()) return;
 
     const payload: CreateAdmin = {
-      username: formData.username,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-      contactNumber: formData.contactNumber,
-      roleId: formData.roleId as number,
-      allDepartments: accessScope === "all",
-      departmentIds: accessScope === "all" ? [] : selectedDeptIds,
-      activateImmediately: activateImmediately,
+      personId: formData.personId ?? undefined,
+      systemEmail: formData.systemEmail,
+      departmentIds: formData.allDepartments ? [] : formData.departmentIds,
+      permissionsIds: formData.permissionIds,
+      activateImmediately: formData.activateImmediately,
     };
 
     try {
@@ -162,367 +158,173 @@ export default function CreateAdminModal({ onClose }: Props) {
     }
   };
 
-  const inputClass = (field: keyof FormData) =>
-    `w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-      errors[field] ? "border-red-500" : "border-gray-300"
-    }`;
-
-  const DEPT_COLORS = [
-    "bg-blue-100 text-blue-700",
-    "bg-orange-100 text-orange-700",
-    "bg-purple-100 text-purple-700",
-    "bg-teal-100 text-teal-700",
-    "bg-green-100 text-green-700",
-    "bg-yellow-100 text-yellow-800",
-    "bg-pink-100 text-pink-700",
-    "bg-cyan-100 text-cyan-700",
-  ];
-
   return (
     <FormModalShell
       isOpen={true}
       onClose={onClose}
       title="Create Admin Account"
-      maxWidthClass="max-w-4xl"
+      maxWidthClass="max-w-3xl"
       footer={
-        <div className="flex items-center justify-between">
-          {step === 2 ? (
-            <>
-              <button
-                onClick={() => setStep(1)}
-                disabled={isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50"
-              >
-                Back
-              </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onClose}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
-                >
-                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Create Admin
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex-1" />
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (validateStep1()) setStep(2);
-                  }}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                >
-                  Next
-                </button>
-              </div>
-            </>
-          )}
+        <div className="flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting || loadingOptions}
+            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
+          >
+            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            Create Admin
+          </button>
         </div>
       }
     >
-      <div className="flex items-center justify-center mb-10 px-8">
-        <div className="flex flex-col items-center relative">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${step >= 1 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500 border border-gray-200"}`}
-          >
-            1
-          </div>
-          <span
-            className={`text-xs mt-2 absolute top-8 whitespace-nowrap ${step >= 1 ? "text-blue-600 font-semibold" : "text-gray-500"}`}
-          >
-            Account Info
-          </span>
-        </div>
-        <div
-          className={`flex-1 h-0.5 mx-4 ${step >= 2 ? "bg-blue-600" : "bg-gray-200"}`}
-        />
-        <div className="flex flex-col items-center relative">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${step >= 2 ? "bg-blue-600 text-white" : "bg-white text-gray-400 border-2 border-gray-200"}`}
-          >
-            2
-          </div>
-          <span
-            className={`text-xs mt-2 absolute top-8 whitespace-nowrap ${step >= 2 ? "text-blue-600 font-semibold" : "text-gray-400"}`}
-          >
-            Access & Permissions
-          </span>
-        </div>
-      </div>
-
-      {step === 1 && (
-        <div className="space-y-5">
-          <FormSectionTitle title="Account Information" />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Username <span className="text-red-500">*</span>
-            </label>
+      <div className="space-y-6">
+        {/* Resident Search */}
+        <div>
+          <FormSectionTitle title="Select Resident" />
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Search Resident <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
             <input
-              className={inputClass("username")}
-              placeholder="juandelacruz"
-              value={formData.username}
-              onChange={(e) => handleChange("username", e.target.value)}
+              type="text"
+              placeholder="Search by name or ID..."
+              value={searchQuery}
+              onChange={(e) => handleSearchResident(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            {errors.username && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {errors.username}
+          </div>
+
+          {searchLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-4 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> Searching...
+            </div>
+          )}
+
+          {searchResults.length > 0 && (
+            <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto mt-2">
+              {searchResults.map((resident) => (
+                <div
+                  key={resident.id}
+                  onClick={() => handleSelectResident(resident)}
+                  className="p-4 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                >
+                  <p className="font-medium text-gray-900">
+                    {resident.firstName} {resident.lastName}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {searchQuery && !searchLoading && searchResults.length === 0 && (
+            <div className="text-center py-6 text-gray-500">
+              <p className="text-sm">
+                No residents found. Try a different search.
               </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                First Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                className={inputClass("firstName")}
-                placeholder="Juan"
-                value={formData.firstName}
-                onChange={(e) => handleChange("firstName", e.target.value)}
-              />
-              {errors.firstName && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> {errors.firstName}
-                </p>
-              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Last Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                className={inputClass("lastName")}
-                placeholder="Dela Cruz"
-                value={formData.lastName}
-                onChange={(e) => handleChange("lastName", e.target.value)}
-              />
-              {errors.lastName && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> {errors.lastName}
-                </p>
-              )}
-            </div>
-          </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address <span className="text-red-500">*</span>
-            </label>
+          {formData.personId && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Selected:</span>{" "}
+                {selectedResidentName}
+              </p>
+            </div>
+          )}
+
+          {errors.systemEmail && !formData.personId && (
+            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> {errors.systemEmail}
+            </p>
+          )}
+        </div>
+
+        {/* System Email */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            System Email <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
             <input
               type="email"
-              className={inputClass("email")}
-              placeholder="admin@ugong.gov.ph"
-              value={formData.email}
-              onChange={(e) => handleChange("email", e.target.value)}
+              placeholder="Enter system email"
+              value={formData.systemEmail}
+              onChange={(e) => {
+                const newEmail = e.target.value;
+                setFormData((prev) => ({ ...prev, systemEmail: newEmail }));
+                if (errors.systemEmail)
+                  setErrors((prev) => ({ ...prev, systemEmail: undefined }));
+
+                // Debounced email availability check
+                if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+                if (newEmail.trim() && newEmail.includes("@")) {
+                  setEmailCheckLoading(true);
+                  const timeout = setTimeout(async () => {
+                    try {
+                      const isTaken = await checkEmailAvailability(newEmail);
+                      setEmailTaken(isTaken);
+                    } catch (err) {
+                      console.error("Email check error:", err);
+                    } finally {
+                      setEmailCheckLoading(false);
+                    }
+                  }, 500);
+                  setEmailCheckTimeout(timeout);
+                } else {
+                  setEmailTaken(false);
+                  setEmailCheckLoading(false);
+                }
+              }}
+              className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
+                emailTaken
+                  ? "border-red-300 bg-red-50 focus:ring-red-500"
+                  : errors.systemEmail && !formData.personId
+                    ? "border-red-300 bg-red-50 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+              }`}
             />
-            {errors.email && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {errors.email}
-              </p>
+            {emailCheckLoading && (
+              <Loader2 className="absolute right-3 top-3 w-4 h-4 text-blue-500 animate-spin" />
+            )}
+            {!emailCheckLoading && emailTaken && (
+              <X className="absolute right-3 top-3 w-4 h-4 text-red-500" />
+            )}
+            {!emailCheckLoading && formData.systemEmail && !emailTaken && (
+              <CheckCircle2 className="absolute right-3 top-3 w-4 h-4 text-green-500" />
             )}
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                className={`${inputClass("password")} pr-10`}
-                placeholder="Create a strong password"
-                value={formData.password}
-                onFocus={() => setPwFocused(true)}
-                onBlur={() => setPwFocused(false)}
-                onChange={(e) => handleChange("password", e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-
-            {(pwFocused || formData.password.length > 0) && (
-              <ul className="mt-2 space-y-1">
-                {PW_REQS.map((req) => {
-                  const met = req.test(formData.password);
-                  return (
-                    <li
-                      key={req.label}
-                      className={`flex items-center gap-1.5 text-xs transition-colors ${
-                        met ? "text-green-600" : "text-gray-400"
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${met ? "bg-green-500" : "bg-gray-300"}`}
-                      />
-                      {req.label}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-
-            {errors.password && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {errors.password}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contact Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              className={inputClass("contactNumber")}
-              placeholder="09171234567"
-              value={formData.contactNumber}
-              onChange={(e) => handleChange("contactNumber", e.target.value)}
-            />
-            {errors.contactNumber && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {errors.contactNumber}
-              </p>
-            )}
-          </div>
-
-          {/* Role */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Admin Role <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              {loadingOptions ? (
-                <div className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-400 flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading roles…
-                </div>
-              ) : (
-                <select
-                  className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition-all appearance-none bg-white ${
-                    errors.roleId
-                      ? "border-red-400 focus:ring-2 focus:ring-red-300"
-                      : "border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  }`}
-                  value={formData.roleId}
-                  onChange={(e) =>
-                    handleChange(
-                      "roleId",
-                      e.target.value === "" ? "" : Number(e.target.value),
-                    )
-                  }
-                >
-                  <option value="">Select a role</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.roleName}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-            {errors.roleId && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {errors.roleId}
-              </p>
-            )}
-          </div>
+          {emailTaken && (
+            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> This email is already taken
+            </p>
+          )}
+          {errors.systemEmail && !formData.personId && !emailTaken && (
+            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> {errors.systemEmail}
+            </p>
+          )}
         </div>
-      )}
 
-      {/* ── Step 2 ── */}
-      {step === 2 && (
-        <div className="space-y-6">
-          <FormSectionTitle title="Access & Permissions" />
+        {/* Department Access */}
+        <div>
+          <FormSectionTitle title="Department Access" />
 
-          {/* Access Scope */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">
-              Department Access Scope <span className="text-red-500">*</span>
-            </h3>
-            <div className="space-y-3">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <div className="flex items-center h-5 mt-0.5">
-                  <input
-                    type="radio"
-                    name="accessScope"
-                    value="all"
-                    checked={accessScope === "all"}
-                    onChange={() => {
-                      setAccessScope("all");
-                      setErrors((prev) => ({
-                        ...prev,
-                        departments: undefined,
-                      }));
-                    }}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
-                  />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-700">
-                    All Departments
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Admin can manage staff across all departments
-                  </div>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <div className="flex items-center h-5 mt-0.5">
-                  <input
-                    type="radio"
-                    name="accessScope"
-                    value="specific"
-                    checked={accessScope === "specific"}
-                    onChange={() => setAccessScope("specific")}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
-                  />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-700">
-                    Specific Departments
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Restrict admin access to selected departments only
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
+          <div className="flex items-center gap-3 mb-4"></div>
 
-          {/* Department checkboxes */}
-          {accessScope === "specific" && (
+          {!formData.allDepartments && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
                 Select Departments <span className="text-red-500">*</span>
-              </h3>
+              </label>
               {loadingOptions ? (
                 <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
                   <Loader2 className="w-4 h-4 animate-spin" /> Loading
@@ -536,24 +338,19 @@ export default function CreateAdminModal({ onClose }: Props) {
                       : ""
                   }`}
                 >
-                  {departments.map((dept, idx) => (
+                  {/* Always show all departments from API, no filtering */}
+                  {departments.map((dept) => (
                     <label
                       key={dept.id}
                       className="flex items-center gap-3 p-2.5 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors bg-white"
                     >
                       <input
                         type="checkbox"
-                        checked={selectedDeptIds.includes(dept.id)}
+                        checked={formData.departmentIds.includes(dept.id)}
                         onChange={() => toggleDept(dept.id)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
                       />
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-xs font-medium ${
-                          DEPT_COLORS[idx % DEPT_COLORS.length]
-                        }`}
-                      >
-                        {dept.name}
-                      </span>
+                      <span className="text-sm text-gray-700">{dept.name}</span>
                     </label>
                   ))}
                 </div>
@@ -565,45 +362,49 @@ export default function CreateAdminModal({ onClose }: Props) {
               )}
             </div>
           )}
-
-          {/* Account Status */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">
-              Account Status
-            </h3>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={activateImmediately}
-                onChange={(e) => setActivateImmediately(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <span className="text-sm text-gray-700">
-                Activate account immediately
-              </span>
-            </label>
-          </div>
-
-          {/* Submit error */}
-          {submitError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2 items-start">
-              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{submitError}</p>
-            </div>
-          )}
-
-          {/* Warning */}
-          <div className="bg-red-50/80 border border-red-100 rounded-lg p-4 flex gap-3 items-start">
-            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800 leading-relaxed">
-              <span className="font-bold">Important:</span> Admin accounts have
-              elevated privileges. Ensure the person is authorized before
-              creating this account. All admin actions are logged in the audit
-              trail.
-            </p>
-          </div>
         </div>
-      )}
+
+        {/* Permissions section removed for Root Admin: all departments accessible, no permission selection needed */}
+
+        {/* Account Status */}
+        <div>
+          <FormSectionTitle title="Account Status" />
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.activateImmediately}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  activateImmediately: e.target.checked,
+                }))
+              }
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+            />
+            <span className="text-sm text-gray-700">
+              Activate account immediately
+            </span>
+          </label>
+        </div>
+
+        {/* Submit error */}
+        {submitError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2 items-start">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{submitError}</p>
+          </div>
+        )}
+
+        {/* Warning */}
+        <div className="bg-red-50/80 border border-red-100 rounded-lg p-4 flex gap-3 items-start">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800 leading-relaxed">
+            <span className="font-bold">Important:</span> Admin accounts have
+            elevated privileges. Ensure proper authorization before creating
+            this account. All admin actions are logged in the audit trail.
+          </p>
+        </div>
+      </div>
     </FormModalShell>
   );
 }

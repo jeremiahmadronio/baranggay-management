@@ -4,7 +4,7 @@ import {
   updateUserStatus,
   Statuses,
   type AdminTable,
-} from "../admin-root-api/admin-management";
+} from "../../service/admin-root-api/admin-management";
 
 interface DeleteUserModalProps {
   admin: AdminTable;

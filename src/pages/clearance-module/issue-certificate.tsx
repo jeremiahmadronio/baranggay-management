@@ -31,7 +31,7 @@ import { type TemplateData } from "./clearance-template/template";
 import {
   searchPeople,
   type PersonSearchResponseDTO,
-} from "../../blotter-api/Resident";
+} from "../../service/blotter-api/Resident";
 
 // ============================================
 // MAIN COMPONENT

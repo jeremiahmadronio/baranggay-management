@@ -43,13 +43,14 @@ export const adminNavItems: NavItemType[] = [
 // Root Admin navigation items
 export const rootAdminNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/rootadmin/dashboard", icon: LayoutDashboard },
-  {
-    label: "Admin Management",
-    path: "/rootadmin/admin-management",
-    icon: Users,
-  },
+  {label: "Admin Management", path: "/rootadmin/admin-management",icon: Users,},
+    { label: "User Management", path: "/rootadmin/user-management", icon: Users },
+  { label: "Resident Management", path: "/rootadmin/residents", icon: Users },
+  { label: "Officer Management", path: "/rootadmin/officers", icon: Users },
   {label: "Backup Management", path: "/rootadmin/backup-management", icon: Users},
   { label: "Audit Logs", path: "/rootadmin/audit-logs", icon: ScrollText },
+    { label: "Archive", path: "/rootadmin/archive", icon: Archive },
+
   { label: "Settings", path: "/rootadmin/account-settings", icon: Settings },
 ];
 

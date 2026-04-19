@@ -2,6 +2,8 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const BASE_URL = `${BASE}/api/v1/users`;
 const DEPT_URL = `${BASE}/api/v1/departments`;
 const ROLE_URL = `${BASE}/api/v1/roles`;
+const PERSON_URL = `${BASE}/api/v1/resident`;
+const PERMISSION_URL = `${BASE}/api/v1/permission`;
 
 const ENDPOINTS = {
   ADMIN_STATS: "/stats",
@@ -32,6 +34,21 @@ export interface SettingsPreview {
   contactNumber: string;
 }
 
+export interface UserAccessPermission {
+  userId: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  permissions: string[];
+  roleName: string;
+  departments: string[];
+}
+
+export interface PermissionOptions {
+  id: number;
+  permissionName: string;
+}
+
 export interface UpdateSettings {
   id: string;
   username: string;
@@ -49,21 +66,47 @@ export interface AdminStats {
   totalInactive: number;
 }
 
+export interface ArchiveReason {
+  remarks: string;
+}
+
 export interface AdminTable {
   id: string;
+  photo: string | null;
   username: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
+  systemEmail: string;
   contactNumber: string;
   roleName: string;
   departments: string[];
-  isLocked: boolean;
+  permissions: string[];
   status: string;
+  isLocked: boolean;
+  age: number;
+  gender: string;
+  completeAddress: string;
   createdAt: string;
   lastLoginAt: string;
   lockUntil: string | null;
   updatedAt: string;
+}
+
+export interface PersonSearchResponseDTO {
+  id: number;
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  contactNumber: string;
+  age: number;
+  birthDate: string;
+  gender: string;
+  civilStatus: string;
+  email: string;
+  completeAddress: string;
+  isResident: boolean;
+  barangayIdNumber: string;
 }
 
 export interface PageResponse<T> {
@@ -75,14 +118,11 @@ export interface PageResponse<T> {
 }
 
 export interface UpdateAdmin {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
+  systemEmail: string;
   username: string;
-  contactNumber: string;
   allDepartments: boolean;
   departmentIds: number[];
+  permissionIds?: number[];
 }
 
 export interface UserActionRequest {
@@ -102,16 +142,16 @@ export interface DepartmentOptions {
   name: string;
 }
 
+export interface PermissionOptions {
+  id: number;
+  permissionName: string;
+}
+
 export interface CreateAdmin {
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  contactNumber: string;
-  roleId: number;
-  allDepartments: boolean;
+  personId?: number;
+  systemEmail: string;
   departmentIds: number[];
+  permissionsIds?: number[];
   activateImmediately: boolean;
 }
 
@@ -227,6 +267,36 @@ export async function getDepartmentOptions(): Promise<DepartmentOptions[]> {
   return apiFetch<DepartmentOptions[]>("/options", {}, DEPT_URL);
 }
 
+export async function archiveAdmin(
+  userId: string,
+  body: ArchiveReason,
+): Promise<string> {
+  const query = new URLSearchParams({ userId });
+  return apiFetch<string>(`/archive-admin?${query.toString()}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getPermissionOptions(): Promise<PermissionOptions[]> {
+  return apiFetch<PermissionOptions[]>("/options", {}, PERMISSION_URL);
+}
+
+export async function getUserAccessPermission(): Promise<UserAccessPermission> {
+  return apiFetch<UserAccessPermission>("/my-access", {}, PERMISSION_URL);
+}
+
+export async function restoreArchive(
+  userId: string,
+  body: ArchiveReason,
+): Promise<string> {
+  const query = new URLSearchParams({ userId });
+  return apiFetch<string>(`/unarchive-admin?${query.toString()}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function updateAdmin(
   userId: string,
   actorId: string,
@@ -263,6 +333,17 @@ export async function updateUserStatus(
   });
 }
 
+export async function searchPeople(
+  query: string,
+): Promise<PersonSearchResponseDTO[]> {
+  const searchParams = new URLSearchParams({ query });
+  return apiFetch<PersonSearchResponseDTO[]>(
+    `/search?${searchParams.toString()}`,
+    {},
+    PERSON_URL,
+  );
+}
+
 export async function getAdminRoleOptions(): Promise<RoleOptions[]> {
   return apiFetch<RoleOptions[]>("/admin-options", {}, ROLE_URL);
 }
@@ -283,4 +364,9 @@ export async function updateSettings(body: UpdateSettings): Promise<string> {
     method: "PUT",
     body: JSON.stringify(body),
   });
+}
+
+export async function checkEmailAvailability(email: string): Promise<boolean> {
+  const query = new URLSearchParams({ email });
+  return apiFetch<boolean>(`/check-email?${query.toString()}`, {}, BASE_URL);
 }

@@ -3,7 +3,7 @@ import { XIcon, UsersIcon, AlertTriangleIcon, Loader2Icon } from "lucide-react";
 import {
   luponOptions,
   type LuponOptionDTO,
-} from "../../../service/blotter-api/blotter-api";
+} from "../../../service/blotter-api/BlotterFormComplaint";
 
 interface ModalProps {
   isOpen: boolean;

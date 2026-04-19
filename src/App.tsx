@@ -35,6 +35,10 @@ import AdminManagement from "./pages/admin-root-module/admin-management";
 import AuditLogs from "./pages/admin-root-module/audit-logs";
 import { AccountSettings } from "./pages/admin-root-module/account-settings";
 import { BackupPage } from "./pages/admin-root-module/BackupPage";
+import Root_User_Management from "./pages/admin-root-module/user-management/user-management";
+import RootOfficerManagementPage from "./pages/admin-root-module/officer/officerManagement";
+import RootArchivePage from "./pages/admin-root-module/archive/archive";
+
 
 // BCPC
 import BCPCDashboard from "./bcpc-module/dashboard";
@@ -143,12 +147,18 @@ export function App() {
       <Route path="/rootadmin" element={<RootAdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<RootAdminDashboard />} />
-
+    <Route path="user-management" element={<Root_User_Management/>} />
+      <Route path="residents" element={<ResidentsPage />} />
+        <Route path="officers" element={<RootOfficerManagementPage />} />
         <Route path="admin-management" element={<AdminManagement />} />
         <Route path="backup-management" element={<BackupPage />} />
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="account-settings" element={<AccountSettings />} />
+                <Route path="archive" element={<RootArchivePage />} />
+
       </Route>
+
+
 
       {/* Blotter */}
       <Route path="/blotter" element={<BlotterLayout />}>

@@ -1,26 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
+
+import type { ArchiveStatsDTO, ArchiveTableDTO, ArchiveTableParams, ArchiveTableResponse } from "../../service/blotter-api/DocketView";
 import { Eye, RotateCcw } from "lucide-react";
 import { Table, type TableColumn } from "../../reusable";
 import { TableFilter } from "../../hooks/TableFilter";
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { BlotterDocketDetailView } from "./Blotterdocketdetailview";
-import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { ActionModal } from "./reusable/SuccessModal";
-import type {
-  ArchiveStatsDTO,
-  ArchiveTableDTO,
-  ArchiveTableParams,
-  ArchiveTableResponse,
-} from "../../service/blotter-api/blotter-api";
+import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import {
   getArchiveStats,
   getArchiveTable,
   restoreCase,
+} from "../../service/blotter-api/DocketView";
+import {
   BLOTTER_PERMISSIONS,
   getMyAccess,
   hasBlotterPermission,
-  type UserSecurityProfile,
-} from "../../service/blotter-api/blotter-api";
+} from "../../service/blotter-api/BlotterPermission";
+import type { UserSecurityProfile } from "../../service/blotter-api/BlotterPermission";
+
 
 const PAGE_SIZE = 10;
 

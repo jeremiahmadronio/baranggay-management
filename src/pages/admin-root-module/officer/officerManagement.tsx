@@ -18,7 +18,7 @@ import {
   type EmployeeStatus,
   type EmployeeTable,
   type PagedTableParams,
-} from "../../../service/admin-module-api/officer";
+} from "../../../service/admin-root-api/officer";
 import { ActionModal } from "../../../reusable";
 import {
   KPICard,
@@ -38,7 +38,7 @@ import {
 import { OfficerFormModal } from "./officer-form-modal";
 import { OfficerProfileView } from "./officer-profile-view";
 
-export function OfficerManagementPage() {
+export function RootOfficerManagementPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
   const [selectedDept, setSelectedDept] = useState<number | "">("");
@@ -196,11 +196,6 @@ export function OfficerManagementPage() {
     loadTable();
   }, [loadTable]);
 
-  // Filter out archived officers from tableData
-  const visibleTableData = tableData.filter(
-    (item) => String(item.status).toUpperCase() !== "ARCHIVED",
-  );
-
   useEffect(() => {
     const hasReliableMeta = totalItems > 0 || totalPages > 1;
     if (hasReliableMeta && currentPage > derivedTotalPages) {
@@ -285,6 +280,11 @@ export function OfficerManagementPage() {
     setShowSuccessModal(true);
     await refreshAll();
   };
+
+  // Filter out archived officers from tableData
+  const visibleTableData = tableData.filter(
+    (item) => String(item.status).toUpperCase() !== "ARCHIVED",
+  );
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -712,4 +712,4 @@ export function OfficerManagementPage() {
   );
 }
 
-export default OfficerManagementPage;
+export default RootOfficerManagementPage;
