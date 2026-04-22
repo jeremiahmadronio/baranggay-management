@@ -44,6 +44,7 @@ type Errors = Partial<
   >
 >;
 
+
 const USERNAME_MIN_LENGTH = 4;
 const USERNAME_MAX_LENGTH = 20;
 const SYSTEM_EMAIL_MAX_LENGTH = 100;
@@ -63,9 +64,7 @@ function fieldClass(hasError: boolean) {
 
 export default function CreateStaffModal({ onClose, onSuccess }: Props) {
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<PersonSearchResponseDTO[]>(
-    [],
-  );
+  const [searchResults, setSearchResults] = useState<PersonSearchResponseDTO[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -79,6 +78,18 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
+
+  const [usernameCheck, setUsernameCheck] = useState<{
+    checking: boolean;
+    taken: boolean;
+    message: string;
+  }>({ checking: false, taken: false, message: "" });
+
+  const [emailCheck, setEmailCheck] = useState<{
+    checking: boolean;
+    taken: boolean;
+    message: string;
+  }>({ checking: false, taken: false, message: "" });
 
   const [form, setForm] = useState<FormData>({
     person: null,
@@ -165,6 +176,59 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     };
   }, [query, form.person]);
 
+  useEffect(() => {
+    const username = form.username.trim();
+    if (
+      !username ||
+      username.length < USERNAME_MIN_LENGTH ||
+      !USERNAME_PATTERN.test(username)
+    ) {
+      setUsernameCheck({ checking: false, taken: false, message: "" });
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setUsernameCheck({ checking: true, taken: false, message: "" });
+        const taken = await userManagementApi.checkUsernameAvailability(username);
+        setUsernameCheck({
+          checking: false,
+          taken,
+          message: taken ? "Username is already taken." : "",
+        });
+      } catch {
+        setUsernameCheck({ checking: false, taken: false, message: "" });
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [form.username]);
+
+  useEffect(() => {
+    const email = form.systemEmail.trim();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!email || !isValidEmail) {
+      setEmailCheck({ checking: false, taken: false, message: "" });
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setEmailCheck({ checking: true, taken: false, message: "" });
+        const taken = await userManagementApi.checkEmailAvailability(email);
+        setEmailCheck({
+          checking: false,
+          taken,
+          message: taken ? "Email is already taken." : "",
+        });
+      } catch {
+        setEmailCheck({ checking: false, taken: false, message: "" });
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [form.systemEmail]);
+
   const filteredRoles = useMemo(
     () =>
       filterRolesByDepartments(
@@ -245,6 +309,8 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     } else if (!USERNAME_PATTERN.test(username)) {
       next.username =
         "Username can only use letters, numbers, dot (.), underscore (_), and hyphen (-).";
+    } else if (usernameCheck.taken) {
+      next.username = "Username is already taken.";
     }
 
     if (!systemEmail) {
@@ -253,6 +319,8 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
       next.systemEmail = `System email must be at most ${SYSTEM_EMAIL_MAX_LENGTH} characters.`;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(systemEmail)) {
       next.systemEmail = "Please enter a valid email address.";
+    } else if (emailCheck.taken) {
+      next.systemEmail = "Email is already taken.";
     }
 
     if (!form.roleId) next.roleId = "Please select a role.";
@@ -267,6 +335,11 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
   };
 
   const handleSubmit = async () => {
+    if (usernameCheck.checking || emailCheck.checking) {
+      setSubmitError("Please wait for availability checks to finish.");
+      return;
+    }
+
     if (!validate()) {
       setSubmitError("Please fix required fields before registering.");
       return;
@@ -301,6 +374,14 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     }
   };
 
+  const isSubmitDisabled =
+    isSubmitting ||
+    loadingOptions ||
+    usernameCheck.checking ||
+    emailCheck.checking ||
+    usernameCheck.taken ||
+    emailCheck.taken;
+
   return (
     <>
       <FormModalShell
@@ -322,7 +403,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || loadingOptions}
+                disabled={isSubmitDisabled}
                 className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -372,43 +453,39 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                   </p>
                 )}
 
-                {(query.trim().length >= 2 || searchLoading) &&
-                  !form.person && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                      {searchLoading ? (
-                        <p className="px-3 py-2 text-xs text-gray-500">
-                          Searching...
-                        </p>
-                      ) : searchResults.length === 0 ? (
-                        <p className="px-3 py-2 text-xs text-gray-500">
-                          No matching resident found.
-                        </p>
-                      ) : (
-                        searchResults.map((person) => (
-                          <button
-                            key={person.id}
-                            type="button"
-                            onClick={() => {
-                              setField("person", person);
-                              setQuery(fullName(person));
-                              setSearchResults([]);
-                            }}
-                            className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
-                          >
-                            <p className="text-sm font-medium text-gray-800">
-                              {fullName(person)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {(person.barangayIdNumber
-                                ? `${person.barangayIdNumber} • `
-                                : "") +
-                                (person.completeAddress || "No address")}
-                            </p>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
+                {(query.trim().length >= 2 || searchLoading) && !form.person && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                    {searchLoading ? (
+                      <p className="px-3 py-2 text-xs text-gray-500">Searching...</p>
+                    ) : searchResults.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-gray-500">
+                        No matching resident found.
+                      </p>
+                    ) : (
+                      searchResults.map((person) => (
+                        <button
+                          key={person.id}
+                          type="button"
+                          onClick={() => {
+                            setField("person", person);
+                            setQuery(fullName(person));
+                            setSearchResults([]);
+                          }}
+                          className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                        >
+                          <p className="text-sm font-medium text-gray-800">
+                            {fullName(person)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {(person.barangayIdNumber
+                              ? `${person.barangayIdNumber} • `
+                              : "") + (person.completeAddress || "No address")}
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
                 {errors.person && (
                   <p className="text-xs text-red-500 mt-1">{errors.person}</p>
                 )}
@@ -435,20 +512,25 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                     type="text"
                     value={form.username}
                     onChange={(e) =>
-                      setField(
-                        "username",
-                        normalizeUsernameInput(e.target.value),
-                      )
+                      setField("username", normalizeUsernameInput(e.target.value))
                     }
                     maxLength={USERNAME_MAX_LENGTH}
                     placeholder="juan.delacruz"
-                    className={fieldClass(!!errors.username)}
+                    className={fieldClass(!!errors.username || usernameCheck.taken)}
                   />
 
-                  {errors.username && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.username}
+                  {usernameCheck.checking && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Checking username availability...
                     </p>
+                  )}
+                  {!usernameCheck.checking && usernameCheck.message && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {usernameCheck.message}
+                    </p>
+                  )}
+                  {errors.username && !usernameCheck.taken && (
+                    <p className="text-xs text-red-500 mt-1">{errors.username}</p>
                   )}
                 </div>
 
@@ -485,10 +567,20 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                     }}
                     maxLength={SYSTEM_EMAIL_MAX_LENGTH}
                     placeholder="juan@barangay.gov.ph"
-                    className={fieldClass(!!errors.systemEmail)}
+                    className={fieldClass(!!errors.systemEmail || emailCheck.taken)}
                   />
 
-                  {errors.systemEmail && (
+                  {emailCheck.checking && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Checking email availability...
+                    </p>
+                  )}
+                  {!emailCheck.checking && emailCheck.message && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {emailCheck.message}
+                    </p>
+                  )}
+                  {errors.systemEmail && !emailCheck.taken && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.systemEmail}
                     </p>
@@ -524,9 +616,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                   ))}
                 </select>
                 {errors.departmentIds && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {errors.departmentIds}
-                  </p>
+                  <p className="text-xs text-red-500 mt-1">{errors.departmentIds}</p>
                 )}
               </div>
 
@@ -537,18 +627,13 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                 <select
                   value={form.roleId ?? ""}
                   onChange={(e) =>
-                    setField(
-                      "roleId",
-                      e.target.value ? Number(e.target.value) : null,
-                    )
+                    setField("roleId", e.target.value ? Number(e.target.value) : null)
                   }
                   className={fieldClass(!!errors.roleId)}
                   disabled={loadingOptions || !form.departmentId}
                 >
                   <option value="">
-                    {!form.departmentId
-                      ? "Select department first"
-                      : "Select a role"}
+                    {!form.departmentId ? "Select department first" : "Select a role"}
                   </option>
                   {filteredRoles.map((role) => (
                     <option key={role.id} value={role.id}>
@@ -582,18 +667,14 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                       )
                     }
                     className="text-xs font-medium text-blue-600 hover:text-blue-700"
-                    disabled={
-                      !form.departmentId || filteredPermissions.length === 0
-                    }
+                    disabled={!form.departmentId || filteredPermissions.length === 0}
                   >
                     {allPermissionsSelected ? "Clear all" : "Select all"}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50/60 max-h-56 overflow-y-auto">
                   {!form.departmentId ? (
-                    <p className="text-xs text-gray-500">
-                      Select department first.
-                    </p>
+                    <p className="text-xs text-gray-500">Select department first.</p>
                   ) : filteredPermissions.length === 0 ? (
                     <p className="text-xs text-gray-500">
                       No permission mapping available for selected department.
@@ -622,9 +703,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                   )}
                 </div>
                 {errors.permissionIds && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {errors.permissionIds}
-                  </p>
+                  <p className="text-xs text-red-500 mt-1">{errors.permissionIds}</p>
                 )}
               </div>
 
@@ -632,9 +711,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                 <input
                   type="checkbox"
                   checked={form.activateImmediately}
-                  onChange={(e) =>
-                    setField("activateImmediately", e.target.checked)
-                  }
+                  onChange={(e) => setField("activateImmediately", e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded"
                 />
                 Activate account immediately
@@ -659,8 +736,8 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
       >
         <p>
           User account for{" "}
-          <span className="font-semibold">{selectedPersonName}</span> was
-          created successfully.
+          <span className="font-semibold">{selectedPersonName}</span> was created
+          successfully.
         </p>
       </ActionModal>
     </>

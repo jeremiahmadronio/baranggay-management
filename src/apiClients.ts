@@ -5,16 +5,18 @@ interface ApiOptions {
   method?: string;
   headers?: Record<string, string>;
   body?: any;
+  params?: Record<string, string | number | boolean>; 
 }
 
 export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
-  const { requiresAuth = true, headers = {}, body, method = "GET" } = options;
+  const { requiresAuth = true, headers = {}, body, method = "GET", params } = options;
 
   const requestHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...headers,
   };
 
+  // --- 1. TOKEN VALIDATION LOGIC ---
   if (requiresAuth) {
     const token = localStorage.getItem("token");
     if (token) {
@@ -23,16 +25,15 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
         const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
         const payload = JSON.parse(atob(base64));
         const currentTime = Date.now() / 1000;
+        
         if (payload.exp < currentTime) {
-          console.warn("Token expired, but keeping session data for now...");
           localStorage.removeItem("token");
-          throw new Error("Token expired. Please login again.");
+          throw new Error("Session expired. Please login again.");
         }
       } catch (e: any) {
-        if (e.message === "Token expired. Please login again.") throw e;
-        console.warn("Invalid token format, removing token...");
+        if (e.message.includes("expired")) throw e;
         localStorage.removeItem("token");
-        throw new Error("Invalid token. Please login again.");
+        throw new Error("Invalid session. Please login again.");
       }
       requestHeaders["Authorization"] = `Bearer ${token}`;
     } else {
@@ -40,91 +41,73 @@ export const apiClient = async (endpoint: string, options: ApiOptions = {}) => {
     }
   }
 
-  const url = `${BASE_URL}${endpoint}`;
+  // --- 2. QUERY PARAMETERS HANDLER ---
+  // Dito natin bubuoin yung URL kung may 'params' na pinasa
+  let url = `${BASE_URL}${endpoint}`;
+  if (params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, value.toString());
+      }
+    });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+  }
 
+  // --- 3. FETCH EXECUTION ---
   try {
     const response = await fetch(url, {
       method,
       headers: requestHeaders,
-      body:
-        body !== undefined && body !== null ? JSON.stringify(body) : undefined,
+      body: body !== undefined && body !== null ? JSON.stringify(body) : undefined,
     });
 
+    // Handle non-OK responses
     if (!response.ok) {
-      let errorMessage = `Request failed with status ${response.status}`;
-      let errorData: any = {};
-
-      // Try to parse JSON, otherwise fallback to text
+      let errorMessage = `Error ${response.status}`;
       try {
-        errorData = await response.clone().json();
+        const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
       } catch {
-        try {
-          const text = await response.clone().text();
-          if (text) errorMessage = text;
-        } catch {
-          // ignore
-        }
+        const text = await response.text();
+        if (text) errorMessage = text;
       }
 
-      if (response.status === 401) {
-        const isLoginRequest = endpoint.includes("/auth/login");
-        if (
-          !isLoginRequest &&
-          /token|session/i.test(errorMessage)
-        ) {
-          localStorage.removeItem("token");
-          throw new Error("Session expired. Please login again.");
-        }
-        throw new Error(errorMessage);
+      if (response.status === 401 && !endpoint.includes("/auth/login")) {
+        localStorage.removeItem("token");
       }
-
-      if (response.status === 403 || response.status === 400) {
-        throw new Error(errorMessage);
-      }
-
       throw new Error(errorMessage);
     }
 
+    // Handle response content type
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
-    } else {
-      return await response.text();
     }
+    return await response.text();
+
   } catch (error: any) {
-    // Customize "failed to fetch" error
-    if (
-      error.message === "Failed to fetch" ||
-      error.message === "NetworkError when attempting to fetch resource." ||
-      error.message === "Network request failed"
-    ) {
-      throw new Error(
-        "Failed to load data.",
-      );
+    if (error.message === "Failed to fetch") {
+      throw new Error("Server is unreachable. Please check your connection.");
     }
-    console.error("API Error:", error.message);
     throw error;
   }
 };
 
+// --- 4. EXPORTED API WRAPPERS ---
 export const api = {
   get: (url: string, options?: ApiOptions) =>
     apiClient(url, { ...options, method: "GET" }),
-  post: (url: string, data: any, options?: ApiOptions) =>
+    
+  post: (url: string, data?: any, options?: ApiOptions) =>
     apiClient(url, { ...options, method: "POST", body: data }),
-  put: (url: string, data: any, options?: ApiOptions) =>
+    
+  put: (url: string, data?: any, options?: ApiOptions) =>
     apiClient(url, { ...options, method: "PUT", body: data }),
+    
   delete: (url: string, options?: ApiOptions) =>
     apiClient(url, { ...options, method: "DELETE" }),
 };
-
-const token = localStorage.getItem("token");
-if (token) {
-  const payload = JSON.parse(atob(token.split(".")[1]));
-  console.log("Token payload:", payload);
-  console.log("Email/Subject:", payload.sub || payload.email);
-  console.log("Expires:", new Date(payload.exp * 1000).toLocaleString());
-} else {
-  console.log("No token found");
-}

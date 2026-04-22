@@ -1,126 +1,127 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
-import { AuthLayout } from "./AuthLayout";
-import { authService } from "../../service/login-api/login";
-
+import React, { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { AuthLayout } from './AuthLayout'
+import { authService } from '../../service/login-api/login'
 function normalizeKey(value?: string | null): string {
-  return String(value ?? "")
+  return String(value ?? '')
     .trim()
     .toUpperCase()
-    .replace(/[\s-]+/g, "_");
+    .replace(/[\s-]+/g, '_')
 }
-
 function routeFromDepartment(department?: string | null): string | null {
-  const key = normalizeKey(department);
-
+  const key = normalizeKey(department)
   switch (key) {
-    case "CLEARANCE":
-      return "/clearance/dashboard";
-    case "OFFICIAL":
-      return "/official-portal/dashboard";
-    case "BLOTTER":
-      return "/blotter/dashboard";
-    case "BCPC":
-      return "/bcpc/dashboard";
-    case "VAWC":
-      return "/vawc/dashboard";
-    case "LUPON":
-    case "LUPONG_TAGAPAMAYAPA":
-      return "/lupongtagapamayapa/dashboard";
-    case "FIRST_TIME_JOB_SEEKER":
-    case "FTJS":
-      return "/first-time-job-seeker/dashboard";
+    case 'CLEARANCE':
+      return '/clearance/dashboard'
+    case 'OFFICIAL':
+      return '/official-portal/dashboard'
+    case 'BLOTTER':
+      return '/blotter/dashboard'
+    case 'BCPC':
+      return '/bcpc/dashboard'
+    case 'VAWC':
+      return '/vawc/dashboard'
+    case 'LUPON':
+    case 'LUPONG_TAGAPAMAYAPA':
+      return '/lupongtagapamayapa/dashboard'
+    case 'FIRST_TIME_JOB_SEEKER':
+    case 'FTJS':
+      return '/first-time-job-seeker/dashboard'
     default:
-      return null;
+      return null
   }
 }
-
 export function LoginPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-
-
-
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const LOGIN_ERRORS: Record<string, string> = {
-  INVALID_CREDENTIALS: "Invalid email or password.",
-  ACCOUNT_LOCKED: "Account temporarily locked. Try again in 15 minutes.",
-  ACCOUNT_INACTIVE: "Account is inactive. Contact your administrator.",
-  USER_NOT_FOUND: "No account found with this email.",
-};
-
+    INVALID_CREDENTIALS: 'Invalid email or password.',
+    ACCOUNT_LOCKED: 'Account temporarily locked. Try again in 15 minutes.',
+    ACCOUNT_INACTIVE: 'Account is inactive. Contact your administrator.',
+    USER_NOT_FOUND: 'No account found with this email.',
+  }
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError("");
-
-  if (!email || !password) {
-    setError("Please enter both email and password.");
-    return;
-  }
-
-  if (!agreedToTerms) {
-    setError("You must agree to the Terms and Conditions before signing in.");
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    const response = await authService.login({ email, password });
-
-    if (response.status === "MFA_REQUIRED") {
-      navigate("/mfa-verification", { state: { email } });
-      return;
+    e.preventDefault()
+    setError('')
+    if (!email || !password) {
+      setError('Please enter both email and password.')
+      return
     }
-
-    if (response.status === "CHANGE_PASSWORD_REQUIRED") {
-      navigate("/change-password-new-account", { state: { email } });
-      return;
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms and Conditions before signing in.')
+      return
     }
-
-    if (response.status === "SUCCESS") {
-      // Normal success flow
-      const role = normalizeKey(response.role);
-      
-      if (role === "ROOT_ADMIN") {
-        navigate("/rootadmin/dashboard");
-        return;
+    setIsLoading(true)
+    try {
+      const response = await authService.login({
+        email,
+        password,
+      })
+      if (response.status === 'MFA_REQUIRED') {
+        navigate('/mfa-verification', {
+          state: {
+            email,
+          },
+        })
+        return
       }
-      
-      if (role === "ADMIN") {
-        navigate("/admin/dashboard");
-        return;
+      if (response.status === 'CHANGE_PASSWORD_REQUIRED') {
+        navigate('/change-password-new-account', {
+          state: {
+            email,
+          },
+        })
+        return
       }
-
-      const departmentRoute = routeFromDepartment(response.departments?.[0]);
-      if (departmentRoute) {
-        navigate(departmentRoute);
-        return;
+      if (response.status === 'SUCCESS') {
+        const role = normalizeKey(response.role)
+        if (role === 'ROOT_ADMIN') {
+          navigate('/rootadmin/dashboard')
+          return
+        }
+        if (role === 'ADMIN') {
+          navigate('/admin/dashboard')
+          return
+        }
+        const departmentRoute = routeFromDepartment(response.departments?.[0])
+        if (departmentRoute) {
+          navigate(departmentRoute)
+          return
+        }
+        navigate('/login')
+        return
       }
-
-      navigate("/login");
-      return;
+    } catch (err: any) {
+      setError(
+        LOGIN_ERRORS[err.response?.data?.code] ||
+          err.response?.data?.message ||
+          'Login failed. Please try again.',
+      )
+    } finally {
+      setIsLoading(false)
     }
-  } catch (err: any) {
-    setError(LOGIN_ERRORS[err.response?.data?.code] || err.response?.data?.message || "Login failed. Please try again.");
-
-  } finally {
-    setIsLoading(false);
   }
-};
-
   return (
     <AuthLayout>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.4,
+        }}
         className="bg-white p-8 rounded-2xl shadow-xs shadow-slate-300/50 border border-slate-200"
       >
         <div className="mb-8">
@@ -129,7 +130,6 @@ export function LoginPage() {
           </h2>
           <p className="text-slate-500">Sign in to your account</p>
         </div>
-
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm flex items-start gap-2">
             <div className="mt-0.5">
@@ -144,7 +144,6 @@ export function LoginPage() {
             {error}
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label
@@ -169,7 +168,6 @@ export function LoginPage() {
               />
             </div>
           </div>
-
           <div>
             <label
               htmlFor="password"
@@ -183,7 +181,7 @@ export function LoginPage() {
               </div>
               <input
                 id="password"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -204,7 +202,6 @@ export function LoginPage() {
               </button>
             </div>
           </div>
-
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <input
@@ -227,13 +224,8 @@ export function LoginPage() {
               Forgot Password?
             </Link>
           </div>
-
           <div
-            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-              agreedToTerms
-                ? "bg-blue-50 border-blue-200"
-                : "bg-slate-50 border-slate-200"
-            }`}
+            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${agreedToTerms ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'}`}
           >
             <input
               id="agree-terms"
@@ -248,19 +240,18 @@ export function LoginPage() {
               htmlFor="agree-terms"
               className="text-sm text-slate-600 cursor-pointer leading-relaxed"
             >
-              I have read and agree to the{" "}
+              I have read and agree to the{' '}
               <Link
                 to="/terms-and-conditions"
                 className="font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus:underline"
                 onClick={(e) => e.stopPropagation()}
               >
                 Terms and Conditions
-              </Link>{" "}
-              of the Barangay Ugong Management System.{" "}
+              </Link>{' '}
+              of the Barangay Ugong Management System.{' '}
               <span className="text-red-500 font-medium">*</span>
             </label>
           </div>
-
           <button
             type="submit"
             disabled={isLoading || !agreedToTerms}
@@ -272,11 +263,11 @@ export function LoginPage() {
                 in...
               </>
             ) : (
-              "Sign In"
+              'Sign In'
             )}
           </button>
         </form>
       </motion.div>
     </AuthLayout>
-  );
+  )
 }

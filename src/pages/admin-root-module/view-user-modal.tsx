@@ -1,18 +1,7 @@
+import { useMemo, useState } from "react";
 import { FormModalShell } from "../../reusable";
 import { type AdminTable } from "../../service/admin-root-api/admin-management";
-import {
-  User,
-  Building2,
-  ShieldCheck,
-  Clock3,
-  CalendarDays,
-  Lock,
-  LockOpen,
-  Phone,
-  Mail,
-  Timer,
-  MapPin,
-} from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 interface ViewUserModalProps {
   admin: AdminTable | null;
@@ -35,89 +24,56 @@ function formatDept(raw: string): string {
 }
 
 function formatDate(dateString?: string | null): string {
-  if (!dateString) return "N/A";
-  try {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  } catch {
-    return dateString;
-  }
-}
-
-function SectionLabel({
-  index,
-  icon,
-  title,
-}: {
-  index: number;
-  icon: React.ReactNode;
-  title: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="text-xs font-bold text-gray-400">{index}</span>
-      <span className="text-gray-400">{icon}</span>
-      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-        {title}
-      </span>
-    </div>
-  );
-}
-
-function StatusBadge({
-  status,
-  isLocked,
-}: {
-  status: string;
-  isLocked: boolean;
-}) {
-  if (isLocked) {
-    return (
-      <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
-        LOCKED
-      </span>
-    );
-  }
-  const colorMap: Record<string, string> = {
-    ACTIVE: "text-green-600",
-    INACTIVE: "text-gray-500",
-    PENDING: "text-amber-600",
-  };
-  return (
-    <span
-      className={`text-xs font-bold uppercase tracking-wide ${colorMap[status?.toUpperCase()] ?? "text-gray-500"}`}
-    >
-      {status}
-    </span>
-  );
+  if (!dateString) return "Never";
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function ViewUserModal({ admin, isOpen, onClose }: ViewUserModalProps) {
   if (!admin || !isOpen) return null;
 
+  const [activeTab, setActiveTab] = useState<"overview" | "access">("overview");
+
   const fullName = `${admin.firstName} ${admin.lastName}`;
-  const initials = (admin.firstName?.[0] ?? "") + (admin.lastName?.[0] ?? "");
+  const adminStatus = admin.isLocked
+    ? "LOCKED"
+    : admin.status?.toUpperCase() === "INACTIVE"
+      ? "INACTIVE"
+      : "ACTIVE";
+
+  const initials = useMemo(
+    () =>
+      fullName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase() || "AD",
+    [fullName],
+  );
+
   const departments = (admin.departments ?? []).map(formatDept);
   const permissions = admin.permissions ?? [];
-  const accountSectionIndex = permissions.length > 0 ? 4 : 3;
+  const primaryEmail = admin.systemEmail ?? admin.email ?? "No email";
 
   return (
     <FormModalShell
       isOpen={isOpen}
       onClose={onClose}
-      title={fullName}
-      maxWidthClass="max-w-3xl"
+      title="Admin Profile"
+      maxWidthClass="max-w-4xl"
       footer={
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end">
           <button
+            type="button"
             onClick={onClose}
-            className="px-5 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
             Close
           </button>
@@ -125,225 +81,148 @@ export function ViewUserModal({ admin, isOpen, onClose }: ViewUserModalProps) {
       }
     >
       <div className="space-y-5">
-
-        {/* Status line — shown below title like the screenshot */}
-        <p className="text-sm text-gray-500 -mt-2">
-          Status:{" "}
-          <StatusBadge status={admin.status} isLocked={admin.isLocked} />
-        </p>
-
-        {/* 1 — USER INFORMATION */}
-        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-          <SectionLabel
-            index={1}
-            icon={<User className="w-3.5 h-3.5" />}
-            title="User Information"
-          />
-          <div className="grid grid-cols-4 gap-x-6 gap-y-4 text-sm">
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Username</p>
-              <div className="flex items-center gap-1.5 font-medium text-gray-800">
-                {admin.photo ? (
-                  <img
-                    src={admin.photo}
-                    className="w-5 h-5 rounded-full object-cover"
-                    alt=""
-                  />
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold shrink-0">
-                    {initials.toUpperCase()}
-                  </div>
-                )}
-                {admin.username}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Role</p>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                <ShieldCheck className="w-3 h-3" />
-                {admin.roleName}
-              </span>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Gender</p>
-              <p className="font-medium text-gray-800">{admin.gender || "N/A"}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Age</p>
-              <p className="font-medium text-gray-800">{admin.age ? `${admin.age} yrs old` : "N/A"}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Contact</p>
-              <div className="flex items-center gap-1 font-medium text-gray-800">
-                <Phone className="w-3.5 h-3.5 text-gray-400" />
-                {admin.contactNumber || "N/A"}
-              </div>
-            </div>
-
-            <div className="col-span-3">
-              <p className="text-xs text-gray-400 mb-1">System Email</p>
-              <div className="flex items-center gap-1">
-                <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                <a
-                  href={`mailto:${admin.systemEmail ?? admin.email}`}
-                  className="text-blue-600 hover:underline font-medium"
-                >
-                  {admin.systemEmail ?? admin.email ?? "N/A"}
-                </a>
-              </div>
-            </div>
-
-            {admin.completeAddress && (
-              <div className="col-span-4">
-                <p className="text-xs text-gray-400 mb-1">Address</p>
-                <div className="flex items-start gap-1 font-medium text-gray-800">
-                  <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-                  {admin.completeAddress}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 2 — DEPARTMENT ACCESS */}
-        <div>
-          <SectionLabel
-            index={2}
-            icon={<Building2 className="w-3.5 h-3.5" />}
-            title="Department Access"
-          />
-          {departments.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2">
-              {departments.map((dept) => (
-                <div
-                  key={dept}
-                  className="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200 rounded-lg gap-2"
-                >
-                  <span className="text-sm text-gray-700 font-medium leading-snug">
-                    {dept}
-                  </span>
-                  <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-2 py-0.5 rounded-full shrink-0">
-                    ACCESS
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 italic px-1">
-              No department assigned.
-            </p>
-          )}
-        </div>
-
-        {/* 3 — PERMISSIONS (conditional) */}
-        {permissions.length > 0 && (
-          <div>
-            <SectionLabel
-              index={3}
-              icon={<ShieldCheck className="w-3.5 h-3.5" />}
-              title="Permissions"
+        <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-start gap-4">
+          {admin.photo ? (
+            <img
+              src={admin.photo}
+              alt={fullName}
+              className="w-16 h-16 rounded-full object-cover border border-gray-200"
             />
-            <div className="flex flex-wrap gap-2">
-              {permissions.map((perm) => (
-                <span
-                  key={perm}
-                  className="px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 text-gray-700 rounded-md"
-                >
-                  {perm}
-                </span>
-              ))}
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+              {initials}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 3 or 4 — ACCOUNT STATUS */}
-        <div>
-          <SectionLabel
-            index={accountSectionIndex}
-            icon={<Clock3 className="w-3.5 h-3.5" />}
-            title="Account Status"
-          />
-          <div className="grid grid-cols-2 gap-3">
-            {/* Lock status */}
-            <div
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg border ${
-                admin.isLocked
-                  ? "bg-red-50 border-red-100"
-                  : "bg-green-50 border-green-100"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {admin.isLocked ? (
-                  <Lock className="w-4 h-4 text-red-400" />
-                ) : (
-                  <LockOpen className="w-4 h-4 text-green-500" />
-                )}
-                <span className="text-sm text-gray-700 font-medium">
-                  Account Lock
-                </span>
-              </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold text-gray-900 leading-tight">
+              {fullName}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">@{admin.username}</p>
+            <p className="text-sm text-gray-500">{primaryEmail}</p>
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
               <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                  admin.isLocked
-                    ? "text-red-600 bg-red-50 border-red-200"
-                    : "text-green-600 bg-green-50 border-green-200"
-                }`}
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${adminStatus === "ACTIVE" ? "bg-green-100 text-green-700" : adminStatus === "INACTIVE" ? "bg-gray-100 text-gray-600" : "bg-amber-100 text-amber-700"}`}
               >
-                {admin.isLocked ? "LOCKED" : "UNLOCKED"}
+                {adminStatus}
               </span>
-            </div>
-
-            {/* Overall status */}
-            <div className="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200 rounded-lg">
-              <span className="text-sm text-gray-700 font-medium">
-                Account Status
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                <ShieldCheck className="w-3 h-3 mr-1" />
+                {admin.roleName || "No role"}
               </span>
-              <StatusBadge status={admin.status} isLocked={false} />
-            </div>
-
-            {/* Lock until — only if locked */}
-            {admin.isLocked && admin.lockUntil && (
-              <div className="col-span-2 flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-100 rounded-lg">
-                <Timer className="w-4 h-4 text-red-400 shrink-0" />
-                <span className="text-xs text-gray-500">Locked until:</span>
-                <span className="text-xs font-semibold text-red-700">
-                  {formatDate(admin.lockUntil)}
-                </span>
-              </div>
-            )}
-
-            {/* Created at */}
-            <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-lg">
-              <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">
-                  Created
-                </p>
-                <p className="text-xs font-medium text-gray-700">
-                  {formatDate(admin.createdAt)}
-                </p>
-              </div>
-            </div>
-
-            {/* Last login */}
-            <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-lg">
-              <Clock3 className="w-4 h-4 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">
-                  Last Login
-                </p>
-                <p className="text-xs font-medium text-gray-700">
-                  {formatDate(admin.lastLoginAt)}
-                </p>
-              </div>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                {departments.length > 0
+                  ? `${departments.length} Department${departments.length > 1 ? "s" : ""}`
+                  : "No department"}
+              </span>
             </div>
           </div>
         </div>
 
+        <div className="rounded-xl overflow-hidden border border-gray-200 bg-white">
+          <div className="flex border-b border-gray-200 px-6 bg-white">
+            {(
+              [
+                ["overview", "Overview"],
+                ["access", `Permissions (${permissions.length})`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key)}
+                className={`py-4 px-1 mr-8 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-6">
+            {activeTab === "overview" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-gray-200 rounded-xl p-5 space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                    User Information
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Contact:</span>{" "}
+                    {admin.contactNumber || "—"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Email:</span>{" "}
+                    {primaryEmail || "—"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Role:</span>{" "}
+                    {admin.roleName || "—"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Gender:</span>{" "}
+                    {admin.gender || "—"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Age:</span>{" "}
+                    {admin.age ? `${admin.age} yrs old` : "—"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Departments:</span>{" "}
+                    {departments.length > 0 ? departments.join(", ") : "—"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Address:</span>{" "}
+                    {admin.completeAddress || "—"}
+                  </p>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl p-5 space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                    System Information
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Account Lock:</span>{" "}
+                    {admin.isLocked ? "Locked" : "Unlocked"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Status:</span>{" "}
+                    {admin.status || "—"}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Locked Until:</span>{" "}
+                    {formatDate(admin.lockUntil)}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Created At:</span>{" "}
+                    {formatDate(admin.createdAt)}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="text-gray-500">Last Login:</span>{" "}
+                    {formatDate(admin.lastLoginAt)}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {permissions.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No assigned permissions.
+                  </p>
+                ) : (
+                  permissions.map((perm, index) => (
+                    <div
+                      key={`${perm}-${index}`}
+                      className="border border-gray-200 rounded-lg p-3 bg-gray-50/70"
+                    >
+                      <p className="text-sm font-medium text-gray-800">
+                        {perm}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </FormModalShell>
   );

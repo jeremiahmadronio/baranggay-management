@@ -1,4 +1,4 @@
-import  { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { AlertTriangle, Loader2, CheckCircle2, X } from "lucide-react";
 import { FormModalShell, FormSectionTitle } from "../../reusable";
 import {
@@ -6,11 +6,13 @@ import {
   getDepartmentOptions,
   getPermissionOptions,
   checkEmailAvailability,
+  checkUsernameAvailability,
   type AdminTable,
   type UpdateAdmin,
   type DepartmentOptions,
   type PermissionOptions,
 } from "../../service/admin-root-api/admin-management";
+import { ActionModal } from "../../hooks/SuccessModal";
 
 // Maps backend enum values → display names used by the department options API
 const DEPT_ENUM_TO_NAME: Record<string, string> = {
@@ -55,7 +57,7 @@ const PERMISSION_GROUPS: Record<string, string[]> = {
     "Archive resident",
   ],
   "Officer Management": ["Create Officer", "View Officers", "Edit Officer"],
-  "Archive & Cases": ["Restore Archived", "Case Re-open"],
+  "Archive": ["Restore Archived"],
 };
 
 interface EditUserModalProps {
@@ -71,7 +73,9 @@ interface FormData {
   permissionIds: number[];
 }
 
-type Errors = Partial<Record<"systemEmail" | "username" | "departments", string>>;
+type Errors = Partial<
+  Record<"systemEmail" | "username" | "departments", string>
+>;
 
 export function EditUserModal({ admin, onClose }: EditUserModalProps) {
   const actorId = localStorage.getItem("userId") ?? "";
@@ -92,12 +96,19 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Email availability check
   const [emailCheckLoading, setEmailCheckLoading] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
   const [emailCheckTimeout, setEmailCheckTimeout] =
+    useState<NodeJS.Timeout | null>(null);
+
+  // Username availability check
+  const [usernameCheckLoading, setUsernameCheckLoading] = useState(false);
+  const [usernameTaken, setUsernameTaken] = useState(false);
+  const [usernameCheckTimeout, setUsernameCheckTimeout] =
     useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -179,6 +190,9 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
     if (!formData.username.trim()) {
       e.username = "Username is required.";
     }
+    if (usernameTaken) {
+      e.username = "This username is already taken.";
+    }
     if (!formData.systemEmail.trim()) {
       e.systemEmail = "System email is required.";
     }
@@ -208,8 +222,8 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
       setIsSubmitting(true);
       setSubmitError(null);
       await updateAdmin(admin.id, actorId, payload);
-      setSuccess(true);
-      setTimeout(() => onClose(), 1200);
+      setSuccessMessage("Admin account has been updated successfully.");
+      setShowSuccessModal(true);
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : "Failed to update admin.",
@@ -238,11 +252,11 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
           </button>
           <button
             onClick={handleSave}
-            disabled={isSubmitting || success || loadingOptions}
+            disabled={isSubmitting || loadingOptions}
             className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {success ? "Saved!" : isSubmitting ? "Saving..." : "Save Changes"}
+            {isSubmitting ? "Saving..." : "Save Changes"}
           </button>
         </div>
       }
@@ -258,7 +272,11 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
             />
           ) : (
             <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-lg shrink-0">
-              {(admin.firstName?.[0] ?? admin.username?.[0] ?? "A").toUpperCase()}
+              {(
+                admin.firstName?.[0] ??
+                admin.username?.[0] ??
+                "A"
+              ).toUpperCase()}
             </div>
           )}
           <div>
@@ -282,19 +300,54 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
                 type="text"
                 value={formData.username}
                 onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, username: e.target.value }));
+                  const newUsername = e.target.value;
+                  setFormData((prev) => ({ ...prev, username: newUsername }));
                   if (errors.username)
                     setErrors((prev) => ({ ...prev, username: undefined }));
+
+                  if (usernameCheckTimeout) clearTimeout(usernameCheckTimeout);
+
+                  const originalUsername = admin.username ?? "";
+                  if (
+                    newUsername.trim().length >= 3 &&
+                    newUsername !== originalUsername
+                  ) {
+                    setUsernameCheckLoading(true);
+                    const timeout = setTimeout(async () => {
+                      try {
+                        const isTaken =
+                          await checkUsernameAvailability(newUsername);
+                        setUsernameTaken(isTaken);
+                      } catch {
+                        console.error("Username check error");
+                      } finally {
+                        setUsernameCheckLoading(false);
+                      }
+                    }, 500);
+                    setUsernameCheckTimeout(timeout);
+                  } else {
+                    setUsernameTaken(false);
+                    setUsernameCheckLoading(false);
+                  }
                 }}
                 className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
-                  errors.username
+                  usernameTaken || errors.username
                     ? "border-red-300 bg-red-50 focus:ring-red-500"
                     : "border-gray-300 focus:ring-blue-500"
                 }`}
               />
-              {errors.username && (
+              {usernameCheckLoading && (
+                <Loader2 className="mt-2 w-4 h-4 text-blue-500 animate-spin" />
+              )}
+              {usernameTaken && (
                 <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> {errors.username}
+                   This username is already
+                  taken
+                </p>
+              )}
+              {errors.username && !usernameTaken && (
+                <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                  {errors.username}
                 </p>
               )}
             </div>
@@ -312,12 +365,15 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
                     const newEmail = e.target.value;
                     setFormData((prev) => ({ ...prev, systemEmail: newEmail }));
                     if (errors.systemEmail)
-                      setErrors((prev) => ({ ...prev, systemEmail: undefined }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        systemEmail: undefined,
+                      }));
 
                     if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
 
-                    // Only check if email actually changed from original
-                    const originalEmail = admin.email ?? admin.systemEmail ?? "";
+                    const originalEmail =
+                      admin.email ?? admin.systemEmail ?? "";
                     if (
                       newEmail.trim() &&
                       newEmail.includes("@") &&
@@ -326,7 +382,8 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
                       setEmailCheckLoading(true);
                       const timeout = setTimeout(async () => {
                         try {
-                          const isTaken = await checkEmailAvailability(newEmail);
+                          const isTaken =
+                            await checkEmailAvailability(newEmail);
                           setEmailTaken(isTaken);
                         } catch {
                           console.error("Email check error");
@@ -355,7 +412,8 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
                 {!emailCheckLoading &&
                   formData.systemEmail &&
                   !emailTaken &&
-                  formData.systemEmail !== (admin.email ?? admin.systemEmail ?? "") && (
+                  formData.systemEmail !==
+                    (admin.email ?? admin.systemEmail ?? "") && (
                     <CheckCircle2 className="absolute right-3 top-3 w-4 h-4 text-green-500" />
                   )}
               </div>
@@ -377,8 +435,6 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
         {/* Department Access */}
         <div>
           <FormSectionTitle title="Department Access" />
-
-          
 
           {!formData.allDepartments && (
             <div>
@@ -492,17 +548,20 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
           </div>
         )}
 
-        {/* Success */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex gap-2 items-start">
-            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-green-700">Admin updated successfully!</p>
-          </div>
-        )}
-
         {/* Warning */}
-       
       </div>
+
+      <ActionModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          onClose();
+        }}
+        title="Admin Updated"
+        type="success"
+      >
+        <p>{successMessage}</p>
+      </ActionModal>
     </FormModalShell>
   );
 }

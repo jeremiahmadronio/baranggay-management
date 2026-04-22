@@ -26,12 +26,18 @@ export type Status = (typeof Statuses)[keyof typeof Statuses];
 
 export interface SettingsPreview {
   id: string;
+  photo: string | null;
   username: string;
-
-  email: string;
   firstName: string;
   lastName: string;
-  contactNumber: string;
+  systemEmail: string;
+  contactNumber: string | null;
+  roleName: string;
+  systemBackupEmail: string | null;
+  mfaType: string | null;
+  totpEnabled: boolean;
+  createdAt: string; // ISO-8601 string (LocalDateTime)
+  lastLoginAt: string | null;
 }
 
 export interface UserAccessPermission {
@@ -49,14 +55,16 @@ export interface PermissionOptions {
   permissionName: string;
 }
 
-export interface UpdateSettings {
-  id: string;
-  username: string;
-  password: string;
-  email: string;
+export interface UserSettingsPayload {
   firstName: string;
   lastName: string;
   contactNumber: string;
+  photo?: string | null;
+  username: string;
+  systemEmail: string;
+  systemBackupEmail?: string | null;
+  currentPassword?: string;
+  newPassword?: string;
 }
 
 export interface AdminStats {
@@ -267,6 +275,13 @@ export async function getDepartmentOptions(): Promise<DepartmentOptions[]> {
   return apiFetch<DepartmentOptions[]>("/options", {}, DEPT_URL);
 }
 
+export async function checkUsernameAvailability(
+  username: string,
+): Promise<boolean> {
+  const query = new URLSearchParams({ username: username.trim() });
+  return apiFetch<boolean>(`/check-username?${query.toString()}`, {}, BASE_URL);
+}
+
 export async function archiveAdmin(
   userId: string,
   body: ArchiveReason,
@@ -359,7 +374,9 @@ export async function getSettingsPreview(): Promise<SettingsPreview> {
   return apiFetch<SettingsPreview>(ENDPOINTS.SETTINGS_PREVIEW);
 }
 
-export async function updateSettings(body: UpdateSettings): Promise<string> {
+export async function updateSettings(
+  body: UserSettingsPayload,
+): Promise<string> {
   return apiFetch<string>(ENDPOINTS.UPDATE_SETTINGS, {
     method: "PUT",
     body: JSON.stringify(body),
@@ -369,4 +386,11 @@ export async function updateSettings(body: UpdateSettings): Promise<string> {
 export async function checkEmailAvailability(email: string): Promise<boolean> {
   const query = new URLSearchParams({ email });
   return apiFetch<boolean>(`/check-email?${query.toString()}`, {}, BASE_URL);
+}
+
+export async function checkBackupEmailAvailability(
+  email: string,
+): Promise<boolean> {
+  const query = new URLSearchParams({ email: email.trim() });
+  return apiFetch<boolean>(`/check-backup?${query.toString()}`, {}, BASE_URL);
 }

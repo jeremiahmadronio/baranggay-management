@@ -66,9 +66,7 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.text() as unknown as T;
 }
 
-// =====================================================================
-// REVENUE API
-// =====================================================================
+
 
 export const revenueApi = {
   // GET /stats

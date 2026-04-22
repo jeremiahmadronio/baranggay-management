@@ -5,6 +5,7 @@ import {
   ChevronRightIcon,
   EyeIcon,
   SearchIcon,
+  ShieldCheck,
 } from "lucide-react";
 import {
   KPIGrid,
@@ -126,6 +127,21 @@ function formatLastLogin(iso?: string | null): string {
   }
 }
 
+function formatDateTime(iso?: string | null): string {
+  if (!iso) return "Never";
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 function normalizeUserStatus(
   user: UserTable,
 ): "ACTIVE" | "INACTIVE" | "ARCHIVED" | "LOCK" {
@@ -211,37 +227,153 @@ function UserArchiveProfileView({
   user: UserTable;
   onBack: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"overview" | "access">("overview");
+
+  const fullName = `${user.firstName} ${user.lastName}`;
+  const userStatus = user.isLocked
+    ? "LOCKED"
+    : user.status?.toUpperCase() === "INACTIVE"
+      ? "INACTIVE"
+      : user.status?.toUpperCase() === "ARCHIVED"
+        ? "ARCHIVED"
+        : "ACTIVE";
+
+  const initials = useMemo(
+    () =>
+      fullName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase() || "US",
+    [fullName],
+  );
+
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-5">
       <button
         onClick={onBack}
-        className="mb-4 text-sm text-blue-600 hover:underline"
+        className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
       >
         ← Back to Archive
       </button>
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {user.firstName} {user.lastName}
-        </h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Username</p>
-            <p className="font-medium text-gray-800">@{user.username}</p>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-start gap-4">
+        <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+          {initials}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xl font-bold text-gray-900 leading-tight">
+            {fullName}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">@{user.username}</p>
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${userStatus === "ACTIVE" ? "bg-green-100 text-green-700" : userStatus === "INACTIVE" ? "bg-amber-100 text-amber-700" : userStatus === "ARCHIVED" ? "bg-slate-100 text-slate-700" : "bg-rose-100 text-rose-700"}`}
+            >
+              {userStatus}
+            </span>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+              <ShieldCheck className="w-3 h-3 mr-1" />
+              {prettify(user.roleName)}
+            </span>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+              {prettify(user.departmentName) || "No department"}
+            </span>
           </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Role</p>
-            <p className="font-medium text-gray-800">{user.roleName}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Department</p>
-            <p className="font-medium text-gray-800">
-              {prettify(user.departmentName)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Status</p>
-            <p className="font-medium text-gray-800">{user.status}</p>
-          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl overflow-hidden border border-gray-200 bg-white">
+        <div className="flex border-b border-gray-200 px-6 bg-white">
+          {(
+            [
+              ["overview", "Overview"],
+              ["access", `Permissions (${user.permissions?.length ?? 0})`],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key)}
+              className={`py-4 px-1 mr-8 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {activeTab === "overview" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-gray-200 rounded-xl p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                  User Information
+                </h3>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Contact:</span>{" "}
+                  {user.contactNumber || "—"}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Email:</span>{" "}
+                  {user.email || "—"}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Role:</span>{" "}
+                  {prettify(user.roleName) || "—"}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Department:</span>{" "}
+                  {prettify(user.departmentName) || "—"}
+                </p>
+              </div>
+
+              <div className="border border-gray-200 rounded-xl p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                  System Information
+                </h3>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Account Lock:</span>{" "}
+                  {user.isLocked ? "Locked" : "Unlocked"}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Status:</span>{" "}
+                  {user.status || "—"}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Locked Until:</span>{" "}
+                  {formatDateTime(user.lockUntil)}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Created At:</span>{" "}
+                  {formatDateTime(user.createdAt)}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="text-gray-500">Last Login:</span>{" "}
+                  {formatDateTime(user.lastLoginAt)}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {!user.permissions || user.permissions.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No assigned permissions.
+                </p>
+              ) : (
+                user.permissions.map((perm, index) => (
+                  <div
+                    key={`${perm}-${index}`}
+                    className="border border-gray-200 rounded-lg p-3 bg-gray-50/70"
+                  >
+                    <p className="text-sm font-medium text-gray-800">{perm}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -867,8 +999,8 @@ export default function RootArchivePage() {
                           {o.position || "—"}
                         </td>
                         <td className="px-6 py-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                              {String(o.status || "ARCHIVED").toUpperCase()}
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            {String(o.status || "ARCHIVED").toUpperCase()}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-700">

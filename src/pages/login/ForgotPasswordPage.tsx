@@ -1,44 +1,40 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Mail, ArrowLeft, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
-import { AuthLayout } from "./AuthLayout";
-import { resetPasswordService } from "../../service/login-api/reset-password";
-
+import React, { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Mail, ArrowLeft, Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { AuthLayout } from './AuthLayout'
+import { resetPasswordService } from '../../service/login-api/reset-password'
 export function ForgotPasswordPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
+    e.preventDefault()
+    setError('')
     if (!email) {
-      setError("Please enter your email address.");
-      return;
+      setError('Please enter your email address.')
+      return
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
+      setError('Please enter a valid email address.')
+      return
     }
-
-    setIsLoading(true);
-
+    setIsLoading(true)
     try {
-      await resetPasswordService.forgotPassword(email);
-      // Navigate to verification page with email
-      navigate("/reset-code-verification", { state: { email } });
+      await resetPasswordService.forgotPassword(email)
+      navigate('/reset-code-verification', {
+        state: {
+          email,
+        },
+      })
     } catch (err: any) {
-      setError(err.message || "Failed to send reset code. Please try again.");
+      setError(err.message || 'Failed to send reset code. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
+  }
   return (
     <AuthLayout>
       <motion.div
@@ -62,7 +58,6 @@ export function ForgotPasswordPage() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Login
         </Link>
-
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
             Forgot Password?
@@ -71,7 +66,6 @@ export function ForgotPasswordPage() {
             Enter your email and we'll send you a verification code
           </p>
         </div>
-
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm flex items-start gap-2">
             <div className="mt-0.5">
@@ -86,7 +80,6 @@ export function ForgotPasswordPage() {
             {error}
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label
@@ -110,7 +103,6 @@ export function ForgotPasswordPage() {
               />
             </div>
           </div>
-
           <button
             type="submit"
             disabled={isLoading}
@@ -122,11 +114,11 @@ export function ForgotPasswordPage() {
                 Sending...
               </>
             ) : (
-              "Send Verification Code"
+              'Send Verification Code'
             )}
           </button>
         </form>
       </motion.div>
     </AuthLayout>
-  );
+  )
 }

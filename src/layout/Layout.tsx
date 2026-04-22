@@ -1,11 +1,21 @@
-import { useState, useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import type { UserRole } from "./Nav-Items";
 import { getNavItemsByRole } from "./Nav-Items";
-import { Hexagon, ChevronDown, Calendar, Clock } from "lucide-react";
+import {
+  Hexagon,
+  ChevronDown,
+  Calendar,
+  Clock,
+  User,
+  Settings,
+  Shield,
+  LogOut,
+} from "lucide-react";
 import { useUser } from "../context/UserContext";
+import { authService } from "../service/login-api/login";
 
 interface LayoutProps {
   userRole: UserRole;
@@ -14,8 +24,11 @@ interface LayoutProps {
 export function Layout({ userRole }: LayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useUser();
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Get the display name from the backend user data, with localStorage fallback
   const getDisplayName = () => {
@@ -49,20 +62,46 @@ export function Layout({ userRole }: LayoutProps) {
   const currentNavItem = navItems.find(
     (item) => item.path === location.pathname,
   );
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const lastSegment = pathSegments[pathSegments.length - 1] ?? "";
   const isLuponCaseDetailRoute =
     location.pathname.startsWith("/lupongtagapamayapa/cases/") &&
     location.pathname.split("/").length === 4;
   const isFtjsDetailRoute = /^\/first-time-job-seeker\/management\/\d+$/.test(
     location.pathname,
   );
+  const isRootAdminProfileRoute =
+    /^\/rootadmin\/admin-management\/view\/[^/]+$/.test(location.pathname);
+  const isLikelyIdSegment =
+    /^\d+$/.test(lastSegment) ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      lastSegment,
+    );
 
   const fallbackTitle = isLuponCaseDetailRoute
     ? "Case Details"
     : isFtjsDetailRoute
       ? "FTJS Details"
-    : location.pathname.split("/").pop()?.replace(/-/g, " ");
+      : isRootAdminProfileRoute
+        ? "Admin Profile"
+        : isLikelyIdSegment
+          ? "Details"
+          : location.pathname.split("/").pop()?.replace(/-/g, " ");
 
   const pageTitle = currentNavItem?.label || fallbackTitle || "Dashboard";
+
+  const accountSettingsPath =
+    userRole === "rootadmin"
+      ? "/rootadmin/account-settings"
+      : userRole === "admin"
+        ? "/admin/account-settings"
+        : userRole === "lupongtagapamayapa"
+          ? "/lupongtagapamayapa/account-settings"
+          : userRole === "clearance"
+            ? "/clearance/settings"
+            : "/";
+  const myProfilePath = `${accountSettingsPath}?tab=profile`;
+  const securityMfaPath = `${accountSettingsPath}?tab=security`;
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -78,6 +117,25 @@ export function Layout({ userRole }: LayoutProps) {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    setIsUserMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isUserMenuOpen &&
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isUserMenuOpen]);
 
   // Format date and time
   const formatDate = (date: Date) => {
@@ -154,20 +212,79 @@ export function Layout({ userRole }: LayoutProps) {
             </div>
           )}
 
-          <button className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-semibold text-sm">
-              {userName?.charAt(0).toUpperCase() || "U"}
-            </div>
-            <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-slate-700 leading-tight">
-                {userName}
-              </p>
-              <p className="text-xs text-slate-400 capitalize">
-                {userRoleDisplay || userRole}
-              </p>
-            </div>
-            <ChevronDown size={16} className="hidden md:block text-slate-400" />
-          </button>
+          <div ref={userMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setIsUserMenuOpen((prev) => !prev)}
+              className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-semibold text-sm">
+                {userName?.charAt(0).toUpperCase() || "U"}
+              </div>
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-medium text-slate-700 leading-tight">
+                  {userName}
+                </p>
+                <p className="text-xs text-slate-400 capitalize">
+                  {userRoleDisplay || userRole}
+                </p>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`hidden md:block text-slate-400 transition-transform ${isUserMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {isUserMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-[300px] bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                <div className="p-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-semibold text-lg">
+                      {userName?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-lg font-semibold text-slate-800 leading-tight truncate">
+                        {userName}
+                      </p>
+                      <p className="text-xs text-slate-500 leading-tight truncate">
+                        {localStorage.getItem("userEmail") || ""}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5">
+                  <button
+                    type="button"
+                    onClick={() => navigate(myProfilePath)}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="text-base">My Profile</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(securityMfaPath)}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span className="text-base">Security &amp; MFA</span>
+                  </button>
+                </div>
+
+                <div className="p-2.5 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => authService.logout()}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-base">Logout</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </header>
 
         <div className="flex-1 h-full overflow-y-auto p-3 md:px-5 md:py-4 pt-0 md:pt-1.5">

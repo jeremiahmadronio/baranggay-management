@@ -69,6 +69,18 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
 
   const [details, setDetails] = useState<UserViewDTO | null>(null);
 
+  const [usernameCheck, setUsernameCheck] = useState<{
+    checking: boolean;
+    taken: boolean;
+    message: string;
+  }>({ checking: false, taken: false, message: "" });
+
+  const [emailCheck, setEmailCheck] = useState<{
+    checking: boolean;
+    taken: boolean;
+    message: string;
+  }>({ checking: false, taken: false, message: "" });
+
   const [form, setForm] = useState<FormData>({
     username: user.username,
     systemEmail: "",
@@ -87,6 +99,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Load user details
   useEffect(() => {
     const load = async () => {
       setLoadingProfile(true);
@@ -114,6 +127,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     load();
   }, [user.id, user.username]);
 
+  // Load options (departments, roles, permissions)
   useEffect(() => {
     const loadOptions = async () => {
       setLoadingOptions(true);
@@ -157,6 +171,67 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     loadOptions();
   }, []);
 
+  // Check username availability (debounced)
+  useEffect(() => {
+    const username = form.username.trim();
+    if (
+      !username ||
+      username.length < USERNAME_MIN_LENGTH ||
+      !USERNAME_PATTERN.test(username) ||
+      username === user.username // Don't check if username hasn't changed
+    ) {
+      setUsernameCheck({ checking: false, taken: false, message: "" });
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setUsernameCheck({ checking: true, taken: false, message: "" });
+        const taken = await userManagementApi.checkUsernameAvailability(username);
+        setUsernameCheck({
+          checking: false,
+          taken,
+          message: taken ? "Username is already taken." : "",
+        });
+      } catch {
+        setUsernameCheck({ checking: false, taken: false, message: "" });
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [form.username, user.username]);
+
+  // Check email availability (debounced)
+  useEffect(() => {
+    const email = form.systemEmail.trim();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (
+      !email ||
+      !isValidEmail ||
+      email === details?.systemEmail // Don't check if email hasn't changed
+    ) {
+      setEmailCheck({ checking: false, taken: false, message: "" });
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setEmailCheck({ checking: true, taken: false, message: "" });
+        const taken = await userManagementApi.checkEmailAvailability(email);
+        setEmailCheck({
+          checking: false,
+          taken,
+          message: taken ? "Email is already taken." : "",
+        });
+      } catch {
+        setEmailCheck({ checking: false, taken: false, message: "" });
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [form.systemEmail, details?.systemEmail]);
+
+  // Set initial form data from profile
   useEffect(() => {
     if (!details || roles.length === 0 || departments.length === 0) {
       return;
@@ -289,6 +364,8 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     } else if (!USERNAME_PATTERN.test(username)) {
       next.username =
         "Username can only use letters, numbers, dot (.), underscore (_), and hyphen (-).";
+    } else if (usernameCheck.taken) {
+      next.username = "Username is already taken.";
     }
 
     if (!systemEmail) {
@@ -297,6 +374,8 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
       next.systemEmail = `System email must be at most ${SYSTEM_EMAIL_MAX_LENGTH} characters.`;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(systemEmail)) {
       next.systemEmail = "Please enter a valid email address.";
+    } else if (emailCheck.taken) {
+      next.systemEmail = "Email is already taken.";
     }
 
     if (!form.roleId) next.roleId = "Please select a role.";
@@ -311,6 +390,11 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
   };
 
   const handleSubmit = async () => {
+    if (usernameCheck.checking || emailCheck.checking) {
+      setSubmitError("Please wait for availability checks to finish.");
+      return;
+    }
+
     if (!validate()) {
       setSubmitError("Please fix required fields before saving.");
       return;
@@ -344,6 +428,14 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     }
   };
 
+  const isSubmitDisabled =
+    isSubmitting ||
+    loading ||
+    usernameCheck.checking ||
+    emailCheck.checking ||
+    usernameCheck.taken ||
+    emailCheck.taken;
+
   const displayName = useMemo(
     () => `${user.firstName} ${user.lastName}`.trim(),
     [user.firstName, user.lastName],
@@ -372,7 +464,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || loading}
+                  disabled={isSubmitDisabled}
                   className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
                 >
                   {(isSubmitting || loading) && (
@@ -414,6 +506,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                     </span>
                   </div>
                   <input
+                    type="text"
                     value={form.username}
                     onChange={(e) =>
                       setField(
@@ -422,10 +515,23 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                       )
                     }
                     maxLength={USERNAME_MAX_LENGTH}
-                    className={fieldClass(!!errors.username)}
+                    placeholder="juan.delacruz"
+                    className={fieldClass(
+                      !!errors.username || usernameCheck.taken
+                    )}
                     disabled={loading}
                   />
-                  {errors.username && (
+                  {usernameCheck.checking && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Checking username availability...
+                    </p>
+                  )}
+                  {!usernameCheck.checking && usernameCheck.message && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {usernameCheck.message}
+                    </p>
+                  )}
+                  {errors.username && !usernameCheck.taken && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.username}
                     </p>
@@ -453,11 +559,33 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                     onChange={(e) =>
                       setField("systemEmail", e.target.value.trimStart())
                     }
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          systemEmail: "Please enter a valid email address.",
+                        }));
+                      }
+                    }}
                     maxLength={SYSTEM_EMAIL_MAX_LENGTH}
-                    className={fieldClass(!!errors.systemEmail)}
+                    placeholder="juan@barangay.gov.ph"
+                    className={fieldClass(
+                      !!errors.systemEmail || emailCheck.taken
+                    )}
                     disabled={loading}
                   />
-                  {errors.systemEmail && (
+                  {emailCheck.checking && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Checking email availability...
+                    </p>
+                  )}
+                  {!emailCheck.checking && emailCheck.message && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {emailCheck.message}
+                    </p>
+                  )}
+                  {errors.systemEmail && !emailCheck.taken && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.systemEmail}
                     </p>

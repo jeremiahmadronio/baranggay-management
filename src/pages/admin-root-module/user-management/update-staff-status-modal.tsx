@@ -4,6 +4,7 @@ import {
   FormFieldLabel,
   FormModalShell,
 } from "../../../reusable/FormModalShell";
+import { ActionModal } from "../../../reusable";
 import {
   userManagementApi,
   type UserTable,
@@ -16,9 +17,9 @@ interface UpdateStaffStatusModalProps {
 }
 
 const STATUS_OPTIONS = [
-  { value: "ACTIVE", label: "Active" },
-  { value: "INACTIVE", label: "Inactive" },
-  { value: "LOCK", label: "Lock Account" },
+  { value: "ACTIVE", label: "Active (fully operational)" },
+  { value: "INACTIVE", label: "Inactive (user not available)" },
+  { value: "LOCK", label: "Locked (temporary restriction)" },
 ] as const;
 
 const REASON_LIMIT = 1000;
@@ -44,6 +45,8 @@ export function UpdateStaffStatusModal({
   const [reasonError, setReasonError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     setSelectedStatus("");
@@ -53,6 +56,8 @@ export function UpdateStaffStatusModal({
     setReasonError("");
     setSubmitError("");
     setSubmitting(false);
+    setShowSuccessModal(false);
+    setSuccessMessage("");
   }, [availableStatusOptions]);
 
   const toLocalDateTime = (value: string) => {
@@ -89,8 +94,8 @@ export function UpdateStaffStatusModal({
           lockUntil: lockUntil ? toLocalDateTime(lockUntil) : fallbackLockUntil,
           reason: reason.trim(),
         });
-        onSuccess?.();
-        onClose();
+        setSuccessMessage("Staff account has been locked successfully.");
+        setShowSuccessModal(true);
         return;
       }
 
@@ -106,8 +111,8 @@ export function UpdateStaffStatusModal({
         newStatus: selectedStatus,
         remarks: reason.trim(),
       });
-      onSuccess?.();
-      onClose();
+      setSuccessMessage("Staff status has been updated successfully.");
+      setShowSuccessModal(true);
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : "Failed to update status.",
@@ -210,6 +215,19 @@ export function UpdateStaffStatusModal({
 
         <FormFieldError msg={submitError} />
       </div>
+
+      <ActionModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          onSuccess?.();
+          onClose();
+        }}
+        title="Update Successful"
+        type="success"
+      >
+        <p>{successMessage}</p>
+      </ActionModal>
     </FormModalShell>
   );
 }

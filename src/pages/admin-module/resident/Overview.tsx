@@ -54,7 +54,6 @@ export function ResidentsOverviewTab({
             label="Date of Birth"
             value={formatDate(profile.birthDate)}
           />
-          <DetailField label="Religion" value={profile.religion} />
           <div className="md:col-span-2">
             <DetailField
               label="Current Address"

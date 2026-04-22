@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Pencil,
   Lock,
@@ -10,7 +11,6 @@ import {
 } from "lucide-react";
 import CreateAdminModal from "./create-admin-modal";
 import { EditUserModal } from "./edit-user-modal";
-import { ViewUserModal } from "./view-user-modal";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import { Table, type TableColumn } from "../../hooks/Table";
@@ -22,7 +22,6 @@ import {
   type AdminStats,
   type AdminTable,
 } from "../../service/admin-root-api/admin-management";
-import { NoticeBanner } from "../../reusable/Notification";
 import { StatusUpdateModal } from "../../reusable/StatusUpdateModal";
 import {
   archiveAdmin,
@@ -256,6 +255,7 @@ const buildColumns = (
 
 export default function AdminManagement() {
   // ...existing code...
+  const navigate = useNavigate();
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -273,7 +273,6 @@ export default function AdminManagement() {
   const [openCreate, setOpenCreate] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminTable | null>(null);
   const [openEdit, setOpenEdit] = useState(false);
-  const [openView, setOpenView] = useState(false);
   const [openLock, setOpenLock] = useState(false);
   const [openArchive, setOpenArchive] = useState(false);
   const [openUnarchive, setOpenUnarchive] = useState(false);
@@ -354,8 +353,9 @@ export default function AdminManagement() {
   };
 
   const handleView = (a: AdminTable) => {
-    setSelectedAdmin(a);
-    setOpenView(true);
+    navigate(`/rootadmin/admin-management/view/${a.id}`, {
+      state: { admin: a },
+    });
   };
   const handleEdit = (a: AdminTable) => {
     setSelectedAdmin(a);
@@ -394,13 +394,7 @@ export default function AdminManagement() {
         </button>
       </div>
 
-      <div className="mb-4">
-        <NoticeBanner
-          title="Elevated Privilege Zone:"
-          message="This section is only accessible to Root Admins. All actions performed here are logged in the audit trail with high-priority flags."
-          variant="warning"
-        />
-      </div>
+     
 
       {statsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -499,17 +493,6 @@ export default function AdminManagement() {
           onClose={() => {
             setOpenCreate(false);
             fetchTable();
-          }}
-        />
-      )}
-
-      {openView && selectedAdmin && (
-        <ViewUserModal
-          admin={selectedAdmin}
-          isOpen={openView}
-          onClose={() => {
-            setOpenView(false);
-            setSelectedAdmin(null);
           }}
         />
       )}

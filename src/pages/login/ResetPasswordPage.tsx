@@ -1,97 +1,92 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Lock, Eye, EyeOff, Loader2, Check, X, ArrowLeft } from "lucide-react";
-import { motion } from "framer-motion";
-import { AuthLayout } from "./AuthLayout";
-import { resetPasswordService } from "../../service/login-api/reset-password";
-import { ActionModal } from "../../reusable";
-
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Lock, Eye, EyeOff, Loader2, Check, X, ArrowLeft } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { AuthLayout } from './AuthLayout'
+import { resetPasswordService } from '../../service/login-api/reset-password'
+import { ActionModal } from '../../reusable'
 export function ResetPasswordPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  // Get email and code from navigation state
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const { email, code } =
-    (location.state as { email?: string; code?: string }) || {};
-
-  // Redirect back if no email or code
+    (location.state as {
+      email?: string
+      code?: string
+    }) || {}
   useEffect(() => {
     if (!email || !code) {
-      navigate("/forgot-password");
+      navigate('/forgot-password')
     }
-  }, [email, code, navigate]);
-
-  // Password validation rules
+  }, [email, code, navigate])
   const passwordRules = {
     minLength: newPassword.length >= 8,
     hasUppercase: /[A-Z]/.test(newPassword),
     hasLowercase: /[a-z]/.test(newPassword),
     hasNumber: /\d/.test(newPassword),
     hasSpecial: /[@$!%*?&]/.test(newPassword),
-  };
-
-  const isPasswordValid = Object.values(passwordRules).every(Boolean);
+  }
+  const isPasswordValid = Object.values(passwordRules).every(Boolean)
   const passwordsMatch =
-    newPassword === confirmPassword && confirmPassword !== "";
-
+    newPassword === confirmPassword && confirmPassword !== ''
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
+    e.preventDefault()
+    setError('')
     if (!isPasswordValid) {
-      setError("Please ensure your password meets all requirements.");
-      return;
+      setError('Please ensure your password meets all requirements.')
+      return
     }
-
     if (!passwordsMatch) {
-      setError("Passwords do not match.");
-      return;
+      setError('Passwords do not match.')
+      return
     }
-
-    setIsLoading(true);
-
+    setIsLoading(true)
     try {
       await resetPasswordService.resetPassword({
         email: email!,
         code: code!,
         newPassword,
         confirmPassword,
-      });
-      setShowSuccessModal(true);
+      })
+      setShowSuccessModal(true)
     } catch (err: any) {
-      setError(err.message || "Failed to reset password. Please try again.");
+      setError(err.message || 'Failed to reset password. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
+  }
   const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    navigate("/login");
-  };
-
+    setShowSuccessModal(false)
+    navigate('/login')
+  }
   const RuleItem = ({ valid, text }: { valid: boolean; text: string }) => (
     <div
-      className={`flex items-center gap-2 text-sm ${valid ? "text-green-600" : "text-slate-400"}`}
+      className={`flex items-center gap-2 text-sm ${valid ? 'text-green-600' : 'text-slate-400'}`}
     >
       {valid ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
       {text}
     </div>
-  );
-
+  )
   return (
     <AuthLayout>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.4,
+        }}
         className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100"
       >
         <div className="mb-8">
@@ -102,7 +97,6 @@ export function ResetPasswordPage() {
             Create a new password for your account
           </p>
         </div>
-
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm flex items-start gap-2">
             <div className="mt-0.5">
@@ -117,9 +111,7 @@ export function ResetPasswordPage() {
             {error}
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* New Password */}
           <div>
             <label
               htmlFor="newPassword"
@@ -133,7 +125,7 @@ export function ResetPasswordPage() {
               </div>
               <input
                 id="newPassword"
-                type={showNewPassword ? "text" : "password"}
+                type={showNewPassword ? 'text' : 'password'}
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -154,8 +146,6 @@ export function ResetPasswordPage() {
               </button>
             </div>
           </div>
-
-          {/* Confirm Password */}
           <div>
             <label
               htmlFor="confirmPassword"
@@ -169,17 +159,11 @@ export function ResetPasswordPage() {
               </div>
               <input
                 id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPassword ? 'text' : 'password'}
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 placeholder:text-slate-400 bg-slate-50 focus:bg-white ${
-                  confirmPassword && !passwordsMatch
-                    ? "border-red-300"
-                    : confirmPassword && passwordsMatch
-                      ? "border-green-300"
-                      : "border-slate-200"
-                }`}
+                className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 placeholder:text-slate-400 bg-slate-50 focus:bg-white ${confirmPassword && !passwordsMatch ? 'border-red-300' : confirmPassword && passwordsMatch ? 'border-green-300' : 'border-slate-200'}`}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -206,8 +190,6 @@ export function ResetPasswordPage() {
               </p>
             )}
           </div>
-
-          {/* Password Requirements - Compact Grid */}
           <div className="bg-slate-50 p-3 rounded-lg">
             <p className="text-xs font-medium text-slate-600 mb-2">
               Password requirements:
@@ -229,7 +211,6 @@ export function ResetPasswordPage() {
               />
             </div>
           </div>
-
           <button
             type="submit"
             disabled={isLoading || !isPasswordValid || !passwordsMatch}
@@ -241,12 +222,10 @@ export function ResetPasswordPage() {
                 Resetting...
               </>
             ) : (
-              "Reset Password"
+              'Reset Password'
             )}
           </button>
         </form>
-
-        {/* Back Button */}
         <div className="mt-8 text-center">
           <button
             type="button"
@@ -257,7 +236,6 @@ export function ResetPasswordPage() {
           </button>
         </div>
       </motion.div>
-
       <ActionModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
@@ -270,5 +248,5 @@ export function ResetPasswordPage() {
         </p>
       </ActionModal>
     </AuthLayout>
-  );
+  )
 }

@@ -38,7 +38,6 @@ export const adminNavItems: NavItemType[] = [
   { label: "Residents", path: "/admin/residents", icon: Users },
   { label: "Officers", path: "/admin/officers", icon: Users },
   { label: "Archive", path: "/admin/archive", icon: Archive },
-  { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
 // Root Admin navigation items
@@ -52,7 +51,6 @@ export const rootAdminNavItems: NavItemType[] = [
   { label: "Audit Logs", path: "/rootadmin/audit-logs", icon: ScrollText },
     { label: "Archive", path: "/rootadmin/archive", icon: Archive },
 
-  { label: "Settings", path: "/rootadmin/account-settings", icon: Settings },
 ];
 
 // Blotter navigation items

@@ -1,30 +1,70 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Lock, Eye, EyeOff, Loader2, Check, X, ArrowLeft } from "lucide-react";
-import { motion } from "framer-motion";
-import { AuthLayout } from "./AuthLayout";
-import { authService } from "../../service/login-api/login";
-import { Link } from "react-router-dom";
-import { ActionModal } from "../../reusable";
-
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  Check,
+  X,
+  ArrowLeft,
+  User,
+} from 'lucide-react'
+import { motion } from 'framer-motion'
+import { AuthLayout } from './AuthLayout'
+import { authService } from '../../service/login-api/login'
+import { ActionModal } from '../../reusable'
 export function ChangePasswordNewAccountPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [isUsernameTaken, setIsUsernameTaken] = useState(false);
+const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+const [usernameMessage, setUsernameMessage] = useState('');
+  const email =
+    (
+      location.state as {
+        email?: string
+      }
+    )?.email || ''
+ 
+  
+  
+   useEffect(() => {
+  if (username.trim().length < 3) {
+    setIsUsernameTaken(false);
+    setUsernameMessage('');
+    return;
+  }
 
-  const email = (location.state as { email?: string })?.email || "";
-
-  useEffect(() => {
-    if (!email) {
-      navigate("/login");
+  const checkUsername = async () => {
+    setIsCheckingUsername(true);
+    try {
+      const isAvailable = await authService.checkUsernameAvailability(username);
+      // i-adjust depende sa backend mo:
+      // kung true = available → setIsUsernameTaken(!isAvailable)
+      // kung true = taken    → setIsUsernameTaken(isAvailable)
+      setIsUsernameTaken(!isAvailable); // assuming true = available
+      setUsernameMessage(isAvailable ? 'Username is available.' : 'This username is already taken.');
+    } catch (err) {
+      console.error("Username check failed", err);
+    } finally {
+      setIsCheckingUsername(false);
     }
-  }, [email, navigate]);
+  };
+
+  const timeoutId = setTimeout(checkUsername, 500);
+  return () => clearTimeout(timeoutId);
+}, [username]); 
+
+
 
   const passwordRules = {
     minLength: newPassword.length >= 8,
@@ -32,68 +72,74 @@ export function ChangePasswordNewAccountPage() {
     hasLowercase: /[a-z]/.test(newPassword),
     hasNumber: /\d/.test(newPassword),
     hasSpecial: /[@$!%*?&]/.test(newPassword),
-  };
+  }
 
-  const isPasswordValid = Object.values(passwordRules).every(Boolean);
+
+  
+  const isPasswordValid = Object.values(passwordRules).every(Boolean)
   const passwordsMatch =
-    newPassword === confirmPassword && confirmPassword !== "";
-
+    newPassword === confirmPassword && confirmPassword !== ''
+  const isUsernameValid = username.trim().length >= 3
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
+    e.preventDefault()
+    setError('')
     if (!isPasswordValid) {
-      setError("Please ensure your password meets all requirements.");
-      return;
+      setError('Please ensure your password meets all requirements.')
+      return
     }
-
     if (!passwordsMatch) {
-      setError("Passwords do not match.");
-      return;
+      setError('Passwords do not match.')
+      return
     }
-
-    setIsLoading(true);
-
+    if (!isUsernameValid) {
+      setError('Username must be at least 3 characters long.')
+      return
+    }
+    setIsLoading(true)
     try {
-      const response = await authService.changePasswordNewAccount({
+      await authService.changePasswordNewAccount({
         email,
         newPassword,
         confirmPassword,
-      });
-
-      // Show success modal instead of navigating immediately
-      setShowSuccessModal(true);
-      // Optionally, you can store the role if you want to use it after closing the modal
-      // setUserRole(response.role);
+        username,
+      })
+      setShowSuccessModal(true)
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to change password.");
+      setError(err.response?.data?.message || 'Failed to change password.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
-  // Handle modal close and redirect based on role
+  }
   const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    // You can fetch the role again if needed, or just send to login
-    navigate("/login");
-  };
-
+    setShowSuccessModal(false)
+    navigate('/security-setup', {
+      state: {
+        email,
+      },
+    })
+  }
   const RuleItem = ({ valid, text }: { valid: boolean; text: string }) => (
     <div
-      className={`flex items-center gap-2 text-sm ${valid ? "text-green-600" : "text-slate-400"}`}
+      className={`flex items-center gap-2 text-sm ${valid ? 'text-green-600' : 'text-slate-400'}`}
     >
       {valid ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
       {text}
     </div>
-  );
-
+  )
   return (
     <AuthLayout>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.4,
+        }}
         className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100"
       >
         <Link
@@ -103,16 +149,14 @@ export function ChangePasswordNewAccountPage() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Login
         </Link>
-
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Set Your Password
+            Set Your Password & Username
           </h2>
           <p className="text-slate-500 text-sm">
-            Create a strong password for your new account
+            Create a strong password and choose a username for your new account
           </p>
         </div>
-
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm flex items-start gap-2">
             <div className="mt-0.5">
@@ -127,9 +171,7 @@ export function ChangePasswordNewAccountPage() {
             {error}
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* New Password */}
           <div>
             <label
               htmlFor="newPassword"
@@ -143,7 +185,7 @@ export function ChangePasswordNewAccountPage() {
               </div>
               <input
                 id="newPassword"
-                type={showNewPassword ? "text" : "password"}
+                type={showNewPassword ? 'text' : 'password'}
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -164,8 +206,6 @@ export function ChangePasswordNewAccountPage() {
               </button>
             </div>
           </div>
-
-          {/* Confirm Password */}
           <div>
             <label
               htmlFor="confirmPassword"
@@ -179,17 +219,11 @@ export function ChangePasswordNewAccountPage() {
               </div>
               <input
                 id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPassword ? 'text' : 'password'}
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 placeholder:text-slate-400 bg-slate-50 focus:bg-white ${
-                  confirmPassword && !passwordsMatch
-                    ? "border-red-300"
-                    : confirmPassword && passwordsMatch
-                      ? "border-green-300"
-                      : "border-slate-200"
-                }`}
+                className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 placeholder:text-slate-400 bg-slate-50 focus:bg-white ${confirmPassword && !passwordsMatch ? 'border-red-300' : confirmPassword && passwordsMatch ? 'border-green-300' : 'border-slate-200'}`}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -216,8 +250,6 @@ export function ChangePasswordNewAccountPage() {
               </p>
             )}
           </div>
-
-          {/* Password Requirements - Compact Grid */}
           <div className="bg-slate-50 p-3 rounded-lg">
             <p className="text-xs font-medium text-slate-600 mb-2">
               Password requirements:
@@ -240,34 +272,79 @@ export function ChangePasswordNewAccountPage() {
             </div>
           </div>
 
+          <div className="pt-2">
+  <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1.5">
+    Choose your username
+  </label>
+  <div className="relative">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <User className="h-5 w-5 text-slate-400" />
+    </div>
+    <input
+      id="username"
+      type="text"
+      required
+      value={username}
+      onChange={(e) => setUsername(e.target.value)}
+      className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 bg-slate-50 focus:bg-white 
+        ${username.length >= 3 && isUsernameTaken ? 'border-red-300' : 
+          username.length >= 3 && !isUsernameTaken && !isCheckingUsername ? 'border-green-300' : 'border-slate-200'}`}
+      placeholder="Your username"
+      disabled={isLoading}
+    />
+    
+    {/* Selyado: Status Indicators */}
+    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+      {isCheckingUsername ? (
+        <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
+      ) : username.length >= 3 && isUsernameTaken ? (
+        <X className="h-4 w-4 text-red-500" />
+      ) : username.length >= 3 && !isUsernameTaken ? (
+        <Check className="h-4 w-4 text-green-500" />
+      ) : null}
+    </div>
+  </div>
+  
+  {/* Selyado: Validation Message */}
+  {usernameMessage && (
+    <p className={`mt-1 text-xs ${isUsernameTaken ? 'text-red-600' : 'text-green-600'}`}>
+      {usernameMessage}
+    </p>
+  )}
+</div>
+
           <button
             type="submit"
-            disabled={isLoading || !isPasswordValid || !passwordsMatch}
-            className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-600 disabled:opacity-50 transition-colors font-medium shadow-sm"
+            disabled={
+              isLoading ||
+              !isPasswordValid ||
+              !passwordsMatch ||
+              !isUsernameValid
+            }
+            className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-600 disabled:opacity-50 transition-colors font-medium shadow-sm mt-4"
           >
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                Setting Password...
+                Setting up...
               </>
             ) : (
-              "Set Password & Continue"
+              'Set Password & Continue'
             )}
           </button>
         </form>
       </motion.div>
-
       <ActionModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
-        title="Password Changed Successfully"
+        title="Account Updated Successfully"
         type="success"
       >
         <p>
-          Your password has been set. You can now log in with your new
-          credentials.
+          Your password and username have been set. Let's set up your security
+          settings next.
         </p>
       </ActionModal>
     </AuthLayout>
-  );
+  )
 }

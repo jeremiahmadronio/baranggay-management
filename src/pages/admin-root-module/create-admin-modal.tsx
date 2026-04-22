@@ -8,10 +8,46 @@ import {
   searchPeople,
   checkEmailAvailability,
   type DepartmentOptions,
- 
+  type PermissionOptions,
   type CreateAdmin,
   type PersonSearchResponseDTO,
 } from "../../service/admin-root-api/admin-management";
+import { ActionModal } from "../../hooks/SuccessModal";
+
+const ALLOWED_PERMISSIONS = [
+  "Create users",
+  "Edit users",
+  "View users",
+  "Lock users",
+  "Archive users",
+  "Create resident",
+  "View residents",
+  "Edit resident",
+  "Archive resident",
+  "Create Officer",
+  "View Officers",
+  "Edit Officer",
+  "Restore Archived",
+  "Case Re-open",
+];
+
+const PERMISSION_GROUPS: Record<string, string[]> = {
+  "User Management": [
+    "Create users",
+    "Edit users",
+    "View users",
+    "Lock users",
+    "Archive users",
+  ],
+  "Resident Management": [
+    "Create resident",
+    "View residents",
+    "Edit resident",
+    "Archive resident",
+  ],
+  "Officer Management": ["Create Officer", "View Officers", "Edit Officer"],
+  Archive: ["Restore Archived"],
+};
 
 type Errors = Partial<
   Record<"systemEmail" | "departments" | "permissions", string>
@@ -20,8 +56,6 @@ type Errors = Partial<
 interface Props {
   onClose: () => void;
 }
-
-
 
 interface FormData {
   personId: number | null;
@@ -43,10 +77,13 @@ export default function CreateAdminModal({ onClose }: Props) {
   });
 
   const [departments, setDepartments] = useState<DepartmentOptions[]>([]);
+  const [permissions, setPermissions] = useState<PermissionOptions[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const [selectedResidentName, setSelectedResidentName] = useState<string>("");
 
   // Resident search state
@@ -64,9 +101,9 @@ export default function CreateAdminModal({ onClose }: Props) {
 
   useEffect(() => {
     Promise.all([getDepartmentOptions(), getPermissionOptions()])
-      .then(([depts, ]) => {
+      .then(([depts, perms]) => {
         setDepartments(depts);
-        
+        setPermissions(perms);
       })
       .catch(console.error)
       .finally(() => setLoadingOptions(false));
@@ -83,7 +120,16 @@ export default function CreateAdminModal({ onClose }: Props) {
       setErrors((prev) => ({ ...prev, departments: undefined }));
   };
 
-
+  const togglePermission = (id: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      permissionIds: prev.permissionIds.includes(id)
+        ? prev.permissionIds.filter((p) => p !== id)
+        : [...prev.permissionIds, id],
+    }));
+    if (errors.permissions)
+      setErrors((prev) => ({ ...prev, permissions: undefined }));
+  };
 
   const handleSearchResident = async (query: string) => {
     setSearchQuery(query);
@@ -129,6 +175,9 @@ export default function CreateAdminModal({ onClose }: Props) {
       e.departments =
         "Please select at least one department or check 'All Departments'.";
     }
+    if (formData.permissionIds.length === 0) {
+      e.permissions = "Please select at least one permission.";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -148,7 +197,8 @@ export default function CreateAdminModal({ onClose }: Props) {
       setIsSubmitting(true);
       setSubmitError(null);
       await createAdminAccount(payload);
-      onClose();
+      setSuccessMessage("Admin account has been created successfully.");
+      setShowSuccessModal(true);
     } catch (err: any) {
       setSubmitError(
         err.message || "Failed to create admin. Please try again.",
@@ -248,7 +298,7 @@ export default function CreateAdminModal({ onClose }: Props) {
           )}
         </div>
 
-        {/* System Email */}
+        {/* Account Credentials */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             System Email <span className="text-red-500">*</span>
@@ -304,7 +354,7 @@ export default function CreateAdminModal({ onClose }: Props) {
           </div>
           {emailTaken && (
             <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> This email is already taken
+              This email is already taken
             </p>
           )}
           {errors.systemEmail && !formData.personId && !emailTaken && (
@@ -364,7 +414,72 @@ export default function CreateAdminModal({ onClose }: Props) {
           )}
         </div>
 
-        {/* Permissions section removed for Root Admin: all departments accessible, no permission selection needed */}
+        {/* Permissions */}
+        <div>
+          <FormSectionTitle title="Permissions" />
+
+          {loadingOptions ? (
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading permissions…
+            </div>
+          ) : permissions.filter((p) =>
+              ALLOWED_PERMISSIONS.some((allowed) =>
+                p.permissionName.toLowerCase().includes(allowed.toLowerCase()),
+              ),
+            ).length > 0 ? (
+            <div className="space-y-4">
+              {Object.entries(PERMISSION_GROUPS).map(([group, permNames]) => {
+                const groupPermissions = permissions.filter(
+                  (p) =>
+                    permNames.some((perm) =>
+                      p.permissionName
+                        .toLowerCase()
+                        .includes(perm.toLowerCase()),
+                    ) &&
+                    ALLOWED_PERMISSIONS.some((allowed) =>
+                      p.permissionName
+                        .toLowerCase()
+                        .includes(allowed.toLowerCase()),
+                    ),
+                );
+                if (groupPermissions.length === 0) return null;
+                return (
+                  <div key={group}>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                      {group}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 pl-2">
+                      {groupPermissions.map((perm) => (
+                        <label
+                          key={perm.id}
+                          className="flex items-center gap-3 p-2.5 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors bg-white"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.permissionIds.includes(perm.id)}
+                            onChange={() => togglePermission(perm.id)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {perm.permissionName}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No permissions available.</p>
+          )}
+
+          {errors.permissions && (
+            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> {errors.permissions}
+            </p>
+          )}
+        </div>
 
         {/* Account Status */}
         <div>
@@ -405,6 +520,18 @@ export default function CreateAdminModal({ onClose }: Props) {
           </p>
         </div>
       </div>
+
+      <ActionModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          onClose();
+        }}
+        title="Admin Created"
+        type="success"
+      >
+        <p>{successMessage}</p>
+      </ActionModal>
     </FormModalShell>
   );
 }

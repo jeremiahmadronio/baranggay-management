@@ -275,13 +275,13 @@ export function ResidentsPage() {
 
         <KPIGrid columns={4}>
           <KPICard
-            title="New Residents"
+            title="Active Residents"
             value={
               statsLoading ? "—" : (stats?.totalResidents ?? 0).toLocaleString()
             }
             icon={KPIIcons["users"]}
             color="blue"
-            subtitle={`Registered this ${new Date().toLocaleString("default", { month: "long" })}`}
+            subtitle={`Total Residents currently active`}
           />
           <KPICard
             title="Registered Voters"

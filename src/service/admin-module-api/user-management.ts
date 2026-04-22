@@ -323,6 +323,19 @@ export const userManagementApi = {
     apiFetch<string>(`/${id}/unlock`, {
       method: "PUT",
     }),
+checkUsernameAvailability: (username: string): Promise<boolean> =>
+  apiFetch<boolean>(
+    `/check-username?${new URLSearchParams({ username }).toString()}`,
+    {},
+    `${BASE}/api/v1/users`,
+  ),
+
+checkEmailAvailability: (email: string): Promise<boolean> =>
+  apiFetch<boolean>(
+    `/check-email?${new URLSearchParams({ email }).toString()}`,
+    {},
+    `${BASE}/api/v1/users`,
+  ),
 
   searchPeople: (query: string): Promise<PersonSearchResponseDTO[]> => {
     if (!query || query.trim().length < 2) return Promise.resolve([]);

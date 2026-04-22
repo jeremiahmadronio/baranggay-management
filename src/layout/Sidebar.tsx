@@ -1,9 +1,8 @@
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getNavItemsByRole, type UserRole } from "./Nav-Items";
-import { authService } from "../service/login-api/login";
 import ugongLogo from "../../assets/ugong-logo.png";
 
 interface SidebarProps {
@@ -14,11 +13,10 @@ interface SidebarProps {
 
 export function Sidebar({
   userRole,
-  userName = "User",
-  userRoleDisplay,
+ 
+
 }: SidebarProps) {
   const navItems = getNavItemsByRole(userRole);
-  const navigate = useNavigate();
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -56,11 +54,7 @@ export function Sidebar({
     }
   }, [location.pathname, location.search, navItems]);
 
-  // Handle logout
-  const handleLogout = () => {
-    authService.logout();
-    navigate("/login", { replace: true });
-  };
+ 
 
   // Get role display name and brand
   const roleConfig = {
@@ -112,8 +106,6 @@ export function Sidebar({
     },
   }[userRole];
 
-  // Use the passed role display name or fall back to roleConfig
-  const displayedRole = userRoleDisplay || roleConfig?.displayName || "User";
 
   return (
     <motion.aside
@@ -281,34 +273,8 @@ export function Sidebar({
         </div>
 
         {/* User Section */}
-        <div className="p-2.5 border-t border-slate-100 bg-white">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 border-2 border-white shadow-md flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">
-              {userName.charAt(0).toUpperCase()}
-            </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex-1 min-w-0 flex items-center gap-1.5"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">
-                  {userName}
-                </p>
-                <p className="text-xs text-slate-400 truncate">
-                  {displayedRole}
-                </p>
-              </div>
-              <button
-                onClick={handleLogout}
-                title="Logout"
-                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <LogOut size={18} />
-              </button>
-            </motion.div>
-          </div>
-        </div>
+        
+        
       </div>
     </motion.aside>
   );

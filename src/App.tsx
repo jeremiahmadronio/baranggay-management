@@ -19,12 +19,13 @@ import { TermsAndConditionsPage } from "./pages/login/TermsAndConditionPage";
 import { MFAVerificationPage } from "./pages/login/MFAVerificationPage";
 import { ResetCodeVerificationPage } from "./pages/login/ResetCodeVerificationPage";
 import { ResetPasswordPage } from "./pages/login/ResetPasswordPage";
+import { SecuritySetupPage } from "./pages/login/SecuritySetupPage";
+
 import { ChangePasswordNewAccountPage } from "./pages/login/ChangePasswordNewAccountPage";
 // Admin
 import RecordInputDemo from "./pages/admin-module/user-management/record-input";
 import AdminDashboard from "./pages/admin-module/dashboard/dashboard";
 import UserManagement from "./pages/admin-module/user-management/user-management";
-import { AdminSettings } from "./pages/admin-module/settings";
 import { ResidentsPage } from "./pages/admin-module/resident/ResidentsPage";
 import { OfficerManagementPage } from "./pages/admin-module/officer/officerManagement";
 import ArchivePage from "./pages/admin-module/archive/archive";
@@ -32,13 +33,13 @@ import ArchivePage from "./pages/admin-module/archive/archive";
 // Root Admin
 import RootAdminDashboard from "./pages/admin-root-module/dashboard";
 import AdminManagement from "./pages/admin-root-module/admin-management";
+import AdminViewPage from "./pages/admin-root-module/admin-view-page";
 import AuditLogs from "./pages/admin-root-module/audit-logs";
-import { AccountSettings } from "./pages/admin-root-module/account-settings";
+import { Settings } from "./pages/admin-root-module/account-settings";
 import { BackupPage } from "./pages/admin-root-module/BackupPage";
 import Root_User_Management from "./pages/admin-root-module/user-management/user-management";
 import RootOfficerManagementPage from "./pages/admin-root-module/officer/officerManagement";
 import RootArchivePage from "./pages/admin-root-module/archive/archive";
-
 
 // BCPC
 import BCPCDashboard from "./bcpc-module/dashboard";
@@ -120,6 +121,8 @@ export function App() {
         path="/terms-and-conditions"
         element={<TermsAndConditionsPage />}
       />
+      <Route path="/security-setup" element={<SecuritySetupPage />} />
+
       <Route path="/mfa-verification" element={<MFAVerificationPage />} />
       <Route
         path="/change-password-new-account"
@@ -135,30 +138,31 @@ export function App() {
         <Route path="inputform" element={<RecordInputDemo />} />
         <Route path="residents" element={<ResidentsPage />} />
         <Route path="officers" element={<OfficerManagementPage />} />
+        <Route path="account-settings" element={<Settings />} />
         <Route
           path="users"
           element={<PagePlaceholder title="User Management" />}
         />
         <Route path="tables" element={<AdminDashboard />} />
-        <Route path="settings" element={<AdminSettings />} />
       </Route>
 
       {/* Root Admin */}
       <Route path="/rootadmin" element={<RootAdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<RootAdminDashboard />} />
-    <Route path="user-management" element={<Root_User_Management/>} />
-      <Route path="residents" element={<ResidentsPage />} />
+        <Route path="user-management" element={<Root_User_Management />} />
+        <Route path="residents" element={<ResidentsPage />} />
         <Route path="officers" element={<RootOfficerManagementPage />} />
         <Route path="admin-management" element={<AdminManagement />} />
+        <Route
+          path="admin-management/view/:adminId"
+          element={<AdminViewPage />}
+        />
         <Route path="backup-management" element={<BackupPage />} />
         <Route path="audit-logs" element={<AuditLogs />} />
-        <Route path="account-settings" element={<AccountSettings />} />
-                <Route path="archive" element={<RootArchivePage />} />
-
+        <Route path="account-settings" element={<Settings />} />
+        <Route path="archive" element={<RootArchivePage />} />
       </Route>
-
-
 
       {/* Blotter */}
       <Route path="/blotter" element={<BlotterLayout />}>
@@ -188,7 +192,7 @@ export function App() {
         <Route path="view-all-hearings" element={<ViewAllHearings />} />
         <Route path="reports" element={<LuponReportsPage />} />
         <Route path="monthly-report" element={<MonthlyReportPage />} />
-        <Route path="account-settings" element={<AccountSettings />} />
+        <Route path="account-settings" element={<Settings />} />
       </Route>
 
       {/* BCPC */}
