@@ -10,7 +10,7 @@ export {
   blotterNavItems,
   officialNavItems,
   lupongTagapamayapaNavItems,
-  DcpcNavItems,
+  BcpcNavItems,
   clearanceNavItems,
   vawcNavItems,
   firstTimeJobSeekerNavItems,

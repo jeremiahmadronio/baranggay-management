@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 // Layouts
 import { AdminLayout } from "./layout";
 import {
-  DcpcLayout,
+  BcpcLayout,
   BlotterLayout,
   LupongTagapamayapaLayout,
   ClearanceLayout,
@@ -22,6 +22,7 @@ import { ResetPasswordPage } from "./pages/login/ResetPasswordPage";
 import { SecuritySetupPage } from "./pages/login/SecuritySetupPage";
 
 import { ChangePasswordNewAccountPage } from "./pages/login/ChangePasswordNewAccountPage";
+
 // Admin
 import RecordInputDemo from "./pages/admin-module/user-management/record-input";
 import AdminDashboard from "./pages/admin-module/dashboard/dashboard";
@@ -42,7 +43,11 @@ import RootOfficerManagementPage from "./pages/admin-root-module/officer/officer
 import RootArchivePage from "./pages/admin-root-module/archive/archive";
 
 // BCPC
-import BCPCDashboard from "./bcpc-module/dashboard";
+import BcpcDashboard from "./pages/bcpc-module/dashboard";
+import BcpcNewCaseEntry from "./pages/bcpc-module/new-case-entry";
+import BcpcCaseManagement from "./pages/bcpc-module/case-management";
+import BcpcCaseDetailsPage from "./pages/bcpc-module/casedetailview";
+import BcpcReport from "./pages/bcpc-module/report";
 
 // Blotter
 import BlotterDashboard from "./pages/blotter-module/dashboard";
@@ -62,7 +67,7 @@ import RevenueAndCollectionPage from "./pages/clearance-module/revenue-and-colle
 import CreateTemplate from "./pages/clearance-module/clearance-template/CreateTemplate";
 import { ClearanceSettings } from "./pages/clearance-module/settings";
 
-//FTJS
+// FTJS
 import FtjsDashboardPage from "./pages/first-time-job-seeker-module/Dashboard";
 import FtjsEntryPage from "./pages/first-time-job-seeker-module/ftjsentry";
 import FtjsManagementPage from "./pages/first-time-job-seeker-module/ftjsManagement";
@@ -70,7 +75,7 @@ import FtjsArchivePage from "./pages/first-time-job-seeker-module/Archive";
 import FtjsReportPage from "./pages/first-time-job-seeker-module/report";
 import FtjsDetailViewPage from "./pages/first-time-job-seeker-module/FtjsDetailView";
 
-//LUPON
+// LUPON
 import LupongTagapamayapaDashboard from "./pages/lupon-module/lupon-pages/dashboard";
 import LuponCases from "./pages/lupon-module/lupon-pages/Cases";
 import LuponArchiveCasesPage from "./pages/lupon-module/lupon-pages/ArchiveCases";
@@ -80,7 +85,7 @@ import { MonthlyReportPage } from "./pages/lupon-module/lupon-pages/ReportsDILG"
 import LuponCaseDetailViewWrapper from "./pages/lupon-module/lupon-pages/LuponCaseDetailViewWrapper";
 import OfficialDashboard from "./official-module/dashboard";
 
-//VAWC
+// VAWC
 import VawcDashboard from "./pages/vawc-module/dashboard";
 import VawcCaseTable from "./pages/vawc-module/cases";
 import VawcNewComplaint from "./pages/vawc-module/newcomplaint";
@@ -122,7 +127,6 @@ export function App() {
         element={<TermsAndConditionsPage />}
       />
       <Route path="/security-setup" element={<SecuritySetupPage />} />
-
       <Route path="/mfa-verification" element={<MFAVerificationPage />} />
       <Route
         path="/change-password-new-account"
@@ -168,7 +172,6 @@ export function App() {
       <Route path="/blotter" element={<BlotterLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<BlotterDashboard />} />
-
         <Route path="docket" element={<Docketview />} />
         <Route path="archive" element={<ArchiveCasesPage />} />
         <Route path="records" element={<BlotterRecordsPage />} />
@@ -197,14 +200,14 @@ export function App() {
       </Route>
 
       {/* BCPC */}
-      <Route path="/bcpc" element={<DcpcLayout />}>
+      <Route path="/bcpc" element={<BcpcLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<BCPCDashboard />} />
-        <Route
-          path="reports"
-          element={<PagePlaceholder title="DCPC Reports" />}
-        />
-        <Route path="account-settings" element={<SharedAccountSettings />} />
+        <Route path="dashboard" element={<BcpcDashboard />} />
+        <Route path="new-case-entry" element={<BcpcNewCaseEntry />} />
+        <Route path="case-management" element={<BcpcCaseManagement />} />
+        <Route path="casedetailview" element={<BcpcCaseDetailsPage />} /> {/* ✅ added */}
+        <Route path="report" element={<BcpcReport />} />
+        <Route path="resident-records" element={<ResidentListPage />} />
       </Route>
 
       {/* VAWC */}
@@ -249,7 +252,7 @@ export function App() {
         <Route path="account-settings" element={<SharedAccountSettings />} />
       </Route>
 
-      {/* Officials  */}
+      {/* Officials */}
       <Route path="/official-portal" element={<OfficialLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<OfficialDashboard />} />

@@ -78,7 +78,7 @@ export function Sidebar({
       brand: "Lupon",
       brandColor: "text-orange-600",
     },
-    dcpc: { displayName: "DCPC", brand: "DCPC", brandColor: "text-teal-600" },
+    dcpc: { displayName: "BCPC", brand: "BCPC", brandColor: "text-teal-600" },
     clearance: {
       displayName: "Clearance Officer",
       brand: "Clearance",

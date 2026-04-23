@@ -91,10 +91,13 @@ export const lupongTagapamayapaNavItems: NavItemType[] = [
   },
 ];
 
-// DCPC navigation items
-export const DcpcNavItems: NavItemType[] = [
-  { label: "Dashboard", path: "/dcpc/dashboard", icon: LayoutDashboard },
-  { label: "Reports", path: "/dcpc/reports", icon: Settings },
+// BCPC navigation items
+export const BcpcNavItems: NavItemType[] = [
+  { label: "Dashboard", path: "/bcpc/dashboard", icon: LayoutDashboard },
+  { label: "New Case Entry", path: "/bcpc/new-case-entry", icon: FilePlus2 },
+  { label: "Case Management", path: "/bcpc/case-management", icon: FileText },
+  { label: "Report", path: "/bcpc/report", icon: ChartNoAxesCombined },
+  { label: "Resident Records", path: "/bcpc/resident-records", icon: Users },
 ];
 
 //Clearance navigation items
@@ -190,7 +193,7 @@ export function getNavItemsByRole(role: UserRole): NavItemType[] {
     case "lupongtagapamayapa":
       return lupongTagapamayapaNavItems;
     case "dcpc":
-      return DcpcNavItems;
+      return BcpcNavItems;
     case "clearance":
       return clearanceNavItems;
 
