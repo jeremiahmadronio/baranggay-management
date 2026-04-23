@@ -318,8 +318,12 @@ export function LupongTagapamayapaLayout() {
   return <Layout userRole="lupongtagapamayapa" />;
 }
 
-export function DcpcLayout() {
+export function BcpcLayout() {
   return <Layout userRole="dcpc" />;
+}
+
+export function DcpcLayout() {
+  return <BcpcLayout />;
 }
 
 export function ClearanceLayout() {
