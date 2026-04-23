@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Printer } from "lucide-react";
 import { Table, type TableColumn } from "../../reusable";
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import {
@@ -496,6 +496,47 @@ export default function FtjsReportPage() {
     setPage(0);
   }
 
+  function handlePrintReport() {
+    const fmtDate = (d: string) =>
+      new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+    const totalDist = distribution.reduce((s, i) => s + i.total, 0);
+    const kpiCards = [
+      { label: "Total Certificate Records", value: stats?.totalRecords ?? 0, sub: "Issued and re-issued within range" },
+      { label: "With Resident Record", value: stats?.residentRecords ?? 0, sub: "Linked to resident system" },
+      { label: "Without Resident Record", value: stats?.nonResidentRecords ?? 0, sub: "No resident record linked" },
+      { label: "Re-Issuances", value: reissuedCount, sub: "Re-issued certificates" },
+    ];
+    const kpiHtml = kpiCards.map((k) =>
+      `<div style="border:1px solid #E5E7EB;border-radius:8px;padding:16px 20px;flex:1;min-width:130px;"><p style="margin:0;font-size:11px;color:#6B7280;text-transform:uppercase;">${k.label}</p><p style="margin:6px 0 2px;font-size:28px;font-weight:700;color:#111827;">${typeof k.value === 'number' ? k.value.toLocaleString() : k.value}</p><p style="margin:0;font-size:10px;color:#9CA3AF;">${k.sub}</p></div>`
+    ).join("");
+    const trendRows2 = trendMeta.data.map((m) =>
+      `<tr><td style="padding:5px 8px;font-size:12px;">${m.label}</td><td style="padding:5px 8px;font-size:12px;text-align:right;">${m.total ?? 0}</td></tr>`
+    ).join("");
+    const distRows = distribution.map((item) => {
+      const p = totalDist > 0 ? ((item.total / totalDist) * 100).toFixed(1) : "0.0";
+      const bw = totalDist > 0 ? Math.max(4, (item.total / totalDist) * 100) : 4;
+      const label = item.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return `<tr><td style="padding:6px 8px;font-size:12px;">${label}</td><td style="padding:6px 8px;font-size:12px;text-align:right;">${item.total}</td><td style="padding:6px 8px;width:40%;"><div style="background:#F3F4F6;border-radius:4px;height:8px;"><div style="background:#2563EB;height:100%;border-radius:4px;width:${bw}%;"></div></div></td><td style="padding:6px 8px;font-size:12px;text-align:right;color:#6B7280;">${p}%</td></tr>`;
+    }).join("");
+    const caseRows = filteredCases.slice(0, 50).map((item) =>
+      `<tr><td style="padding:5px 8px;font-size:11px;">${item.ftjsNumber}</td><td style="padding:5px 8px;font-size:11px;">${item.fullName}</td><td style="padding:5px 8px;font-size:11px;">${item.status.replace(/_/g, " ")}</td><td style="padding:5px 8px;font-size:11px;">${item.contactNumber || "—"}</td><td style="padding:5px 8px;font-size:11px;">${formatDate(item.dateSubmitted)}</td></tr>`
+    ).join("");
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>FTJS Report</title><style>*{box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;color:#111827;margin:0;padding:32px 40px;}h1{font-size:20px;font-weight:700;margin:0 0 2px;}.sub{font-size:12px;color:#6B7280;margin:0 0 24px;}.section{margin-bottom:28px;}.section-title{font-size:14px;font-weight:700;border-bottom:2px solid #E5E7EB;padding-bottom:6px;margin-bottom:12px;}table{width:100%;border-collapse:collapse;}th{text-align:left;font-size:11px;color:#6B7280;text-transform:uppercase;padding:4px 8px;border-bottom:1px solid #E5E7EB;}td{border-bottom:1px solid #F3F4F6;}.kpi-row{display:flex;gap:12px;flex-wrap:wrap;}@page{margin:1.2cm;size:A4;}@media print{body{padding:0;}}</style></head><body><div style="display:flex;justify-content:space-between;margin-bottom:20px;"><div><h1>First Time Job Seeker (FTJS) Report</h1><p class="sub">Period: ${fmtDate(appliedStart)} &mdash; ${fmtDate(appliedEnd)}</p></div><div style="text-align:right;"><p style="margin:0;font-size:11px;color:#6B7280;">Generated</p><p style="margin:2px 0 0;font-size:12px;font-weight:600;">${new Date().toLocaleString("en-PH")}</p></div></div><div class="section"><div class="section-title">Summary</div><div class="kpi-row">${kpiHtml}</div></div><div class="section"><div class="section-title">${trendMeta.label}</div><table><thead><tr><th>Period</th><th style="text-align:right;">Records</th></tr></thead><tbody>${trendRows2 || '<tr><td colspan="2" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div><div class="section"><div class="section-title">Status Distribution</div><table><thead><tr><th>Status</th><th style="text-align:right;">Count</th><th>Distribution</th><th style="text-align:right;">Share</th></tr></thead><tbody>${distRows || '<tr><td colspan="4" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div><div class="section"><div class="section-title">Case Records (max 50)</div><table><thead><tr><th>FTJS No.</th><th>Applicant</th><th>Status</th><th>Contact</th><th>Date Submitted</th></tr></thead><tbody>${caseRows || '<tr><td colspan="5" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No records.</td></tr>'}</tbody></table></div></body></html>`;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;";
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
+    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+    iframeDoc.open(); iframeDoc.write(html); iframeDoc.close();
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 300);
+    };
+  }
+
   const totalDistribution = distribution.reduce(
     (sum, item) => sum + item.total,
     0,
@@ -708,9 +749,19 @@ export default function FtjsReportPage() {
                 to daily, monthly, or yearly view based on the selected range.
               </p>
             </div>
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
-              Range: {formatAppliedRange(appliedStart, appliedEnd)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
+                Range: {formatAppliedRange(appliedStart, appliedEnd)}
+              </span>
+              <button
+                type="button"
+                onClick={handlePrintReport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-full hover:bg-slate-50 hover:border-slate-400 transition-colors shadow-sm"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print Report
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-end">

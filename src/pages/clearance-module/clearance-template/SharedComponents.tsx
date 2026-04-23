@@ -135,11 +135,6 @@ export const Footer = ({ text }: { text: string }) => (
             "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.1) 60%, transparent 100%)",
         }}
       ></div>
-      <div className="absolute left-32 top-1/2 -translate-y-1/2 flex space-x-1 opacity-30">
-        <div className="w-1 h-1 bg-yellow-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-yellow-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-yellow-400 rounded-full"></div>
-      </div>
       <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right">
         <span
           className="text-[9px] text-white font-semibold italic tracking-wide"

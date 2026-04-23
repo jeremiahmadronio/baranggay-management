@@ -1,6 +1,6 @@
 import { type TemplateData } from "./template";
 import { renderTextWithVariables, DataValue } from "./PreviewUtils";
-import { Header, Watermark, Footer } from "./SharedComponents";
+import { Header, Footer } from "./SharedComponents";
 import { FORM_FIELDS_CONFIG } from "../../../clearance-api/issue-certificate-api";
 
 interface PreviewProps {
@@ -124,7 +124,6 @@ export function ClearancePreview({ template, customData }: PreviewProps) {
       }}
     >
       <Header />
-      <Watermark />
 
       <div className="px-10 pt-6 pb-4 flex-1 relative z-10 flex flex-col">
         <div className="flex items-start justify-between mb-6">
@@ -390,6 +389,16 @@ export function ClearancePreview({ template, customData }: PreviewProps) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* "NOT VALID WITHOUT DRY SEAL" — inside body, above signatories */}
+        <div className="px-6 pt-4 pb-1">
+          <p
+            className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-500 border-t border-gray-200 pt-2"
+            style={{ letterSpacing: "0.2em" }}
+          >
+            ✦ Not valid without dry seal
+          </p>
         </div>
 
         {/* Signatory - without thumbmark since we handle it above */}

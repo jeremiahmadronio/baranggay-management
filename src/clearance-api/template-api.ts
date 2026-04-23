@@ -704,8 +704,11 @@ const mergeTemplateOptions = <T extends TemplateOption>(
 
   for (const item of secondary) {
     const id = String(item.id);
+    // Always include locally-created templates (custom-* ids) — they have
+    // unique slugified IDs so they are never true duplicates of API templates.
+    const isCustomLocal = id.startsWith("custom-");
     const normalizedName = normalizeTemplateName(item.name);
-    if (!byId.has(id) && !seenNames.has(normalizedName)) {
+    if (!byId.has(id) && (isCustomLocal || !seenNames.has(normalizedName))) {
       byId.set(id, item);
       seenNames.add(normalizedName);
     }

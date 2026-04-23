@@ -5,7 +5,6 @@ import {
   Save,
   ChevronDown,
   ChevronUp,
-  Printer,
   AlertCircle,
   type LucideIcon,
   FileText,
@@ -392,33 +391,6 @@ export default function CreateTemplate() {
         finalIssueFields = [...new Set([...finalIssueFields, ...bodyVars])];
       }
 
-      const localTemplatePayload = {
-        title: title.trim().toUpperCase(),
-        layoutStyle: designFormat,
-        bodySections: bodySections.map((text, i) => ({
-          id: `body-${i + 1}`,
-          text: text.trim(),
-          isEditable: true,
-        })),
-        footerText: footerText.trim(),
-        signatories: signatories.map((s) => ({
-          name: s.name.trim(),
-          position: s.position.trim(),
-        })),
-        settings: {
-          fee: hasFee ? fee : 0,
-          validityMonths: Math.min(24, Math.max(1, validityMonths)),
-          requiresPhoto,
-          requiresThumbmark,
-          hasFee,
-          hasCtn,
-          ctnFee: 0,
-        },
-        variables: finalIssueFields,
-      };
-
-      // Always store a local copy so the issue page can immediately list this template.
-      registerCreatedTemplateLocally(localTemplatePayload);
 
       const dto: TemplateRequestDTO = {
         certTitle: title.trim().toUpperCase(),
@@ -444,13 +416,38 @@ export default function CreateTemplate() {
       };
 
       await clearanceTemplateApi.createTemplate(dto);
-      invalidateTemplateCache(); // clear cache so new template shows in dropdowns
+      invalidateTemplateCache(); // clear cache so new template shows via API refresh
       showActionModal(
         "Template Created",
         "Template created successfully and is now available in Issue Certificate.",
         "success",
       );
     } catch {
+      // API unavailable — save locally so it still appears in Issue Certificate
+      registerCreatedTemplateLocally({
+        title: title.trim().toUpperCase(),
+        layoutStyle: designFormat,
+        bodySections: bodySections.map((text, i) => ({
+          id: `body-${i + 1}`,
+          text: text.trim(),
+          isEditable: true,
+        })),
+        footerText: footerText.trim(),
+        signatories: signatories.map((s) => ({
+          name: s.name.trim(),
+          position: s.position.trim(),
+        })),
+        settings: {
+          fee: hasFee ? fee : 0,
+          validityMonths: Math.min(24, Math.max(1, validityMonths)),
+          requiresPhoto,
+          requiresThumbmark,
+          hasFee,
+          hasCtn,
+          ctnFee: 0,
+        },
+        variables: Array.from(selectedFields),
+      });
       invalidateTemplateCache();
       showActionModal(
         "Template Saved Locally",
@@ -788,26 +785,6 @@ export default function CreateTemplate() {
                   checked={hasCtn}
                   onChange={setHasCtn}
                 />
-
-                <div>
-                  <label className="block text-[10px] text-gray-500 mb-1 uppercase font-semibold">
-                    Footer Text
-                  </label>
-                  <input
-                    type="text"
-                    value={footerText}
-                    onChange={(e) => {
-                      if (e.target.value.length <= 80)
-                        setFooterText(e.target.value);
-                    }}
-                    maxLength={80}
-                    placeholder="e.g., Not valid without dry seal."
-                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-right text-[10px] text-gray-400 mt-0.5">
-                    {footerText.length}/80
-                  </p>
-                </div>
               </div>
             </EditorSection>
 
@@ -897,21 +874,15 @@ export default function CreateTemplate() {
           {/* ═════════════════════ RIGHT: Live Preview ═════════════════════ */}
           <div className="w-full lg:w-7/12">
             <div className="lg:sticky lg:top-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-bold text-gray-800">
-                    Live Preview
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Sample data shown in{" "}
-                    <span className="text-blue-600 font-semibold">blue</span> —
-                    updates in real-time
-                  </p>
-                </div>
-                <button className="flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
-                  <Printer className="w-3.5 h-3.5 mr-1.5" />
-                  Print
-                </button>
+              <div className="mb-4">
+                <h2 className="text-sm font-bold text-gray-800">
+                  Live Preview
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Sample data shown in{" "}
+                  <span className="text-blue-600 font-semibold">blue</span> —
+                  updates in real-time
+                </p>
               </div>
 
               <div className="p-3 md:p-5 rounded-lg bg-gray-100/50 border border-gray-200">

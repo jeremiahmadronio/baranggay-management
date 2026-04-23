@@ -2,7 +2,6 @@ import { type TemplateData } from "./template";
 import { renderTextWithVariables } from "./PreviewUtils";
 import {
   Header,
-  Watermark,
   Footer,
   Signatories,
   PaymentDetails,
@@ -42,7 +41,6 @@ export function IndigencyPreview({ template, customData }: PreviewProps) {
       }}
     >
       <Header />
-      <Watermark />
 
       <div className="px-10 pt-6 pb-4 flex-1 relative z-10 flex flex-col">
         <div className="flex items-start justify-between mb-8">
@@ -87,6 +85,14 @@ export function IndigencyPreview({ template, customData }: PreviewProps) {
           fee={template.settings.fee}
           customData={customData}
         />
+
+        {/* "NOT VALID WITHOUT DRY SEAL" — inside body, above signatories */}
+        <p
+          className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-500 border-t border-gray-200 pt-2 mb-3 px-8"
+          style={{ letterSpacing: "0.2em" }}
+        >
+          ✦ Not valid without dry seal
+        </p>
 
         <div className="flex justify-end mt-4">
           <Signatories template={template} />

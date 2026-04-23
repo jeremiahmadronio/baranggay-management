@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CalendarDays, CheckCircle2, FileText, Timer, TimerOff } from "lucide-react";
+import { CalendarDays, CheckCircle2, FileText, Timer, TimerOff, Printer } from "lucide-react";
 import { KPIGrid, KPICard } from "../../hooks/KPICard";
 
 // ─── Inline Mock Data (previously from ./mock-data) ───────────────────────────
@@ -103,6 +103,77 @@ export default function BcpcReportPage() {
     setAppliedRange({ start: startDate, end: endDate });
   };
 
+  const handlePrintReport = () => {
+    const formatDate = (d: string) =>
+      new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+
+    const kpiCards = [
+      { label: "Total Cases", value: totalCases, sub: "All BCPC reported cases" },
+      { label: "Resolved Cases", value: resolvedCases, sub: `${resolutionRate.toFixed(0)}% resolution rate` },
+      { label: "For Assessment", value: forAssessment, sub: "Pending social worker review" },
+      { label: "Active Intervention", value: activeCases, sub: "Cases with ongoing action" },
+    ];
+
+    const kpiHtml = kpiCards.map((k) => `
+      <div style="border:1px solid #E5E7EB;border-radius:8px;padding:16px 20px;flex:1;min-width:130px;">
+        <p style="margin:0;font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">${k.label}</p>
+        <p style="margin:6px 0 2px;font-size:28px;font-weight:700;color:#111827;">${String(k.value)}</p>
+        <p style="margin:0;font-size:10px;color:#9CA3AF;">${k.sub}</p>
+      </div>`).join("");
+
+    const trendRows = bcpcCaseTrendMockData.map((m) =>
+      `<tr><td style="padding:5px 8px;font-size:12px;color:#374151;">${m.label}</td><td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.count}</td></tr>`
+    ).join("");
+
+    const statusHtmlRows = statusRows.map((row) => {
+      const pct = totalCases > 0 ? ((row.count / totalCases) * 100).toFixed(1) : "0.0";
+      const barW = totalCases > 0 ? Math.max(4, (row.count / totalCases) * 100) : 4;
+      return `<tr>
+        <td style="padding:6px 8px;font-size:12px;color:#374151;">${row.label}</td>
+        <td style="padding:6px 8px;font-size:12px;color:#374151;text-align:right;">${row.count}</td>
+        <td style="padding:6px 8px;width:45%;">
+          <div style="background:#F3F4F6;border-radius:4px;height:8px;overflow:hidden;">
+            <div style="background:#3B82F6;height:100%;border-radius:4px;width:${barW}%;"></div>
+          </div>
+        </td>
+        <td style="padding:6px 8px;font-size:12px;color:#6B7280;text-align:right;">${pct}%</td>
+      </tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
+      <title>BCPC Report — ${formatDate(appliedRange.start)} to ${formatDate(appliedRange.end)}</title>
+      <style>*{box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;color:#111827;margin:0;padding:32px 40px;background:#fff;}
+        h1{font-size:20px;font-weight:700;margin:0 0 2px;}.sub{font-size:12px;color:#6B7280;margin:0 0 24px;}
+        .section{margin-bottom:28px;}.section-title{font-size:14px;font-weight:700;color:#1F2937;border-bottom:2px solid #E5E7EB;padding-bottom:6px;margin-bottom:12px;}
+        table{width:100%;border-collapse:collapse;}th{text-align:left;font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;padding:4px 8px;border-bottom:1px solid #E5E7EB;}
+        td{border-bottom:1px solid #F3F4F6;}.kpi-row{display:flex;gap:12px;flex-wrap:wrap;}
+        @page{margin:1.2cm;size:A4;}@media print{body{padding:0;}}</style></head><body>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <div><h1>BCPC Report</h1><p class="sub">Period: ${formatDate(appliedRange.start)} &mdash; ${formatDate(appliedRange.end)}</p></div>
+        <div style="text-align:right;"><p style="margin:0;font-size:11px;color:#6B7280;">Generated</p><p style="margin:2px 0 0;font-size:12px;font-weight:600;color:#374151;">${new Date().toLocaleString("en-PH")}</p></div>
+      </div>
+      <div class="section"><div class="section-title">Summary</div><div class="kpi-row">${kpiHtml}</div></div>
+      <div class="section"><div class="section-title">Case Trend (Monthly)</div>
+        <table><thead><tr><th>Month</th><th style="text-align:right;">Cases</th></tr></thead><tbody>${trendRows}</tbody></table></div>
+      <div class="section"><div class="section-title">Status Distribution</div>
+        <table><thead><tr><th>Status</th><th style="text-align:right;">Count</th><th>Distribution</th><th style="text-align:right;">Share</th></tr></thead><tbody>${statusHtmlRows}</tbody></table></div>
+    </body></html>`;
+
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;";
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
+    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+    iframeDoc.open(); iframeDoc.write(html); iframeDoc.close();
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 300);
+    };
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-7xl px-4 py-8 space-y-6">
@@ -113,6 +184,15 @@ export default function BcpcReportPage() {
               <p className="text-sm text-gray-500 mt-1">
                 Mock analytics patterned after VAWC report layout.
               </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrintReport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-full hover:bg-slate-50 hover:border-slate-400 transition-colors shadow-sm"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print Report
+              </button>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-end">

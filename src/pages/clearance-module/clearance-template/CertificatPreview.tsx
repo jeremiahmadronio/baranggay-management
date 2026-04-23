@@ -102,21 +102,13 @@ export function CertificatePreview({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-sm font-bold text-gray-800">Live Preview</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {customData
-              ? "Values from form shown in green"
-              : "Sample data shown in blue"}
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <button className="flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
-            <Printer className="w-3.5 h-3.5 mr-1.5" />
-            Print
-          </button>
-        </div>
+      <div className="mb-4">
+        <h2 className="text-sm font-bold text-gray-800">Live Preview</h2>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {customData
+            ? "Values from form shown in green"
+            : "Sample data shown in blue"}
+        </p>
       </div>
 
       {/* Certificate Paper - A4 */}

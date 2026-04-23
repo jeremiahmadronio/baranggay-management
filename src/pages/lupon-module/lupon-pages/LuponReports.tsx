@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
+  Printer,
 } from "lucide-react";
 import {
   getReportStats,
@@ -350,6 +351,49 @@ export function LuponReportsPage() {
     setAppliedEnd(d.end);
   };
 
+  const handlePrintReport = () => {
+    const fmtDate = (d: string) =>
+      new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+    const totalNaturePrint = natureData.reduce((s, i) => s + i.count, 0);
+    const totalStatusPrint = statusData.reduce((s, i) => s + i.count, 0);
+    const kpiCards = [
+      { label: "Settled", value: stats?.totalSettled ?? 0, sub: "Cases amicably resolved" },
+      { label: "Closed", value: stats?.totalClosed ?? 0, sub: "Cases officially closed" },
+      { label: "Escalated", value: stats?.escalate ?? 0, sub: "Cases elevated to court" },
+      { label: "Certified to File Action", value: stats?.totalCFA ?? 0, sub: "Certificates to File Action" },
+    ];
+    const kpiHtml = kpiCards.map((k) =>
+      `<div style="border:1px solid #E5E7EB;border-radius:8px;padding:16px 20px;flex:1;min-width:130px;"><p style="margin:0;font-size:11px;color:#6B7280;text-transform:uppercase;">${k.label}</p><p style="margin:6px 0 2px;font-size:28px;font-weight:700;color:#111827;">${k.value.toLocaleString()}</p><p style="margin:0;font-size:10px;color:#9CA3AF;">${k.sub}</p></div>`
+    ).join("");
+    const trendRows2 = chartTrendData.map((m) =>
+      `<tr><td style="padding:5px 8px;font-size:12px;">${m.label}</td><td style="padding:5px 8px;font-size:12px;text-align:right;">${m.count ?? 0}</td></tr>`
+    ).join("");
+    const natureRows2 = [...natureData].sort((a, b) => b.count - a.count).map((item) => {
+      const p = totalNaturePrint > 0 ? ((item.count / totalNaturePrint) * 100).toFixed(1) : "0.0";
+      const bw = totalNaturePrint > 0 ? Math.max(4, (item.count / totalNaturePrint) * 100) : 4;
+      return `<tr><td style="padding:6px 8px;font-size:12px;">${String(item.natureName || "").trim() || "Unspecified"}</td><td style="padding:6px 8px;font-size:12px;text-align:right;">${item.count} (${p}%)</td><td style="padding:6px 8px;width:40%;"><div style="background:#F3F4F6;border-radius:4px;height:8px;"><div style="background:#c98e46;height:100%;border-radius:4px;width:${bw}%;"></div></div></td></tr>`;
+    }).join("");
+    const statusRows2 = statusData.map((item) => {
+      const p = totalStatusPrint > 0 ? ((item.count / totalStatusPrint) * 100).toFixed(1) : "0.0";
+      const name = item.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return `<tr><td style="padding:5px 8px;font-size:12px;">${name}</td><td style="padding:5px 8px;font-size:12px;text-align:right;">${item.count}</td><td style="padding:5px 8px;font-size:12px;text-align:right;color:#6B7280;">${p}%</td></tr>`;
+    }).join("");
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>Lupon Report</title><style>*{box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;color:#111827;margin:0;padding:32px 40px;}h1{font-size:20px;font-weight:700;margin:0 0 2px;}.sub{font-size:12px;color:#6B7280;margin:0 0 24px;}.section{margin-bottom:28px;}.section-title{font-size:14px;font-weight:700;border-bottom:2px solid #E5E7EB;padding-bottom:6px;margin-bottom:12px;}table{width:100%;border-collapse:collapse;}th{text-align:left;font-size:11px;color:#6B7280;text-transform:uppercase;padding:4px 8px;border-bottom:1px solid #E5E7EB;}td{border-bottom:1px solid #F3F4F6;}.kpi-row{display:flex;gap:12px;flex-wrap:wrap;}@page{margin:1.2cm;size:A4;}@media print{body{padding:0;}}</style></head><body><div style="display:flex;justify-content:space-between;margin-bottom:20px;"><div><h1>Lupon Tagapamayapa Report</h1><p class="sub">Period: ${fmtDate(appliedStart)} &mdash; ${fmtDate(appliedEnd)}</p></div><div style="text-align:right;"><p style="margin:0;font-size:11px;color:#6B7280;">Generated</p><p style="margin:2px 0 0;font-size:12px;font-weight:600;">${new Date().toLocaleString("en-PH")}</p></div></div><div class="section"><div class="section-title">Summary</div><div class="kpi-row">${kpiHtml}</div></div><div class="section"><div class="section-title">Cases Trend</div><table><thead><tr><th>Period</th><th style="text-align:right;">Cases</th></tr></thead><tbody>${trendRows2 || '<tr><td colspan="2" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div><div class="section"><div class="section-title">Cases by Nature &mdash; ${totalNaturePrint} total</div><table><thead><tr><th>Nature</th><th>Count</th><th>Distribution</th></tr></thead><tbody>${natureRows2 || '<tr><td colspan="3" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div><div class="section"><div class="section-title">Cases by Status &mdash; ${totalStatusPrint} total</div><table><thead><tr><th>Status</th><th style="text-align:right;">Count</th><th style="text-align:right;">Share</th></tr></thead><tbody>${statusRows2 || '<tr><td colspan="3" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div></body></html>`;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;";
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
+    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+    iframeDoc.open(); iframeDoc.write(html); iframeDoc.close();
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 300);
+    };
+  };
+
   if (isLoading && !stats) {
     return (
       <div className="min-h-screen bg-gray-50/50">
@@ -395,9 +439,18 @@ export function LuponReportsPage() {
                 year.
               </p>
             </div>
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
-              Range: {appliedStart} to {appliedEnd}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
+                Range: {appliedStart} to {appliedEnd}
+              </span>
+              <button
+                onClick={handlePrintReport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-full hover:bg-slate-50 hover:border-slate-400 transition-colors shadow-sm"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print Report
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
