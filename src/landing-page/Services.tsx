@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   ArrowRight, 
   ChevronDown,
@@ -44,7 +45,7 @@ export const Services = () => {
       image: '/busines-permit.jfif',
       fee: 'Varies',
       processingTime: '3-5 days',
-      requirements: ['DTI/SEC Registration', 'Barangay Clearance', 'Valid ID ng May-ari', 'Contract of Lease/Land Title'],
+      requirements: ['DTI/SEC Registration', 'Barangay Clearance', 'Valid ID of Owner', 'Contract of Lease/Land Title'],
     },
     {
       icon: Shield,
@@ -53,7 +54,7 @@ export const Services = () => {
       image: '/barangay-protection.webp',
       fee: 'FREE',
       processingTime: 'Immediate',
-      requirements: ['Valid ID (kung mayroon)', 'Incident Report/Salaysay'],
+      requirements: ['Valid ID (if available)', 'Incident Report/Statement'],
     },
     {
       icon: Heart,
@@ -63,7 +64,7 @@ export const Services = () => {
       imagePosition: 'object-center',
       fee: 'FREE',
       processingTime: 'Walk-in',
-      requirements: ['Valid ID', 'Barangay Clearance', 'PhilHealth ID (kung mayroon)'],
+      requirements: ['Valid ID', 'Barangay Clearance', 'PhilHealth ID (if available)'],
     },
     {
       icon: Users,
@@ -72,7 +73,7 @@ export const Services = () => {
       image: '/senior-citizen.jpg',
       fee: 'FREE',
       processingTime: '5-7 days',
-      requirements: ['Birth Certificate/Valid ID', '1x1 ID Picture (2 pcs)', 'Medical Certificate (para sa PWD)'],
+      requirements: ['Birth Certificate/Valid ID', '1x1 ID Picture (2 pcs)', 'Medical Certificate (for PWD)'],
     },
     {
       icon: Scale,
@@ -82,7 +83,7 @@ export const Services = () => {
       imagePosition: 'object-bottom',
       fee: 'FREE',
       processingTime: 'By schedule',
-      requirements: ['Valid ID ng Complainant', 'Nakasulat na Reklamo/Complaint'],
+      requirements: ['Valid ID of Complainant', 'Written Complaint'],
     },
     {
       icon: Baby,
@@ -91,7 +92,7 @@ export const Services = () => {
       image: '/birt-cert.png',
       fee: '₱100.00',
       processingTime: '2-3 weeks',
-      requirements: ['Certificate of Live Birth (hospital)', 'Valid ID ng Magulang', 'Marriage Certificate (kung kasal)', 'Affidavit of Late Registration'],
+      requirements: ['Certificate of Live Birth (hospital)', 'Valid ID of Parent', 'Marriage Certificate (if married)', 'Affidavit of Late Registration'],
     },
     {
       icon: Building2,
@@ -100,7 +101,7 @@ export const Services = () => {
       image: '/construction.png',
       fee: '₱200.00',
       processingTime: '3-5 days',
-      requirements: ['Land Title/Tax Declaration', 'Building Plan/Blueprint', 'Valid ID ng May-ari', 'Lot Plan'],
+      requirements: ['Land Title/Tax Declaration', 'Building Plan/Blueprint', 'Valid ID of Owner', 'Lot Plan'],
     },
   ];
 
@@ -113,10 +114,10 @@ export const Services = () => {
         <div className="max-w-2xl mx-auto text-center mb-10">
           
           <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-2 leading-tight">
-            Serbisyong Pampubliko
+            Public Services
           </h2>
           <p className="text-gray-600 text-base md:text-lg leading-snug">
-            Mabilis, maaasahan, at abot-kamay na serbisyo para sa lahat ng residente ng Barangay Ugong.
+            Fast, reliable, and accessible services for all residents of Barangay Ugong.
           </p>
         </div>
 
@@ -182,10 +183,10 @@ export const Services = () => {
                         <Clock className="w-4 h-4" />
                         <span>{service.processingTime}</span>
                       </div>
-                      <button className="inline-flex items-center gap-1 text-blue-600 font-medium text-xs md:text-sm hover:text-blue-700 transition-colors group/btn">
-                        Alamin pa
+                      <Link to="/login" className="inline-flex items-center gap-1 text-blue-600 font-medium text-xs md:text-sm hover:text-blue-700 transition-colors group/btn">
+                        Learn more
                         <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -210,7 +211,7 @@ export const Services = () => {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.25 }}
             >
-              {showAll ? 'Ipakita ang Mas Kaunti' : 'Tingnan Lahat ng Serbisyo'}
+              {showAll ? 'Show Less' : 'View All Services'}
             </motion.span>
             <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showAll ? 'rotate-180' : ''}`} />
           </motion.button>
@@ -224,7 +225,7 @@ export const Services = () => {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.25 }}
               >
-                +{services.length - 6} pang serbisyo
+                +{services.length - 6} more services
               </motion.p>
             )}
           </AnimatePresence>
@@ -237,19 +238,19 @@ export const Services = () => {
               {/* Content */}
               <div className="p-8 lg:p-12 flex flex-col justify-center">
                 <h3 className="text-2xl lg:text-3xl font-bold text-white mb-4">
-                  Kailangan ng Tulong?
+                  Need Assistance?
                 </h3>
                 <p className="text-blue-200 mb-8 leading-relaxed">
-                  Bisitahin ang aming 3S Center o tumawag sa aming hotline. 
-                  Bukas kami Lunes hanggang Biyernes, 8:00 AM - 5:00 PM.
+                  Visit our 3S Center or call our hotline. 
+                  We are open Monday to Friday, 8:00 AM - 5:00 PM.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button className="inline-flex items-center justify-center gap-2 bg-white text-blue-900 px-6 py-3.5 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
                     <Building2 className="w-5 h-5" />
-                    Bisitahin ang 3S Center
+                    Visit 3S Center
                   </button>
                   <button className="inline-flex items-center justify-center gap-2 bg-blue-800 text-white px-6 py-3.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors border border-blue-700">
-                    Tumawag: (02) 8292-6754
+                    Call: (02) 8292-6754
                   </button>
                 </div>
               </div>
@@ -258,7 +259,7 @@ export const Services = () => {
               <div className="hidden lg:block relative h-full min-h-[300px]">
                 <img 
                   src="/helping.png"
-                  alt="Kailangan ng Tulong"
+                  alt="Need Assistance"
                   className="absolute inset-0 w-full h-full object-cover object-center"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-transparent" />

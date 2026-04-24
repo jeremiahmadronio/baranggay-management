@@ -13,53 +13,48 @@ export const LandingPage = () => {
   const heroRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDivElement>(null);
   const servicesRef = useRef<HTMLDivElement>(null);
-  // const officialsRef = useRef<HTMLDivElement>(null);
   const socialRef = useRef<HTMLDivElement>(null);
   const contactRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
+  const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
+    hero: heroRef,
+    about: aboutRef,
+    services: servicesRef,
+    social: socialRef,
+    contact: contactRef,
+  };
+
+  const scrollToSection = (section: string) => {
+    const targetRef = refs[section];
+    if (targetRef?.current) {
+      const offset = 120;
+      const elementPosition = targetRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+    }
+  };
 
   // Scroll to section if hash changes
   useEffect(() => {
-    // If no hash, scroll to hero/top
     if (!location.hash) {
       if (heroRef.current) {
-        const offset = 64; // Navbar height
+        const offset = 64;
         const elementPosition = heroRef.current.getBoundingClientRect().top;
         const offsetPosition = elementPosition + window.pageYOffset - offset;
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth',
-        });
+        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
       }
       return;
     }
     const section = location.hash.replace('#', '');
-    const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
-      hero: heroRef,
-      about: aboutRef,
-      services: servicesRef,
-      // officials: officialsRef, // removed
-      social: socialRef,
-      contact: contactRef,
-    };
-    const targetRef = refs[section];
-    if (targetRef?.current) {
-      const offset = 64; // Navbar height
-      const elementPosition = targetRef.current.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - offset;
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
-      });
-    }
+    scrollToSection(section);
   }, [location.hash]);
 
   return (
     <div className="min-h-screen">
       <Navbar />
       <div ref={heroRef}>
-        <Hero />
+        <Hero onNavigate={scrollToSection} />
       </div>
       <div ref={aboutRef}>
         <About />
@@ -74,7 +69,7 @@ export const LandingPage = () => {
       <div ref={contactRef}>
         <Contact />
       </div>
-      <Footer />
+      <Footer onNavigate={scrollToSection} />
     </div>
   );
 };

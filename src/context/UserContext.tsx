@@ -10,6 +10,8 @@ import {
   type UserProfile,
 } from "../service/login-api/user-profile";
 
+const USER_CACHE_KEY = "cached_user_profile";
+
 interface UserContextType {
   user: UserProfile | null;
   loading: boolean;
@@ -18,6 +20,23 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
+
+/** Save user profile to localStorage for offline use */
+function cacheUserProfile(profile: UserProfile) {
+  try {
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(profile));
+  } catch { /* quota exceeded, silently fail */ }
+}
+
+/** Restore user profile from localStorage when offline */
+function getCachedUserProfile(): UserProfile | null {
+  try {
+    const cached = localStorage.getItem(USER_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -35,11 +54,38 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       const data = await getUserProfile();
-      setUser(data);
+
+      // If the response came from the offline cache (has _fromCache), still use it
+      // But also check if we got a real profile back
+      if (data && data.username) {
+        setUser(data);
+        // Cache for offline use
+        cacheUserProfile(data);
+      } else {
+        // Returned empty object (offline interceptor fallback) -> try offline cache
+        const cachedProfile = getCachedUserProfile();
+        if (cachedProfile) {
+          console.log("[UserContext] Using cached user profile (offline empty response)");
+          setUser(cachedProfile);
+        } else {
+          setError("Failed to load user profile");
+        }
+      }
     } catch (err: any) {
       const errorMessage = err.message || "Failed to fetch user profile";
-      setError(errorMessage);
       console.error("Failed to fetch user profile:", err);
+
+      // OFFLINE FALLBACK: restore from localStorage cache
+      const cachedProfile = getCachedUserProfile();
+      if (cachedProfile) {
+        console.log("[UserContext] Using cached user profile (offline error)");
+        setUser(cachedProfile);
+        setError(null); // Don't show error if we have cached data
+        setLoading(false);
+        return;
+      }
+
+      setError(errorMessage);
 
       // Only redirect to login if token is truly missing or invalid
       // Don't redirect on 403 (permission error) - user might just not have access to profile endpoint

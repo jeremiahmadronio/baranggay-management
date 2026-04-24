@@ -50,6 +50,7 @@ export function Sidebar({
     });
 
     if (Object.keys(initialOpenGroups).length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpenGroups((prev) => ({ ...initialOpenGroups, ...prev }));
     }
   }, [location.pathname, location.search, navItems]);

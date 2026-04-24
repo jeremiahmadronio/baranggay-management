@@ -167,6 +167,15 @@ const BlotterRecordsPage: React.FC = () => {
     fetchRecords(appliedParams);
   }, [appliedParams, fetchRecords]);
 
+  // Auto-refresh when offline sync completes
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      fetchRecords(appliedParams);
+    };
+    window.addEventListener('offline-sync-complete', handleSyncComplete);
+    return () => window.removeEventListener('offline-sync-complete', handleSyncComplete);
+  }, [appliedParams, fetchRecords]);
+
   // ── Handlers ──────────────────────────────────────────────────────────────────
   const handleApplyFilter = () => {
     // Map dropdown value to backend value (always string)

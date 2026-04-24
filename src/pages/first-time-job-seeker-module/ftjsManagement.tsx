@@ -140,13 +140,19 @@ export default function FtjsManagementPage() {
   useEffect(() => {
     if (!accessLoading && canViewRecords) {
       refreshData();
-      return;
-    }
-
-    if (!accessLoading) {
+    } else if (!accessLoading) {
       setLoading(false);
     }
   }, [accessLoading, canUpdateApplicantInfo, canViewRecords]);
+
+  // Auto-refresh when offline sync completes
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      if (canViewRecords) refreshData();
+    };
+    window.addEventListener('offline-sync-complete', handleSyncComplete);
+    return () => window.removeEventListener('offline-sync-complete', handleSyncComplete);
+  }, [canViewRecords]);
 
   const filteredRecords = useMemo(() => {
     const keyword = search.trim().toLowerCase();

@@ -160,6 +160,7 @@ export interface BlotterDocketViewDTO {
   agreementDate?: string;
   luponManagement: CaseHandleByDTO[];
   assignOfficer: string;
+  _offline?: boolean;
 }
 
 export interface CaseHandleByDTO {

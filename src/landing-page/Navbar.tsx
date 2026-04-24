@@ -42,7 +42,7 @@ export const Navbar = () => {
             </div>
             <div className="hidden sm:flex items-center gap-2 text-blue-200">
               <Clock className="w-4 h-4" />
-              <span>Lunes - Biyernes, 8:00 AM - 5:00 PM</span>
+              <span>Monday - Friday, 8:00 AM - 5:00 PM</span>
             </div>
           </div>
         </div>
@@ -141,7 +141,7 @@ export const Navbar = () => {
                 onClick={() => setIsOpen(false)}
                 className="w-full mt-4 bg-white hover:bg-blue-50 text-blue-800 px-4 py-3 rounded-lg font-bold transition-colors text-center"
               >
-                Kumuha ng Serbisyo
+                Avail a Service
               </Link>
             </div>
           </div>

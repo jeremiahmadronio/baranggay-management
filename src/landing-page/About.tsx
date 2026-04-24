@@ -2,10 +2,10 @@ import { Target, Eye } from 'lucide-react';
 
 export const About = () => {
   const stats = [
-    { value: '50,000+', label: 'Mga Residente' },
-    { value: '15', label: 'Mga Purok' },
-    { value: '1963', label: 'Taon ng Pagkakatatag' },
-    { value: '24/7', label: 'Handang Tumulong' },
+    { value: '50,000+', label: 'Residents' },
+    { value: '15', label: 'Puroks' },
+    { value: '1963', label: 'Year Established' },
+    { value: '24/7', label: 'Ready to Serve' },
   ];
 
   return (
@@ -52,19 +52,19 @@ export const About = () => {
 
           {/* Content */}
           <div>
-            <p className="text-blue-600 font-semibold tracking-wide mb-2">Kilalanin Kami</p>
+            <p className="text-blue-600 font-semibold tracking-wide mb-2">About Us</p>
             <h2 className="text-4xl lg:text-5xl font-bold text-blue-900 leading-tight mb-6">
-              Sama-sama Para sa Mas Mabuting Bukas
+              Together Towards a Better Tomorrow
             </h2>
             <p className="text-gray-600 text-lg leading-relaxed mb-6">
-              Simula 1963, ang Barangay Ugong ay patuloy na umuunlad kasama ng bawat 
-              pamilyang naninirahan dito. Hindi lang kami isang barangay, kami ay 
-              isang komunidad na nagmamalasakit sa isa't isa.
+              Since 1963, Barangay Ugong has continuously grown alongside every 
+              family that calls it home. We are not just a barangay — we are 
+              a community that cares for one another.
             </p>
             <p className="text-gray-600 leading-relaxed mb-8">
-              Sa aming 3S Center, makikita mo ang mga serbisyong kailangan ng bawat 
-              residente, mula sa mga dokumento hanggang sa mga programa para sa 
-              kabataan, nakatatanda, at mga pamilya.
+              At our 3S Center, you'll find all the services every 
+              resident needs, from document processing to programs for 
+              the youth, elderly, and families.
             </p>
 
             {/* Vision & Mission - Simplified */}
@@ -72,19 +72,19 @@ export const About = () => {
               <div className="flex-1 border-l-4 border-blue-600 pl-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Eye className="w-5 h-5 text-blue-600" />
-                  <h4 className="font-bold text-blue-900">Pangarap Namin</h4>
+                  <h4 className="font-bold text-blue-900">Our Vision</h4>
                 </div>
                 <p className="text-gray-600 text-sm">
-                  Isang lugar na ligtas, maunlad, at para sa lahat.
+                  A place that is safe, prosperous, and for everyone.
                 </p>
               </div>
               <div className="flex-1 border-l-4 border-blue-600 pl-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-5 h-5 text-blue-600" />
-                  <h4 className="font-bold text-blue-900">Layunin Namin</h4>
+                  <h4 className="font-bold text-blue-900">Our Mission</h4>
                 </div>
                 <p className="text-gray-600 text-sm">
-                  Serbisyong mabilis, tapat, at abot-kamay ng lahat.
+                  Fast, honest, and accessible service for all.
                 </p>
               </div>
             </div>

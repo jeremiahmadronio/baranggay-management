@@ -1,55 +1,54 @@
-  import { Facebook, Phone, Mail } from 'lucide-react';
-
-  // Reference Filipino stock photos (replace with your own if needed)
-  const stockPhotos = [
-    'https://randomuser.me/api/portraits/men/75.jpg', // Captain
-    'https://randomuser.me/api/portraits/women/65.jpg', // Secretary
-    'https://randomuser.me/api/portraits/men/65.jpg', // Treasurer
-    'https://randomuser.me/api/portraits/men/85.jpg', // Kagawad 1
-    'https://randomuser.me/api/portraits/women/85.jpg', // Kagawad 2
-    'https://randomuser.me/api/portraits/men/86.jpg', // Kagawad 3
-    'https://randomuser.me/api/portraits/women/86.jpg', // Kagawad 4
-    'https://randomuser.me/api/portraits/men/87.jpg', // Kagawad 5
-    'https://randomuser.me/api/portraits/women/87.jpg', // Kagawad 6
-    'https://randomuser.me/api/portraits/men/88.jpg', // Kagawad 7
-    'https://randomuser.me/api/portraits/men/66.jpg', // SK Chair
-    'https://randomuser.me/api/portraits/women/66.jpg', // SK Kagawad 1
-    'https://randomuser.me/api/portraits/men/67.jpg', // SK Kagawad 2
-    'https://randomuser.me/api/portraits/women/67.jpg', // SK Kagawad 3
-    'https://randomuser.me/api/portraits/men/68.jpg', // SK Kagawad 4
-  ];
+  import { Facebook, Phone, Mail, User } from 'lucide-react';
 
   export const Officials = () => {
     // --- DATA ---
     const barangayCaptain = {
       name: 'Maricel Pineda Emperador',
       position: 'Punong Barangay',
-      image: '/kapitana-profile.png', // Local profile image from public folder
       contact: '09XX-XXX-XXXX',
       email: 'captain@barangayugong.gov.ph',
       facebook: 'https://facebook.com/barangayugong',
       description:
-        'Kaagapay ng bawat pamilya sa pagtataguyod ng mas maunlad at payapang Barangay. Dito, ang kapakanan niyo ang laging una.',
+        'Your partner in building a more progressive and peaceful Barangay. Here, your welfare always comes first.',
     };
     const kagawads = [
-      { name: 'Kag. Maria Santos', position: 'Peace & Order', image: stockPhotos[3], contact: '09XX-XXX-XXXX' },
-      { name: 'Kag. Jose Garcia', position: 'Health', image: stockPhotos[4], contact: '09XX-XXX-XXXX' },
-      { name: 'Kag. Ana Reyes', position: 'Education', image: stockPhotos[5], contact: '09XX-XXX-XXXX' },
-      { name: 'Kag. Pedro Ramos', position: 'Infrastructure', image: stockPhotos[6], contact: '09XX-XXX-XXXX' },
-      { name: 'Kag. Rosa Mendoza', position: 'Environment', image: stockPhotos[7], contact: '09XX-XXX-XXXX' },
-      { name: 'Kag. Luis Aquino', position: 'Social Services', image: stockPhotos[8], contact: '09XX-XXX-XXXX' },
-      { name: 'Kag. Elena Cruz', position: 'Budget & Finance', image: stockPhotos[9], contact: '09XX-XXX-XXXX' },
+      { name: 'Kag. Maria Santos', position: 'Peace & Order', contact: '09XX-XXX-XXXX' },
+      { name: 'Kag. Jose Garcia', position: 'Health', contact: '09XX-XXX-XXXX' },
+      { name: 'Kag. Ana Reyes', position: 'Education', contact: '09XX-XXX-XXXX' },
+      { name: 'Kag. Pedro Ramos', position: 'Infrastructure', contact: '09XX-XXX-XXXX' },
+      { name: 'Kag. Rosa Mendoza', position: 'Environment', contact: '09XX-XXX-XXXX' },
+      { name: 'Kag. Luis Aquino', position: 'Social Services', contact: '09XX-XXX-XXXX' },
+      { name: 'Kag. Elena Cruz', position: 'Budget & Finance', contact: '09XX-XXX-XXXX' },
     ];
-    const secretary = { name: 'Maria Clara Bautista', position: 'Barangay Secretary', image: stockPhotos[1], contact: '09XX-XXX-XXXX' };
-    const treasurer = { name: 'Antonio Villanueva', position: 'Barangay Treasurer', image: stockPhotos[2], contact: '09XX-XXX-XXXX' };
+    const secretary = { name: 'Maria Clara Bautista', position: 'Barangay Secretary', contact: '09XX-XXX-XXXX' };
+    const treasurer = { name: 'Antonio Villanueva', position: 'Barangay Treasurer', contact: '09XX-XXX-XXXX' };
     const skOfficials = {
-      chairman: { name: 'SK Chairman Miguel Santos', position: 'SK Chairperson', image: stockPhotos[10], contact: '09XX-XXX-XXXX' },
+      chairman: { name: 'SK Chairman Miguel Santos', position: 'SK Chairperson', contact: '09XX-XXX-XXXX' },
       kagawads: [
-        { name: 'SK Kag. Anna Lopez', position: 'SK Kagawad', image: stockPhotos[11], contact: '09XX-XXX-XXXX' },
-        { name: 'SK Kag. Mark Reyes', position: 'SK Kagawad', image: stockPhotos[12], contact: '09XX-XXX-XXXX' },
-        { name: 'SK Kag. Cathy Garcia', position: 'SK Kagawad', image: stockPhotos[13], contact: '09XX-XXX-XXXX' },
-        { name: 'SK Kag. John Cruz', position: 'SK Kagawad', image: stockPhotos[14], contact: '09XX-XXX-XXXX' },
+        { name: 'SK Kag. Anna Lopez', position: 'SK Kagawad', contact: '09XX-XXX-XXXX' },
+        { name: 'SK Kag. Mark Reyes', position: 'SK Kagawad', contact: '09XX-XXX-XXXX' },
+        { name: 'SK Kag. Cathy Garcia', position: 'SK Kagawad', contact: '09XX-XXX-XXXX' },
+        { name: 'SK Kag. John Cruz', position: 'SK Kagawad', contact: '09XX-XXX-XXXX' },
       ],
+    };
+
+    // Generic avatar component to replace all photos
+    const Avatar = ({ size = 'md' }: { size?: 'lg' | 'md' | 'sm' }) => {
+      const sizeClasses = {
+        lg: 'w-40 h-40',
+        md: 'w-20 h-20',
+        sm: 'w-16 h-16',
+      };
+      const iconSizes = {
+        lg: 'w-20 h-20',
+        md: 'w-10 h-10',
+        sm: 'w-8 h-8',
+      };
+      return (
+        <div className={`${sizeClasses[size]} rounded-full bg-blue-100 border-2 border-blue-200 shadow-sm flex items-center justify-center`}>
+          <User className={`${iconSizes[size]} text-blue-400`} />
+        </div>
+      );
     };
 
     return (
@@ -61,13 +60,15 @@
               Barangay <span className="text-blue-900">Officials</span>
             </h2>
             <p className="text-lg text-blue-900/70 leading-relaxed">
-Katuwang ninyo sa bawat hakbang. Ang Sangguniang Barangay na laging bukas para sa inyo.            </p>
+Your partners in every step. The Barangay Council is always open for you.            </p>
           </div>
 
           {/* Captain */}
           <div className="flex flex-col items-center mb-16">
             <div className="bg-white rounded-xl shadow border border-blue-100 p-6 flex flex-col items-center w-full max-w-md">
-              <img src={barangayCaptain.image} alt={barangayCaptain.name} className="w-40 h-40 rounded-full object-cover border-4 shadow-md mb-4" style={{ borderColor: '#1E2A5E', borderStyle: 'solid', objectPosition: 'center', objectFit: 'cover', transform: 'scale(1.18)' }} />
+              <div className="mb-4" style={{ transform: 'scale(1.18)' }}>
+                <Avatar size="lg" />
+              </div>
               <span className="inline-block bg-blue-900 text-white text-xs font-semibold px-4 py-1 rounded-full mb-2 tracking-wide">
                 {barangayCaptain.position}
               </span>
@@ -113,7 +114,9 @@ Katuwang ninyo sa bawat hakbang. Ang Sangguniang Barangay na laging bukas para s
           <div className="flex flex-col sm:flex-row justify-center gap-6 mb-16">
             {[secretary, treasurer].map((official, idx) => (
               <div key={idx} className="bg-white rounded-xl p-6 flex-1 min-w-[220px] max-w-xs shadow border border-blue-100 flex flex-col items-center">
-                <img src={official.image} alt={official.name} className="w-20 h-20 rounded-full object-cover border-2 border-blue-200 shadow-sm mb-3" />
+                <div className="mb-3">
+                  <Avatar size="md" />
+                </div>
                 <span className="inline-block bg-blue-900 text-white text-xs font-semibold px-3 py-1 rounded-full mb-2 tracking-wide">
                   {official.position}
                 </span>
@@ -133,7 +136,9 @@ Katuwang ninyo sa bawat hakbang. Ang Sangguniang Barangay na laging bukas para s
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               {kagawads.slice(0, 4).map((k, idx) => (
                 <div key={idx} className="bg-white rounded-xl p-5 shadow border border-blue-100 flex flex-col items-center">
-                  <img src={k.image} alt={k.name} className="w-16 h-16 rounded-full object-cover border-2 border-blue-200 shadow-sm mb-3" />
+                  <div className="mb-3">
+                    <Avatar size="sm" />
+                  </div>
                   <span className="inline-block bg-blue-900 text-white text-xs font-semibold px-3 py-1 rounded-full mb-2 tracking-wide">
                     {k.position}
                   </span>
@@ -149,7 +154,9 @@ Katuwang ninyo sa bawat hakbang. Ang Sangguniang Barangay na laging bukas para s
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
               {kagawads.slice(4).map((k, idx) => (
                 <div key={idx} className="bg-white rounded-xl p-5 shadow border border-blue-100 flex flex-col items-center">
-                  <img src={k.image} alt={k.name} className="w-16 h-16 rounded-full object-cover border-2 border-blue-200 shadow-sm mb-3" />
+                  <div className="mb-3">
+                    <Avatar size="sm" />
+                  </div>
                   <span className="inline-block bg-blue-900 text-white text-xs font-semibold px-3 py-1 rounded-full mb-2 tracking-wide">
                     {k.position}
                   </span>
@@ -169,7 +176,9 @@ Katuwang ninyo sa bawat hakbang. Ang Sangguniang Barangay na laging bukas para s
             <div className="flex flex-col items-center gap-8">
               {/* SK Chairman */}
               <div className="bg-white rounded-xl p-6 shadow border border-blue-100 text-center max-w-sm w-full flex flex-col items-center">
-                <img src={skOfficials.chairman.image} alt={skOfficials.chairman.name} className="w-16 h-16 rounded-full object-cover border-2 border-blue-200 shadow-sm mb-4 mx-auto" />
+                <div className="mb-4">
+                  <Avatar size="sm" />
+                </div>
                 <span className="inline-block bg-blue-900 text-white text-xs font-semibold px-3 py-1 rounded-full mb-2">SK Chairperson</span>
                 <h4 className="font-bold text-blue-900 text-lg">{skOfficials.chairman.name}</h4>
                 <span className="mt-2 flex items-center gap-2 text-slate-500 text-sm font-medium justify-center w-fit mx-auto">
@@ -181,7 +190,9 @@ Katuwang ninyo sa bawat hakbang. Ang Sangguniang Barangay na laging bukas para s
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 w-full max-w-3xl">
                 {skOfficials.kagawads.map((sk, idx) => (
                   <div key={idx} className="bg-white rounded-xl p-6 shadow border border-blue-100 text-center flex flex-col items-center min-w-[160px] max-w-[220px] mx-auto">
-                    <img src={sk.image} alt={sk.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-200 shadow-sm mb-3 mx-auto" />
+                    <div className="mb-3">
+                      <Avatar size="sm" />
+                    </div>
                     <span className="inline-block bg-blue-900 text-white text-sm font-semibold px-3 py-1 rounded-full mt-1 mb-2">{sk.position}</span>
                     <h5 className="font-semibold text-blue-900 text-sm mb-1">{sk.name}</h5>
                     {sk.contact && (
