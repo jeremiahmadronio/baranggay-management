@@ -549,12 +549,11 @@ export function CfaTab({ caseId, caseData, isWithdrawn, canIssueReferral }: CfaT
                       handleReferralFormChange("grounds", event.target.value)
                     }
                     rows={5}
-                    placeholder="hal. Hindi nagkaroon ng pagkakasundo sa antas ng barangay kaya maaari nang iakyat ang reklamo..."
+                    placeholder=""
                     className="w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm leading-relaxed text-gray-900 placeholder-gray-400 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-400">
-                    Ilagay ang dahilan kung bakit maaari nang i-refer o iakyat
-                    ang kasong ito.
+                  Please put a reason here...
                   </p>
                 </div>
 
@@ -580,12 +579,12 @@ export function CfaTab({ caseId, caseData, isWithdrawn, canIssueReferral }: CfaT
                     {referralLoading ? (
                       <>
                         <Loader2Icon className="h-4 w-4 animate-spin" />
-                        Nagse-save...
+                        Saving...
                       </>
                     ) : (
                       <>
                         <SendIcon className="h-4 w-4" />
-                        Mag-issue ng Referral
+                       Issue  Referral
                       </>
                     )}
                   </button>

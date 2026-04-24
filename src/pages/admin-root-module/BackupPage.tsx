@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Database,
   RefreshCw,
@@ -96,6 +96,8 @@ export function BackupPage() {
   // Table Search & Pagination States
   const [tableSearch, setTableSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
   // Success/Error Modal States
@@ -318,6 +320,40 @@ export function BackupPage() {
       </div>
     );
   }
+
+  const filteredBackups = useMemo(() => {
+    return backups
+      .filter((backup) =>
+        backup.fileName.toLowerCase().includes(tableSearch.toLowerCase()),
+      )
+      .filter((backup) => {
+        if (!statusFilter) return true;
+        if (statusFilter === "encrypted") return backup.encrypted;
+        if (statusFilter === "decrypted") return !backup.encrypted;
+        return true;
+      })
+      .filter((backup) => {
+        const created = new Date(backup.createdAt).getTime();
+        if (Number.isNaN(created)) return false;
+        if (startDateFilter) {
+          const start = new Date(`${startDateFilter}T00:00:00`).getTime();
+          if (created < start) return false;
+        }
+        if (endDateFilter) {
+          const end = new Date(`${endDateFilter}T23:59:59`).getTime();
+          if (created > end) return false;
+        }
+        return true;
+      })
+      .sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+  }, [backups, tableSearch, statusFilter, startDateFilter, endDateFilter]);
+
+  const totalPages = Math.ceil(filteredBackups.length / itemsPerPage);
+  const start = (currentPage - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  const paginatedBackups = filteredBackups.slice(start, end);
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-6 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -403,6 +439,8 @@ export function BackupPage() {
           onClearClick={() => {
             setTableSearch("");
             setStatusFilter("");
+            setStartDateFilter("");
+            setEndDateFilter("");
             setCurrentPage(1);
           }}
           filters={[
@@ -419,6 +457,19 @@ export function BackupPage() {
           onFilterChange={(_, value) => {
             setStatusFilter(value);
             setCurrentPage(1);
+          }}
+          dateRange={{
+            startValue: startDateFilter,
+            endValue: endDateFilter,
+            onStartChange: (value) => {
+              setStartDateFilter(value);
+              setCurrentPage(1);
+            },
+            onEndChange: (value) => {
+              setEndDateFilter(value);
+              setCurrentPage(1);
+            },
+            maxDate: new Date().toISOString().split("T")[0],
           }}
           searchPlaceholder="Search by file name..."
         />
@@ -451,29 +502,7 @@ export function BackupPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {(() => {
-                  const filtered = backups
-                    .filter((backup) =>
-                      backup.fileName
-                        .toLowerCase()
-                        .includes(tableSearch.toLowerCase()),
-                    )
-                    .filter((backup) => {
-                      if (!statusFilter) return true;
-                      if (statusFilter === "encrypted") return backup.encrypted;
-                      if (statusFilter === "decrypted")
-                        return !backup.encrypted;
-                      return true;
-                    })
-                    .sort(
-                      (a, b) =>
-                        new Date(b.createdAt).getTime() -
-                        new Date(a.createdAt).getTime(),
-                    );
-                  const start = (currentPage - 1) * itemsPerPage;
-                  const end = start + itemsPerPage;
-                  const paginated = filtered.slice(start, end);
-
-                  if (filtered.length === 0) {
+                  if (filteredBackups.length === 0) {
                     return (
                       <tr>
                         <td
@@ -487,7 +516,7 @@ export function BackupPage() {
                     );
                   }
 
-                  return paginated.map((backup) => (
+                  return paginatedBackups.map((backup) => (
                     <motion.tr
                       initial={{
                         opacity: 0,
@@ -567,25 +596,6 @@ export function BackupPage() {
 
           {/* Pagination */}
           {(() => {
-            const filtered = backups
-              .filter((backup) =>
-                backup.fileName
-                  .toLowerCase()
-                  .includes(tableSearch.toLowerCase()),
-              )
-              .filter((backup) => {
-                if (!statusFilter) return true;
-                if (statusFilter === "encrypted") return backup.encrypted;
-                if (statusFilter === "decrypted") return !backup.encrypted;
-                return true;
-              })
-              .sort(
-                (a, b) =>
-                  new Date(b.createdAt).getTime() -
-                  new Date(a.createdAt).getTime(),
-              );
-            const totalPages = Math.ceil(filtered.length / itemsPerPage);
-
             if (totalPages <= 1) return null;
 
             return (
@@ -597,9 +607,9 @@ export function BackupPage() {
                   </span>
                   -
                   <span className="font-medium">
-                    {Math.min(currentPage * itemsPerPage, filtered.length)}
+                    {Math.min(currentPage * itemsPerPage, filteredBackups.length)}
                   </span>{" "}
-                  of <span className="font-medium">{filtered.length}</span>
+                  of <span className="font-medium">{filteredBackups.length}</span>
                 </p>
                 <div className="flex gap-2">
                   <button

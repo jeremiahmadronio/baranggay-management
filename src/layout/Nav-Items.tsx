@@ -49,6 +49,7 @@ export const rootAdminNavItems: NavItemType[] = [
   { label: "Officer Management", path: "/rootadmin/officers", icon: Users },
   {label: "Backup Management", path: "/rootadmin/backup-management", icon: Users},
   { label: "Audit Logs", path: "/rootadmin/audit-logs", icon: ScrollText },
+    { label: "Reports", path: "/rootadmin/reports", icon: ChartNoAxesCombined },
     { label: "Archive", path: "/rootadmin/archive", icon: Archive },
 
 ];

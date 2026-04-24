@@ -173,13 +173,25 @@ const MOD_STYLES: Record<string, string> = {
   Blotter: "bg-orange-100 text-orange-700",
   Clearance: "bg-green-100 text-green-700",
   Lupong: "bg-yellow-100 text-yellow-700",
+  "Admin Management": "bg-purple-100 text-purple-700",
+};
+
+const normalizeRoleName = (_roleName?: string) => "SYSTEM_ADMIN";
+
+const normalizeModuleName = (moduleName?: string) => {
+  const raw = (moduleName ?? "").trim();
+  const normalized = raw.replace(/\s+/g, "_").toUpperCase();
+  if (normalized === "ROOT_ADMIN" || normalized === "ROOTADMIN") {
+    return "Admin Management";
+  }
+  return raw || "System";
 };
 
 const ModuleBadge = ({ module }: { module: string }) => (
   <span
-    className={`px-2.5 py-1 text-xs font-semibold rounded-md ${MOD_STYLES[module] ?? "bg-purple-100 text-purple-700"}`}
+    className={`px-2.5 py-1 text-xs font-semibold rounded-md ${MOD_STYLES[normalizeModuleName(module)] ?? "bg-purple-100 text-purple-700"}`}
   >
-    {module}
+    {normalizeModuleName(module)}
   </span>
 );
 
@@ -375,7 +387,6 @@ export default function AuditLogs() {
   // ── Filter state ──────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("");
-  const [module, setModule] = useState("");
   const [action, setAction] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -391,7 +402,6 @@ export default function AuditLogs() {
       const res = await getAuditTable({
         search: search || undefined,
         severity: severity || undefined,
-        module: module || undefined,
         action: action || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
@@ -431,7 +441,7 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  }, [search, severity, module, action, startDate, endDate, currentPage]);
+  }, [search, severity, action, startDate, endDate, currentPage]);
 
   useEffect(() => {
     fetchTable();
@@ -444,7 +454,6 @@ export default function AuditLogs() {
   const handleClear = () => {
     setSearch("");
     setSeverity("");
-    setModule("");
     setAction("");
     setStartDate("");
     setEndDate("");
@@ -473,7 +482,6 @@ export default function AuditLogs() {
   const activeFilterCount = [
     search,
     severity,
-    module,
     action,
     startDate,
     endDate,
@@ -494,7 +502,9 @@ export default function AuditLogs() {
             <p className="font-semibold text-gray-800 text-sm leading-tight">
               {row.firstName} {row.lastName}
             </p>
-            <p className="text-xs text-gray-400">{row.roleName}</p>
+            <p className="text-xs text-gray-400">
+              {normalizeRoleName(row.roleName)}
+            </p>
           </div>
         </div>
       ),
@@ -666,20 +676,10 @@ export default function AuditLogs() {
       </div>
 
       <TableFilter
-        searchPlaceholder="Search user, action, reason..."
+        searchPlaceholder="Search by person name..."
         searchValue={search}
         onSearchChange={setSearch}
         filters={[
-          {
-            label: "Module",
-            key: "module",
-            value: module,
-            options: (filterOptions?.modules ?? []).map((m) => ({
-              value: m,
-              label: m,
-            })),
-          },
-
           {
             label: "Severity",
             key: "severity",
@@ -691,7 +691,6 @@ export default function AuditLogs() {
           },
         ]}
         onFilterChange={(key, val) => {
-          if (key === "module") setModule(val);
           if (key === "action") setAction(val);
           if (key === "severity") setSeverity(val);
         }}

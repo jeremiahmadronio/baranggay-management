@@ -80,6 +80,9 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
   const [form, setForm] = useState<FormData>({
     person: null,
     username: "",
@@ -266,9 +269,57 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     return Object.keys(next).length === 0;
   };
 
+  const handleUsernameBlur = async () => {
+    const username = form.username.trim();
+    if (
+      !username ||
+      username.length < USERNAME_MIN_LENGTH ||
+      !USERNAME_PATTERN.test(username)
+    ) return;
+    setCheckingUsername(true);
+    try {
+      const taken = await userManagementApi.checkUsernameExists(username);
+      if (taken) {
+        setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
+      }
+    } catch {
+      // silently ignore network errors on blur check
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
+  const handleEmailBlur = async () => {
+    const email = form.systemEmail.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setCheckingEmail(true);
+    try {
+      const taken = await userManagementApi.checkEmailExists(email);
+      if (taken) {
+        setErrors((prev) => ({ ...prev, systemEmail: "This email is already in use." }));
+      }
+    } catch {
+      // silently ignore network errors on blur check
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) {
       setSubmitError("Please fix required fields before registering.");
+      return;
+    }
+
+    // Block submit if async checks are still in progress
+    if (checkingUsername || checkingEmail) {
+      setSubmitError("Please wait while we validate the username and email.");
+      return;
+    }
+
+    // Block if duplicates were already detected
+    if (errors.username || errors.systemEmail) {
+      setSubmitError("Please fix the highlighted fields before registering.");
       return;
     }
 
@@ -294,7 +345,9 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
       onSuccess?.();
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "Unable to create user account.",
+        err instanceof Error && err.message
+          ? err.message
+          : "Unable to create user account.",
       );
     } finally {
       setIsSubmitting(false);
@@ -431,19 +484,27 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                     </span>
                   </div>
 
-                  <input
-                    type="text"
-                    value={form.username}
-                    onChange={(e) =>
-                      setField(
-                        "username",
-                        normalizeUsernameInput(e.target.value),
-                      )
-                    }
-                    maxLength={USERNAME_MAX_LENGTH}
-                    placeholder="juan.delacruz"
-                    className={fieldClass(!!errors.username)}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={form.username}
+                      onChange={(e) =>
+                        setField(
+                          "username",
+                          normalizeUsernameInput(e.target.value),
+                        )
+                      }
+                      onBlur={handleUsernameBlur}
+                      maxLength={USERNAME_MAX_LENGTH}
+                      placeholder="juan.delacruz"
+                      className={fieldClass(!!errors.username)}
+                    />
+                    {checkingUsername && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+                        Checking…
+                      </span>
+                    )}
+                  </div>
 
                   {errors.username && (
                     <p className="text-xs text-red-500 mt-1">
@@ -468,25 +529,34 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                     </span>
                   </div>
 
-                  <input
-                    type="email"
-                    value={form.systemEmail}
-                    onChange={(e) =>
-                      setField("systemEmail", e.target.value.trimStart())
-                    }
-                    onBlur={(e) => {
-                      const value = e.target.value.trim();
-                      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-                        setErrors((prev) => ({
-                          ...prev,
-                          systemEmail: "Please enter a valid email address.",
-                        }));
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={form.systemEmail}
+                      onChange={(e) =>
+                        setField("systemEmail", e.target.value.trimStart())
                       }
-                    }}
-                    maxLength={SYSTEM_EMAIL_MAX_LENGTH}
-                    placeholder="juan@barangay.gov.ph"
-                    className={fieldClass(!!errors.systemEmail)}
-                  />
+                      onBlur={async (e) => {
+                        const value = e.target.value.trim();
+                        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            systemEmail: "Please enter a valid email address.",
+                          }));
+                          return;
+                        }
+                        await handleEmailBlur();
+                      }}
+                      maxLength={SYSTEM_EMAIL_MAX_LENGTH}
+                      placeholder="juan@barangay.gov.ph"
+                      className={fieldClass(!!errors.systemEmail)}
+                    />
+                    {checkingEmail && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+                        Checking…
+                      </span>
+                    )}
+                  </div>
 
                   {errors.systemEmail && (
                     <p className="text-xs text-red-500 mt-1">

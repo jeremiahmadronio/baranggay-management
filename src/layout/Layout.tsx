@@ -10,7 +10,6 @@ import {
   Calendar,
   Clock,
   User,
-  Settings,
   Shield,
   LogOut,
 } from "lucide-react";
@@ -111,6 +110,24 @@ export function Layout({ userRole }: LayoutProps) {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // ── Auth guard ────────────────────────────────────────────────────────────
+  // Redirect to /login immediately if token is missing or removed
+  useEffect(() => {
+    const redirectIfNoToken = () => {
+      if (!localStorage.getItem("token")) {
+        navigate("/login", { replace: true });
+      }
+    };
+
+    // Check on first render
+    redirectIfNoToken();
+
+    // Also check when another tab/window clears localStorage (e.g. logout)
+    window.addEventListener("storage", redirectIfNoToken);
+    return () => window.removeEventListener("storage", redirectIfNoToken);
+  }, [navigate]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Live clock update
   useEffect(() => {

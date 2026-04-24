@@ -263,7 +263,7 @@ export function OverviewTab({
               <div className="p-2.5 rounded-lg bg-blue-50">
                 <CalendarIcon className="w-5 h-5 text-blue-600" />
               </div>
-              <span className="text-sm text-blue-600">Schedule Hearing</span>
+              <span className="text-sm text-blue-600">Schedule Mediation</span>
               <span className="text-xs text-gray-500">Set mediation date</span>
             </button>
 

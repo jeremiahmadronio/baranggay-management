@@ -16,6 +16,9 @@ function routeFromDepartment(department?: string | null): string | null {
     case 'CLEARANCE':
       return '/clearance/dashboard'
     case 'OFFICIAL':
+    case 'KAPITANA':                      // JWT dept for Barangay Captain
+    case 'CAPTAIN':
+    case 'OFFICE_OF_THE_BARANGAY_CAPTAIN':
       return '/official-portal/dashboard'
     case 'BLOTTER':
       return '/blotter/dashboard'
@@ -88,6 +91,10 @@ export function LoginPage() {
         }
         if (role === 'ADMIN') {
           navigate('/admin/dashboard')
+          return
+        }
+        if (role === 'CAPTAIN') {
+          navigate('/official-portal/dashboard')
           return
         }
         const departmentRoute = routeFromDepartment(response.departments?.[0])

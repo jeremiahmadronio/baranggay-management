@@ -361,7 +361,14 @@ export default function FtjsReportPage() {
       );
 
       setStats(statsRes);
-      setDistribution(distributionRes);
+      setDistribution(
+        distributionRes.filter(
+          (item) => {
+            const status = String(item.status || "").toUpperCase();
+            return status !== "REFERRED" && status !== "ONGOING" && status !== "DISMISSED";
+          }
+        )
+      );
       setTrend(trendRes);
       setCases(casesRes);
     } catch (error) {

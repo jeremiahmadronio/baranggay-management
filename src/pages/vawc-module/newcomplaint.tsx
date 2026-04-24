@@ -1427,15 +1427,7 @@ export function VAWCNewComplaint() {
               value={complainant.civilStatus}
               onChange={(e) => updateComplainant("civilStatus", e.target.value)}
             />
-            <FormInput
-              id="field-cEmail"
-              label="Email Address"
-              type="email"
-              placeholder="email@example.com"
-              maxLength={50}
-              value={complainant.email}
-              onChange={(e) => updateComplainant("email", e.target.value)}
-            />
+           
           </FormRow>
 
           <FormInput
@@ -1532,12 +1524,7 @@ export function VAWCNewComplaint() {
                 )
               }
             />
-            <FormInput
-              label="Date of Birth"
-              type="date"
-              value={respondent.dob}
-              onChange={(e) => updateRespondent("dob", e.target.value)}
-            />
+          
           </FormRow>
 
           <FormRow cols={3}>
@@ -1548,13 +1535,7 @@ export function VAWCNewComplaint() {
               value={respondent.gender}
               onChange={(e) => updateRespondent("gender", e.target.value)}
             />
-            <FormSelect
-              label="Civil Status"
-              options={CIVIL_STATUS_OPTIONS}
-              placeholder="Select Civil Status"
-              value={respondent.civilStatus}
-              onChange={(e) => updateRespondent("civilStatus", e.target.value)}
-            />
+         
             <FormSelect
               id="field-rRelationship"
               label="Relationship to Complainant"

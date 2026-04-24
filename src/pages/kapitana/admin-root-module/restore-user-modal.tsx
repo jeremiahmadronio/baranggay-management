@@ -1,0 +1,124 @@
+import React, { useState } from "react";
+import { X, RotateCcw, Loader2 } from "lucide-react";
+import {
+  updateUserStatus,
+  Statuses,
+  type AdminTable,
+} from "../../../service/admin-root-api/admin-management";
+
+interface RestoreUserModalProps {
+  admin: AdminTable;
+  onClose: () => void;
+}
+
+export function RestoreUserModal({ admin, onClose }: RestoreUserModalProps) {
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
+  const handleConfirm = async () => {
+    setError(null);
+    if (!reason.trim()) {
+      setError("Reason is required for accountability.");
+      return;
+    }
+    try {
+      setLoading(true);
+      await updateUserStatus(admin.id, Statuses.ACTIVE, {
+        reason,
+        lockUntil: null,
+      });
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to restore account. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md relative">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Restore User Account
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex gap-3 mb-6">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <RotateCcw className="w-5 h-5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">
+              Restore{" "}
+              <span className="font-semibold">
+                {admin.firstName} {admin.lastName}
+              </span>
+              's account?
+            </p>
+            <p className="text-sm text-blue-500 mt-1">
+              Their account will be set back to <strong>Active</strong>. They
+              will regain access to the system immediately.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Reason for restoration <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Enter reason for restoring this account..."
+            rows={4}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+            {error}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? "Processing..." : "Confirm Restore"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

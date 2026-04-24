@@ -159,7 +159,7 @@ function ResidentSearchInput({
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <label className="text-sm font-semibold text-slate-700 tracking-wide">
-        Search Complainant (Auto-fill)
+        Search Person/Resident (Auto-fill)
       </label>
       <div className="relative mt-1">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -488,13 +488,7 @@ export default function FtjsEntryPage() {
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <SectionCard step="A" title="First Time Job Seeker Entry">
-          <p className="text-sm text-slate-600">
-            Search the resident first if may existing record para auto-fill ang
-            personal information. Kapag wala, puwede ang manual entry gamit ang
-            required fields from the FTJS API.
-          </p>
-        </SectionCard>
+       
 
         <div className="mt-6 space-y-5">
           <SectionCard

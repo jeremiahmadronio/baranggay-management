@@ -41,6 +41,7 @@ import { BackupPage } from "./pages/admin-root-module/BackupPage";
 import Root_User_Management from "./pages/admin-root-module/user-management/user-management";
 import RootOfficerManagementPage from "./pages/admin-root-module/officer/officerManagement";
 import RootArchivePage from "./pages/admin-root-module/archive/archive";
+import RootAdminReportsPage from "./pages/admin-root-module/reports";
 
 // BCPC
 import BcpcDashboard from "./pages/bcpc-module/dashboard";
@@ -91,6 +92,27 @@ import VawcCaseTable from "./pages/vawc-module/cases";
 import VawcNewComplaint from "./pages/vawc-module/newcomplaint";
 import VawcReportsPage from "./pages/vawc-module/reports";
 import VawcCaseDetailsPage from "./pages/vawc-module/casedetailview";
+
+//kapitana
+import Kapitana_User_Management from "./pages/kapitana/admin-root-module/user-management/user-management";
+import KapitanaAdminViewPage from "./pages/kapitana/admin-root-module/admin-view-page";
+import KapitanaAdminReportsPage from "./pages/kapitana/admin-root-module/reports";
+import KapitanaBackupPage from "./pages/kapitana/admin-root-module/BackupPage";
+import KapitanaAuditLogs from "./pages/kapitana/admin-root-module/audit-logs";
+import KapitanaBlotterRecordsPage from "./pages/kapitana/blotter-module/BlotterRecord";
+import KapitanaDocketview from "./pages/kapitana/blotter-module/Docketview";
+import KapitanaReportsPage from "./pages/kapitana/blotter-module/BlotterReport";
+import KapitanaLuponCases from "./pages/kapitana/lupon-module/lupon-pages/Cases";
+import KapitanaLuponCaseDetailViewWrapper from "./pages/kapitana/lupon-module/lupon-pages/LuponCaseDetailViewWrapper";
+import { KapitanaLuponReportsPage } from "./pages/kapitana/lupon-module/lupon-pages/LuponReports";
+import KapitanaVawcCaseTable from "./pages/kapitana/vawc-module/cases";
+import KapitanaVawcReportsPage from "./pages/kapitana/vawc-module/reports";
+import KapitanaVawcCaseDetailsPage from "./pages/kapitana/vawc-module/casedetailview";
+import { KapitanaIssuedCertificatePage } from "./pages/kapitana/clearance-module/issued-certificate";
+import KapitanaRevenueAndCollectionPage from "./pages/kapitana/clearance-module/revenue-and-collections";
+import KapitanaFtjsManagementPage from "./pages/kapitana/first-time-job-seeker-module/ftjsManagement";
+import KapitanaFtjsReportPage from "./pages/kapitana/first-time-job-seeker-module/report";
+import KapitanaAdminManagement from "./pages/kapitana/admin-root-module/admin-management";
 
 // Landing Page
 import { LandingPage } from "./landing-page";
@@ -164,6 +186,7 @@ export function App() {
         />
         <Route path="backup-management" element={<BackupPage />} />
         <Route path="audit-logs" element={<AuditLogs />} />
+        <Route path="reports" element={<RootAdminReportsPage />} />
         <Route path="account-settings" element={<SharedAccountSettings />} />
         <Route path="archive" element={<RootArchivePage />} />
       </Route>
@@ -205,7 +228,8 @@ export function App() {
         <Route path="dashboard" element={<BcpcDashboard />} />
         <Route path="new-case-entry" element={<BcpcNewCaseEntry />} />
         <Route path="case-management" element={<BcpcCaseManagement />} />
-        <Route path="casedetailview" element={<BcpcCaseDetailsPage />} /> {/* ✅ added */}
+        <Route path="casedetailview" element={<BcpcCaseDetailsPage />} />{" "}
+        {/* ✅ added */}
         <Route path="report" element={<BcpcReport />} />
         <Route path="resident-records" element={<ResidentListPage />} />
       </Route>
@@ -261,6 +285,53 @@ export function App() {
           path="settings"
           element={<Navigate to="/official-portal/account-settings" replace />}
         />
+
+        {/* Kapitana */}
+          <Route path="admin-management" element={<KapitanaAdminManagement />} />
+            <Route
+          path="kapitana-admin-management/view/:adminId"
+          element={<KapitanaAdminViewPage />}
+        />
+          
+
+            <Route path="user-management" element={<Kapitana_User_Management />} />
+        <Route path="reports" element={<KapitanaAdminReportsPage />} />
+        <Route path="backup-management" element={<KapitanaBackupPage />} />
+        <Route path="audit-logs" element={<KapitanaAuditLogs />} />
+
+        <Route
+          path="blotter/records"
+          element={<KapitanaBlotterRecordsPage />}
+        />
+        <Route path="blotter/docket" element={<KapitanaDocketview />} />
+        <Route
+          path="blotter/record-view"
+          element={<KapitanaBlotterRecordsPage />}
+        />
+        <Route path="blotter/reports" element={<KapitanaReportsPage />} />
+
+        <Route path="lupon/cases" element={<KapitanaLuponCases />} />
+        <Route path="lupon/reports" element={<KapitanaLuponReportsPage />} />
+        <Route path="lupon/case-detail/:blotterNumber" element={<KapitanaLuponCaseDetailViewWrapper />} />
+
+        <Route path="vawc/cases" element={<KapitanaVawcCaseTable />} />
+        <Route path="vawc/casedetailview" element={<KapitanaVawcCaseDetailsPage />} />
+        <Route path="vawc/reports" element={<KapitanaVawcReportsPage />} />
+
+        <Route
+          path="clearance/issued-certificates"
+          element={<KapitanaIssuedCertificatePage />}
+        />
+        <Route
+          path="clearance/revenue-and-collection"
+          element={<KapitanaRevenueAndCollectionPage />}
+        />
+
+        <Route
+          path="ftjs/management"
+          element={<KapitanaFtjsManagementPage />}
+        />
+        <Route path="ftjs/reports" element={<KapitanaFtjsReportPage />} />
       </Route>
     </Routes>
   );

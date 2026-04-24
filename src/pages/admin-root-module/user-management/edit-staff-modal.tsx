@@ -87,6 +87,12 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Track original values so we skip duplicate-check when value is unchanged
+  const [originalUsername, setOriginalUsername] = useState(user.username);
+  const [originalEmail, setOriginalEmail] = useState("");
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
   useEffect(() => {
     const load = async () => {
       setLoadingProfile(true);
@@ -104,6 +110,9 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                 ? "INACTIVE"
                 : "ACTIVE",
         }));
+        // Store originals so onBlur can skip check if unchanged
+        setOriginalUsername(res.username || user.username);
+        setOriginalEmail(res.systemEmail || "");
       } catch {
         setSubmitError("Unable to load user details.");
       } finally {
@@ -310,9 +319,55 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     return Object.keys(next).length === 0;
   };
 
+  const handleUsernameBlur = async () => {
+    const username = form.username.trim();
+    // Skip check if unchanged from original (user's own username)
+    if (!username || username === originalUsername) return;
+    if (username.length < USERNAME_MIN_LENGTH || !USERNAME_PATTERN.test(username)) return;
+    setCheckingUsername(true);
+    try {
+      const taken = await userManagementApi.checkUsernameExists(username);
+      if (taken) {
+        setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
+      }
+    } catch {
+      // ignore network errors silently
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
+  const handleEmailBlur = async () => {
+    const email = form.systemEmail.trim();
+    // Skip check if unchanged from original (user's own email)
+    if (!email || email === originalEmail) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setCheckingEmail(true);
+    try {
+      const taken = await userManagementApi.checkEmailExists(email);
+      if (taken) {
+        setErrors((prev) => ({ ...prev, systemEmail: "This email is already in use." }));
+      }
+    } catch {
+      // ignore network errors silently
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) {
       setSubmitError("Please fix required fields before saving.");
+      return;
+    }
+
+    if (checkingUsername || checkingEmail) {
+      setSubmitError("Please wait while we validate the username and email.");
+      return;
+    }
+
+    if (errors.username || errors.systemEmail) {
+      setSubmitError("Please fix the highlighted fields before saving.");
       return;
     }
 
@@ -413,18 +468,26 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                       {form.username.length}/{USERNAME_MAX_LENGTH}
                     </span>
                   </div>
-                  <input
-                    value={form.username}
-                    onChange={(e) =>
-                      setField(
-                        "username",
-                        normalizeUsernameInput(e.target.value),
-                      )
-                    }
-                    maxLength={USERNAME_MAX_LENGTH}
-                    className={fieldClass(!!errors.username)}
-                    disabled={loading}
-                  />
+                  <div className="relative">
+                    <input
+                      value={form.username}
+                      onChange={(e) =>
+                        setField(
+                          "username",
+                          normalizeUsernameInput(e.target.value),
+                        )
+                      }
+                      onBlur={handleUsernameBlur}
+                      maxLength={USERNAME_MAX_LENGTH}
+                      className={fieldClass(!!errors.username)}
+                      disabled={loading}
+                    />
+                    {checkingUsername && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+                        Checking…
+                      </span>
+                    )}
+                  </div>
                   {errors.username && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.username}
@@ -447,16 +510,34 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                       {form.systemEmail.length}/{SYSTEM_EMAIL_MAX_LENGTH}
                     </span>
                   </div>
-                  <input
-                    type="email"
-                    value={form.systemEmail}
-                    onChange={(e) =>
-                      setField("systemEmail", e.target.value.trimStart())
-                    }
-                    maxLength={SYSTEM_EMAIL_MAX_LENGTH}
-                    className={fieldClass(!!errors.systemEmail)}
-                    disabled={loading}
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={form.systemEmail}
+                      onChange={(e) =>
+                        setField("systemEmail", e.target.value.trimStart())
+                      }
+                      onBlur={async (e) => {
+                        const value = e.target.value.trim();
+                        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            systemEmail: "Please enter a valid email address.",
+                          }));
+                          return;
+                        }
+                        await handleEmailBlur();
+                      }}
+                      maxLength={SYSTEM_EMAIL_MAX_LENGTH}
+                      className={fieldClass(!!errors.systemEmail)}
+                      disabled={loading}
+                    />
+                    {checkingEmail && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+                        Checking…
+                      </span>
+                    )}
+                  </div>
                   {errors.systemEmail && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.systemEmail}

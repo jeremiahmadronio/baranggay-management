@@ -1,6 +1,7 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 const BASE_URL = `${BASE}/api/v1/user-management`;
+const USERS_URL = `${BASE}/api/v1/users`;
 const PEOPLE_URL = `${BASE}/api/v1/resident`;
 const DEPT_URL = `${BASE}/api/v1/departments`;
 const ROLE_URL = `${BASE}/api/v1/roles`;
@@ -268,6 +269,18 @@ getPermissionOptions: (): Promise<Permission[]> =>
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  // Duplicate checks — uses api/v1/users (separate controller)
+  checkUsernameExists: (username: string): Promise<boolean> => {
+    const qs = new URLSearchParams({ username });
+    return apiFetch<boolean>(`/check-username?${qs.toString()}`, {}, USERS_URL);
+  },
+
+  checkEmailExists: (email: string): Promise<boolean> => {
+    const qs = new URLSearchParams({ email });
+    return apiFetch<boolean>(`/check-email?${qs.toString()}`, {}, USERS_URL);
+  },
+
 
   updateUser: (userId: string, payload: EditUserPayload): Promise<string> =>
     apiFetch<string>(`/update-user/${userId}`, {

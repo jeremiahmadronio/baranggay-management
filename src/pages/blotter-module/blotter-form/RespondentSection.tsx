@@ -283,38 +283,16 @@ export const RespondentSection = ({
           value={data.gender}
           onChange={(e) => onChange("gender", e.target.value)}
         />
-        <div>
-          <FormInput
-            label="Email Address"
-            type="email"
-            placeholder="email@example.com"
-            maxLength={50}
-            value={data.email}
-            onChange={(e) => {
-              const v = e.target.value;
-              onChange("email", v);
-              if (v && !v.includes("@")) {
-                errors.email = "Email must contain '@'";
-              } else {
-                errors.email = "";
-              }
-            }}
-            error={errors.email}
-          />
-          <CharCounter
-            current={typeof data.email === "string" ? data.email.length : 0}
-            max={50}
-          />
-        </div>
-      </FormRow>
-      <FormRow cols={3}>
-        <FormSelect
+         <FormSelect
           label="Civil Status"
           options={CIVIL_STATUS_OPTIONS}
           placeholder="Select Civil Status"
           value={data.civilStatus}
           onChange={(e) => onChange("civilStatus", e.target.value)}
         />
+      </FormRow>
+      <FormRow cols={3}>
+        
         <div>
           <FormInput
             label="Contact Number"
@@ -339,7 +317,10 @@ export const RespondentSection = ({
             error={errors.contact}
           />
           <CharCounter current={data.contact.length} max={11} />
+
+          
         </div>
+        
       </FormRow>
       <div>
         <FormInput

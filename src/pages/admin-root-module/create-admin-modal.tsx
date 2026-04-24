@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AlertTriangle, Loader2, Search, X, CheckCircle2 } from "lucide-react";
 import { FormModalShell, FormSectionTitle } from "../../reusable";
 import {
@@ -92,6 +92,8 @@ export default function CreateAdminModal({ onClose }: Props) {
     [],
   );
   const [searchLoading, setSearchLoading] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
 
   // Email availability check
   const [emailCheckLoading, setEmailCheckLoading] = useState(false);
@@ -107,6 +109,19 @@ export default function CreateAdminModal({ onClose }: Props) {
       })
       .catch(console.error)
       .finally(() => setLoadingOptions(false));
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchWrapperRef.current &&
+        !searchWrapperRef.current.contains(event.target as Node)
+      ) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const toggleDept = (id: number) => {
@@ -131,24 +146,30 @@ export default function CreateAdminModal({ onClose }: Props) {
       setErrors((prev) => ({ ...prev, permissions: undefined }));
   };
 
-  const handleSearchResident = async (query: string) => {
-    setSearchQuery(query);
-    if (query.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (searchQuery.trim().length < 2) {
+        setSearchResults([]);
+        setIsSearchOpen(false);
+        return;
+      }
 
-    try {
-      setSearchLoading(true);
-      const results = await searchPeople(query);
-      setSearchResults(results);
-    } catch (err) {
-      console.error("Search error:", err);
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
+      try {
+        setSearchLoading(true);
+        const results = await searchPeople(searchQuery);
+        setSearchResults(results);
+        setIsSearchOpen(true);
+      } catch (err) {
+        console.error("Search error:", err);
+        setSearchResults([]);
+        setIsSearchOpen(true);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleSelectResident = (resident: PersonSearchResponseDTO) => {
     setFormData((prev) => ({
@@ -158,6 +179,7 @@ export default function CreateAdminModal({ onClose }: Props) {
     setSelectedResidentName(`${resident.firstName} ${resident.lastName}`);
     setSearchQuery("");
     setSearchResults([]);
+    setIsSearchOpen(false);
   };
 
   const validate = (): boolean => {
@@ -185,10 +207,14 @@ export default function CreateAdminModal({ onClose }: Props) {
   const handleSubmit = async () => {
     if (!validate()) return;
 
+    const resolvedDepartmentIds = formData.allDepartments
+      ? departments.map((d) => d.id)
+      : formData.departmentIds;
+
     const payload: CreateAdmin = {
       personId: formData.personId ?? undefined,
       systemEmail: formData.systemEmail,
-      departmentIds: formData.allDepartments ? [] : formData.departmentIds,
+      departmentIds: resolvedDepartmentIds,
       permissionsIds: formData.permissionIds,
       activateImmediately: formData.activateImmediately,
     };
@@ -241,53 +267,84 @@ export default function CreateAdminModal({ onClose }: Props) {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Search Resident <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name or ID..."
-              value={searchQuery}
-              onChange={(e) => handleSearchResident(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div className="relative" ref={searchWrapperRef}>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                {searchLoading ? (
+                  <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4 text-slate-400" />
+                )}
+              </div>
+              <input
+                type="text"
+                placeholder="Type resident name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (searchResults.length > 0 || searchQuery.trim().length >= 2) {
+                    setIsSearchOpen(true);
+                  }
+                }}
+                className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+              />
+            </div>
+
+            {isSearchOpen && searchQuery.trim().length >= 2 && (
+              <div className="absolute z-20 mt-1 w-full bg-white rounded-lg shadow-lg border border-blue-100 max-h-60 overflow-auto">
+                {searchResults.length > 0 ? (
+                  <ul className="py-1">
+                    {searchResults.map((resident) => (
+                      <li
+                        key={resident.id}
+                        onClick={() => handleSelectResident(resident)}
+                        className="px-4 py-2 hover:bg-blue-50/50 cursor-pointer border-b border-slate-100 last:border-0"
+                      >
+                        <div className="font-medium text-sm text-slate-900">
+                          {resident.firstName}{" "}
+                          {resident.middleName ? `${resident.middleName} ` : ""}
+                          {resident.lastName}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5 truncate">
+                          {resident.completeAddress || "No address"}{" "}
+                          {resident.contactNumber
+                            ? `• ${resident.contactNumber}`
+                            : ""}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  !searchLoading && (
+                    <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                      No residents found for "{searchQuery}"
+                    </div>
+                  )
+                )}
+              </div>
+            )}
           </div>
 
-          {searchLoading && (
-            <div className="flex items-center gap-2 text-sm text-gray-400 py-4 justify-center">
-              <Loader2 className="w-4 h-4 animate-spin" /> Searching...
-            </div>
-          )}
-
-          {searchResults.length > 0 && (
-            <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto mt-2">
-              {searchResults.map((resident) => (
-                <div
-                  key={resident.id}
-                  onClick={() => handleSelectResident(resident)}
-                  className="p-4 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                >
-                  <p className="font-medium text-gray-900">
-                    {resident.firstName} {resident.lastName}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {searchQuery && !searchLoading && searchResults.length === 0 && (
-            <div className="text-center py-6 text-gray-500">
-              <p className="text-sm">
-                No residents found. Try a different search.
-              </p>
-            </div>
+          {searchQuery.trim().length > 0 && searchQuery.trim().length < 2 && (
+            <p className="mt-2 text-xs text-slate-500">Type at least 2 characters to search.</p>
           )}
 
           {formData.personId && (
-            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-gray-700">
+            <div className="mt-3 flex items-center justify-between gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-gray-700 truncate">
                 <span className="font-semibold">Selected:</span>{" "}
                 {selectedResidentName}
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData((prev) => ({ ...prev, personId: null }));
+                  setSelectedResidentName("");
+                }}
+                className="text-xs font-medium text-green-700 hover:text-green-800 whitespace-nowrap"
+              >
+                Change
+              </button>
             </div>
           )}
 

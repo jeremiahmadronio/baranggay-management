@@ -4,7 +4,14 @@ import type {
   Role,
 } from "../../../service/admin-root-api/user-management";
 
-type DeptKey = "blotter" | "vawc" | "bcpc" | "lupon" | "clearance" | "ftjs";
+type DeptKey =
+  | "blotter"
+  | "vawc"
+  | "bcpc"
+  | "lupon"
+  | "clearance"
+  | "ftjs"
+  | "captain";
 
 const DEPT_ROLE_RULES: Record<DeptKey, string[]> = {
   blotter: ["desk officer", "focal person"],
@@ -13,6 +20,7 @@ const DEPT_ROLE_RULES: Record<DeptKey, string[]> = {
   lupon: ["chairman", "secretary", "members", "desk officer", "focal person"],
   clearance: ["desk officer", "secretary"],
   ftjs: ["focal person", "desk officer"],
+  captain: ["captain", "secretary", "desk officer", "officials"],
 };
 
 const DEPT_PERMISSION_RULES: Record<DeptKey, string[]> = {
@@ -73,6 +81,18 @@ const DEPT_PERMISSION_RULES: Record<DeptKey, string[]> = {
     "View ftjs Records",
     "Update Applicant Info",
   ],
+  captain: [
+    "View Audit Logs",
+    "View blotter cases",
+    "View blotter reports",
+    "View lupon cases",
+    "View lupon reports",
+    "View vawc reports",
+    "View vawc cases",
+    "View bcpc reports",
+    "View bcpc cases",
+    // Revenue-related permissions removed
+  ],
 };
 
 function normalize(value?: string | null) {
@@ -98,6 +118,14 @@ export function resolveDeptKey(name?: string | null): DeptKey | "" {
     value.includes("ftjs")
   ) {
     return "ftjs";
+  }
+  if (
+    value.includes("captain") ||
+    value.includes("kapitana") ||
+    value.includes("barangay captain") ||
+    value.includes("office of the barangay captain")
+  ) {
+    return "captain";
   }
   return "";
 }

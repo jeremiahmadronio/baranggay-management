@@ -1,5 +1,6 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const BASE_URL = `${BASE}/api/v1/dashboard`;
+const SYSTEM_HEALTH_URL = `${BASE}/api/v1/admin/system`;
 
 export interface DashboardStats {
   totalUser: number;
@@ -14,6 +15,11 @@ const ENDPOINTS = {
   DASHBOARD_STATS: "/stats",
   OVERVIEW: "/activity-overview",
   RECENT_ACTIONS: "/recent-actions",
+  LAST_SIX_MONTHS: "/last-six-months",
+};
+
+const SYSTEM_ENDPOINTS = {
+  HEALTH: "/health",
 };
 
 export interface DeptActivity {
@@ -36,9 +42,26 @@ export interface RecentActions {
   createdAt: string;
 }
 
+export interface LastSixMonthsResidents {
+  labels: string[];
+  counts: number[];
+}
+
+export interface SystemHealth {
+  cpuUsage: number;
+  memoryUsedMB: number;
+  memoryMaxMB: number;
+  memoryPercent: number;
+  diskFreeGB: number;
+  diskTotalGB: number;
+  diskPercent: number;
+  status: string;
+}
+
 async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {},
+  baseUrl = BASE_URL,
 ): Promise<T> {
   const token = localStorage.getItem("token");
 
@@ -48,7 +71,7 @@ async function apiFetch<T>(
     ...options.headers,
   };
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
   });
@@ -80,4 +103,12 @@ export async function getActivityOverview(): Promise<ActivityOverview> {
 
 export async function getRecentActions(): Promise<RecentActions[]> {
   return apiFetch<RecentActions[]>(ENDPOINTS.RECENT_ACTIONS);
+}
+
+export async function getLastSixMonthsResidents(): Promise<LastSixMonthsResidents> {
+  return apiFetch<LastSixMonthsResidents>(ENDPOINTS.LAST_SIX_MONTHS);
+}
+
+export async function getSystemHealth(): Promise<SystemHealth> {
+  return apiFetch<SystemHealth>(SYSTEM_ENDPOINTS.HEALTH, {}, SYSTEM_HEALTH_URL);
 }
