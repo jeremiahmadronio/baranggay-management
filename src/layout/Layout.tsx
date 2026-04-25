@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useUser } from "../context/UserContext";
 import { authService } from "../service/login-api/login";
+import { ConfirmModal } from "../reusable";
 
 interface LayoutProps {
   userRole: UserRole;
@@ -24,6 +25,7 @@ export function Layout({ userRole }: LayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useUser();
@@ -126,6 +128,52 @@ export function Layout({ userRole }: LayoutProps) {
     window.addEventListener("storage", redirectIfNoToken);
     return () => window.removeEventListener("storage", redirectIfNoToken);
   }, [navigate]);
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Session Inactivity Timeout (5 minutes) ─────────────────────────────
+  const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) {
+      clearTimeout(inactivityTimer.current);
+    }
+    inactivityTimer.current = setTimeout(() => {
+      // Auto-logout: clear all storage and redirect
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/login";
+    }, SESSION_TIMEOUT_MS);
+  }, []);
+
+  useEffect(() => {
+    const activityEvents = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    // Start the timer on mount
+    resetInactivityTimer();
+
+    // Reset timer on any user activity
+    const handleActivity = () => resetInactivityTimer();
+    activityEvents.forEach((event) =>
+      window.addEventListener(event, handleActivity, { passive: true }),
+    );
+
+    return () => {
+      if (inactivityTimer.current) {
+        clearTimeout(inactivityTimer.current);
+      }
+      activityEvents.forEach((event) =>
+        window.removeEventListener(event, handleActivity),
+      );
+    };
+  }, [resetInactivityTimer]);
   // ─────────────────────────────────────────────────────────────────────────
 
   // Live clock update
@@ -245,9 +293,7 @@ export function Layout({ userRole }: LayoutProps) {
                 <p className="text-sm font-medium text-slate-700 leading-tight">
                   {userName}
                 </p>
-                <p className="text-xs text-slate-400 capitalize">
-                  {userRoleDisplay || userRole}
-                </p>
+                
               </div>
               <ChevronDown
                 size={16}
@@ -295,7 +341,10 @@ export function Layout({ userRole }: LayoutProps) {
                 <div className="p-2.5 border-t border-slate-100">
                   <button
                     type="button"
-                    onClick={() => authService.logout()}
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setShowLogoutModal(true);
+                    }}
                     className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
@@ -316,6 +365,21 @@ export function Layout({ userRole }: LayoutProps) {
       </main>
 
       <MobileNav userRole={userRole} />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          authService.logout();
+        }}
+        onCancel={() => setShowLogoutModal(false)}
+        title="Confirm Logout"
+        message="Are you sure you want to log out? Your current session will be ended and all unsaved changes will be lost."
+        confirmText="Logout"
+        cancelText="Cancel"
+        type="warning"
+      />
     </div>
   );
 }

@@ -673,7 +673,7 @@ export function RootOfficerManagementPage() {
           title="Archive Officer / Staff"
           mode="reason-only"
           subjectName={targetEmployee.fullName}
-          subjectLabel="employee"
+          subjectLabel="officer"
           submitLabel="Archive"
           onSubmit={(payload) =>
             handleArchiveSubmit({ reason: payload.reason })
@@ -688,10 +688,10 @@ export function RootOfficerManagementPage() {
             setShowStatusModal(false);
             setTargetEmployee(null);
           }}
-          title="Update Employee Status"
+          title="Update Officer Status"
           mode="status-and-reason"
           subjectName={targetEmployee.fullName}
-          subjectLabel="employee"
+          subjectLabel="officer"
           statusOptions={STATUS_OPTIONS}
           reasonOptions={STATUS_REASON_OPTIONS}
           initialStatus={normalizeStatusLabel(targetEmployee.status)}

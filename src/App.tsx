@@ -101,6 +101,9 @@ import KapitanaAdminViewPage from "./pages/kapitana/admin-root-module/admin-view
 import KapitanaAdminReportsPage from "./pages/kapitana/admin-root-module/reports";
 import KapitanaBackupPage from "./pages/kapitana/admin-root-module/BackupPage";
 import KapitanaAuditLogs from "./pages/kapitana/admin-root-module/audit-logs";
+import KapitanaBcpcCaseManagement from "./pages/kapitana/bcpc-module/case-management";
+import KapitanaBcpcReportPage from "./pages/kapitana/bcpc-module/report";
+import KapitanaBcpcCaseDetailsPage from "./pages/kapitana/bcpc-module/casedetailview";
 import KapitanaBlotterRecordsPage from "./pages/kapitana/blotter-module/BlotterRecord";
 import KapitanaDocketview from "./pages/kapitana/blotter-module/Docketview";
 import KapitanaReportsPage from "./pages/kapitana/blotter-module/BlotterReport";
@@ -323,6 +326,10 @@ export function App() {
         <Route path="vawc/cases" element={<KapitanaVawcCaseTable />} />
         <Route path="vawc/casedetailview" element={<KapitanaVawcCaseDetailsPage />} />
         <Route path="vawc/reports" element={<KapitanaVawcReportsPage />} />
+
+        <Route path="bcpc/cases" element={<KapitanaBcpcCaseManagement />} />
+        <Route path="bcpc/casedetailview" element={<KapitanaBcpcCaseDetailsPage />} />
+        <Route path="bcpc/reports" element={<KapitanaBcpcReportPage />} />
 
         <Route
           path="clearance/issued-certificates"

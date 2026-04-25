@@ -283,15 +283,8 @@ export const RespondentSection = ({
           value={data.gender}
           onChange={(e) => onChange("gender", e.target.value)}
         />
-         <FormSelect
-          label="Civil Status"
-          options={CIVIL_STATUS_OPTIONS}
-          placeholder="Select Civil Status"
-          value={data.civilStatus}
-          onChange={(e) => onChange("civilStatus", e.target.value)}
-        />
-      </FormRow>
-      <FormRow cols={3}>
+        
+      
         
         <div>
           <FormInput

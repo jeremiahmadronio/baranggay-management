@@ -57,6 +57,10 @@ export const authService = {
     });
     if (response.status === "SUCCESS")
       persistAuthSession(response, credentials.email);
+    // Save token for CHANGE_PASSWORD_REQUIRED so username check works
+    if (response.status === "CHANGE_PASSWORD_REQUIRED" && response.token) {
+      localStorage.setItem("token", response.token);
+    }
     return response;
   },
 
@@ -73,6 +77,10 @@ export const authService = {
       offlineQueue: false,
     });
     if (response.status === "SUCCESS") persistAuthSession(response, data.email);
+    // Save token for CHANGE_PASSWORD_REQUIRED so username check works
+    if (response.status === "CHANGE_PASSWORD_REQUIRED" && response.token) {
+      localStorage.setItem("token", response.token);
+    }
     return response;
   },
 
@@ -178,11 +186,21 @@ export const authService = {
     return response;
   },
 
+  /**
+   * @GetMapping("/check-username") under @RequestMapping("api/v1/users")
+   * Backend returns true when username IS taken (isUsernameTaken).
+   * This function returns true = taken, false = available.
+   */
   checkUsernameAvailability: async (username: string): Promise<boolean> => {
-    return await api.get("/api/v1/auth/check-username", {
+    const result = await api.get("/api/v1/users/check-username", {
       params: { username: username.trim() },
-      requiresAuth: false,
+      requiresAuth: true,
     });
+    // Handle both boolean and string responses from the API
+    if (typeof result === "string") {
+      return result.toLowerCase() === "true";
+    }
+    return Boolean(result);
   },
 
   logout: () => {

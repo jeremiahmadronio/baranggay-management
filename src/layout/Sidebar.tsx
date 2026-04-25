@@ -11,11 +11,7 @@ interface SidebarProps {
   userRoleDisplay?: string;
 }
 
-export function Sidebar({
-  userRole,
- 
-
-}: SidebarProps) {
+export function Sidebar({ userRole }: SidebarProps) {
   const navItems = getNavItemsByRole(userRole);
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -54,8 +50,6 @@ export function Sidebar({
       setOpenGroups((prev) => ({ ...initialOpenGroups, ...prev }));
     }
   }, [location.pathname, location.search, navItems]);
-
- 
 
   // Get role display name and brand
   const roleConfig = {
@@ -101,12 +95,11 @@ export function Sidebar({
       brandColor: "text-yellow-600",
     },
     rootadmin: {
-      displayName: "Root Admin",
-      brand: "rootadmin",
+      displayName: "System Admin",
+      brand: "System Admin",
       brandColor: "text-black-600",
     },
   }[userRole];
-
 
   return (
     <motion.aside
@@ -132,7 +125,7 @@ export function Sidebar({
               </p>
               <h1 className="text-[15px] font-extrabold text-slate-800 leading-tight truncate">
                 <span className="text-slate-800">{roleConfig.brand}</span>
-                <span className={`ml-1 ${roleConfig.brandColor}`}>Portal</span>
+                <span className={`ml-1 ${roleConfig.brandColor}`}></span>
               </h1>
             </div>
           </div>
@@ -179,7 +172,10 @@ export function Sidebar({
                             : "text-slate-400 group-hover:text-slate-600"
                         }`}
                       >
-                        <item.icon size={20} strokeWidth={hasActiveChild ? 2.5 : 2} />
+                        <item.icon
+                          size={20}
+                          strokeWidth={hasActiveChild ? 2.5 : 2}
+                        />
                       </div>
 
                       <span className="relative z-10 ml-2.5 text-sm font-medium whitespace-nowrap truncate flex-1 text-left">
@@ -274,8 +270,22 @@ export function Sidebar({
         </div>
 
         {/* User Section */}
-        
-        
+        <div className="flex-shrink-0 border-t border-slate-100 px-4 py-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 text-lg">
+            {roleConfig.brand[0]}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-slate-800 truncate text-sm">
+              {/* Show userName if available, else fallback */}
+              {(typeof window !== "undefined" &&
+                window.localStorage.getItem("userEmail")) ||
+                "User"}
+            </span>
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold leading-tight">
+              {roleConfig.displayName}
+            </span>
+          </div>
+        </div>
       </div>
     </motion.aside>
   );

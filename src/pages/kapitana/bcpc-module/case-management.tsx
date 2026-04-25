@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
-import { TableFilter } from "../../hooks/TableFilter";
-import { Table, type TableColumn } from "../../hooks/Table";
+import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
+import { TableFilter } from "../../../hooks/TableFilter";
+import { Table, type TableColumn } from "../../../hooks/Table";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,10 +99,12 @@ const formatNameAsInitials = (fullName?: string) => {
 const getStatusPillClass = (status: string) => {
   switch (status) {
     case "PENDING":                  return "bg-amber-50 text-amber-700 border border-amber-200";
+    case "ONGOING":                  return "bg-blue-50 text-blue-700 border border-blue-200";
     case "UNDER_MEDIATION":
     case "UNDER_INTERVENTION":       return "bg-sky-50 text-sky-700 border border-sky-200";
     case "RESOLVED":                 return "bg-emerald-50 text-emerald-700 border border-emerald-200";
     case "CERTIFIED_TO_FILE_ACTION": return "bg-indigo-50 text-indigo-700 border border-indigo-200";
+    case "REFERRED":                 return "bg-violet-50 text-violet-700 border border-violet-200";
     case "WITHDRAWN":                return "bg-gray-100 text-gray-600 border border-gray-200";
     case "DISMISSED":                return "bg-rose-50 text-rose-700 border border-rose-200";
     default:                         return "bg-gray-100 text-gray-600 border border-gray-200";
@@ -111,7 +113,7 @@ const getStatusPillClass = (status: string) => {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function BcpcCaseManagement() {
+export default function KapitanaBcpcCaseManagement() {
   const navigate = useNavigate();
 
   const [stats]          = useState<CaseStatsDTO>(MOCK_STATS);
@@ -258,7 +260,7 @@ export default function BcpcCaseManagement() {
   align: "center",
   render: (item) => (
     <button
-      onClick={() => navigate(`/bcpc/casedetailview?id=${item.id}`)}
+      onClick={() => navigate(`/official-portal/bcpc/casedetailview?id=${item.id}`)}
       className="rounded-lg p-2 text-neutral-400 hover:bg-gray-50 hover:text-blue-600 transition-colors"
       title="View case details"
     >

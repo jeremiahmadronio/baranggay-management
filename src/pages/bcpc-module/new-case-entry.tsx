@@ -110,12 +110,6 @@ const GENDER_OPTIONS = [
   { value: "Other", label: "Prefer not to say" },
 ];
 
-const CIVIL_STATUS_OPTIONS = [
-  { value: "Single", label: "Single" },
-  { value: "Married", label: "Married" },
-  { value: "Widowed", label: "Widowed" },
-  { value: "Separated", label: "Separated" },
-];
 
 const RELATIONSHIP_OPTIONS = [
   { value: "Parent", label: "Parent" },
@@ -163,7 +157,6 @@ export default function BcpcNewCaseEntryPage() {
   // Section A — Docket / Case Info
   const [assignedOfficer, setAssignedOfficer] = useState("");
 
-  // Section B — Child / Complainant
   const [cLastName, setCLastName] = useState("");
   const [cFirstName, setCFirstName] = useState("");
   const [cMiddleName, setCMiddleName] = useState("");
@@ -174,7 +167,6 @@ export default function BcpcNewCaseEntryPage() {
   const [cEmail, setCEmail] = useState("");
   const [cAddress, setCAddress] = useState("");
 
-  // Section C — Respondent / Guardian
   const [rLastName, setRLastName] = useState("");
   const [rFirstName, setRFirstName] = useState("");
   const [rMiddleName, setRMiddleName] = useState("");
@@ -393,13 +385,7 @@ export default function BcpcNewCaseEntryPage() {
               placeholder="Select"
               error={errors.cGender}
             />
-            <FormSelect
-              label="Civil Status"
-              value={cCivilStatus}
-              onChange={(e) => setCCivilStatus(e.target.value)}
-              options={CIVIL_STATUS_OPTIONS}
-              placeholder="Select"
-            />
+           
             <FormInput
               label="Contact Number"
               inputMode="numeric"
@@ -409,13 +395,7 @@ export default function BcpcNewCaseEntryPage() {
               placeholder="09XXXXXXXXX"
             />
           </FormRow>
-          <FormInput
-            label="Email Address"
-            type="email"
-            value={cEmail}
-            onChange={(e) => setCEmail(e.target.value)}
-            placeholder="optional@email.com"
-          />
+       
           <FormInput
             id="field-cAddress"
             label="Complete Address"
@@ -495,13 +475,7 @@ export default function BcpcNewCaseEntryPage() {
               options={GENDER_OPTIONS}
               placeholder="Select"
             />
-            <FormSelect
-              label="Civil Status"
-              value={rCivilStatus}
-              onChange={(e) => setRCivilStatus(e.target.value)}
-              options={CIVIL_STATUS_OPTIONS}
-              placeholder="Select"
-            />
+           
           </FormRow>
           <FormRow cols={2}>
             <FormInput
