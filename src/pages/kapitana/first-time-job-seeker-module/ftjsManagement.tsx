@@ -249,7 +249,7 @@ export default function KapitanaFtjsManagementPage() {
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                navigate(`/first-time-job-seeker/management/${item.id}`);
+                navigate(`/official-portal/ftjs/management/${item.id}`);
               }}
               className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
               title="View request"

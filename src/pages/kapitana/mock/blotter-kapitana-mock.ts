@@ -96,11 +96,11 @@ export const mockLuponEmployeeOptions: LuponOptionDTO[] = [
 ];
 
 export const mockKapitanaNatureOptions: NatureOptionDTO[] = [
-  { id: 1, natureName: "Ingay / Kalampag" },
-  { id: 2, natureName: "Away sa daan" },
-  { id: 3, natureName: "Utang / Hindi pagbabayad" },
-  { id: 4, natureName: "Boundary ng lupa" },
-  { id: 5, natureName: "Alitan sa alagang hayop" },
+  { id: 1, natureName: "Noise Disturbance" },
+  { id: 2, natureName: "Street Altercation" },
+  { id: 3, natureName: "Debt / Non-payment" },
+  { id: 4, natureName: "Land Boundary Dispute" },
+  { id: 5, natureName: "Animal-related Conflict" },
 ];
 
 const NATURE_BY_ID = new Map(
@@ -158,7 +158,7 @@ function buildMockFtrRecordedRows(): BlotterSummaryDTO[] {
       id: 9600 + i,
       blotterNumber: `FTR-2026-${String(300 + i).padStart(4, "0")}`,
       complainantName: ["Liza Ramos", "Nina Cruz", "Ben Torres", "Amy Diaz"][i % 4],
-      respondentName: ["—", "—", "—", "—"][i % 4],
+      respondentName: ["Carlos Mendoza", "Roberto Tan", "Edgar Santos", "Mario Reyes"][i % 4],
       natureOfComplaint: nature,
       dateFiled: iso(d),
       status: "RECORDED",
@@ -689,10 +689,10 @@ function baseDocketDto(blotterNumber: string): BlotterDocketViewDTO {
     incidentDate: iso(new Date(Date.now() - 86400000 * 9)).slice(0, 10),
     incidentTime: "20:30",
     incidentLocation: "Harapan ng bahay, Purok 3",
-    frequencyOfIncident: "Minsan sa isang linggo",
+    frequencyOfIncident: "Once a week",
     descriptionOfInjuries: undefined,
     narrative:
-      "Mock narrative: May alitan sa ingay gabi-gabi. Hinihiling ang mediation ng complainant.",
+      "Mock narrative: There has been an ongoing noise disturbance nightly. The complainant is requesting mediation.",
 
     evidenceTypeIds: ["1", "3"],
     witnesses: [
@@ -700,7 +700,7 @@ function baseDocketDto(blotterNumber: string): BlotterDocketViewDTO {
         fullName: "Pedro Reyes",
         contactNumber: "09151112233",
         address: "Purok 3",
-        testimony: "Narinig ang ingay noong gabing iyon.",
+        testimony: "Heard the noise disturbance that evening.",
       },
     ],
     agreementsTerm: undefined,
@@ -758,7 +758,7 @@ export function mockBlotterRecordView(blotterNumber: string): BlotterRecordViewD
     placeOfIncident: d.incidentLocation,
     narrativeStatement: d.narrative,
 
-    evidenceNames: ["Larawan", "Text messages (screenshot)"],
+    evidenceNames: ["Photographs", "Text messages (screenshot)"],
   };
 }
 

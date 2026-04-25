@@ -111,6 +111,7 @@ import KapitanaVawcCaseDetailsPage from "./pages/kapitana/vawc-module/casedetail
 import { KapitanaIssuedCertificatePage } from "./pages/kapitana/clearance-module/issued-certificate";
 import KapitanaRevenueAndCollectionPage from "./pages/kapitana/clearance-module/revenue-and-collections";
 import KapitanaFtjsManagementPage from "./pages/kapitana/first-time-job-seeker-module/ftjsManagement";
+import KapitanaFtjsDetailViewPage from "./pages/kapitana/first-time-job-seeker-module/FtjsDetailView";
 import KapitanaFtjsReportPage from "./pages/kapitana/first-time-job-seeker-module/report";
 import KapitanaAdminManagement from "./pages/kapitana/admin-root-module/admin-management";
 
@@ -331,6 +332,7 @@ export function App() {
           path="ftjs/management"
           element={<KapitanaFtjsManagementPage />}
         />
+        <Route path="ftjs/management/:ftjsId" element={<KapitanaFtjsDetailViewPage />} />
         <Route path="ftjs/reports" element={<KapitanaFtjsReportPage />} />
       </Route>
     </Routes>

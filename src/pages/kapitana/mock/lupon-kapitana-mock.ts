@@ -106,7 +106,7 @@ export function mockLuponSummaryPage(
 
 function baseLuponView(blotterNumber: string): LuponViewDTO {
   const row = MOCK_KAPITANA_DOCKET_ROWS.find((r) => r.blotterNumber === blotterNumber);
-  const nature = row?.natureOfComplaint ?? "Ingay / Kalampag";
+  const nature = row?.natureOfComplaint ?? "Noise Disturbance";
   const status =
     row?.status === "CERTIFIED_TO_FILE_ACTION"
       ? "CERTIFIED_TO_FILE_ACTION"
@@ -223,9 +223,9 @@ export function mockLuponStatusStats(): StatusStatDTO[] {
 
 export function mockLuponTopNature(): NatureReportDTO[] {
   return [
-    { natureName: "Ingay / Kalampag", count: 4 },
-    { natureName: "Away sa daan", count: 3 },
-    { natureName: "Utang / Hindi pagbabayad", count: 2 },
+    { natureName: "Noise Disturbance", count: 4 },
+    { natureName: "Street Altercation", count: 3 },
+    { natureName: "Debt / Non-payment", count: 2 },
   ];
 }
 
@@ -252,7 +252,7 @@ export function mockLuponMonthlyDilg(
       dateFiled: `${year}-${String(month).padStart(2, "0")}-05`,
       caseNo: "BRT-2026-0100",
       parties: "Santos vs Lim",
-      complaint: "Ingay / Kalampag",
+      complaint: "Noise Disturbance",
       isCriminal: 0,
       isCivil: 1,
       isOthers: 0,

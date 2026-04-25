@@ -9,6 +9,12 @@ import {
   ScrollText,
   ChartNoAxesCombined,
   Archive,
+  Shield,
+  Gavel,
+  Scale,
+  Heart,
+  Award,
+  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -177,10 +183,68 @@ export const firstTimeJobSeekerNavItems: NavItemType[] = [
   },
 ];
 
-// Regular officials navigation items
+// Regular officials navigation items (Kapitana Portal)
 export const officialNavItems: NavItemType[] = [
-  { label: "Dashboard", path: "/officials/dashboard", icon: LayoutDashboard },
-  { label: "Settings", path: "/officials/settings", icon: Settings },
+  { label: "Dashboard", path: "/official-portal/dashboard", icon: LayoutDashboard },
+  {
+    label: "Admin",
+    path: "/official-portal/admin-management",
+    icon: Shield,
+    children: [
+      { label: "Admin Management", path: "/official-portal/admin-management", icon: Users },
+      { label: "User Management", path: "/official-portal/user-management", icon: Users },
+      { label: "Audit Logs", path: "/official-portal/audit-logs", icon: ScrollText },
+      { label: "Backup", path: "/official-portal/backup-management", icon: Archive },
+      { label: "Reports", path: "/official-portal/reports", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    label: "Blotter",
+    path: "/official-portal/blotter/records",
+    icon: Gavel,
+    children: [
+      { label: "Records", path: "/official-portal/blotter/records", icon: FileText },
+      { label: "Docket Books", path: "/official-portal/blotter/docket", icon: ScrollText },
+      { label: "Reports", path: "/official-portal/blotter/reports", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    label: "Lupon",
+    path: "/official-portal/lupon/cases",
+    icon: Scale,
+    children: [
+      { label: "Cases", path: "/official-portal/lupon/cases", icon: FileText },
+      { label: "Reports", path: "/official-portal/lupon/reports", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    label: "VAWC",
+    path: "/official-portal/vawc/cases",
+    icon: Heart,
+    children: [
+      { label: "Cases", path: "/official-portal/vawc/cases", icon: FileText },
+      { label: "Reports", path: "/official-portal/vawc/reports", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    label: "Clearance",
+    path: "/official-portal/clearance/issued-certificates",
+    icon: BookOpen,
+    children: [
+      { label: "Issued Certificates", path: "/official-portal/clearance/issued-certificates", icon: FileText },
+      { label: "Revenue & Collection", path: "/official-portal/clearance/revenue-and-collection", icon: Leaf },
+    ],
+  },
+  {
+    label: "FTJS",
+    path: "/official-portal/ftjs/management",
+    icon: Award,
+    children: [
+      { label: "Management", path: "/official-portal/ftjs/management", icon: FileText },
+      { label: "Reports", path: "/official-portal/ftjs/reports", icon: ChartNoAxesCombined },
+    ],
+  },
+  { label: "Settings", path: "/official-portal/account-settings", icon: Settings },
 ];
 
 export function getNavItemsByRole(role: UserRole): NavItemType[] {

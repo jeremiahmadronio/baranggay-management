@@ -26,7 +26,7 @@ export function mockKapitanaClearanceIssuedRaw(): Record<string, unknown>[] {
     const d = new Date(now);
     d.setDate(d.getDate() - (i % 14));
     const fee = i % 4 === 0 ? 0 : 50 + (i % 3) * 25;
-    const released = i % 5 !== 0;
+    const released = true;
     out.push({
       id: `mock-cert-${i + 1}`,
       templateId: String((i % 5) + 1),

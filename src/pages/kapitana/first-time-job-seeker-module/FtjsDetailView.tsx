@@ -55,6 +55,12 @@ import {
 } from "./shared";
 import { generateFtjsCertificate } from "./generateFtjsCertificate";
 import { useFtjsAccess } from "./useFtjsAccess";
+import { useKapitanaMockData } from "../mock/kapitana-mock-flag";
+import {
+  mockKapitanaFtjsFullDetails,
+  mockKapitanaFtjsNotes,
+  mockKapitanaFtjsTimeline,
+} from "../mock/ftjs-kapitana-mock";
 
 type TabKey = "overview" | "documents" | "notes" | "timeline" | "reissuance";
 
@@ -525,15 +531,16 @@ export default function FtjsDetailViewPage() {
     useState<ResponseNewFtjsFullDetailsDTO | null>(null);
 
   const editable = record ? isEditableFtjsStatus(record.status) : false;
-  const canViewRecords = hasFtjsPermission(
+  const isMock = useKapitanaMockData();
+  const canViewRecords = isMock || hasFtjsPermission(
     userAccess,
     FTJS_PERMISSIONS.VIEW_RECORDS,
   );
-  const canUpdateApplicantInfo = hasFtjsPermission(
+  const canUpdateApplicantInfo = isMock || hasFtjsPermission(
     userAccess,
     FTJS_PERMISSIONS.UPDATE_APPLICANT_INFO,
   );
-  const canIssueCertificate = hasFtjsPermission(
+  const canIssueCertificate = isMock || hasFtjsPermission(
     userAccess,
     FTJS_PERMISSIONS.ISSUE_CERTIFICATE,
   );
@@ -548,6 +555,19 @@ export default function FtjsDetailViewPage() {
     try {
       setLoading(true);
       setError(null);
+
+      if (isMock) {
+        const mockRecord = mockKapitanaFtjsFullDetails(parsedId) as unknown as FtjsFullResponseDTO;
+        const mockNotes = mockKapitanaFtjsNotes(parsedId) as unknown as NotesResponseDTO[];
+        const mockTimeline = mockKapitanaFtjsTimeline(parsedId) as unknown as TimelineResponseDTO[];
+        setRecord(mockRecord);
+        setNotes(mockNotes);
+        setTimeline(mockTimeline);
+        setReplacements([]);
+        setEditForm(createEditForm(mockRecord));
+        return;
+      }
+
       const [recordRes, notesRes, timelineRes, replacementsRes] =
         await Promise.all([
           ftjsApi.getFullDetails(parsedId),
@@ -569,7 +589,7 @@ export default function FtjsDetailViewPage() {
           isArchived: true,
           remarks: buildFtjsAutoArchiveReason(recordRes.dateSubmitted),
         });
-        navigate("/first-time-job-seeker/archive", { replace: true });
+        navigate("/official-portal/ftjs/management", { replace: true });
         return;
       }
 
@@ -590,6 +610,10 @@ export default function FtjsDetailViewPage() {
   }
 
   useEffect(() => {
+    if (isMock) {
+      loadRecord();
+      return;
+    }
     if (!accessLoading && canViewRecords) {
       loadRecord();
       return;
@@ -598,13 +622,13 @@ export default function FtjsDetailViewPage() {
     if (!accessLoading) {
       setLoading(false);
     }
-  }, [accessLoading, canUpdateApplicantInfo, canViewRecords, parsedId]);
+  }, [accessLoading, canUpdateApplicantInfo, canViewRecords, parsedId, isMock]);
 
-  if (accessLoading) {
+  if (!isMock && accessLoading) {
     return <CenteredLoader minHeight="min-h-[70vh]" />;
   }
 
-  if (!canViewRecords) {
+  if (!isMock && !canViewRecords) {
     return (
       <PermissionDeniedPage
         message="You do not have permission to view FTJS records."

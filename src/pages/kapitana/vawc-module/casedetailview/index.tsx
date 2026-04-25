@@ -113,6 +113,13 @@ export default function CaseDetailsPage() {
     return () => clearTimeout(timer);
   }, [activeTab, bpoDetails?.id]);
 
+  /** Convert a full name to initials, e.g. "Maria Santos" → "M. S." */
+  function toInitials(fullName: string): string {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "—";
+    return parts.map((p) => `${p.charAt(0).toUpperCase()}.`).join(" ");
+  }
+
   const victimFullName =
     [caseData?.firstName, caseData?.middleName, caseData?.lastName]
       .filter(Boolean)
@@ -125,6 +132,10 @@ export default function CaseDetailsPage() {
   ]
     .filter(Boolean)
     .join(" ");
+
+  /** Masked names for Overview tab — Kapitana should not see full names */
+  const maskedVictimName = toInitials(victimFullName);
+  const maskedRespondentName = toInitials(respondentFullName);
 
   const violenceTypeLabel =
     caseData?.violenceTypes?.map((item) => item.type).join(", ") || "—";
@@ -249,8 +260,8 @@ export default function CaseDetailsPage() {
         {activeTab === "overview" && (
           <OverviewTab
             caseData={caseData}
-            victimFullName={victimFullName}
-            respondentFullName={respondentFullName}
+            victimFullName={maskedVictimName}
+            respondentFullName={maskedRespondentName}
             caseStatus={caseStatus}
             isWithdrawn={isWithdrawn}
             isReadOnly={true}
@@ -281,8 +292,8 @@ export default function CaseDetailsPage() {
             isReadOnly={true}
             canIssueBpo={false}
             canManageIntervention={false}
-            victimFullName={victimFullName}
-            respondentFullName={respondentFullName}
+            victimFullName={maskedVictimName}
+            respondentFullName={maskedRespondentName}
             bpoDetails={bpoDetails}
             bpoLoading={bpoLoading}
             bpoActionLoading={false}
