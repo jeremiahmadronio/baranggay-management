@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 
-import type { ArchiveStatsDTO, ArchiveTableDTO, ArchiveTableParams, ArchiveTableResponse } from "../../../service/blotter-api/DocketView";
-import {  RotateCcw } from "lucide-react";
+import type {
+  ArchiveStatsDTO,
+  ArchiveTableDTO,
+  ArchiveTableParams,
+  ArchiveTableResponse,
+} from "../../../service/blotter-api/DocketView";
+import { RotateCcw } from "lucide-react";
 import { Table, type TableColumn } from "../../../reusable";
 import { TableFilter } from "../../../hooks/TableFilter";
 import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
@@ -25,7 +30,6 @@ import {
   mockArchiveTableResponse,
   mockKapitanaBlotterAccess,
 } from "../mock/blotter-kapitana-mock";
-
 
 const PAGE_SIZE = 10;
 
@@ -330,7 +334,6 @@ export default function ArchiveCasesPage() {
       width: "130px",
       render: (item) => (
         <div className="flex items-center justify-end gap-1.5">
-          
           <button
             disabled={!canArchiveCases}
             onClick={(e) => {
@@ -391,7 +394,16 @@ export default function ArchiveCasesPage() {
         />
         <KPICard
           title="For the Record"
-          value={statsLoading ? "..." : (stats?.totalArchiveForTheRecord ?? 0)}
+          value={
+            statsLoading
+              ? "..."
+              : typeof stats?.totalArchiveForTheRecord === "number"
+                ? stats.totalArchiveForTheRecord
+                : tableData.filter(
+                    (item) =>
+                      String(item.caseType).toUpperCase() === "FOR_THE_RECORD",
+                  ).length
+          }
           color="emerald"
           icon={KPIIcons.check}
           subtitle="Archived for-the-record cases"

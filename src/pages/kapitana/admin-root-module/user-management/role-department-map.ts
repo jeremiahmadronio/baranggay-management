@@ -20,7 +20,15 @@ const DEPT_ROLE_RULES: Record<DeptKey, string[]> = {
   lupon: ["chairman", "secretary", "members", "desk officer", "focal person"],
   clearance: ["desk officer", "secretary"],
   ftjs: ["focal person", "desk officer"],
-  captain: ["captain", "secretary", "desk officer", "officials"],
+  captain: [
+  "captain",
+  "punong barangay",
+  "barangay captain",
+  "secretary",
+  "desk officer",
+  "officials",
+  "staff",
+],
 };
 
 const DEPT_PERMISSION_RULES: Record<DeptKey, string[]> = {

@@ -529,7 +529,10 @@ export function OfficerManagementPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-gray-700">
-                            {prettifyDepartmentName(item.departmentName)}
+                            {String(item.departmentName).toUpperCase() ===
+                            "ADMINISTRATION"
+                              ? "GLOBAL"
+                              : prettifyDepartmentName(item.departmentName)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-700">
