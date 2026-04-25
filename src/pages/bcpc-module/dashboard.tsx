@@ -98,15 +98,8 @@ function getDistributionColor(label: string, index: number): string {
   return map[key] ?? DISTRIBUTION_COLORS[index % DISTRIBUTION_COLORS.length];
 }
 
-function formatTrendText(value?: number | null, positiveLabel = "up") {
-  if (value === undefined || value === null || value === 0) {
-    return "No change from previous period";
-  }
 
-  const absolute = Math.abs(value);
-  const direction = value > 0 ? positiveLabel : "down";
-  return `${absolute}% ${direction} from previous period`;
-}
+
 
 function formatStatusText(text: string) {
   if (!text) return "";
@@ -216,36 +209,36 @@ export default function BcpcDashboard() {
           </div>
         )}
 
-        <KPIGrid columns={4}>
-          <KPICard
-            title="Total Cases"
-            value={cardValue(safeStats.totalCases)}
-            color="slate"
-            icon={<FileText className="w-6 h-6" />}
-            subtitle={formatTrendText(safeStats.casesTrend, "up")}
-          />
-          <KPICard
-            title="Active BPOs"
-            value={cardValue(safeStats.activeBpos)}
-            color="blue"
-            icon={<Clock className="w-6 h-6" />}
-            subtitle="Orders currently active"
-          />
-          <KPICard
-            title="BPOs Issued"
-            value={cardValue(safeStats.bposIssued)}
-            color="amber"
-            icon={<ShieldAlert className="w-6 h-6" />}
-            subtitle={formatTrendText(safeStats.bposTrend, "up")}
-          />
-          <KPICard
-            title="Settled Cases"
-            value={cardValue(safeStats.totalSettled)}
-            color="emerald"
-            icon={<CheckCircle className="w-6 h-6" />}
-            subtitle={formatTrendText(safeStats.settledTrend, "up")}
-          />
-        </KPIGrid>
+       <KPIGrid columns={4}>
+  <KPICard
+    title="Total Cases"
+    value={cardValue(safeStats.totalCases)}
+    color="slate"
+    icon={<FileText className="w-6 h-6" />}
+    subtitle="Total number of BCPC cases filed"
+  />
+  <KPICard
+    title="Active Cases"
+    value={cardValue(safeStats.activeBpos)}
+    color="blue"
+    icon={<Clock className="w-6 h-6" />}
+    subtitle="Cases currently under investigation"
+  />
+  <KPICard
+    title="Interventions Issued"
+    value={cardValue(safeStats.bposIssued)}
+    color="amber"
+    icon={<ShieldAlert className="w-6 h-6" />}
+    subtitle="Total interventions issued since record started"
+  />
+  <KPICard
+    title="Settled Cases"
+    value={cardValue(safeStats.totalSettled)}
+    color="emerald"
+    icon={<CheckCircle className="w-6 h-6" />}
+    subtitle="Cases successfully resolved and closed"
+  />
+</KPIGrid>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="overflow-hidden rounded-lg border border-gray-200 bg-white lg:col-span-8">

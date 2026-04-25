@@ -101,10 +101,10 @@ export const lupongTagapamayapaNavItems: NavItemType[] = [
 // BCPC navigation items
 export const BcpcNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/bcpc/dashboard", icon: LayoutDashboard },
-  { label: "New Case Entry", path: "/bcpc/new-case-entry", icon: FilePlus2 },
+    { label:"Resident", path: "/bcpc/resident-records", icon: Users },
+  { label: "Case Entry", path: "/bcpc/new-case-entry", icon: FilePlus2 },
   { label: "Case Management", path: "/bcpc/case-management", icon: FileText },
   { label: "Report", path: "/bcpc/report", icon: ChartNoAxesCombined },
-  { label: "Resident Records", path: "/bcpc/resident-records", icon: Users },
 ];
 
 //Clearance navigation items
@@ -224,6 +224,15 @@ export const officialNavItems: NavItemType[] = [
     children: [
       { label: "Cases", path: "/official-portal/vawc/cases", icon: FileText },
       { label: "Reports", path: "/official-portal/vawc/reports", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    label: "BCPC",
+    path: "/official-portal/bcpc/cases",
+    icon: Shield,
+    children: [
+      { label: "Cases", path: "/official-portal/bcpc/cases", icon: FileText },
+      { label: "Reports", path: "/official-portal/bcpc/reports", icon: ChartNoAxesCombined },
     ],
   },
   {

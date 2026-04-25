@@ -903,13 +903,7 @@ export default function RootArchivePage() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setSelectedUser(u)}
-                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                title="View"
-                              >
-                                <EyeIcon className="w-4 h-4" />
-                              </button>
+                             
                               <button
                                 onClick={() =>
                                   setRestoreTarget({
@@ -1121,13 +1115,7 @@ export default function RootArchivePage() {
                             {formatLastLogin(admin.lastLoginAt)}
                           </td>
                           <td className="px-6 py-4 text-right flex gap-2 justify-end">
-                            <button
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                              onClick={() => setSelectedAdmin(admin)}
-                              title="View"
-                            >
-                              <EyeIcon className="w-4 h-4" />
-                            </button>
+                           
                             <button
                               className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
                               onClick={() => setAdminRestoreTarget(admin)}

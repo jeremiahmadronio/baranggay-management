@@ -8,63 +8,97 @@ import {
   Check,
   X,
   ArrowLeft,
-  User,
+
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AuthLayout } from './AuthLayout'
 import { authService } from '../../service/login-api/login'
 import { ActionModal } from '../../reusable'
+
+function normalizeKey(value?: string | null): string {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+}
+
+function routeFromDepartment(department?: string | null): string | null {
+  const key = normalizeKey(department)
+  switch (key) {
+    case 'CLEARANCE':
+      return '/clearance/dashboard'
+    case 'OFFICIAL':
+    case 'KAPITANA':
+    case 'CAPTAIN':
+    case 'OFFICE_OF_THE_BARANGAY_CAPTAIN':
+      return '/official-portal/dashboard'
+    case 'BLOTTER':
+      return '/blotter/dashboard'
+    case 'BCPC':
+      return '/bcpc/dashboard'
+    case 'VAWC':
+      return '/vawc/dashboard'
+    case 'LUPON':
+    case 'LUPONG_TAGAPAMAYAPA':
+      return '/lupongtagapamayapa/dashboard'
+    case 'FIRST_TIME_JOB_SEEKER':
+    case 'FTJS':
+      return '/first-time-job-seeker/dashboard'
+    default:
+      return null
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
+
 export function ChangePasswordNewAccountPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [username, setUsername] = useState('')
+  const [username] = useState('')
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [isUsernameTaken, setIsUsernameTaken] = useState(false);
-const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-const [usernameMessage, setUsernameMessage] = useState('');
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameMessage, setUsernameMessage] = useState('');
+
+  // Store the destination route after successful password change
+  const [destinationRoute, setDestinationRoute] = useState('/login');
+
   const email =
     (
       location.state as {
         email?: string
       }
     )?.email || ''
- 
-  
-  
-   useEffect(() => {
-  if (username.trim().length < 3) {
-    setIsUsernameTaken(false);
-    setUsernameMessage('');
-    return;
-  }
 
-  const checkUsername = async () => {
-    setIsCheckingUsername(true);
-    try {
-      const isAvailable = await authService.checkUsernameAvailability(username);
-      // i-adjust depende sa backend mo:
-      // kung true = available → setIsUsernameTaken(!isAvailable)
-      // kung true = taken    → setIsUsernameTaken(isAvailable)
-      setIsUsernameTaken(!isAvailable); // assuming true = available
-      setUsernameMessage(isAvailable ? 'Username is available.' : 'This username is already taken.');
-    } catch (err) {
-      console.error("Username check failed", err);
-    } finally {
-      setIsCheckingUsername(false);
+  useEffect(() => {
+    if (username.trim().length < 3) {
+      setIsUsernameTaken(false);
+      setUsernameMessage('');
+      return;
     }
-  };
 
-  const timeoutId = setTimeout(checkUsername, 500);
-  return () => clearTimeout(timeoutId);
-}, [username]); 
+    const checkUsername = async () => {
+      setIsCheckingUsername(true);
+      try {
+        // API returns true when username IS taken
+        const isTaken = await authService.checkUsernameAvailability(username);
+        setIsUsernameTaken(isTaken);
+        setUsernameMessage(isTaken ? 'This username is already taken.' : 'Username is available.');
+      } catch (err) {
+        console.error("Username check failed", err);
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    };
 
-
+    const timeoutId = setTimeout(checkUsername, 500);
+    return () => clearTimeout(timeoutId);
+  }, [username]);
 
   const passwordRules = {
     minLength: newPassword.length >= 8,
@@ -74,12 +108,11 @@ const [usernameMessage, setUsernameMessage] = useState('');
     hasSpecial: /[@$!%*?&]/.test(newPassword),
   }
 
-
-  
   const isPasswordValid = Object.values(passwordRules).every(Boolean)
   const passwordsMatch =
     newPassword === confirmPassword && confirmPassword !== ''
   const isUsernameValid = username.trim().length >= 3
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -95,14 +128,34 @@ const [usernameMessage, setUsernameMessage] = useState('');
       setError('Username must be at least 3 characters long.')
       return
     }
+    if (isUsernameTaken) {
+      setError('Please choose a different username — this one is already taken.')
+      return
+    }
     setIsLoading(true)
     try {
-      await authService.changePasswordNewAccount({
+      const response = await authService.changePasswordNewAccount({
         email,
         newPassword,
         confirmPassword,
         username,
       })
+
+      // Determine the destination based on role/department from response
+      if (response.status === 'SUCCESS') {
+        const role = normalizeKey(response.role)
+        if (role === 'ROOT_ADMIN') {
+          setDestinationRoute('/rootadmin/dashboard')
+        } else if (role === 'ADMIN') {
+          setDestinationRoute('/admin/dashboard')
+        } else if (role === 'CAPTAIN') {
+          setDestinationRoute('/official-portal/dashboard')
+        } else {
+          const departmentRoute = routeFromDepartment(response.departments?.[0])
+          setDestinationRoute(departmentRoute || '/login')
+        }
+      }
+
       setShowSuccessModal(true)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to change password.')
@@ -110,14 +163,12 @@ const [usernameMessage, setUsernameMessage] = useState('');
       setIsLoading(false)
     }
   }
+
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false)
-    navigate('/security-setup', {
-      state: {
-        email,
-      },
-    })
+    navigate(destinationRoute)
   }
+
   const RuleItem = ({ valid, text }: { valid: boolean; text: string }) => (
     <div
       className={`flex items-center gap-2 text-sm ${valid ? 'text-green-600' : 'text-slate-400'}`}
@@ -270,30 +321,12 @@ const [usernameMessage, setUsernameMessage] = useState('');
                 text="Special (@$!%*?&)"
               />
             </div>
-          </div>
+         
 
           <div className="pt-2">
-  <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1.5">
-    Choose your username
-  </label>
-  <div className="relative">
-    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-      <User className="h-5 w-5 text-slate-400" />
-    </div>
-    <input
-      id="username"
-      type="text"
-      required
-      value={username}
-      onChange={(e) => setUsername(e.target.value)}
-      className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 bg-slate-50 focus:bg-white 
-        ${username.length >= 3 && isUsernameTaken ? 'border-red-300' : 
-          username.length >= 3 && !isUsernameTaken && !isCheckingUsername ? 'border-green-300' : 'border-slate-200'}`}
-      placeholder="Your username"
-      disabled={isLoading}
-    />
+ 
     
-    {/* Selyado: Status Indicators */}
+    {/* Status Indicators */}
     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
       {isCheckingUsername ? (
         <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
@@ -305,7 +338,7 @@ const [usernameMessage, setUsernameMessage] = useState('');
     </div>
   </div>
   
-  {/* Selyado: Validation Message */}
+  {/* Validation Message */}
   {usernameMessage && (
     <p className={`mt-1 text-xs ${isUsernameTaken ? 'text-red-600' : 'text-green-600'}`}>
       {usernameMessage}
@@ -319,7 +352,8 @@ const [usernameMessage, setUsernameMessage] = useState('');
               isLoading ||
               !isPasswordValid ||
               !passwordsMatch ||
-              !isUsernameValid
+              !isUsernameValid ||
+              isUsernameTaken
             }
             className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-600 disabled:opacity-50 transition-colors font-medium shadow-sm mt-4"
           >
@@ -337,12 +371,12 @@ const [usernameMessage, setUsernameMessage] = useState('');
       <ActionModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
-        title="Account Updated Successfully"
+        title="Account Setup Complete"
         type="success"
       >
         <p>
-          Your password and username have been set. Let's set up your security
-          settings next.
+          Your password and username have been set successfully. You will now be
+          redirected to your dashboard.
         </p>
       </ActionModal>
     </AuthLayout>

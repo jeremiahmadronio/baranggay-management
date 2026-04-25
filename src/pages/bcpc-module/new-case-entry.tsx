@@ -393,13 +393,7 @@ export default function BcpcNewCaseEntryPage() {
               placeholder="Select"
               error={errors.cGender}
             />
-            <FormSelect
-              label="Civil Status"
-              value={cCivilStatus}
-              onChange={(e) => setCCivilStatus(e.target.value)}
-              options={CIVIL_STATUS_OPTIONS}
-              placeholder="Select"
-            />
+           
             <FormInput
               label="Contact Number"
               inputMode="numeric"
@@ -409,13 +403,7 @@ export default function BcpcNewCaseEntryPage() {
               placeholder="09XXXXXXXXX"
             />
           </FormRow>
-          <FormInput
-            label="Email Address"
-            type="email"
-            value={cEmail}
-            onChange={(e) => setCEmail(e.target.value)}
-            placeholder="optional@email.com"
-          />
+       
           <FormInput
             id="field-cAddress"
             label="Complete Address"
@@ -495,13 +483,7 @@ export default function BcpcNewCaseEntryPage() {
               options={GENDER_OPTIONS}
               placeholder="Select"
             />
-            <FormSelect
-              label="Civil Status"
-              value={rCivilStatus}
-              onChange={(e) => setRCivilStatus(e.target.value)}
-              options={CIVIL_STATUS_OPTIONS}
-              placeholder="Select"
-            />
+           
           </FormRow>
           <FormRow cols={2}>
             <FormInput

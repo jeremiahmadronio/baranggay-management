@@ -4,7 +4,6 @@ import {
   Loader2,
   ArrowLeft,
   Smartphone,
-  Mail,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
@@ -426,18 +425,7 @@ export function MFAVerificationPage() {
                       }}
                     />
                    
-                    <MethodButton
-                      icon={<Mail className="w-5 h-5" />}
-                      title="Backup Email"
-                      description="Send a code to your registered backup email"
-                      onClick={() => {
-                        setMethod('BACKUP_EMAIL')
-                        setShowAlternativeMethods(false)
-                        setBackupEmailStep('ENTER_EMAIL')
-                        setCode(['', '', '', '', '', ''])
-                        setError('')
-                      }}
-                    />
+                  
                   </div>
                 </motion.div>
               )}
