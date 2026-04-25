@@ -45,6 +45,8 @@ export const IssueCertificatePage = () => {
   const [templateData, setTemplateData] = useState<IssuanceTemplate | null>(
     null,
   );
+  const [selectedResident, setSelectedResident] =
+    useState<PersonSearchResponseDTO | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,6 +151,7 @@ export const IssueCertificatePage = () => {
 
   const handleResidentSelect = useCallback(
     (resident: PersonSearchResponseDTO) => {
+      setSelectedResident(resident);
       const residentData = mapResidentToFormData(resident);
       setFormData((prev) => ({ ...prev, ...residentData }));
     },
@@ -611,19 +614,28 @@ export const IssueCertificatePage = () => {
         ? Number(templateData.settings.fee || 0)
         : 0;
       const feeText = String(feeValue);
-      const payloadFormData = {
+      const payloadFormData: Record<string, string> = {
         ...formData,
         amount: formData.amount || feeText,
         fee: formData.fee || feeText,
         AMOUNT: formData.AMOUNT || feeText,
         AMOUNT_PAID: formData.AMOUNT_PAID || feeText,
       };
+      const resolvedRequestorName =
+        payloadFormData.full_name ||
+        payloadFormData.FULL_NAME ||
+        payloadFormData.requestorName ||
+        payloadFormData.requesterName ||
+        "";
 
       const result = await issueCertificate({
         templateId: selectedTemplateId,
         formData: payloadFormData,
         issuedBy: "Admin", // TODO: Get from auth context
         certificateType: templateData.title,
+        personId: selectedResident?.id,
+        requestorName: resolvedRequestorName,
+        remarks: payloadFormData.remarks || "Issued via clearance module",
       });
       if (result.success) {
         triggerAutoPrint(pendingPrintWindowRef.current);
@@ -641,8 +653,12 @@ export const IssueCertificatePage = () => {
       if (pendingPrintWindowRef.current && !pendingPrintWindowRef.current.closed) {
         pendingPrintWindowRef.current.close();
       }
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to issue certificate. Please try again.";
       setNotification({
-        message: "Failed to issue certificate. Please try again.",
+        message: errorMessage,
         type: "error",
       });
     } finally {

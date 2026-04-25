@@ -643,14 +643,14 @@ export const ClearanceSettings = () => {
                                 ? "Restore archived certificate"
                                 : "No permission to restore archived certificate"
                             }
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border rounded-lg transition-colors ${
+                            aria-label="Restore archived certificate"
+                            className={`inline-flex h-7 w-7 items-center justify-center border rounded-lg transition-colors ${
                               canRestoreCertificates
-                                ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                ? "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
                                 : "text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed"
                             }`}
                           >
                             <RotateCcw className="w-3 h-3" />
-                            Restore
                           </button>
                         </td>
                       </tr>
@@ -786,22 +786,22 @@ export const ClearanceSettings = () => {
                                   ? "Restore archived template"
                                   : "No permission to restore archived template"
                               }
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border rounded-lg transition-colors ${
+                              aria-label="Restore archived template"
+                              className={`inline-flex h-7 w-7 items-center justify-center border rounded-lg transition-colors ${
                                 canRestoreTemplates
-                                  ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                  ? "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
                                   : "text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed"
                               }`}
                             >
                               <RotateCcw className="w-3 h-3" />
-                              Restore
                             </button>
                             <button
                               onClick={() => setDeleteTarget(t)}
                               title="Delete archived template from list"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border rounded-lg transition-colors text-rose-600 border-rose-200 hover:bg-rose-50"
+                              aria-label="Delete archived template"
+                              className="inline-flex h-7 w-7 items-center justify-center border rounded-lg transition-colors text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100"
                             >
                               <Trash2 className="w-3 h-3" />
-                              Delete
                             </button>
                           </div>
                         </td>

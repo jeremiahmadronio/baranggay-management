@@ -36,7 +36,7 @@ import RootAdminDashboard from "./pages/admin-root-module/dashboard";
 import AdminManagement from "./pages/admin-root-module/admin-management";
 import AdminViewPage from "./pages/admin-root-module/admin-view-page";
 import AuditLogs from "./pages/admin-root-module/audit-logs";
-import { Settings } from "./pages/admin-root-module/account-settings";
+import { Settings as SharedAccountSettings } from "./pages/admin-root-module/account-settings";
 import { BackupPage } from "./pages/admin-root-module/BackupPage";
 import Root_User_Management from "./pages/admin-root-module/user-management/user-management";
 import RootOfficerManagementPage from "./pages/admin-root-module/officer/officerManagement";
@@ -142,7 +142,7 @@ export function App() {
         <Route path="inputform" element={<RecordInputDemo />} />
         <Route path="residents" element={<ResidentsPage />} />
         <Route path="officers" element={<OfficerManagementPage />} />
-        <Route path="account-settings" element={<Settings />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
         <Route
           path="users"
           element={<PagePlaceholder title="User Management" />}
@@ -164,7 +164,7 @@ export function App() {
         />
         <Route path="backup-management" element={<BackupPage />} />
         <Route path="audit-logs" element={<AuditLogs />} />
-        <Route path="account-settings" element={<Settings />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
         <Route path="archive" element={<RootArchivePage />} />
       </Route>
 
@@ -179,6 +179,7 @@ export function App() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="record-view" element={<BlotterViewPage />} />
         <Route path="residents" element={<ResidentListPage />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
       </Route>
 
       {/* Lupong Tagapamayapa */}
@@ -195,7 +196,7 @@ export function App() {
         <Route path="view-all-hearings" element={<ViewAllHearings />} />
         <Route path="reports" element={<LuponReportsPage />} />
         <Route path="monthly-report" element={<MonthlyReportPage />} />
-        <Route path="account-settings" element={<Settings />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
       </Route>
 
       {/* BCPC */}
@@ -218,6 +219,7 @@ export function App() {
         <Route path="casedetailview" element={<VawcCaseDetailsPage />} />
         <Route path="reports" element={<VawcReportsPage />} />
         <Route path="residents" element={<ResidentListPage />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
       </Route>
 
       {/* Clearance */}
@@ -231,6 +233,7 @@ export function App() {
         />
         <Route path="issue-certificate" element={<IssueCertificatePage />} />
         <Route path="template" element={<CreateTemplate />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
         <Route path="settings" element={<ClearanceSettings />} />
       </Route>
 
@@ -246,13 +249,18 @@ export function App() {
         <Route path="management/:ftjsId" element={<FtjsDetailViewPage />} />
         <Route path="archive" element={<FtjsArchivePage />} />
         <Route path="reports" element={<FtjsReportPage />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
       </Route>
 
       {/* Officials */}
       <Route path="/official-portal" element={<OfficialLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<OfficialDashboard />} />
-        <Route path="settings" element={<PagePlaceholder title="Settings" />} />
+        <Route path="account-settings" element={<SharedAccountSettings />} />
+        <Route
+          path="settings"
+          element={<Navigate to="/official-portal/account-settings" replace />}
+        />
       </Route>
     </Routes>
   );

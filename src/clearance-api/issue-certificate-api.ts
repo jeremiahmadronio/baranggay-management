@@ -22,6 +22,7 @@ import {
   getPreviewData,
   fetchTemplate,
 } from "./template-api";
+import { clearanceTemplateApi } from "../service/clearance-api/Template";
 
 // Re-export types for convenience
 export type { FormFieldConfig, FormFieldsConfig, IssuanceTemplate };
@@ -31,26 +32,6 @@ export type { FormFieldConfig, FormFieldsConfig, IssuanceTemplate };
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const API_BASE_URL = "/api/clearance";
-const MOCK_ISSUED_STORAGE_KEY = "clearance.mockIssuedCertificates";
-
-const readMockIssuedCertificates = (): Array<Record<string, unknown>> => {
-  try {
-    const raw = localStorage.getItem(MOCK_ISSUED_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeMockIssuedCertificates = (rows: Array<Record<string, unknown>>) => {
-  try {
-    localStorage.setItem(MOCK_ISSUED_STORAGE_KEY, JSON.stringify(rows));
-  } catch {
-    // ignore storage errors in fallback mode
-  }
-};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPERS - Create field configs
@@ -1138,6 +1119,9 @@ export interface IssueCertificatePayload {
   formData: Record<string, string>;
   issuedBy: string;
   certificateType?: string;
+  personId?: number;
+  requestorName?: string;
+  remarks?: string;
 }
 
 export interface IssueCertificateResponse {
@@ -1146,39 +1130,30 @@ export interface IssueCertificateResponse {
   message: string;
 }
 
-const toLocalDateTimeString = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  const second = String(date.getSeconds()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-};
-
 export const issueCertificate = async (
   payload: IssueCertificatePayload,
 ): Promise<IssueCertificateResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/issue`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) throw new Error("Failed to issue certificate");
-    return await response.json();
-  } catch (error) {
-    console.warn("API unavailable, using mock response:", error);
+    const templateIdNum = Number(payload.templateId);
+    if (!Number.isFinite(templateIdNum)) {
+      throw new Error("Invalid template selected.");
+    }
 
-    // Generate mock certificate number
-    const timestamp = Date.now();
-    const issuedNow = new Date(timestamp);
-    const certNumber = `CERT-${payload.templateId.toUpperCase().substring(0, 3)}-${timestamp}`;
-
-    const requesterName =
+    const resolvedRequestorName =
+      payload.requestorName ||
       payload.formData.full_name ||
       payload.formData.FULL_NAME ||
-      "Unknown Requestor";
+      payload.formData.requestorName ||
+      payload.formData.requesterName ||
+      "";
+
+    if (!resolvedRequestorName.trim()) {
+      throw new Error("Requestor name is required.");
+    }
+
+    if (!payload.personId || payload.personId <= 0) {
+      throw new Error("Please select a resident before issuing clearance.");
+    }
 
     const amountRaw =
       payload.formData.amount ||
@@ -1190,29 +1165,40 @@ export const issueCertificate = async (
     const amount = Number(amountRaw);
     const isFree = !Number.isFinite(amount) || amount <= 0;
 
-    const mockIssuedRecord: Record<string, unknown> = {
-      id: `mock-${timestamp}`,
-      templateId: payload.templateId,
-      certificateType: payload.certificateType || `Template ${payload.templateId}`,
-      requesterName,
-      certificateData: payload.formData,
-      isFree,
-      issuedBy: payload.issuedBy,
-      status: "Released",
-      dateIssued: toLocalDateTimeString(issuedNow),
-      orNumber: isFree ? undefined : `OR-MOCK-${String(timestamp).slice(-6)}`,
-      fee: isFree ? 0 : amount,
-      isArchived: false,
-    };
+    const orNumber =
+      payload.formData.or_number ||
+      payload.formData.OR_NUMBER ||
+      payload.formData.orNo ||
+      payload.formData.orNumber ||
+      "";
 
-    const existing = readMockIssuedCertificates();
-    writeMockIssuedCertificates([mockIssuedRecord, ...existing]);
+    const ctnNumber =
+      payload.formData.ctn_number ||
+      payload.formData.ctc_number ||
+      payload.formData.CTN_NUMBER ||
+      payload.formData.CTC_NUMBER ||
+      "";
+
+    const responseMessage = await clearanceTemplateApi.issueClearance({
+      templateId: templateIdNum,
+      personId: payload.personId,
+      requestorName: resolvedRequestorName.trim(),
+      fieldValues: payload.formData,
+      orNumber,
+      ctnNumber,
+      isFree,
+      remarks: payload.remarks || "Issued via clearance module",
+    });
 
     return {
       success: true,
-      certificateNumber: certNumber,
-      message: `Certificate ${certNumber} issued successfully`,
+      certificateNumber: "",
+      message: responseMessage || "Certificate issued successfully",
     };
+  } catch (error) {
+    throw error instanceof Error
+      ? error
+      : new Error("Failed to issue certificate");
   }
 };
 

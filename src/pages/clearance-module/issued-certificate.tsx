@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CircleX } from "lucide-react";
+import { Archive, CircleX } from "lucide-react";
 import {
   ActionModal,
   KPICard,
@@ -492,7 +492,7 @@ export const IssuedCertificatePage = () => {
     {
       key: "actions",
       header: "Actions",
-      width: "170px",
+      width: "120px",
       align: "center",
       render: (item) => (
         <div className="flex items-center gap-2 justify-center">
@@ -504,9 +504,9 @@ export const IssuedCertificatePage = () => {
               }}
               title="Void certificate"
               aria-label="Void certificate"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:bg-rose-100"
+              className="inline-flex h-7 w-7 items-center justify-center text-rose-500 transition-colors hover:text-rose-600"
             >
-              <CircleX className="h-3.5 w-3.5" />
+              <CircleX className="h-4 w-4" />
             </button>
           )}
           <button
@@ -515,9 +515,10 @@ export const IssuedCertificatePage = () => {
               openArchiveModal(item);
             }}
             title="Archive certificate"
-            className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-600 transition-colors hover:bg-amber-100"
+            aria-label="Archive certificate"
+            className="inline-flex h-7 w-7 items-center justify-center text-amber-500 transition-colors hover:text-amber-600"
           >
-            Archive
+            <Archive className="h-4 w-4" />
           </button>
         </div>
       ),

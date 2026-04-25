@@ -88,16 +88,18 @@ export function Layout({ userRole }: LayoutProps) {
 
   const pageTitle = currentNavItem?.label || fallbackTitle || "Dashboard";
 
-  const accountSettingsPath =
-    userRole === "rootadmin"
-      ? "/rootadmin/account-settings"
-      : userRole === "admin"
-        ? "/admin/account-settings"
-        : userRole === "lupongtagapamayapa"
-          ? "/lupongtagapamayapa/account-settings"
-          : userRole === "clearance"
-            ? "/clearance/settings"
-            : "/";
+  const accountSettingsPathByRole: Record<UserRole, string> = {
+    rootadmin: "/rootadmin/account-settings",
+    admin: "/admin/account-settings",
+    blotter: "/blotter/account-settings",
+    lupongtagapamayapa: "/lupongtagapamayapa/account-settings",
+    dcpc: "/dcpc/account-settings",
+    clearance: "/clearance/account-settings",
+    vawc: "/vawc/account-settings",
+    firstTimeJobSeeker: "/first-time-job-seeker/account-settings",
+    official: "/official-portal/account-settings",
+  };
+  const accountSettingsPath = accountSettingsPathByRole[userRole] ?? "/";
   const myProfilePath = `${accountSettingsPath}?tab=profile`;
   const securityMfaPath = `${accountSettingsPath}?tab=security`;
 
