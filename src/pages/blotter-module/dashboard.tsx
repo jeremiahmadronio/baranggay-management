@@ -348,7 +348,7 @@ const BlotterDashboard = () => {
                         </div>
                       </div>
                       <span className="text-sm text-gray-900 font-medium">
-                        {item.count.toLocaleString()}
+                        {(item?.count ?? 0).toLocaleString()}
                       </span>
                     </div>
                   ))}

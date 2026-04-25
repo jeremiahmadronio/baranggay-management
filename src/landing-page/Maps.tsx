@@ -64,27 +64,28 @@ const mapOptions = {
     ]
 };
 
+const InfoOverlay = () => (
+    <div className="absolute top-24 left-8 z-20 bg-white rounded-xl shadow-lg p-6 max-w-sm border border-blue-200 flex flex-col gap-3" style={{backdropFilter:'blur(6px)'}}>
+        <h3 className="font-bold text-blue-900 text-xl mb-2">Barangay Ugong Map Guide</h3>
+        <div className="flex items-center gap-2 text-sm">
+            <div className="w-6 h-0.5 bg-red-600 border-t-2 border-dashed border-red-600" />
+            <span className="text-blue-900">Red Dashed: Boundary ng Ugong</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+            <div className="w-4 h-4 bg-red-500 rounded-full" />
+            <span className="text-blue-900">Marker: 3S Center / Brgy. Hall</span>
+        </div>
+        <div className="mt-2 text-xs text-blue-900/70 italic">
+            💡 Tip: Click "Satellite View" for aerial imagery.
+        </div>
+    </div>
+);
+
 export const Maps = () => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
     const [zoom, setZoom] = useState(15); 
 
-        const InfoOverlay = () => (
-            <div className="absolute top-24 left-8 z-20 bg-white rounded-xl shadow-lg p-6 max-w-sm border border-blue-200 flex flex-col gap-3" style={{backdropFilter:'blur(6px)'}}>
-                <h3 className="font-bold text-blue-900 text-xl mb-2">Barangay Ugong Map Guide</h3>
-                <div className="flex items-center gap-2 text-sm">
-                    <div className="w-6 h-0.5 bg-red-600 border-t-2 border-dashed border-red-600" />
-                    <span className="text-blue-900">Red Dashed: Boundary ng Ugong</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <div className="w-4 h-4 bg-red-500 rounded-full" />
-                    <span className="text-blue-900">Marker: 3S Center / Brgy. Hall</span>
-                </div>
-                <div className="mt-2 text-xs text-blue-900/70 italic">
-                    💡 Tip: Click "Satellite View" for aerial imagery.
-                </div>
-            </div>
-        );
 
     const [scriptLoaded, setScriptLoaded] = useState(false);
     return (

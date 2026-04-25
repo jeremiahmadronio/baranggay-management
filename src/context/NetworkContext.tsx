@@ -20,6 +20,7 @@ import {
   type SyncStatus,
   type SyncResult,
 } from '../service/offline';
+import { syncResidentsForOffline } from '../service/offline/residentDb';
 
 interface NetworkContextType {
   /** Whether the browser currently has network connectivity */
@@ -52,12 +53,15 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Trigger sync
+  // Trigger sync — only when authenticated
   const triggerSync = useCallback(async () => {
     if (!navigator.onLine) return;
+    if (!localStorage.getItem('token')) return; // skip sync when not logged in
     const result = await syncPendingRequests();
     setLastSyncResult(result);
     await refreshPendingCount();
+    // Also sync residents for offline autofill
+    await syncResidentsForOffline();
   }, [refreshPendingCount]);
 
   // Listen for online/offline events
@@ -97,10 +101,15 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   // Also auto-sync on mount if we start online with pending items
   useEffect(() => {
     let mounted = true;
+    const hasToken = !!localStorage.getItem('token');
+
     const init = async () => {
       const count = await getPendingCount().catch(() => 0);
       if (!mounted) return;
       setPendingCount(count);
+
+      // Skip all sync logic when not authenticated (e.g. login page)
+      if (!hasToken) return;
       
       // If we start the app and we're online and have pending items, sync them!
       if (count > 0 && navigator.onLine) {
@@ -110,7 +119,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         try {
           const { clearPendingEntries } = await import('../service/fetchInterceptor');
           clearPendingEntries();
-        } catch {}
+        } catch {
+          // Ignore error
+        }
+        
+        // Even if no pending edits, sync latest residents for offline autofill
+        setTimeout(() => syncResidentsForOffline(), 2000);
       }
     };
     
@@ -138,6 +152,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useNetwork() {
   const context = useContext(NetworkContext);
   if (context === undefined) {

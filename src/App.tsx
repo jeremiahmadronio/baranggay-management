@@ -30,6 +30,8 @@ import UserManagement from "./pages/admin-module/user-management/user-management
 import { ResidentsPage } from "./pages/admin-module/resident/ResidentsPage";
 import { OfficerManagementPage } from "./pages/admin-module/officer/officerManagement";
 import ArchivePage from "./pages/admin-module/archive/archive";
+import EventsManagement from "./pages/admin-module/events/EventsManagement";
+import AdminReportsPage from "./pages/admin-module/reports";
 
 // Root Admin
 import RootAdminDashboard from "./pages/admin-root-module/dashboard";
@@ -165,6 +167,8 @@ export function App() {
         <Route path="inputform" element={<RecordInputDemo />} />
         <Route path="residents" element={<ResidentsPage />} />
         <Route path="officers" element={<OfficerManagementPage />} />
+        <Route path="events" element={<EventsManagement />} />
+        <Route path="reports" element={<AdminReportsPage />} />
         <Route path="account-settings" element={<SharedAccountSettings />} />
         <Route
           path="users"
@@ -186,6 +190,7 @@ export function App() {
           element={<AdminViewPage />}
         />
         <Route path="backup-management" element={<BackupPage />} />
+        <Route path="events" element={<EventsManagement />} />
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="reports" element={<RootAdminReportsPage />} />
         <Route path="account-settings" element={<SharedAccountSettings />} />

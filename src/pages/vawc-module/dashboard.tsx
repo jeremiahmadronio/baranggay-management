@@ -441,7 +441,7 @@ export default function VAWCDashboard() {
                         </p>
                       </div>
                       <span className="text-xs text-gray-900 font-medium shrink-0">
-                        {item.value.toLocaleString()}
+                        {(item?.value ?? 0).toLocaleString()}
                       </span>
                     </div>
                   ))}

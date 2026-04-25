@@ -184,10 +184,13 @@ function SettlementGauge({
 }: {
   efficiency: SettlementEfficiencyDTO;
 }) {
-  const pct = efficiency.efficiencyPercentage ?? 0;
+  const pct = efficiency?.efficiencyPercentage ?? 0;
   const radius = 62;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (pct / 100) * circ;
+  
+  const totalFormal = efficiency?.totalFormalComplaints ?? 0;
+  const settled = efficiency?.settledCases ?? 0;
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 py-3">
@@ -227,7 +230,7 @@ function SettlementGauge({
       <div className="w-full grid grid-cols-2 gap-3">
         <div className="border border-slate-200 bg-slate-50/40 rounded-xl p-3.5 text-center">
           <p className="text-xl font-bold text-slate-800 tabular-nums leading-none">
-            {efficiency.totalFormalComplaints}
+            {totalFormal}
           </p>
           <p className="text-xs text-slate-600 mt-1 leading-tight font-medium">
             Formal Complaints
@@ -235,7 +238,7 @@ function SettlementGauge({
         </div>
         <div className="border border-slate-200 bg-slate-50/40 rounded-xl p-3.5 text-center">
           <p className="text-xl font-bold text-slate-800 tabular-nums leading-none">
-            {efficiency.settledCases}
+            {settled}
           </p>
           <p className="text-xs text-slate-600 mt-1 leading-tight font-medium">
             Settled Cases
@@ -243,13 +246,10 @@ function SettlementGauge({
         </div>
       </div>
 
-      {efficiency.totalFormalComplaints > 0 && (
+      {totalFormal > 0 && (
         <p className="text-xs text-slate-600 text-center leading-relaxed">
-          {efficiency.totalFormalComplaints - efficiency.settledCases} case
-          {efficiency.totalFormalComplaints - efficiency.settledCases !== 1
-            ? "s"
-            : ""}{" "}
-          still pending resolution
+          {totalFormal - settled} case
+          {totalFormal - settled !== 1 ? "s" : ""} still pending resolution
         </p>
       )}
     </div>
@@ -342,7 +342,7 @@ export default function ReportsPage() {
       return null;
     };
 
-    trend.forEach((point) => {
+    (trend || []).forEach((point) => {
       const key = getPointMonthKey(point.label);
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + (point.count || 0));
@@ -663,10 +663,10 @@ export default function ReportsPage() {
     );
   }
 
-  const trendBarColors = monthlyTrend.map(() => "#3B82F6");
-  const totalStatusCases = status.reduce((sum, item) => sum + item.count, 0);
-  const totalNatureCases = nature.reduce((sum, item) => sum + item.count, 0);
-  const sortedNature = [...nature].sort((a, b) => b.count - a.count);
+  const trendBarColors = (monthlyTrend || []).map(() => "#3B82F6");
+  const totalStatusCases = (status || []).reduce((sum, item) => sum + (item?.count ?? 0), 0);
+  const totalNatureCases = (nature || []).reduce((sum, item) => sum + (item?.count ?? 0), 0);
+  const sortedNature = [...(nature || [])].sort((a, b) => (b?.count ?? 0) - (a?.count ?? 0));
 
   return (
     <div id="blotter-report-printable" className="min-h-screen bg-gray-50/50">
@@ -794,28 +794,28 @@ export default function ReportsPage() {
         <KPIGrid columns={4}>
           <KPICard
             title="Total Entries"
-            value={stats ? stats.totalEntries.toLocaleString() : 0}
+            value={stats?.totalEntries?.toLocaleString() ?? 0}
             color="blue"
             icon={KPIIcons.document}
             subtitle="All filed blotter reports"
           />
           <KPICard
             title="Formal Complaints"
-            value={stats ? stats.formalComplaints.toLocaleString() : 0}
+            value={stats?.formalComplaints?.toLocaleString() ?? 0}
             color="rose"
             icon={KPIIcons.chart}
             subtitle="Cases with formal complaint"
           />
           <KPICard
             title="For the Record"
-            value={stats ? stats.forTheRecord.toLocaleString() : 0}
+            value={stats?.forTheRecord?.toLocaleString() ?? 0}
             color="violet"
             icon={KPIIcons.total}
             subtitle="Records without formal complaint"
           />
           <KPICard
             title="Referred to Lupon"
-            value={stats ? stats.referredToLupon.toLocaleString() : 0}
+            value={stats?.referredToLupon?.toLocaleString() ?? 0}
             color="emerald"
             icon={KPIIcons.users}
             subtitle="Forwarded for lupon handling"
@@ -925,7 +925,7 @@ export default function ReportsPage() {
                         {natureLabel}
                       </p>
                       <span className="text-sm text-gray-800 tabular-nums shrink-0">
-                        {item.count.toLocaleString()} ({pct.toFixed(1)}%)
+                        {(item?.count ?? 0).toLocaleString()} ({pct.toFixed(1)}%)
                       </span>
                     </div>
 
@@ -1037,7 +1037,7 @@ export default function ReportsPage() {
                         </div>
                       </div>
                       <span className="text-sm text-gray-900 font-medium">
-                        {item.count.toLocaleString()}
+                        {(item?.count ?? 0).toLocaleString()}
                       </span>
                     </div>
                   ))}

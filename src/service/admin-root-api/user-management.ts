@@ -6,6 +6,7 @@ const PEOPLE_URL = `${BASE}/api/v1/resident`;
 const DEPT_URL = `${BASE}/api/v1/departments`;
 const ROLE_URL = `${BASE}/api/v1/roles`;
 const PERMISSION_URL = `${BASE}/api/v1/permission`;
+import { searchOfflineResidents, cacheOnlineResidents } from "../offline/residentDb";
 
 async function apiFetch<T>(
   endpoint: string,
@@ -311,14 +312,19 @@ getPermissionOptions: (): Promise<Permission[]> =>
       method: "PUT",
     }),
 
-  searchPeople: (query: string): Promise<PersonSearchResponseDTO[]> => {
+  searchPeople: async (query: string): Promise<PersonSearchResponseDTO[]> => {
     if (!query || query.trim().length < 2) return Promise.resolve([]);
+    if (!navigator.onLine) {
+      return searchOfflineResidents(query.trim());
+    }
     const qs = new URLSearchParams({ query: query.trim() });
-    return apiFetch<PersonSearchResponseDTO[]>(
+    const results = await apiFetch<PersonSearchResponseDTO[]>(
       `/search?${qs.toString()}`,
       {},
       PEOPLE_URL,
     );
+    cacheOnlineResidents(results).catch(() => {});
+    return results;
   },
 };
 

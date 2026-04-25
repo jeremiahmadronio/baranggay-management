@@ -377,7 +377,7 @@ function escapeHtml(value: string) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
@@ -524,7 +524,9 @@ export default function FtjsDetailViewPage() {
   const [replacementDetail, setReplacementDetail] =
     useState<ResponseNewFtjsFullDetailsDTO | null>(null);
 
-  const editable = record ? isEditableFtjsStatus(record.status) || !!record._offline : false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isOfflineRecord = record ? !!(record as any)._offline : false;
+  const editable = record ? isEditableFtjsStatus(record.status) || isOfflineRecord : false;
   const canViewRecords = hasFtjsPermission(
     userAccess,
     FTJS_PERMISSIONS.VIEW_RECORDS,
@@ -556,6 +558,7 @@ export default function FtjsDetailViewPage() {
     }
 
     // Determine the ID type to pass to the API (offline IDs are strings)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const finalId = isOfflineId ? (ftjsId as any) : parsedIdNum;
 
     try {
@@ -611,6 +614,7 @@ export default function FtjsDetailViewPage() {
     if (!accessLoading) {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessLoading, canUpdateApplicantInfo, canViewRecords, parsedId]);
 
   if (accessLoading) {
@@ -988,7 +992,7 @@ export default function FtjsDetailViewPage() {
                 icon={<FilePenLine className="w-5 h-5" />}
                 tone="blue"
                 onClick={() => setEditOpen(true)}
-                disabled={!editable || !canUpdateApplicantInfo || record._offline}
+                disabled={!editable || !canUpdateApplicantInfo || isOfflineRecord}
               />
               <QuickActionCard
                 title="Print Certificate"
@@ -1012,7 +1016,7 @@ export default function FtjsDetailViewPage() {
                 icon={<Archive className="w-5 h-5" />}
                 tone="rose"
                 onClick={() => setArchiveOpen(true)}
-                disabled={!canUpdateApplicantInfo || record._offline}
+                disabled={!canUpdateApplicantInfo || isOfflineRecord}
               />
             </div>
 

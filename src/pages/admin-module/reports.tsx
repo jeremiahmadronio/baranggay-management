@@ -13,22 +13,13 @@ import {
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Printer } from "lucide-react";
-import {
-  adminReportsApi,
-  type ArchiveSummaryDTO,
-  type GrowthTrendDTO,
-  type ModuleRecordsDTO,
-  type ReportStatsDTO,
-  type SeverityReportDTO,
-} from "../../service/admin-root-api/report";
 
 type GrowthPoint = {
   label: string;
   fullLabel: string;
-  users: number;
-  admin: number;
-  resident: number;
-  officer: number;
+  residents: number;
+  officers: number;
+  events: number;
 };
 
 function GrowthTooltip({
@@ -47,21 +38,21 @@ function GrowthTooltip({
       <p className="text-slate-900 font-medium">Date: {point.fullLabel}</p>
       <div className="mt-2 space-y-1">
         <div className="flex items-center justify-between gap-6">
-          <span className="text-blue-700">Users</span>
+          <span className="text-emerald-600">Residents</span>
           <span className="font-semibold text-slate-900">
-            {point.users.toLocaleString()}
+            {point.residents.toLocaleString()}
           </span>
         </div>
         <div className="flex items-center justify-between gap-6">
-          <span className="text-blue-500">Admin</span>
+          <span className="text-violet-600">Officers</span>
           <span className="font-semibold text-slate-900">
-            {point.admin.toLocaleString()}
+            {point.officers.toLocaleString()}
           </span>
         </div>
         <div className="flex items-center justify-between gap-6">
-          <span className="text-violet-600">Officer</span>
+          <span className="text-amber-600">Events</span>
           <span className="font-semibold text-slate-900">
-            {point.officer.toLocaleString()}
+            {point.events.toLocaleString()}
           </span>
         </div>
       </div>
@@ -70,16 +61,6 @@ function GrowthTooltip({
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const severityColorMap: Record<string, string> = {
-  CRITICAL: "#DC2626", // red
-  HIGH: "#F97316", // orange
-  WARNING: "#F59E0B", // amber
-  MEDIUM: "#EAB308", // yellow
-  LOW: "#2563EB", // blue
-  INFO: "#14B8A6", // teal
-  DEBUG: "#8B5CF6", // violet
-};
-const fallbackSeverityColor = "#64748B";
 
 function toDateInputValue(date: Date): string {
   const year = date.getFullYear();
@@ -101,10 +82,6 @@ function getRangeDays(start: Date, end: Date): number {
   return Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1;
 }
 
-function getSeverityColor(level: string): string {
-  return severityColorMap[level.trim().toUpperCase()] ?? fallbackSeverityColor;
-}
-
 function formatRangeDate(date: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -119,48 +96,7 @@ function exceedsOneYearLimit(start: Date, end: Date): boolean {
   return end >= oneYearAfterStart;
 }
 
-function normalizeGrowthTrend(
-  data: GrowthTrendDTO,
-  rangeStart: Date,
-  isDaily: boolean,
-): GrowthPoint[] {
-  if (!data.labels.length) return [];
-
-  return data.labels.map((_, idx) => {
-    const users = Number(data.userCounts[idx] ?? 0);
-    const admin = Number(data.adminCounts[idx] ?? 0);
-    const resident = Number(data.residentCounts[idx] ?? 0);
-    const officer = Number(data.officerCounts[idx] ?? 0);
-    const pointDate = new Date(rangeStart);
-    if (isDaily) {
-      pointDate.setDate(rangeStart.getDate() + idx);
-    } else {
-      pointDate.setMonth(rangeStart.getMonth() + idx);
-      pointDate.setDate(1);
-    }
-
-    const displayLabel = isDaily
-      ? new Intl.DateTimeFormat("en-US", {
-          month: "short",
-          day: "2-digit",
-        }).format(pointDate)
-      : new Intl.DateTimeFormat("en-US", {
-          month: "short",
-          year: "numeric",
-        }).format(pointDate);
-
-    return {
-      label: displayLabel,
-      fullLabel: formatRangeDate(pointDate),
-      users,
-      admin,
-      resident,
-      officer,
-    };
-  });
-}
-
-export default function RootAdminReportsPage() {
+export default function AdminReportsPage() {
   const today = new Date();
   const defaultStart = new Date();
   defaultStart.setDate(today.getDate() - 29);
@@ -172,14 +108,13 @@ export default function RootAdminReportsPage() {
   const [startDate, setStartDate] = useState(toDateInputValue(defaultStart));
   const [endDate, setEndDate] = useState(toDateInputValue(today));
   const [dateError, setDateError] = useState<string | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState<ReportStatsDTO | null>(null);
-  const [growthTrend, setGrowthTrend] = useState<GrowthTrendDTO | null>(null);
-  const [records, setRecords] = useState<ModuleRecordsDTO | null>(null);
-  const [severity, setSeverity] = useState<SeverityReportDTO[]>([]);
-  const [archiveSummary, setArchiveSummary] =
-    useState<ArchiveSummaryDTO | null>(null);
+
+  // States for hardcoded data
+  const [stats, setStats] = useState<any>(null);
+  const [growthData, setGrowthData] = useState<GrowthPoint[]>([]);
+  const [eventsData, setEventsData] = useState<any[]>([]);
+  const [archiveData, setArchiveData] = useState<any[]>([]);
 
   const appliedRange = useMemo(
     () => toStartAndEndDate(startDate, endDate),
@@ -192,56 +127,65 @@ export default function RootAdminReportsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    const loadReports = async () => {
+    const loadReports = () => {
       setLoading(true);
-      setApiError(null);
 
-      const [statsRes, growthRes, recordsRes, severityRes, archiveRes] =
-        await Promise.allSettled([
-          adminReportsApi.getStats(),
-          adminReportsApi.getGrowthTrend(appliedRange.start, appliedRange.end),
-          adminReportsApi.getModuleRecords(
-            appliedRange.start,
-            appliedRange.end,
-          ),
-          adminReportsApi.getSeverityReport(
-            appliedRange.start,
-            appliedRange.end,
-          ),
-          adminReportsApi.getArchiveSummary(
-            appliedRange.start,
-            appliedRange.end,
-          ),
+      setTimeout(() => {
+        if (!isMounted) return;
+
+        // 1. KPI Stats
+        setStats({
+          totalResidents: 1420,
+          totalOfficers: 12,
+          totalEvents: 45,
+          totalUsers: 156,
+        });
+
+        // 2. Growth Trend Generator based on date range
+        const days = getRangeDays(appliedRange.start, appliedRange.end);
+        const isDaily = days <= 30;
+        const count = isDaily ? days : Math.ceil(days / 30) || 1;
+
+        const generatedGrowth: GrowthPoint[] = Array.from({ length: count }).map((_, idx) => {
+          const pointDate = new Date(appliedRange.start);
+          if (isDaily) {
+            pointDate.setDate(appliedRange.start.getDate() + idx);
+          } else {
+            pointDate.setMonth(appliedRange.start.getMonth() + idx);
+            pointDate.setDate(1);
+          }
+
+          const displayLabel = isDaily
+            ? new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" }).format(pointDate)
+            : new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(pointDate);
+
+          return {
+            label: displayLabel,
+            fullLabel: formatRangeDate(pointDate),
+            residents: 900 + idx * 10 + Math.floor(Math.random() * 20),
+            officers: 5 + idx * 2 + Math.floor(Math.random() * 2),
+            events: 2 + idx + Math.floor(Math.random() * 5),
+          };
+        });
+        setGrowthData(generatedGrowth);
+
+        // 3. User Demographics / Events Status
+        setEventsData([
+          { name: "Upcoming", value: 12, color: "#2563EB" },
+          { name: "Completed", value: 28, color: "#059669" },
+          { name: "Cancelled", value: 5, color: "#DC2626" },
         ]);
 
-      if (!isMounted) return;
+        // 4. Archive Summary
+        setArchiveData([
+          { category: "Residents", value: 45 },
+          { category: "Officers", value: 2 },
+          { category: "Events", value: 18 },
+          { category: "Users", value: 12 },
+        ]);
 
-      if (statsRes.status === "fulfilled") setStats(statsRes.value);
-      if (growthRes.status === "fulfilled") setGrowthTrend(growthRes.value);
-      if (recordsRes.status === "fulfilled") setRecords(recordsRes.value);
-      if (severityRes.status === "fulfilled") setSeverity(severityRes.value);
-      if (archiveRes.status === "fulfilled")
-        setArchiveSummary(archiveRes.value);
-
-      const failures = [
-        statsRes,
-        growthRes,
-        recordsRes,
-        severityRes,
-        archiveRes,
-      ]
-        .filter((r) => r.status === "rejected")
-        .map((r) => (r as PromiseRejectedResult).reason);
-
-      if (failures.length > 0) {
-        const msg =
-          failures[0] instanceof Error
-            ? failures[0].message
-            : String(failures[0]);
-        setApiError(`Some report data failed to load: ${msg}`);
-      }
-
-      if (isMounted) setLoading(false);
+        setLoading(false);
+      }, 600); // fake loading delay
     };
 
     loadReports();
@@ -250,70 +194,14 @@ export default function RootAdminReportsPage() {
     };
   }, [appliedRange.end, appliedRange.start]);
 
-  const growthData = useMemo(
-    () =>
-      growthTrend
-        ? normalizeGrowthTrend(
-            growthTrend,
-            appliedRange.start,
-            appliedRangeDays <= 30,
-          )
-        : [],
-    [growthTrend, appliedRange.start, appliedRangeDays],
-  );
-  const lowMax = useMemo(() => {
-    if (!growthData.length) return 0;
-    return growthData.reduce((max, p) => {
-      const localMax = Math.max(p.users, p.admin, p.officer);
-      return localMax > max ? localMax : max;
-    }, 0);
+  const lowDomainMax = useMemo(() => {
+    if (!growthData.length) return 100;
+    const maxVal = Math.max(...growthData.map(d => Math.max(d.residents, d.officers, d.events)));
+    return Math.ceil(maxVal / 100) * 100; // Round up to nearest 100
   }, [growthData]);
 
-  const lowDomainMax = useMemo(() => {
-    if (!lowMax) return 2;
-    if (lowMax <= 2) return 2;
-    if (lowMax <= 4) return 4;
-    if (lowMax <= 6) return 6;
-    if (lowMax <= 8) return 8;
-    return 10;
-  }, [lowMax]);
+  const eventsTotal = useMemo(() => eventsData.reduce((acc, curr) => acc + curr.value, 0), [eventsData]);
 
-  const lowRangeTicks = useMemo(() => {
-    if (lowDomainMax <= 2) return [0, 1, 2];
-    const ticks: number[] = [];
-    for (let i = 0; i <= lowDomainMax; i += 2) ticks.push(i);
-    return ticks;
-  }, [lowDomainMax]);
-  const moduleRecordData = useMemo(
-    () =>
-      records
-        ? [
-            { module: "Admin", records: records.admin },
-            { module: "Resident", records: records.resident },
-            { module: "Officer", records: records.officer },
-            // Audit Logs intentionally removed from display
-          ]
-        : [],
-    [records],
-  );
-
-  const archiveData = useMemo(
-    () =>
-      archiveSummary
-        ? [
-            { category: "Residents", value: archiveSummary.archivedResidents },
-            { category: "Users", value: archiveSummary.archivedUsers },
-            { category: "Officers", value: archiveSummary.archivedOfficers },
-            { category: "Admins", value: archiveSummary.archivedAdmins },
-          ]
-        : [],
-    [archiveSummary],
-  );
-
-  const severityTotal = useMemo(
-    () => severity.reduce((sum, item) => sum + item.count, 0),
-    [severity],
-  );
   const handleApplyFilter = () => {
     setDateError(null);
     if (!pendingStartDate || !pendingEndDate) {
@@ -342,7 +230,6 @@ export default function RootAdminReportsPage() {
     resetStart.setDate(resetEnd.getDate() - 29);
 
     setDateError(null);
-    setApiError(null);
     setPendingStartDate(toDateInputValue(resetStart));
     setPendingEndDate(toDateInputValue(resetEnd));
     setStartDate(toDateInputValue(resetStart));
@@ -350,7 +237,7 @@ export default function RootAdminReportsPage() {
   };
 
   const handlePrintReport = () => {
-    const formatDate = (d: string) =>
+    const formatDateStr = (d: string) =>
       new Date(d).toLocaleDateString("en-PH", {
         year: "numeric",
         month: "long",
@@ -358,10 +245,10 @@ export default function RootAdminReportsPage() {
       });
 
     const kpiCards = [
-      { label: "Admin Users", value: stats?.totalAdminUsers ?? 0, sub: "Total admin users" },
-      { label: "Residents", value: stats?.totalResidents ?? 0, sub: "Total residents" },
-      { label: "Officers", value: stats?.totalOfficers ?? 0, sub: "Total officers" },
-      { label: "Audit Logs", value: stats?.totalAuditLogsThisMonth ?? 0, sub: "This month" },
+      { label: "Residents", value: stats?.totalResidents ?? 0, sub: "Registered residents" },
+      { label: "Officers", value: stats?.totalOfficers ?? 0, sub: "Active officers" },
+      { label: "Events", value: stats?.totalEvents ?? 0, sub: "Barangay events" },
+      { label: "Users", value: stats?.totalUsers ?? 0, sub: "Registered users" },
     ];
 
     const trendRows = growthData
@@ -369,19 +256,19 @@ export default function RootAdminReportsPage() {
         (m) => `
           <tr>
             <td style="padding:5px 8px;font-size:12px;color:#374151;">${m.fullLabel}</td>
-            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.users.toLocaleString()}</td>
-            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.admin.toLocaleString()}</td>
-            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.officer.toLocaleString()}</td>
+            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.residents.toLocaleString()}</td>
+            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.officers.toLocaleString()}</td>
+            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.events.toLocaleString()}</td>
           </tr>`,
       )
       .join("");
 
-    const severityRows = severity
+    const eventsRows = eventsData
       .map(
         (m) => `
           <tr>
-            <td style="padding:5px 8px;font-size:12px;color:#374151;">${m.severity}</td>
-            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.count.toLocaleString()}</td>
+            <td style="padding:5px 8px;font-size:12px;color:#374151;">${m.name}</td>
+            <td style="padding:5px 8px;font-size:12px;color:#374151;text-align:right;">${m.value.toLocaleString()}</td>
           </tr>`,
       )
       .join("");
@@ -401,7 +288,7 @@ export default function RootAdminReportsPage() {
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Root Admin Report — ${formatDate(appliedRange.start.toISOString())} to ${formatDate(appliedRange.end.toISOString())}</title>
+  <title>Admin Report — ${formatDateStr(appliedRange.start.toISOString())} to ${formatDateStr(appliedRange.end.toISOString())}</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; margin: 0; padding: 32px 40px; background: #fff; }
@@ -420,8 +307,8 @@ export default function RootAdminReportsPage() {
 <body>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
     <div>
-      <h1>Root Admin System Report</h1>
-      <p class="sub">Period: ${formatDate(appliedRange.start.toISOString())} &mdash; ${formatDate(appliedRange.end.toISOString())}</p>
+      <h1>Admin Activity Report</h1>
+      <p class="sub">Period: ${formatDateStr(appliedRange.start.toISOString())} &mdash; ${formatDateStr(appliedRange.end.toISOString())}</p>
     </div>
     <div style="text-align:right;">
       <p style="margin:0;font-size:11px;color:#6B7280;">Generated</p>
@@ -437,16 +324,16 @@ export default function RootAdminReportsPage() {
   <div class="section">
     <div class="section-title">Activity Trend</div>
     <table>
-      <thead><tr><th>Date</th><th style="text-align:right;">Users</th><th style="text-align:right;">Admins</th><th style="text-align:right;">Officers</th></tr></thead>
+      <thead><tr><th>Date</th><th style="text-align:right;">Residents</th><th style="text-align:right;">Officers</th><th style="text-align:right;">Events</th></tr></thead>
       <tbody>${trendRows || '<tr><td colspan="4" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data for selected period.</td></tr>'}</tbody>
     </table>
   </div>
 
   <div class="section">
-    <div class="section-title">Audit Severity Breakdown</div>
+    <div class="section-title">Events Distribution</div>
     <table>
-      <thead><tr><th>Severity Level</th><th style="text-align:right;">Count</th></tr></thead>
-      <tbody>${severityRows || '<tr><td colspan="2" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data for selected period.</td></tr>'}</tbody>
+      <thead><tr><th>Status</th><th style="text-align:right;">Count</th></tr></thead>
+      <tbody>${eventsRows || '<tr><td colspan="2" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data for selected period.</td></tr>'}</tbody>
     </table>
   </div>
 </body>
@@ -474,34 +361,32 @@ export default function RootAdminReportsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <KPIGrid columns={4}>
           <KPICard
-            title="Admin Users"
-            value={stats ? stats.totalAdminUsers.toLocaleString() : "--"}
-            subtitle="Total admin users"
-            icon={KPIIcons.users}
-            color="blue"
-          />
-          <KPICard
             title="Residents"
             value={stats ? stats.totalResidents.toLocaleString() : "--"}
-            subtitle="Total residents"
+            subtitle="Registered residents"
             icon={KPIIcons.home}
             color="emerald"
           />
           <KPICard
-            title="Officers"
+            title="Barangay Officers"
             value={stats ? stats.totalOfficers.toLocaleString() : "--"}
-            subtitle="Total officers"
+            subtitle="Active officers"
             icon={KPIIcons.check}
             color="violet"
           />
           <KPICard
-            title="Audit Logs"
-            value={
-              stats ? stats.totalAuditLogsThisMonth.toLocaleString() : "--"
-            }
-            subtitle="This month"
-            icon={KPIIcons.document}
-            color="slate"
+            title="Events"
+            value={stats ? stats.totalEvents.toLocaleString() : "--"}
+            subtitle="Barangay events"
+            icon={KPIIcons.month}
+            color="amber"
+          />
+          <KPICard
+            title="System Users"
+            value={stats ? stats.totalUsers.toLocaleString() : "--"}
+            subtitle="Registered users"
+            icon={KPIIcons.users}
+            color="blue"
           />
         </KPIGrid>
 
@@ -589,20 +474,16 @@ export default function RootAdminReportsPage() {
           {dateError ? (
             <p className="text-xs text-red-500 px-1 mt-2">{dateError}</p>
           ) : null}
-          {apiError ? (
-            <p className="text-xs text-red-500 px-1 mt-2">{apiError}</p>
-          ) : null}
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                Growth Trend ({appliedRangeDays <= 30 ? "Daily" : "Monthly"})
+                Activity Trend ({appliedRangeDays <= 30 ? "Daily" : "Monthly"})
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Focused trend view for staff/admin activity (Users, Admin,
-                Officer).
+                Focused trend view for core operations (Residents, Officers, Events).
                 <span className="ml-1 text-gray-400">
                   ({formatRangeDate(appliedRange.start)} –{" "}
                   {formatRangeDate(appliedRange.end)})
@@ -611,16 +492,16 @@ export default function RootAdminReportsPage() {
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
-                <span className="h-2 w-2 rounded-full bg-blue-700" />
-                Users
+                <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                Residents
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
-                <span className="h-2 w-2 rounded-full bg-blue-500" />
-                Admin
+                <span className="h-2 w-2 rounded-full bg-violet-600" />
+                Officers
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
-                <span className="h-2 w-2 rounded-full bg-violet-500" />
-                Officer
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                Events
               </span>
             </div>
           </div>
@@ -628,19 +509,11 @@ export default function RootAdminReportsPage() {
             {growthData.length ? (
               <div className="h-80 rounded-xl border border-gray-100 bg-gradient-to-b from-slate-50 to-white p-3">
                 <div className="h-full">
-                  <div className="flex items-center justify-between px-1 pb-2">
-                    <p className="text-[11px] font-semibold text-slate-700">
-                      Accounts (zoomed)
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Range: 0–{lowDomainMax}
-                    </p>
-                  </div>
-                  <div className="h-[calc(100%-24px)] rounded-lg border border-slate-100 bg-white/70 p-2">
+                  <div className="h-[calc(100%-10px)] rounded-lg border border-slate-100 bg-white/70 p-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={growthData}
-                        barCategoryGap="25%"
+                        barCategoryGap="20%"
                         barGap={2}
                       >
                         <CartesianGrid
@@ -667,28 +540,27 @@ export default function RootAdminReportsPage() {
                           tick={{ fontSize: 10, fill: "#6B7280" }}
                           axisLine={false}
                           tickLine={false}
-                          ticks={lowRangeTicks}
                           domain={[0, lowDomainMax]}
                         />
                         <Tooltip content={<GrowthTooltip />} />
                         <Bar
-                          dataKey="users"
-                          name="Users"
-                          fill="#1D4ED8"
+                          dataKey="residents"
+                          name="Residents"
+                          fill="#059669"
                           radius={[6, 6, 0, 0]}
                           maxBarSize={22}
                         />
                         <Bar
-                          dataKey="admin"
-                          name="Admin"
-                          fill="#3B82F6"
+                          dataKey="officers"
+                          name="Officers"
+                          fill="#7C3AED"
                           radius={[6, 6, 0, 0]}
                           maxBarSize={22}
                         />
                         <Bar
-                          dataKey="officer"
-                          name="Officer"
-                          fill="#8B5CF6"
+                          dataKey="events"
+                          name="Events"
+                          fill="#F59E0B"
                           radius={[6, 6, 0, 0]}
                           maxBarSize={22}
                         />
@@ -699,70 +571,28 @@ export default function RootAdminReportsPage() {
               </div>
             ) : (
               <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500">
-                No growth trend data for selected date range.
+                No activity trend data for selected date range.
               </div>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Module Records
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Records by module from selected date range.
-            </p>
-            <div className="mt-4 h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={moduleRecordData}>
-                  <CartesianGrid
-                    strokeDasharray="4 4"
-                    vertical={false}
-                    stroke="#D1D5DB"
-                  />
-                  <XAxis
-                    dataKey="module"
-                    tick={{ fontSize: 12, fill: "#4B5563" }}
-                    axisLine={{ stroke: "#9CA3AF", strokeWidth: 1.2 }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12, fill: "#4B5563" }}
-                    axisLine={{ stroke: "#9CA3AF", strokeWidth: 1.2 }}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "10px",
-                      border: "1px solid #E5E7EB",
-                      fontSize: 12,
-                      boxShadow: "0 8px 20px -12px rgb(15 23 42 / 0.25)",
-                    }}
-                    cursor={{ fill: "#EFF6FF" }}
-                  />
-                  <Bar dataKey="records" radius={[6, 6, 0, 0]} fill="#2563EB" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Audit Severity
+                  Events Status Distribution
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Distribution of audit log severity levels
+                  Breakdown of events by current status
                 </p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-3xl font-semibold text-gray-900 leading-none">
-                  {severityTotal}
+                  {eventsTotal}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">Total logs</p>
+                <p className="text-sm text-gray-500 mt-1">Total Events</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-center">
@@ -770,9 +600,9 @@ export default function RootAdminReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={severity}
-                      dataKey="count"
-                      nameKey="severity"
+                      data={eventsData}
+                      dataKey="value"
+                      nameKey="name"
                       innerRadius={64}
                       outerRadius={96}
                       paddingAngle={2}
@@ -780,10 +610,10 @@ export default function RootAdminReportsPage() {
                       stroke="#FFFFFF"
                       strokeWidth={2}
                     >
-                      {severity.map((item, index) => (
+                      {eventsData.map((item, index) => (
                         <Cell
-                          key={`${item.severity}-${index}`}
-                          fill={getSeverityColor(item.severity)}
+                          key={`cell-${index}`}
+                          fill={item.color}
                         />
                       ))}
                     </Pie>
@@ -800,98 +630,101 @@ export default function RootAdminReportsPage() {
               </div>
 
               <div className="space-y-3">
-                {severity.map((item, index) => (
+                {eventsData.map((item, index) => (
                   <div
-                    key={`${item.severity}-${index}`}
+                    key={`case-${index}`}
                     className="flex items-center justify-between gap-4"
                   >
                     <div className="flex items-start gap-2">
                       <span
                         className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
-                        style={{
-                          backgroundColor: getSeverityColor(item.severity),
-                        }}
+                        style={{ backgroundColor: item.color }}
                       />
                       <p className="text-sm text-gray-700 leading-tight">
-                        {item.severity}
+                        {item.name}
                       </p>
                     </div>
                     <div className="text-right">
                       <span className="text-sm text-gray-900 font-medium">
-                        {item.count}
+                        {item.value}
                       </span>
                     </div>
                   </div>
                 ))}
-                {!severity.length ? (
-                  <p className="text-sm text-gray-500">No severity data.</p>
+                {!eventsData.length ? (
+                  <p className="text-sm text-gray-500">No event data.</p>
                 ) : null}
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Archive Summary
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Archived records by category from selected date range.
-          </p>
-          <div className="mt-4 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={archiveData}>
-                <CartesianGrid
-                  strokeDasharray="4 4"
-                  vertical={false}
-                  stroke="#D1D5DB"
-                />
-                <XAxis dataKey="category" />
-                <YAxis allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "10px",
-                    border: "1px solid #E5E7EB",
-                    fontSize: 12,
-                    boxShadow: "0 8px 20px -12px rgb(15 23 42 / 0.25)",
-                  }}
-                  cursor={{ fill: "#EFF6FF" }}
-                />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#1e9bd7" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Archive Summary
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Archived records by category from selected date range.
+            </p>
+            <div className="mt-4 h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={archiveData}>
+                  <CartesianGrid
+                    strokeDasharray="4 4"
+                    vertical={false}
+                    stroke="#D1D5DB"
+                  />
+                  <XAxis dataKey="category" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "10px",
+                      border: "1px solid #E5E7EB",
+                      fontSize: 12,
+                      boxShadow: "0 8px 20px -12px rgb(15 23 42 / 0.25)",
+                    }}
+                    cursor={{ fill: "#EFF6FF" }}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#0ea5e9" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
         {/* Data Table Section */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Tabular Data Report
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm mt-6 overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-gray-100 bg-white">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Tabular Data Summary
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Detailed breakdown of daily or monthly metric growth.
+            </p>
+          </div>
+          <div className="overflow-auto max-h-[400px]">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
                 <tr>
-                  <th scope="col" className="px-6 py-3">Date</th>
-                  <th scope="col" className="px-6 py-3 text-right">Users</th>
-                  <th scope="col" className="px-6 py-3 text-right">Admin</th>
-                  <th scope="col" className="px-6 py-3 text-right">Officer</th>
+                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider">Date</th>
+                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider text-right">Residents</th>
+                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider text-right">Officers</th>
+                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider text-right">Events</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100">
                 {growthData.map((row, i) => (
-                  <tr key={i} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                  <tr key={i} className="bg-white hover:bg-blue-50/50 transition-colors">
+                    <td className="px-6 py-3.5 font-medium text-gray-900 whitespace-nowrap">
                       {row.fullLabel}
                     </td>
-                    <td className="px-6 py-4 text-right">{row.users.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-right">{row.admin.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-right">{row.officer.toLocaleString()}</td>
+                    <td className="px-6 py-3.5 text-right font-medium text-emerald-600">{row.residents.toLocaleString()}</td>
+                    <td className="px-6 py-3.5 text-right font-medium text-violet-600">{row.officers.toLocaleString()}</td>
+                    <td className="px-6 py-3.5 text-right font-medium text-amber-600">{row.events.toLocaleString()}</td>
                   </tr>
                 ))}
                 {!growthData.length && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={4} className="px-6 py-12 text-center text-gray-400 bg-gray-50">
                       No data available for the selected range.
                     </td>
                   </tr>

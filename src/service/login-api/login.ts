@@ -53,6 +53,7 @@ export const authService = {
   }): Promise<LoginResponse> => {
     const response = await api.post("/api/v1/auth/login", credentials, {
       requiresAuth: false,
+      offlineQueue: false,
     });
     if (response.status === "SUCCESS")
       persistAuthSession(response, credentials.email);
@@ -69,6 +70,7 @@ export const authService = {
   }): Promise<LoginResponse> => {
     const response = await api.post("/api/v1/auth/verify-mfa", data, {
       requiresAuth: false,
+      offlineQueue: false,
     });
     if (response.status === "SUCCESS") persistAuthSession(response, data.email);
     return response;
@@ -79,7 +81,10 @@ export const authService = {
    * Kumukuha ng QR Code at Secret
    */
   initiateTotpSetup: async (): Promise<MfaSetupResponse> => {
-    return await api.get("/api/v1/auth/setup", { requiresAuth: true });
+    return await api.get("/api/v1/auth/setup", { 
+      requiresAuth: true,
+      offlineQueue: false,
+    });
   },
 
   /**
@@ -90,7 +95,10 @@ export const authService = {
     code: string;
      secret: string;
   }): Promise<MfaEnableSuccessResponse> => {
-    return await api.post("/api/v1/auth/confirm", data, { requiresAuth: true });
+    return await api.post("/api/v1/auth/confirm", data, { 
+      requiresAuth: true,
+      offlineQueue: false,
+    });
   },
 
   /**
@@ -104,6 +112,7 @@ export const authService = {
     await api.post("/api/v1/auth/backup-email/initiate", null, {
       params: { primaryEmail, backupEmail }, // Dito isasaksak yung request params
       requiresAuth: true,
+      offlineQueue: false,
     });
   },
 
@@ -118,6 +127,7 @@ export const authService = {
     await api.post("/api/v1/auth/backup-email/verify", null, {
       params: { primaryEmail, backupEmail, code },
       requiresAuth: true,
+      offlineQueue: false,
     });
   },
 
@@ -128,7 +138,7 @@ export const authService = {
     await api.post(
       "/api/v1/auth/forgot-password",
       { email },
-      { requiresAuth: false },
+      { requiresAuth: false, offlineQueue: false },
     );
   },
 
@@ -141,6 +151,7 @@ export const authService = {
   }): Promise<void> => {
     await api.post("/api/v1/auth/forgot-password/verify", data, {
       requiresAuth: false,
+      offlineQueue: false,
     });
   },
 
@@ -150,6 +161,7 @@ export const authService = {
   resetPassword: async (data: any): Promise<void> => {
     await api.post("/api/v1/auth/forgot-password/reset", data, {
       requiresAuth: false,
+      offlineQueue: false,
     });
   },
 
@@ -160,6 +172,7 @@ export const authService = {
   changePasswordNewAccount: async (data: any): Promise<LoginResponse> => {
     const response = await api.post("/api/v1/auth/change-password", data, {
       requiresAuth: false,
+      offlineQueue: false,
     });
     if (response.status === "SUCCESS") persistAuthSession(response, data.email);
     return response;
