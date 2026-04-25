@@ -74,25 +74,27 @@ export const DocketSection = ({
         ]}
       />
 
-      <FormRow cols={2}>
-        <FormSelect
-          id="field-assignedOfficerId"
-          label="Assigned Officer"
-          options={officerOptions.map((officer) => ({
-            value: String(officer.id),
-            label:
-              `${officer.name} ${officer.position ? `(${officer.position})` : ""}`.trim(),
-          }))}
-          placeholder="Select Officer"
-          value={assignedOfficerId}
-          onChange={(e) => {
-            onAssignedOfficerChange(e.target.value);
-            clearErr("assignedOfficerId");
-          }}
-          error={errors.assignedOfficerId}
-          required
-        />
-      </FormRow>
+      {mode !== "record" && (
+        <FormRow cols={2}>
+          <FormSelect
+            id="field-assignedOfficerId"
+            label="Assigned Officer"
+            options={officerOptions.map((officer) => ({
+              value: String(officer.id),
+              label:
+                `${officer.name} ${officer.position ? `(${officer.position})` : ""}`.trim(),
+            }))}
+            placeholder="Select Officer"
+            value={assignedOfficerId}
+            onChange={(e) => {
+              onAssignedOfficerChange(e.target.value);
+              clearErr("assignedOfficerId");
+            }}
+            error={errors.assignedOfficerId}
+            required
+          />
+        </FormRow>
+      )}
     </SectionCard>
   );
 };

@@ -216,7 +216,7 @@ export function RecordMinutesModal({
                   outcome === "SETTLED"
                     ? "border-blue-300 bg-blue-50"
                     : "border-gray-200 hover:bg-gray-50"
-                }`}
+                } ${!complainantPresent || !respondentPresent ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <input
                   type="radio"
@@ -225,6 +225,7 @@ export function RecordMinutesModal({
                   checked={outcome === "SETTLED"}
                   onChange={() => setOutcome("SETTLED")}
                   className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  disabled={!complainantPresent || !respondentPresent}
                 />
                 <div>
                   <span className="text-sm font-medium text-gray-900">
