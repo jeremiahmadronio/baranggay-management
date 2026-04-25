@@ -10,9 +10,9 @@ export const Footer = ({ onNavigate }: FooterProps) => {
 
   const quickLinks = [
     { label: 'Home', href: 'hero' },
-    { label: 'Tungkol sa Amin', href: 'about' },
-    { label: 'Mga Serbisyo', href: 'services' },
-    { label: 'Mga Opisyales', href: 'officials' },
+    { label: 'About Us', href: 'about' },
+    { label: 'Services', href: 'services' },
+    { label: 'Officials', href: 'officials' },
     { label: 'Social Media', href: 'social' },
     { label: 'Contact', href: 'contact' },
   ];
@@ -40,8 +40,8 @@ export const Footer = ({ onNavigate }: FooterProps) => {
               </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
-              Naglilingkod sa komunidad ng Barangay Ugong mula 1963. 
-              Sama-sama nating itaguyod ang progreso at kapayapaan sa ating barangay.
+              Serving the community of Barangay Ugong since 1963. 
+              Together, let's advance progress and peace in our barangay.
             </p>
             <div className="flex gap-3">
               <a 
@@ -82,7 +82,7 @@ export const Footer = ({ onNavigate }: FooterProps) => {
 
           {/* Services */}
           <div>
-            <h4 className="font-semibold text-white mb-6">Mga Serbisyo</h4>
+            <h4 className="font-semibold text-white mb-6">Our Services</h4>
             <ul className="space-y-3">
               {services.map((service, index) => (
                 <li key={index}>

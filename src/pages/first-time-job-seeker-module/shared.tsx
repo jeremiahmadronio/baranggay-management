@@ -372,11 +372,11 @@ const FTJS_VALID_ID_CONFIGS: Record<string, FtjsValidIdConfig> = {
   },
   "School ID": {
     acceptsIdNumber: true,
-    requiresIdNumber: false,
+    requiresIdNumber: true,
     requiresSchoolAddress: true,
     idNumberLabel: "Student No.",
-    idNumberPlaceholder: "Student No. is optional for School ID",
-    idNumberHint: "School address is required. Student number may be added if available.",
+    idNumberPlaceholder: "Enter student number",
+    idNumberHint: "Both school address and student number are required for School ID.",
   },
   "Voter's ID": {
     acceptsIdNumber: false,

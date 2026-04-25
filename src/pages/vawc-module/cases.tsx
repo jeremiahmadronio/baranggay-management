@@ -202,6 +202,18 @@ export default function VawcCaseTable() {
     }
   }, [search, status, violenceType, dateFrom, dateTo, currentPage, accessLoading, canViewCases]);
 
+  // Auto-refresh when offline sync completes
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      if (canViewCases) {
+        fetchCases();
+        fetchStats();
+      }
+    };
+    window.addEventListener('offline-sync-complete', handleSyncComplete);
+    return () => window.removeEventListener('offline-sync-complete', handleSyncComplete);
+  }, [canViewCases, search, status, violenceType, dateFrom, dateTo, currentPage]);
+
   const safeStats: CaseStatsDTO = stats || {
     totalPending: 0,
     totalClose: 0,

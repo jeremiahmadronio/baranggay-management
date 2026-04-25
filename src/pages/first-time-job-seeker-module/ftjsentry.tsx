@@ -159,7 +159,7 @@ function ResidentSearchInput({
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <label className="text-sm font-semibold text-slate-700 tracking-wide">
-        Search Person/Resident (Auto-fill)
+        Search Resident (Auto-fill)
       </label>
       <div className="relative mt-1">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -488,7 +488,13 @@ export default function FtjsEntryPage() {
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="mx-auto max-w-6xl px-4 py-8">
-       
+        <SectionCard step="A" title="First Time Job Seeker Entry">
+          <p className="text-sm text-slate-600">
+            Search for an existing resident record to auto-fill personal
+            information. If no record is found, you may enter the details
+            manually using the required fields below.
+          </p>
+        </SectionCard>
 
         <div className="mt-6 space-y-5">
           <SectionCard
@@ -680,7 +686,7 @@ export default function FtjsEntryPage() {
               value={form.requestReason}
               onChange={(event) => setValue("requestReason", event.target.value)}
               rows={4}
-              placeholder="Halimbawa: Kukuha po ng FTJS certificate para sa first job application requirement."
+              placeholder="e.g., Requesting FTJS certificate for first job application requirement."
               maxLength={REASON_MAX_LENGTH}
               hint={`Maximum of ${REASON_MAX_LENGTH} characters.`}
               error={errors.requestReason}

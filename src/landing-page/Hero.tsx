@@ -9,7 +9,7 @@ export const Hero = ({ onNavigate }: HeroProps) => {
     <section className="relative min-h-screen bg-white">
       <div 
         className="absolute top-0 right-0 w-full lg:w-1/2 h-full bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('/sample.png')` }}
+        style={{ backgroundImage: `url('/Barangay landing.jpg')` }}
       >
         {/* Gradient fade on left edge only */}
         <div className="absolute inset-0 bg-gradient-to-r from-white via-white/50 to-transparent lg:via-transparent" />
@@ -21,12 +21,12 @@ export const Hero = ({ onNavigate }: HeroProps) => {
           <div className="max-w-xl bg-white/95 lg:bg-transparent p-6 lg:p-0 rounded-xl">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-blue-900 leading-tight mb-6">
               Barangay Ugong
-              <span className="block text-blue-600">Lungsod ng Valenzuela</span>
+              <span className="block text-blue-600">City of Valenzuela</span>
             </h1>
 
             <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-              Naglilingkod sa komunidad na may dedikasyon at integridad. 
-              Sama-sama tayong bumuo ng mas maayos at progresibong barangay.
+              Serving the community with dedication and integrity. 
+              Together, let's build a better and more progressive barangay.
             </p>
 
             {/* Buttons */}
@@ -35,14 +35,14 @@ export const Hero = ({ onNavigate }: HeroProps) => {
                 onClick={() => onNavigate?.('services')}
                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-bold text-lg transition-colors shadow-lg"
               >
-                Mga Serbisyo
+                Our Services
                 <ChevronRight className="w-6 h-6" />
               </button>
               <button 
                 onClick={() => onNavigate?.('contact')}
                 className="inline-flex items-center gap-2 bg-white hover:bg-blue-50 text-blue-600 px-8 py-4 rounded-lg font-bold text-lg border-2 border-blue-600 transition-colors"
               >
-                Makipag-ugnayan
+                Contact Us
               </button>
             </div>
           </div>

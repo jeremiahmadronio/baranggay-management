@@ -28,7 +28,6 @@ export function Layout({ userRole }: LayoutProps) {
   const navigate = useNavigate();
   const { user } = useUser();
   const userMenuRef = useRef<HTMLDivElement | null>(null);
-
   // Get the display name from the backend user data, with localStorage fallback
   const getDisplayName = () => {
     // Try from UserContext first
@@ -138,6 +137,7 @@ export function Layout({ userRole }: LayoutProps) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsUserMenuOpen(false);
   }, [location.pathname, location.search]);
 
@@ -231,7 +231,8 @@ export function Layout({ userRole }: LayoutProps) {
             </div>
           )}
 
-          <div ref={userMenuRef} className="relative">
+          <div className="flex items-center gap-4">
+            <div ref={userMenuRef} className="relative">
             <button
               type="button"
               onClick={() => setIsUserMenuOpen((prev) => !prev)}
@@ -303,6 +304,7 @@ export function Layout({ userRole }: LayoutProps) {
                 </div>
               </div>
             )}
+          </div>
           </div>
         </header>
 

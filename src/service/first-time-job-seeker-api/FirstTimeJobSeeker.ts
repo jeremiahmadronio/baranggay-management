@@ -292,8 +292,19 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const ftjsApi = {
-  getMyAccess: (): Promise<UserAccessPermission> =>
-    apiFetch<UserAccessPermission>(`${PERMISSION_URL}/my-access`),
+  getMyAccess: async (): Promise<UserAccessPermission> => {
+    try {
+      const data = await apiFetch<UserAccessPermission>(`${PERMISSION_URL}/my-access`);
+      try { localStorage.setItem('cached_permissions_ftjs', JSON.stringify(data)); } catch {}
+      return data;
+    } catch (err: any) {
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('unreachable')) {
+        const cached = localStorage.getItem('cached_permissions_ftjs');
+        if (cached) return JSON.parse(cached);
+      }
+      throw err;
+    }
+  },
 
   // resident search for FTJS entry
   searchResidents: (query: string): Promise<PersonSearchResponseDTO[]> => {

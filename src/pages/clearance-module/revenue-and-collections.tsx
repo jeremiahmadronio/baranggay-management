@@ -8,6 +8,7 @@ import {
   TableFilter,
   type TableColumn,
 } from "../../reusable";
+import { Printer } from "lucide-react";
 import {
   revenueApi,
   type DailyCollectionResponseDTO,
@@ -433,6 +434,48 @@ export const RevenueAndCollectionPage = () => {
     setDateTo("");
   };
 
+  const handlePrintReport = () => {
+    const fmtDate = (d: string) =>
+      new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+    const rangeLabel = dateFrom || dateTo
+      ? `${dateFrom ? fmtDate(dateFrom) : "(start)"} — ${dateTo ? fmtDate(dateTo) : "(today)"}`
+      : `${fmtDate(firstDayOfMonthISO)} — ${fmtDate(todayISO)}`;
+    const kpiHtml = [
+      { label: "Total Revenue", value: peso(stats?.totalRevenue || 0), sub: "Overall collected amount" },
+      { label: "This Week", value: peso(stats?.totalRevenueThisWeek || 0), sub: "Weekly collections" },
+      { label: "This Month", value: peso(stats?.totalRevenueThisMonth || 0), sub: "Monthly collections" },
+      { label: "This Year", value: peso(stats?.totalRevenueThisYear || 0), sub: "Year-to-date revenue" },
+    ].map((k) =>
+      `<div style="border:1px solid #E5E7EB;border-radius:8px;padding:16px 20px;flex:1;min-width:130px;"><p style="margin:0;font-size:11px;color:#6B7280;text-transform:uppercase;">${k.label}</p><p style="margin:6px 0 2px;font-size:22px;font-weight:700;color:#111827;">${k.value}</p><p style="margin:0;font-size:10px;color:#9CA3AF;">${k.sub}</p></div>`
+    ).join("");
+    const byTypeRows = revenueByType.map((r) =>
+      `<tr><td style="padding:5px 8px;font-size:12px;">${r.certificateTitle}</td><td style="padding:5px 8px;font-size:12px;text-align:right;">${formatNumber(r.count)}</td><td style="padding:5px 8px;font-size:12px;text-align:right;">${peso(r.fee)}</td><td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:600;">${peso(r.totalRevenue)}</td></tr>`
+    ).join("");
+    const topRows = topRevenue.map((r) =>
+      `<tr><td style="padding:5px 8px;font-size:12px;">${r.certificateTitle}</td><td style="padding:5px 8px;font-size:12px;text-align:right;">${formatNumber(r.count)}</td><td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:600;">${peso(r.totalRevenue)}</td></tr>`
+    ).join("");
+    const dailyRows = dailyCollections.map((r) =>
+      `<tr><td style="padding:5px 8px;font-size:12px;">${new Date(r.date).toLocaleDateString("en-PH")}</td><td style="padding:5px 8px;font-size:12px;text-align:right;">${formatNumber(r.totalCertIssue)}</td><td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:600;">${peso(r.totalCollections)}</td><td style="padding:5px 8px;font-size:12px;">${r.oRNumberStartToEnd || "-"}</td></tr>`
+    ).join("");
+    const trendRows2 = revenueTrend.map((r) =>
+      `<tr><td style="padding:5px 8px;font-size:12px;">${r.label}</td><td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:600;">${peso(r.revenue)}</td></tr>`
+    ).join("");
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>Clearance Revenue Report</title><style>*{box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;color:#111827;margin:0;padding:32px 40px;}h1{font-size:20px;font-weight:700;margin:0 0 2px;}.sub{font-size:12px;color:#6B7280;margin:0 0 24px;}.section{margin-bottom:28px;}.section-title{font-size:14px;font-weight:700;border-bottom:2px solid #E5E7EB;padding-bottom:6px;margin-bottom:12px;}table{width:100%;border-collapse:collapse;}th{text-align:left;font-size:11px;color:#6B7280;text-transform:uppercase;padding:4px 8px;border-bottom:1px solid #E5E7EB;}td{border-bottom:1px solid #F3F4F6;}.kpi-row{display:flex;gap:12px;flex-wrap:wrap;}@page{margin:1.2cm;size:A4;}@media print{body{padding:0;}}</style></head><body><div style="display:flex;justify-content:space-between;margin-bottom:20px;"><div><h1>Barangay Clearance Revenue &amp; Collections</h1><p class="sub">Period: ${rangeLabel}</p></div><div style="text-align:right;"><p style="margin:0;font-size:11px;color:#6B7280;">Generated</p><p style="margin:2px 0 0;font-size:12px;font-weight:600;">${new Date().toLocaleString("en-PH")}</p></div></div><div class="section"><div class="section-title">Revenue Summary</div><div class="kpi-row">${kpiHtml}</div></div><div class="section"><div class="section-title">Revenue by Certificate Type</div><table><thead><tr><th>Certificate Type</th><th style="text-align:right;">Issued</th><th style="text-align:right;">Fee</th><th style="text-align:right;">Total Revenue</th></tr></thead><tbody>${byTypeRows || '<tr><td colspan="4" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div><div class="section"><div class="section-title">Top 5 Revenue Templates</div><table><thead><tr><th>Template</th><th style="text-align:right;">Issued</th><th style="text-align:right;">Revenue</th></tr></thead><tbody>${topRows || '<tr><td colspan="3" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div><div class="section"><div class="section-title">Daily Collection Log</div><table><thead><tr><th>Date</th><th style="text-align:right;">Certificates Issued</th><th style="text-align:right;">Collections</th><th>OR Number Range</th></tr></thead><tbody>${dailyRows || '<tr><td colspan="4" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div><div class="section"><div class="section-title">Revenue Trend Summary</div><table><thead><tr><th>Period</th><th style="text-align:right;">Revenue</th></tr></thead><tbody>${trendRows2 || '<tr><td colspan="2" style="padding:10px 8px;font-size:12px;color:#9CA3AF;">No data.</td></tr>'}</tbody></table></div></body></html>`;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;";
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
+    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+    iframeDoc.open(); iframeDoc.write(html); iframeDoc.close();
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 300);
+    };
+  };
+
   const byTypeColumns: TableColumn<RevenueResponseByCertificate>[] = [
     {
       key: "certificateTitle",
@@ -568,6 +611,13 @@ export const RevenueAndCollectionPage = () => {
               <h2 className="text-lg font-semibold text-gray-900">Revenue and Collections Report</h2>
               <p className="text-sm text-gray-500">Coverage: {applyRangeLabel}</p>
             </div>
+            <button
+              onClick={handlePrintReport}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-full hover:bg-slate-50 hover:border-slate-400 transition-colors shadow-sm"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Print Report
+            </button>
           </div>
 
           <TableFilter

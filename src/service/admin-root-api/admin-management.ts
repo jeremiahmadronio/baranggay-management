@@ -298,7 +298,17 @@ export async function getPermissionOptions(): Promise<PermissionOptions[]> {
 }
 
 export async function getUserAccessPermission(): Promise<UserAccessPermission> {
-  return apiFetch<UserAccessPermission>("/my-access", {}, PERMISSION_URL);
+  try {
+    const data = await apiFetch<UserAccessPermission>("/my-access", {}, PERMISSION_URL);
+    try { localStorage.setItem('cached_permissions_admin', JSON.stringify(data)); } catch {}
+    return data;
+  } catch (err: any) {
+    if (err.message?.includes('Failed to fetch') || err.message?.includes('unreachable')) {
+      const cached = localStorage.getItem('cached_permissions_admin');
+      if (cached) return JSON.parse(cached);
+    }
+    throw err;
+  }
 }
 
 export async function restoreArchive(

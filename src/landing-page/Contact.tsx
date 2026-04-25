@@ -47,12 +47,12 @@ export const Contact = () => {
         
         {/* Header Section */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="w-16 h-1 bg-blue-600 mx-auto mb-6 rounded-full" />
+          
           <h2 className="text-4xl md:text-5xl font-serif font-bold text-blue-950 mb-6 tracking-tight">
             Get in Touch
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed font-medium">
-            Narito kami para tumulong. Bisitahin ang aming tanggapan o tumawag sa aming hotline para sa agarang serbisyo.
+            We're here to help. Visit our office or call our hotline for prompt service.
           </p>
         </div>
 
@@ -82,7 +82,7 @@ export const Contact = () => {
                 <div className="flex-1">
                     <h3 className="text-2xl font-bold text-white mb-2">Connect with us online</h3>
                     <p className="text-blue-100">
-                        Manatiling updated sa mga anunsyo at programa sa pamamagitan ng aming social media.
+                        Stay updated on announcements and programs through our social media.
                     </p>
                 </div>
 

@@ -524,7 +524,7 @@ export default function FtjsDetailViewPage() {
   const [replacementDetail, setReplacementDetail] =
     useState<ResponseNewFtjsFullDetailsDTO | null>(null);
 
-  const editable = record ? isEditableFtjsStatus(record.status) : false;
+  const editable = record ? isEditableFtjsStatus(record.status) || !!record._offline : false;
   const canViewRecords = hasFtjsPermission(
     userAccess,
     FTJS_PERMISSIONS.VIEW_RECORDS,
@@ -539,21 +539,34 @@ export default function FtjsDetailViewPage() {
   );
 
   async function loadRecord() {
-    if (!Number.isFinite(parsedId)) {
+    if (!ftjsId) {
       setError("Invalid FTJS record.");
       setLoading(false);
       return;
     }
+    
+    // Check if it's a valid ID (number or offline local ID)
+    const isOfflineId = ftjsId.toString().startsWith("local_");
+    const parsedIdNum = Number(ftjsId);
+    
+    if (!isOfflineId && !Number.isFinite(parsedIdNum)) {
+      setError("Invalid FTJS record.");
+      setLoading(false);
+      return;
+    }
+
+    // Determine the ID type to pass to the API (offline IDs are strings)
+    const finalId = isOfflineId ? (ftjsId as any) : parsedIdNum;
 
     try {
       setLoading(true);
       setError(null);
       const [recordRes, notesRes, timelineRes, replacementsRes] =
         await Promise.all([
-          ftjsApi.getFullDetails(parsedId),
-          ftjsApi.getNotes(parsedId),
-          ftjsApi.getTimeline(parsedId),
-          ftjsApi.getReplacementSummary(parsedId),
+          ftjsApi.getFullDetails(finalId),
+          ftjsApi.getNotes(finalId),
+          ftjsApi.getTimeline(finalId),
+          ftjsApi.getReplacementSummary(finalId),
         ]);
 
       const normalizedStatus = String(recordRes.status || "")
@@ -975,7 +988,7 @@ export default function FtjsDetailViewPage() {
                 icon={<FilePenLine className="w-5 h-5" />}
                 tone="blue"
                 onClick={() => setEditOpen(true)}
-                disabled={!editable || !canUpdateApplicantInfo}
+                disabled={!editable || !canUpdateApplicantInfo || record._offline}
               />
               <QuickActionCard
                 title="Print Certificate"
@@ -999,7 +1012,7 @@ export default function FtjsDetailViewPage() {
                 icon={<Archive className="w-5 h-5" />}
                 tone="rose"
                 onClick={() => setArchiveOpen(true)}
-                disabled={!canUpdateApplicantInfo}
+                disabled={!canUpdateApplicantInfo || record._offline}
               />
             </div>
 
@@ -1692,7 +1705,10 @@ export default function FtjsDetailViewPage() {
                 disabled={
                   reissueSubmitting ||
                   !reissueForm.reason.trim() ||
-                  !reissueForm.dateOfLoss
+                  !reissueForm.dateOfLoss ||
+                  !reissueForm.orNumber.trim() ||
+                  !reissueForm.amountPaid.trim() ||
+                  !reissueForm.affidavitFile
                 }
                 onClick={handleSubmitReissue}
                 className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
@@ -1734,7 +1750,7 @@ export default function FtjsDetailViewPage() {
               />
             </FieldShell>
 
-            <FieldShell label="OR Number">
+            <FieldShell label="OR Number" required>
               <input
                 type="text"
                 value={reissueForm.orNumber}
@@ -1748,7 +1764,7 @@ export default function FtjsDetailViewPage() {
               />
             </FieldShell>
 
-            <FieldShell label="Amount Paid">
+            <FieldShell label="Amount Paid" required>
               <input
                 type="number"
                 min="0"
@@ -1764,7 +1780,7 @@ export default function FtjsDetailViewPage() {
               />
             </FieldShell>
 
-            <FieldShell label="Affidavit Attachment">
+            <FieldShell label="Affidavit Attachment" required>
               <input
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt"

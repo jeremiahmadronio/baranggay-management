@@ -71,7 +71,8 @@ function normalizeBpoActivationError(error: unknown): string {
 export default function CaseDetailsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const id = Number(searchParams.get("id") || "1");
+  const rawId = searchParams.get("id") || "1";
+  const id: number | string = rawId.startsWith("local_") ? rawId : Number(rawId);
 
   const [caseData, setCaseData] = useState<CaseViewDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,13 +142,14 @@ export default function CaseDetailsPage() {
   const caseStatus = (caseData?.caseStatus || "").toUpperCase();
   const isWithdrawn = caseStatus === "WITHDRAWN";
   const isCertifiedToFileAction = caseStatus === "CERTIFIED_TO_FILE_ACTION";
-  const isReadOnlyCase = isWithdrawn || isCertifiedToFileAction;
+  const isOfflineRecord = !!caseData?._offline;
+  const isReadOnlyCase = isWithdrawn || isCertifiedToFileAction || isOfflineRecord;
   const canViewCases = hasVawcPermission(userAccess, VAWC_PERMISSIONS.VIEW_CASES);
   const canManageCaseNotes = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_CASE_NOTES);
-  const canIssueBpo = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_BPO);
-  const canManageIntervention = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_INTERVENTION);
-  const canIssueReferral = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_REFERRAL);
-  const canResolveFinalize = hasVawcPermission(userAccess, VAWC_PERMISSIONS.RESOLVE_FINALIZE_CASE);
+  const canIssueBpo = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_BPO) && !isOfflineRecord;
+  const canManageIntervention = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_INTERVENTION) && !isOfflineRecord;
+  const canIssueReferral = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_REFERRAL) && !isOfflineRecord;
+  const canResolveFinalize = hasVawcPermission(userAccess, VAWC_PERMISSIONS.RESOLVE_FINALIZE_CASE) && !isOfflineRecord;
 
   const readCachedInterventionLogs = (): LocalInterventionViewDTO[] => {
     try {

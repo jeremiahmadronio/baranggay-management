@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Header, Watermark, Footer } from "./SharedComponents";
+import { Header, Footer } from "./SharedComponents";
 import { SAMPLE_DATA } from "../../../clearance-api/template-api";
 
 // Helper: resolve key trying as-is, UPPER_SNAKE, and lower_snake
@@ -109,7 +109,6 @@ export function NewTemplatePreview({ data }: { data: NewTemplatePreviewData }) {
           }}
         >
           <Header />
-          <Watermark />
 
           {data.designFormat === "clearance" ? (
             <ClearanceLayout data={data} />
@@ -303,8 +302,18 @@ function ClearanceLayout({ data }: { data: NewTemplatePreviewData }) {
         </div>
       </div>
 
+      {/* "NOT VALID WITHOUT DRY SEAL" — inside body, above signatories */}
+      <div className="px-6 pt-4 pb-1">
+        <p
+          className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-500 border-t border-gray-200 pt-2"
+          style={{ letterSpacing: "0.2em" }}
+        >
+          ✦ Not valid without dry seal
+        </p>
+      </div>
+
       {/* Signatories — 2 left, 2 right grid, 5th centered */}
-      <div className="mt-6">
+      <div className="mt-2">
         <SignatoryGrid signatories={data.signatories} />
       </div>
     </div>
@@ -436,6 +445,13 @@ function InlineLayout({ data }: { data: NewTemplatePreviewData }) {
 
         {/* Signatories — 2 left, 2 right grid, 5th centered */}
         <div className="flex-1">
+          {/* "NOT VALID WITHOUT DRY SEAL" inside body, above signatories */}
+          <p
+            className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-500 border-t border-gray-200 pt-2 mb-4"
+            style={{ letterSpacing: "0.2em" }}
+          >
+            ✦ Not valid without dry seal
+          </p>
           <SignatoryGrid signatories={data.signatories} />
         </div>
       </div>

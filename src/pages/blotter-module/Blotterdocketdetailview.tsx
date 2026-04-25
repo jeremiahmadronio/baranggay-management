@@ -261,7 +261,8 @@ export function BlotterDocketDetailView({
     .toUpperCase()
     .trim();
   const canEditByStatus = EDITABLE_CASE_STATUSES.has(normalizedStatus);
-  const canEditCase = canUpdateCaseInfo && canEditByStatus;
+  const isOfflineRecord = !!docket?._offline;
+  const canEditCase = canUpdateCaseInfo && canEditByStatus && !isOfflineRecord;
 
   useEffect(() => {
     if (attemptedAutoEditOpen) return;
@@ -531,9 +532,9 @@ export function BlotterDocketDetailView({
           <OverviewTab
             docket={docket}
             mediation={mediation}
-            hasMediationPerm={canManageMediation}
-            hasResolvePerm={canResolveFinalize}
-            hasEscalationPerm={canManageLuponEscalation}
+            hasMediationPerm={canManageMediation && !isOfflineRecord}
+            hasResolvePerm={canResolveFinalize && !isOfflineRecord}
+            hasEscalationPerm={canManageLuponEscalation && !isOfflineRecord}
             onScheduleHearing={() => setModal("schedule")}
             onMarkSettled={() => setModal("settle")}
             onReferToLupon={() => setModal("refer")}
@@ -547,7 +548,7 @@ export function BlotterDocketDetailView({
             hearings={hearings}
             hearingsLoading={hearingsLoading}
             caseStatus={docket.caseStatus}
-            hasPermission={canManageMediation}
+            hasPermission={canManageMediation && !isOfflineRecord}
             blotterNumber={blotterNumber}
             caseNumber={docket.caseNumber}
             natureOfComplaint={docket.natureOfComplaint}

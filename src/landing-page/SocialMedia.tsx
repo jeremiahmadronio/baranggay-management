@@ -33,7 +33,7 @@ export const SocialMedia = () => {
       <div className="max-w-full mx-auto px-2 sm:px-4 lg:px-8">
         
         <div className="flex flex-col items-center mb-12">
-          <div className="w-16 h-1 mb-6" style={{ backgroundColor: '#1E2A5E' }} />
+        
           
           <h2 className="text-4xl md:text-5xl font-serif font-bold text-blue-950 text-center">
             Social Media Windows

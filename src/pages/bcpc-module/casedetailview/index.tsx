@@ -175,12 +175,11 @@ const STATUS_PILL: Record<string, string> = {
   DISMISSED: 'bg-rose-50 text-rose-700 border border-rose-200',
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function BcpcCaseDetailsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const id = Number(searchParams.get('id') || '1');
+  const rawId = searchParams.get('id') || '1';
+  const id: number | string = rawId.startsWith('local_') ? rawId : Number(rawId);
 
   const [caseData, setCaseData] = useState<BcpcCaseDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -209,8 +208,11 @@ export default function BcpcCaseDetailsPage() {
     setError(null);
     try {
       const found = MOCK_CASES.find((c) => c.id === id) ?? null;
-      if (!found) {
+      if (!found && !rawId.startsWith('local_')) {
         setError('Case not found.');
+      } else if (rawId.startsWith('local_')) {
+        // Fallback for offline mock records
+        setError('Offline BCPC cases are not fully implemented yet.');
       }
       setCaseData(found);
     } catch {
@@ -266,11 +268,13 @@ export default function BcpcCaseDetailsPage() {
     : '';
 
   const caseStatus = (caseData?.caseStatus || '').toUpperCase();
+  const isOfflineRecord = !!(caseData as any)?._offline;
   const isReadOnly =
     caseStatus === 'WITHDRAWN' ||
     caseStatus === 'RESOLVED' ||
     caseStatus === 'DISMISSED' ||
-    caseStatus === 'CERTIFIED_TO_FILE_ACTION';
+    caseStatus === 'CERTIFIED_TO_FILE_ACTION' ||
+    isOfflineRecord;
 
   // ── Note handler ───────────────────────────────────────────────────────────
   const handleAddNote = () => {
