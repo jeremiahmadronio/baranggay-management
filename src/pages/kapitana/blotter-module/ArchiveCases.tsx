@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 import type { ArchiveStatsDTO, ArchiveTableDTO, ArchiveTableParams, ArchiveTableResponse } from "../../../service/blotter-api/DocketView";
-import { Eye, RotateCcw } from "lucide-react";
+import {  RotateCcw } from "lucide-react";
 import { Table, type TableColumn } from "../../../reusable";
 import { TableFilter } from "../../../hooks/TableFilter";
 import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
@@ -330,21 +330,7 @@ export default function ArchiveCasesPage() {
       width: "130px",
       render: (item) => (
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            disabled={!canView}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (canView) setSelectedBlotterNumber(item.blotterNumber);
-            }}
-            title="View case"
-            className={`p-1.5 rounded-lg transition-colors ${
-              !canView
-                ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
-                : "text-blue-600 hover:bg-blue-50"
-            }`}
-          >
-            <Eye className="w-4 h-4" />
-          </button>
+          
           <button
             disabled={!canArchiveCases}
             onClick={(e) => {

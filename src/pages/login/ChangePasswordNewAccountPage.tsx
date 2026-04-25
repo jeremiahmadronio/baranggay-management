@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, {  useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import {
   Lock,
@@ -8,7 +8,6 @@ import {
   Check,
   X,
   ArrowLeft,
-
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AuthLayout } from './AuthLayout'
@@ -48,57 +47,21 @@ function routeFromDepartment(department?: string | null): string | null {
       return null
   }
 }
-// ─────────────────────────────────────────────────────────────────────────
 
 export function ChangePasswordNewAccountPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [username] = useState('')
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [isUsernameTaken, setIsUsernameTaken] = useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  const [usernameMessage, setUsernameMessage] = useState('');
-
-  // Store the destination route after successful password change
-  const [destinationRoute, setDestinationRoute] = useState('/login');
+  const [destinationRoute, setDestinationRoute] = useState('/login')
 
   const email =
-    (
-      location.state as {
-        email?: string
-      }
-    )?.email || ''
-
-  useEffect(() => {
-    if (username.trim().length < 3) {
-      setIsUsernameTaken(false);
-      setUsernameMessage('');
-      return;
-    }
-
-    const checkUsername = async () => {
-      setIsCheckingUsername(true);
-      try {
-        // API returns true when username IS taken
-        const isTaken = await authService.checkUsernameAvailability(username);
-        setIsUsernameTaken(isTaken);
-        setUsernameMessage(isTaken ? 'This username is already taken.' : 'Username is available.');
-      } catch (err) {
-        console.error("Username check failed", err);
-      } finally {
-        setIsCheckingUsername(false);
-      }
-    };
-
-    const timeoutId = setTimeout(checkUsername, 500);
-    return () => clearTimeout(timeoutId);
-  }, [username]);
+    (location.state as { email?: string })?.email || ''
 
   const passwordRules = {
     minLength: newPassword.length >= 8,
@@ -109,9 +72,7 @@ export function ChangePasswordNewAccountPage() {
   }
 
   const isPasswordValid = Object.values(passwordRules).every(Boolean)
-  const passwordsMatch =
-    newPassword === confirmPassword && confirmPassword !== ''
-  const isUsernameValid = username.trim().length >= 3
+  const passwordsMatch = newPassword === confirmPassword && confirmPassword !== ''
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -124,24 +85,14 @@ export function ChangePasswordNewAccountPage() {
       setError('Passwords do not match.')
       return
     }
-    if (!isUsernameValid) {
-      setError('Username must be at least 3 characters long.')
-      return
-    }
-    if (isUsernameTaken) {
-      setError('Please choose a different username — this one is already taken.')
-      return
-    }
     setIsLoading(true)
     try {
       const response = await authService.changePasswordNewAccount({
         email,
         newPassword,
         confirmPassword,
-        username,
       })
 
-      // Determine the destination based on role/department from response
       if (response.status === 'SUCCESS') {
         const role = normalizeKey(response.role)
         if (role === 'ROOT_ADMIN') {
@@ -177,20 +128,13 @@ export function ChangePasswordNewAccountPage() {
       {text}
     </div>
   )
+
   return (
     <AuthLayout>
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 20,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
-        transition={{
-          duration: 0.4,
-        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
         className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100"
       >
         <Link
@@ -202,12 +146,13 @@ export function ChangePasswordNewAccountPage() {
         </Link>
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Set Your Password & Username
+            Set Your Password
           </h2>
           <p className="text-slate-500 text-sm">
-            Create a strong password and choose a username for your new account
+            Create a strong password for your new account
           </p>
         </div>
+
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm flex items-start gap-2">
             <div className="mt-0.5">
@@ -222,6 +167,7 @@ export function ChangePasswordNewAccountPage() {
             {error}
           </div>
         )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label
@@ -249,14 +195,11 @@ export function ChangePasswordNewAccountPage() {
                 onClick={() => setShowNewPassword(!showNewPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
               >
-                {showNewPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
+                {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
+
           <div>
             <label
               htmlFor="confirmPassword"
@@ -274,7 +217,13 @@ export function ChangePasswordNewAccountPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 placeholder:text-slate-400 bg-slate-50 focus:bg-white ${confirmPassword && !passwordsMatch ? 'border-red-300' : confirmPassword && passwordsMatch ? 'border-green-300' : 'border-slate-200'}`}
+                className={`block w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow text-slate-900 placeholder:text-slate-400 bg-slate-50 focus:bg-white ${
+                  confirmPassword && !passwordsMatch
+                    ? 'border-red-300'
+                    : confirmPassword && passwordsMatch
+                      ? 'border-green-300'
+                      : 'border-slate-200'
+                }`}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -283,17 +232,11 @@ export function ChangePasswordNewAccountPage() {
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
+                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
             {confirmPassword && !passwordsMatch && (
-              <p className="mt-1 text-sm text-red-600">
-                Passwords do not match
-              </p>
+              <p className="mt-1 text-sm text-red-600">Passwords do not match</p>
             )}
             {confirmPassword && passwordsMatch && (
               <p className="mt-1 text-sm text-green-600 flex items-center gap-1">
@@ -301,60 +244,23 @@ export function ChangePasswordNewAccountPage() {
               </p>
             )}
           </div>
+
           <div className="bg-slate-50 p-3 rounded-lg">
             <p className="text-xs font-medium text-slate-600 mb-2">
               Password requirements:
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <RuleItem valid={passwordRules.minLength} text="8+ characters" />
-              <RuleItem
-                valid={passwordRules.hasUppercase}
-                text="Uppercase (A-Z)"
-              />
-              <RuleItem
-                valid={passwordRules.hasLowercase}
-                text="Lowercase (a-z)"
-              />
+              <RuleItem valid={passwordRules.hasUppercase} text="Uppercase (A-Z)" />
+              <RuleItem valid={passwordRules.hasLowercase} text="Lowercase (a-z)" />
               <RuleItem valid={passwordRules.hasNumber} text="Number (0-9)" />
-              <RuleItem
-                valid={passwordRules.hasSpecial}
-                text="Special (@$!%*?&)"
-              />
+              <RuleItem valid={passwordRules.hasSpecial} text="Special (@$!%*?&)" />
             </div>
-         
-
-          <div className="pt-2">
- 
-    
-    {/* Status Indicators */}
-    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-      {isCheckingUsername ? (
-        <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
-      ) : username.length >= 3 && isUsernameTaken ? (
-        <X className="h-4 w-4 text-red-500" />
-      ) : username.length >= 3 && !isUsernameTaken ? (
-        <Check className="h-4 w-4 text-green-500" />
-      ) : null}
-    </div>
-  </div>
-  
-  {/* Validation Message */}
-  {usernameMessage && (
-    <p className={`mt-1 text-xs ${isUsernameTaken ? 'text-red-600' : 'text-green-600'}`}>
-      {usernameMessage}
-    </p>
-  )}
-</div>
+          </div>
 
           <button
             type="submit"
-            disabled={
-              isLoading ||
-              !isPasswordValid ||
-              !passwordsMatch ||
-              !isUsernameValid ||
-              isUsernameTaken
-            }
+            disabled={isLoading || !isPasswordValid || !passwordsMatch}
             className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-600 disabled:opacity-50 transition-colors font-medium shadow-sm mt-4"
           >
             {isLoading ? (
@@ -368,6 +274,7 @@ export function ChangePasswordNewAccountPage() {
           </button>
         </form>
       </motion.div>
+
       <ActionModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
@@ -375,8 +282,8 @@ export function ChangePasswordNewAccountPage() {
         type="success"
       >
         <p>
-          Your password and username have been set successfully. You will now be
-          redirected to your dashboard.
+          Your password has been set successfully. You will now be redirected to
+          your dashboard.
         </p>
       </ActionModal>
     </AuthLayout>
