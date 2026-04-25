@@ -81,7 +81,7 @@ export function BackupPage() {
     hour: 0,
     minute: 0,
     dayOfWeek: "MON",
-    enabled: false,
+    enabled: true,
   });
   const [actionPassphrase, setActionPassphrase] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -310,16 +310,6 @@ export function BackupPage() {
     });
     setActionPassphrase("");
   };
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-gray-500">
-          <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
-          <p>Loading backup data...</p>
-        </div>
-      </div>
-    );
-  }
 
   const filteredBackups = useMemo(() => {
     return backups
@@ -346,9 +336,21 @@ export function BackupPage() {
         return true;
       })
       .sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
   }, [backups, tableSearch, statusFilter, startDateFilter, endDateFilter]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-gray-500">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+          <p>Loading backup data...</p>
+        </div>
+      </div>
+    );
+  }
 
   const totalPages = Math.ceil(filteredBackups.length / itemsPerPage);
   const start = (currentPage - 1) * itemsPerPage;
@@ -362,9 +364,17 @@ export function BackupPage() {
           {/* Storage Usage */}
           <KPICard
             title="Storage Used"
-            value={stats ? `${stats.storageUsedGb.toFixed(4)} GB` : "—"}
+            value={
+              typeof stats?.storageUsedGb === "number"
+                ? `${stats.storageUsedGb.toFixed(4)} GB`
+                : "—"
+            }
             icon={KPIIcons.chart}
-            subtitle={stats ? `of ${stats.storageLimitGb.toFixed(2)} GB` : "—"}
+            subtitle={
+              typeof stats?.storageLimitGb === "number"
+                ? `of ${stats.storageLimitGb.toFixed(2)} GB`
+                : "—"
+            }
             color="blue"
           />
 
@@ -380,7 +390,9 @@ export function BackupPage() {
           {/* Next Backup Time */}
           <KPICard
             title="Next Backup"
-            value={formatDate(stats?.nextBackupTime) || "—"}
+            value={
+              stats?.nextBackupTime ? formatDate(stats.nextBackupTime) : "—"
+            }
             icon={KPIIcons.month}
             subtitle="Scheduled"
             color="amber"
@@ -389,7 +401,9 @@ export function BackupPage() {
           {/* Last Backup Status */}
           <KPICard
             title="Last Backup"
-            value={formatDate(stats?.lastBackupDate) || "—"}
+            value={
+              stats?.lastBackupDate ? formatDate(stats.lastBackupDate) : "—"
+            }
             icon={
               stats?.lastBackupStatus === "Success"
                 ? KPIIcons.check
@@ -607,9 +621,13 @@ export function BackupPage() {
                   </span>
                   -
                   <span className="font-medium">
-                    {Math.min(currentPage * itemsPerPage, filteredBackups.length)}
+                    {Math.min(
+                      currentPage * itemsPerPage,
+                      filteredBackups.length,
+                    )}
                   </span>{" "}
-                  of <span className="font-medium">{filteredBackups.length}</span>
+                  of{" "}
+                  <span className="font-medium">{filteredBackups.length}</span>
                 </p>
                 <div className="flex gap-2">
                   <button

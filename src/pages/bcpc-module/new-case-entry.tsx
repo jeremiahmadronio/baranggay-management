@@ -110,12 +110,6 @@ const GENDER_OPTIONS = [
   { value: "Other", label: "Prefer not to say" },
 ];
 
-const CIVIL_STATUS_OPTIONS = [
-  { value: "Single", label: "Single" },
-  { value: "Married", label: "Married" },
-  { value: "Widowed", label: "Widowed" },
-  { value: "Separated", label: "Separated" },
-];
 
 const RELATIONSHIP_OPTIONS = [
   { value: "Parent", label: "Parent" },
@@ -163,7 +157,6 @@ export default function BcpcNewCaseEntryPage() {
   // Section A — Docket / Case Info
   const [assignedOfficer, setAssignedOfficer] = useState("");
 
-  // Section B — Child / Complainant
   const [cLastName, setCLastName] = useState("");
   const [cFirstName, setCFirstName] = useState("");
   const [cMiddleName, setCMiddleName] = useState("");
@@ -174,7 +167,6 @@ export default function BcpcNewCaseEntryPage() {
   const [cEmail, setCEmail] = useState("");
   const [cAddress, setCAddress] = useState("");
 
-  // Section C — Respondent / Guardian
   const [rLastName, setRLastName] = useState("");
   const [rFirstName, setRFirstName] = useState("");
   const [rMiddleName, setRMiddleName] = useState("");
