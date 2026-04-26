@@ -95,6 +95,7 @@ const KapitanaDocketview = () => {
   const [selectedBlotterNumber, setSelectedBlotterNumber] = useState<
     string | null
   >(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
   const [openEditOnDetailLoad, setOpenEditOnDetailLoad] = useState(false);
 
   // Filter state
@@ -374,6 +375,7 @@ const KapitanaDocketview = () => {
                 if (canView) {
                   setOpenEditOnDetailLoad(false);
                   setSelectedBlotterNumber(item.blotterNumber);
+                  setSelectedCaseId(item.id);
                 }
               }}
               title="View case"
@@ -399,10 +401,12 @@ const KapitanaDocketview = () => {
     return (
       <BlotterDocketDetailView
         blotterNumber={selectedBlotterNumber}
+        caseId={selectedCaseId ?? undefined}
         openEditOnLoad={openEditOnDetailLoad}
         onBack={() => {
           setOpenEditOnDetailLoad(false);
           setSelectedBlotterNumber(null);
+          setSelectedCaseId(null);
           fetchTable(params);
           fetchStats();
         }}
@@ -536,6 +540,7 @@ const KapitanaDocketview = () => {
           if (canView) {
             setOpenEditOnDetailLoad(false);
             setSelectedBlotterNumber(item.blotterNumber);
+            setSelectedCaseId(item.id);
           }
         }}
         hoverable

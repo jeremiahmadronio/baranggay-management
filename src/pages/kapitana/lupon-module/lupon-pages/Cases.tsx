@@ -258,7 +258,9 @@ const KapitanaLuponCases = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/official-portal/lupon/case-detail/${item.blotterNumber}`);
+                navigate(`/official-portal/lupon/case-detail/${item.blotterNumber}`, {
+                  state: { caseId: item.id },
+                });
               }}
               title="View case"
               className="p-1.5 rounded-lg transition-colors text-blue-600 hover:bg-blue-50"
@@ -363,7 +365,9 @@ const KapitanaLuponCases = () => {
           emptyMessage="No docket records found."
           variant="resident"
           onRowClick={(item) => {
-            navigate(`/official-portal/lupon/case-detail/${item.blotterNumber}`);
+            navigate(`/official-portal/lupon/case-detail/${item.blotterNumber}`, {
+              state: { caseId: item.id },
+            });
           }}
           hoverable
           striped

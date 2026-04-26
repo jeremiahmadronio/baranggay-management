@@ -14,6 +14,7 @@ import {
   getHearingView,
   getCaseNotes,
   updateCaseStatus,
+  updateBlotterStatusById,
 } from "../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
@@ -33,6 +34,7 @@ import { FollowUpModal } from "./modal/FollowUpModal";
 import { ChangeStatusModal } from "./modal/ChangeStatusModal";
 import { EditCaseModal } from "./modal/EditCaseModal";
 import { ActionModal } from "./reusable/SuccessModal";
+import { StatusUpdateModal } from "../../reusable/StatusUpdateModal";
 import { PermissionDeniedPage } from "./reusable/PermissionDeniedPage";
 import { CenteredLoader, CircleLoader } from "../../hooks/LoadingStates";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
@@ -41,6 +43,7 @@ interface Props {
   blotterNumber: string;
   onBack: () => void;
   openEditOnLoad?: boolean;
+  caseId?: number;
 }
 
 type TabKey = "overview" | "hearings" | "notes" | "timeline";
@@ -55,12 +58,14 @@ type ModalKey =
   | "addFollowUp"
   | "changeStatus"
   | "editCase"
+  | "reopen"
   | null;
 
 export function BlotterDocketDetailView({
   blotterNumber,
   onBack,
   openEditOnLoad = false,
+  caseId,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [docket, setDocket] = useState<BlotterDocketViewDTO | null>(null);
@@ -183,6 +188,39 @@ export function BlotterDocketDetailView({
       setActionLoading(false);
     }
   };
+
+  const handleReopenCase = async (reason: string) => {
+    if (!reason.trim()) {
+      alert("Reason is required.");
+      return;
+    }
+    console.log("REOPEN DEBUG - Passed caseId prop (Standard):", caseId);
+    console.log("REOPEN DEBUG - Docket data (Standard):", docket);
+
+    const idToUse =
+      caseId || docket?.id || docket?.caseId || (docket as any)?.blotterId;
+
+    if (!idToUse) {
+      alert(
+        `Case ID not found. \nFields present in docket: ${Object.keys(docket || {}).join(", ")}`,
+      );
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await updateBlotterStatusById(Number(idToUse), {
+        status: "ACTIVE",
+        reason: reason,
+      });
+      setModal(null);
+      await refreshData();
+    } catch (err: any) {
+      alert(err.message || "Action failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   // ── Initial load ──
   useEffect(() => {
@@ -464,6 +502,17 @@ export function BlotterDocketDetailView({
             onCancel={() => setModal(null)}
           />
         )}
+        {modal === "reopen" && (
+          <StatusUpdateModal
+            isOpen
+            onClose={() => setModal(null)}
+            title="Re-open Case"
+            mode="reason-only"
+            subjectName={docket.caseNumber}
+            submitLabel="Re-open Case"
+            onSubmit={({ reason }) => handleReopenCase(reason)}
+          />
+        )}
 
         <ActionModal
           isOpen={showEditSuccess}
@@ -540,6 +589,7 @@ export function BlotterDocketDetailView({
             onReferToLupon={() => setModal("refer")}
             onDismissCase={() => setModal("dismiss")}
             onIssueCFA={() => setModal("issueCFA")}
+            onReopenCase={() => setModal("reopen")}
           />
         )}
 

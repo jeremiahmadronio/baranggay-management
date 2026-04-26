@@ -7,6 +7,7 @@ import {
 
 const REASON_LIMIT = 1000;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useArchiveModal<T>() {
   const [target, setTarget] = useState<T | null>(null);
 

@@ -58,6 +58,7 @@ type BpoTabProps = {
   followUpError: string;
   followUpMessage: string;
   followUpSaveDisabled: boolean;
+  hasPrintedRequest: boolean;
   onActivateBpo: () => void;
   onPrintBpoRequest: () => void;
   onInterventionFormChange: (field: keyof InterventionFormState, value: string | number[]) => void;
@@ -94,6 +95,7 @@ export function BpoTab({
   followUpLoading,
   followUpError,
   followUpMessage,
+  hasPrintedRequest,
   onActivateBpo,
   onPrintBpoRequest,
   onInterventionFormChange,
@@ -192,16 +194,31 @@ export function BpoTab({
               <button
                 onClick={onPrintBpoRequest}
                 disabled={!canIssueBpo}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 flex items-center gap-1.5"
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  hasPrintedRequest 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' 
+                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
                 title={canIssueBpo ? 'Print BPO request letter' : 'You do not have permission to issue BPO'}
               >
-                <PrinterIcon className="w-3.5 h-3.5" /> Print BPO Request Letter
+                <PrinterIcon className="w-3.5 h-3.5" /> 
+                {hasPrintedRequest ? 'Request Letter Printed' : 'Print BPO Request Letter'}
               </button>
               <button
                 onClick={onActivateBpo}
-                disabled={bpoActionLoading || !canIssueBpo}
-                className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
-                title={canIssueBpo ? 'Activate BPO' : 'You do not have permission to issue BPO'}
+                disabled={bpoActionLoading || !canIssueBpo || !hasPrintedRequest}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors flex items-center gap-1.5 ${
+                  (bpoActionLoading || !canIssueBpo || !hasPrintedRequest)
+                    ? 'bg-slate-400 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700 shadow-sm shadow-green-200'
+                }`}
+                title={
+                  !canIssueBpo 
+                    ? 'You do not have permission to issue BPO' 
+                    : !hasPrintedRequest 
+                      ? 'Please print the Request Letter first before activating' 
+                      : 'Activate BPO'
+                }
               >
                 {bpoActionLoading ? 'Activating...' : 'Activate BPO (Post-Signature)'}
               </button>

@@ -25,7 +25,9 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 function cacheUserProfile(profile: UserProfile) {
   try {
     localStorage.setItem(USER_CACHE_KEY, JSON.stringify(profile));
-  } catch { /* quota exceeded, silently fail */ }
+  } catch {
+    // quota exceeded, silently fail
+  }
 }
 
 /** Restore user profile from localStorage when offline */
@@ -91,10 +93,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // Don't redirect on 403 (permission error) - user might just not have access to profile endpoint
       if (
         errorMessage.includes("No authentication token") ||
-        errorMessage.includes("Invalid token")
+        errorMessage.includes("Invalid token") ||
+        errorMessage.includes("Invalid session")
       ) {
         setTimeout(() => {
-          window.location.href = "/login";
+          if (window.location.pathname !== '/login') {
+            window.location.href = "/login";
+          }
         }, 100);
       }
       // For "expired" or "Session expired", just log it - token was already removed
@@ -115,6 +120,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useUser() {
   const context = useContext(UserContext);
   if (context === undefined) {
@@ -124,6 +130,7 @@ export function useUser() {
 }
 
 // Helper to get user's display name
+// eslint-disable-next-line react-refresh/only-export-components
 export function getUserDisplayName(
   user: UserProfile | null,
   fallback = "User",

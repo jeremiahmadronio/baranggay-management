@@ -240,14 +240,17 @@ export default function BcpcCaseDetailsPage() {
 
   useEffect(() => {
     fetchCase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
     if (activeTab === 'notes') loadNotes();
+     
   }, [activeTab, id]);
 
   useEffect(() => {
     if (activeTab === 'timeline' && timeline.length === 0) loadTimeline();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, id]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -268,6 +271,7 @@ export default function BcpcCaseDetailsPage() {
     : '';
 
   const caseStatus = (caseData?.caseStatus || '').toUpperCase();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isOfflineRecord = !!(caseData as any)?._offline;
   const isReadOnly =
     caseStatus === 'WITHDRAWN' ||

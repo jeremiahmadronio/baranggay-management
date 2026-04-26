@@ -293,7 +293,9 @@ const LuponCases = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/lupongtagapamayapa/cases/${item.blotterNumber}`);
+                navigate(`/lupongtagapamayapa/cases/${item.blotterNumber}`, {
+                  state: { caseId: item.id },
+                });
               }}
               title="View case"
               className="p-1.5 rounded-lg transition-colors text-blue-600 hover:bg-blue-50"
@@ -436,7 +438,9 @@ const LuponCases = () => {
           emptyMessage="No docket records found."
           variant="resident"
           onRowClick={(item) => {
-            navigate(`/lupongtagapamayapa/cases/${item.blotterNumber}`);
+            navigate(`/lupongtagapamayapa/cases/${item.blotterNumber}`, {
+              state: { caseId: item.id },
+            });
           }}
           hoverable
           striped

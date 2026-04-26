@@ -13,9 +13,7 @@ export default defineConfig({
       includeAssets: ['logo.png', 'favicon.ico'],
       // Enable service worker in dev mode so offline works on port 5173
       devOptions: {
-        enabled: true,
-        type: 'module',
-        navigateFallback: 'index.html',
+        enabled: false,
       },
       manifest: {
         name: 'Barangay Ugong Management System',

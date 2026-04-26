@@ -15,6 +15,7 @@ import {
   updateCaseStatus,
 } from "../../../service/lupon-api/LuponCaseManagement-view-api-v2";
 import { getLuponCaseView } from "../../../service/lupon-api/Lupong-tagapamayapa-view-api";
+import { updateBlotterStatusById } from "../../../service/blotter-api/DocketView";
 import { extendCasePeriod } from "../../../service/lupon-api/LuponCaseManagement-api";
 import { getMyAccess } from "../../../service/lupon-api/LuponCasePermission";
 import { OverviewTab } from "../tabs/OverviewTab";
@@ -29,9 +30,11 @@ import { RecordMinutesModal } from "../modal/RecordMinutesModal";
 import { PermissionDeniedPage } from "../../blotter-module/reusable/PermissionDeniedPage";
 import { CenteredLoader, CircleLoader } from "../../../hooks/LoadingStates";
 import { ArchiveReasonModal } from "../../../hooks/archive-modal";
+import { StatusUpdateModal } from "../../../reusable/StatusUpdateModal";
 interface Props {
   blotterNumber: string;
   onBack: () => void;
+  caseId?: number;
 }
 type TabKey = "overview" | "hearings" | "notes" | "timeline" | "CFA";
 type ModalKey =
@@ -44,6 +47,7 @@ type ModalKey =
   | "recordMinutes"
   | "viewMinutes"
   | "addFollowUp"
+  | "reopen"
   | null;
 
 const VIEW_CASES_PERMISSIONS = ["View Cases", "VIEW_CASES", "View Records"];
@@ -78,7 +82,11 @@ const hasAnyPermission = (owned: string[], required: string[]) => {
   return required.some((perm) => ownedSet.has(normalizePermission(perm)));
 };
 
-export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
+export function LuponCaseDetailView({
+  blotterNumber,
+  onBack,
+  caseId,
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [luponData, setLuponData] = useState<LuponViewDTO | null>(null);
   const [mediation, setMediation] = useState<MediationProcessDTO | null>(null);
@@ -136,6 +144,35 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
       setHearings(h);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleReopenCase = async (reason: string) => {
+    if (!reason.trim()) {
+      alert("Reason is required.");
+      return;
+    }
+    const idToUse =
+      caseId ||
+      luponData?.id ||
+      (luponData as any)?.caseId ||
+      (luponData as any)?.blotterId;
+    if (!idToUse) {
+      alert("Case ID not found. Cannot re-open case.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await updateBlotterStatusById(Number(idToUse), {
+        status: "ACTIVE",
+        reason: reason,
+      });
+      setModal(null);
+      await refreshData();
+    } catch (err: any) {
+      alert(err.message || "Action failed.");
+    } finally {
+      setActionLoading(false);
     }
   };
   const handleUpdateStatus = async (
@@ -445,6 +482,20 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
           />
         )}
 
+        {modal === "reopen" && (
+          <StatusUpdateModal
+            isOpen={true}
+            onClose={() => setModal(null)}
+            title="Re-open Case"
+            subjectName={blotterNumber}
+            subjectLabel="(record)"
+            submitLabel="Re-open Case"
+            loading={actionLoading}
+            onSubmit={handleReopenCase}
+            mode="reason-only"
+          />
+        )}
+
         {/* --- HEADER --- */}
         <div>
           <button
@@ -492,6 +543,7 @@ export function LuponCaseDetailView({ blotterNumber, onBack }: Props) {
             onDismissCase={() => setModal("dismiss")}
             onIssueCFA={() => setModal("issueCFA")}
             onExtendMediation={() => setModal("extendMediation")}
+            onReopenCase={() => setModal("reopen")}
           />
         )}
 

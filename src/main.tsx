@@ -17,28 +17,38 @@ window.addEventListener('offline-sync-complete', () => {
 
 // --- Register PWA Service Worker ---
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const { registerSW } = await import('virtual:pwa-register');
-      registerSW({
-        immediate: true,
-        onRegisteredSW(swUrl, registration) {
-          console.log('[PWA] Service Worker registered:', swUrl);
-          // Check for updates every hour
-          if (registration) {
-            setInterval(() => {
-              registration.update();
-            }, 60 * 60 * 1000);
-          }
-        },
-        onOfflineReady() {
-          console.log('[PWA] App is ready for offline use.');
-        },
-      });
-    } catch (err) {
-      console.log('[PWA] Service worker registration skipped:', err);
-    }
-  });
+  if (import.meta.env.DEV) {
+    // In dev mode, unregister any leftover service workers to prevent reload loops
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((r) => r.unregister());
+    });
+    caches.keys().then((names) => {
+      names.forEach((name) => caches.delete(name));
+    });
+  } else {
+    // Production only: register the PWA service worker
+    window.addEventListener('load', async () => {
+      try {
+        const { registerSW } = await import('virtual:pwa-register');
+        registerSW({
+          immediate: true,
+          onRegisteredSW(swUrl, registration) {
+            console.log('[PWA] Service Worker registered:', swUrl);
+            if (registration) {
+              setInterval(() => {
+                registration.update();
+              }, 60 * 60 * 1000);
+            }
+          },
+          onOfflineReady() {
+            console.log('[PWA] App is ready for offline use.');
+          },
+        });
+      } catch (err) {
+        console.log('[PWA] Service worker registration skipped:', err);
+      }
+    });
+  }
 }
 
 createRoot(document.getElementById("root")!).render(

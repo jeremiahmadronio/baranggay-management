@@ -389,7 +389,65 @@ export function installFetchInterceptor(): void {
             totalArchive: 0, totalArchiveThisMonth: 0, totalArchiveResident: 0, totalArchiveNonResident: 0,
           });
         } else {
-          fallbackData = JSON.stringify({});
+          // See if we can extract basic details from a cached table endpoint
+          // This allows users to see basic info and perform actions even if the detail view isn't cached
+          const caseIdMatch = url.match(/\/api\/v1\/(blotter-form|vawc\/complaint-entry|blotter\/mediation-process|vawc\/mediation-process)\/([A-Z0-9-]+)$/i);
+          
+          if (caseIdMatch) {
+            const module = caseIdMatch[1].startsWith('vawc') ? 'vawc' : 'blotter';
+            const caseId = caseIdMatch[2];
+            
+            const summaryUrl = module === 'vawc' ? '/api/v1/vawc/case-summary' : '/api/v1/blotter/summary';
+            const summaryCacheKey = Object.keys(localStorage).find(k => k.startsWith(CACHE_PREFIX) && k.includes(summaryUrl));
+            
+            if (summaryCacheKey) {
+               try {
+                 const summaryCache = JSON.parse(localStorage.getItem(summaryCacheKey) || '{}');
+                 const summaryData = JSON.parse(summaryCache.data || '{}');
+                 const entries = Array.isArray(summaryData) ? summaryData : (summaryData.content || []);
+                 
+                 const match = entries.find((e: any) => e.caseNumber === caseId || e.blotterNumber === caseId || e.id === caseId);
+                 
+                 if (match) {
+                   if (module === 'blotter') {
+                     const compNames = (match.complainantName || '').split(' ');
+                     const respNames = (match.respondentName || '').split(' ');
+                     fallbackData = JSON.stringify({
+                       caseNumber: caseId,
+                       blotterNumber: caseId,
+                       firstName: compNames[0] || '',
+                       lastName: compNames.slice(1).join(' ') || '',
+                       respondentFirstName: respNames[0] || '',
+                       respondentLastName: respNames.slice(1).join(' ') || '',
+                       caseStatus: match.status || 'UNKNOWN',
+                       dateFiled: match.dateFiled || new Date().toISOString(),
+                       natureOfComplaint: match.natureOfComplaint || 'Unknown',
+                       _offline: false, // Ensures action buttons are enabled
+                     });
+                   } else {
+                     const victimNames = (match.victimFullName || '').split(' ');
+                     fallbackData = JSON.stringify({
+                       caseNumber: caseId,
+                       complainantFirstName: victimNames[0] || '',
+                       complainantLastName: victimNames.slice(1).join(' ') || '',
+                       status: match.status || 'UNKNOWN',
+                       natureOfComplaint: match.violenceTypes || 'Unknown',
+                       dateFiled: match.dateFiled || new Date().toISOString(),
+                       _offline: false,
+                     });
+                   }
+                 } else {
+                   fallbackData = JSON.stringify({});
+                 }
+               } catch {
+                 fallbackData = JSON.stringify({});
+               }
+            } else {
+               fallbackData = JSON.stringify({});
+            }
+          } else {
+            fallbackData = JSON.stringify({});
+          }
         }
 
         // Inject any pending offline entries
@@ -411,6 +469,11 @@ export function installFetchInterceptor(): void {
       try {
         return await fetchWithTimeout(input, init);
       } catch (err: any) {
+        // Do NOT queue authentication endpoints
+        if (url.includes('/auth/login') || url.includes('/auth/')) {
+          throw err;
+        }
+
         if (err.message?.includes('Failed to fetch') || err.message?.includes('unreachable') || err.message?.includes('NetworkError') || err.message?.includes('Network timeout')) {
           // Queue for later sync
           const headers: Record<string, string> = {};

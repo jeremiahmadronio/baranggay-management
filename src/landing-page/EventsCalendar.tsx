@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { eventService, type Event, type EventCategory } from '../service/events/eventService';
 
 import {
   Calendar as CalendarIcon,
@@ -20,19 +21,10 @@ import {
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 
-type EventCategory = 'all' | 'health' | 'education' | 'community' | 'sports' | 'government' | 'environment';
+// We removed the static sampleEvents array as it's now handled by the eventService
 
-interface Event {
-  id: number;
-  title: string;
-  date: Date;
-  time: string;
-  location: string;
-  description: string;
-  category: EventCategory;
-  attendees?: number;
-  isFeatured?: boolean;
-}
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const categories = [
   { id: 'all', label: 'All', icon: CalendarIcon },
@@ -53,64 +45,15 @@ const categoryDot: Record<string, string> = {
   environment: 'bg-green-400',
 };
 
-const sampleEvents: Event[] = [
-  {
-    id: 1, title: 'Medical Mission - Free Checkup', date: new Date(2026, 3, 28),
-    time: '8:00 AM - 4:00 PM', location: 'Barangay Health Center',
-    description: 'Free medical consultation, blood pressure monitoring, and blood sugar testing for all residents of Barangay Ugong.',
-    category: 'health', attendees: 150, isFeatured: true,
-  },
-  {
-    id: 2, title: 'Youth Leadership Summit 2026', date: new Date(2026, 4, 2),
-    time: '9:00 AM - 5:00 PM', location: 'Barangay Hall Function Room',
-    description: 'Workshop and seminar for the youth on leadership, public speaking, and community service.',
-    category: 'education', attendees: 75,
-  },
-  {
-    id: 3, title: 'Barangay General Assembly', date: new Date(2026, 4, 5),
-    time: '2:00 PM - 6:00 PM', location: 'Covered Court',
-    description: 'Quarterly assembly for all residents. Important announcements, budget report, and Q&A session with the Barangay Captain.',
-    category: 'government', attendees: 300, isFeatured: true,
-  },
-  {
-    id: 4, title: 'Inter-Purok Basketball Tournament', date: new Date(2026, 4, 10),
-    time: '3:00 PM', location: 'Barangay Sports Complex',
-    description: 'Opening ceremony of the Inter-Purok Basketball Tournament 2026. All teams are invited to attend.',
-    category: 'sports', attendees: 200,
-  },
-  {
-    id: 5, title: 'Brigada Eskwela Clean-Up Drive', date: new Date(2026, 4, 15),
-    time: '6:00 AM - 10:00 AM', location: 'Starting at Barangay Hall',
-    description: 'Community clean-up drive at local schools and barangay roads. Please bring your own cleaning materials and water.',
-    category: 'environment', attendees: 100,
-  },
-  {
-    id: 6, title: 'Livelihood Training: Baking & Pastry', date: new Date(2026, 4, 18),
-    time: '9:00 AM - 12:00 PM', location: 'Skills Training Center',
-    description: 'Free baking and pastry workshop for interested residents. Certificate of completion provided. Limited slots!',
-    category: 'community', attendees: 30, isFeatured: true,
-  },
-  {
-    id: 7, title: 'Senior Citizens Day Celebration', date: new Date(2026, 4, 22),
-    time: '10:00 AM - 3:00 PM', location: 'Barangay Multi-Purpose Hall',
-    description: 'Celebration for our senior citizens. With program, parlor games, raffle, and free lunch.',
-    category: 'community',
-  },
-  {
-    id: 8, title: 'Vaccination Drive - Flu & Pneumonia', date: new Date(2026, 4, 25),
-    time: '8:00 AM - 12:00 PM', location: 'Barangay Health Center',
-    description: 'Free flu and pneumonia vaccination for senior citizens, children, and immunocompromised residents.',
-    category: 'health',
-  },
-];
-
-const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 export const EventsCalendar = () => {
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [activeCategory, setActiveCategory] = useState<EventCategory>('all');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setAllEvents(eventService.getEvents());
+  }, []);
 
   // Calendar helpers
   const getDaysInMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
@@ -126,7 +69,7 @@ export const EventsCalendar = () => {
     return day === selectedDate.getDate() && currentDate.getMonth() === selectedDate.getMonth() && currentDate.getFullYear() === selectedDate.getFullYear();
   };
 
-  const getEventsForDay = (day: number) => sampleEvents.filter(e => {
+  const getEventsForDay = (day: number) => allEvents.filter(e => {
     const ed = new Date(e.date);
     return ed.getDate() === day && ed.getMonth() === currentDate.getMonth() && ed.getFullYear() === currentDate.getFullYear()
       && (activeCategory === 'all' || e.category === activeCategory);
@@ -150,7 +93,7 @@ export const EventsCalendar = () => {
 
   // Events for sidebar
   const getDisplayEvents = () => {
-    let filtered = sampleEvents.filter(e => activeCategory === 'all' || e.category === activeCategory);
+    let filtered = allEvents.filter(e => activeCategory === 'all' || e.category === activeCategory);
     if (selectedDate) {
       filtered = filtered.filter(e => {
         const ed = new Date(e.date);
@@ -158,9 +101,12 @@ export const EventsCalendar = () => {
       });
     } else {
       // Show events for the current month
-      filtered = filtered.filter(e => e.date.getMonth() === currentDate.getMonth() && e.date.getFullYear() === currentDate.getFullYear());
+      filtered = filtered.filter(e => {
+        const ed = new Date(e.date);
+        return ed.getMonth() === currentDate.getMonth() && ed.getFullYear() === currentDate.getFullYear();
+      });
     }
-    return filtered.sort((a, b) => a.date.getTime() - b.date.getTime());
+    return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
   const displayEvents = getDisplayEvents();
@@ -315,8 +261,8 @@ export const EventsCalendar = () => {
                       <div className="flex gap-3">
                         {/* Date badge */}
                         <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center">
-                          <span className="text-[10px] font-semibold text-gray-400 uppercase">{monthNames[event.date.getMonth()].slice(0, 3)}</span>
-                          <span className="text-lg font-bold text-gray-800 leading-none">{event.date.getDate()}</span>
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase">{monthNames[new Date(event.date).getMonth()].slice(0, 3)}</span>
+                          <span className="text-lg font-bold text-gray-800 leading-none">{new Date(event.date).getDate()}</span>
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -328,12 +274,10 @@ export const EventsCalendar = () => {
                           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.time}</span>
                             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>
+                            {event.expectedAttendees && (
+                              <span className="flex items-center gap-1"><Users className="w-3 h-3" />{event.expectedAttendees} expected</span>
+                            )}
                           </div>
-                          {event.attendees && (
-                            <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
-                              <Users className="w-3 h-3" />{event.attendees} expected
-                            </div>
-                          )}
                         </div>
                       </div>
                     </motion.div>

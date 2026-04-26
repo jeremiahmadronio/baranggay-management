@@ -21,15 +21,22 @@ import {
   mockLuponHearingView,
   mockLuponMediationProcess,
 } from "../../mock/lupon-kapitana-mock";
+import { updateBlotterStatusById } from "../../../../service/blotter-api/DocketView";
+import { StatusUpdateModal } from "../../../../reusable/StatusUpdateModal";
 
 interface Props {
   blotterNumber: string;
   onBack: () => void;
+  caseId?: number;
 }
 
 type TabKey = "overview" | "hearings" | "notes" | "timeline" | "CFA";
 
-export function KapitanaLuponCaseDetailView({ blotterNumber, onBack }: Props) {
+export function KapitanaLuponCaseDetailView({
+  blotterNumber,
+  onBack,
+  caseId,
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [luponData, setLuponData] = useState<LuponViewDTO | null>(null);
   const [mediation, setMediation] = useState<MediationProcessDTO | null>(null);
@@ -40,6 +47,63 @@ export function KapitanaLuponCaseDetailView({ blotterNumber, onBack }: Props) {
   const [notesLoading, setNotesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [modal, setModal] = useState<"reopen" | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const refreshData = async () => {
+    setDetailsLoading(true);
+    try {
+      if (useKapitanaMockData()) {
+        setLuponData(mockLuponCaseView(blotterNumber));
+        setMediation(mockLuponMediationProcess());
+        return;
+      }
+      const [d, m] = await Promise.all([
+        getLuponCaseView(blotterNumber),
+        getMediationProcess(blotterNumber),
+      ]);
+      setLuponData(d);
+      setMediation(m);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const handleReopenCase = async (reason: string) => {
+    if (!reason.trim()) {
+      alert("Reason is required.");
+      return;
+    }
+    const idToUse =
+      caseId ||
+      luponData?.caseId ||
+      luponData?.id ||
+      (luponData as any)?.blotterId;
+    if (!idToUse) {
+      alert("Case ID not found. Cannot re-open case.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      if (useKapitanaMockData()) {
+        setModal(null);
+        setLuponData((prev) => (prev ? { ...prev, caseStatus: "ACTIVE" } : prev));
+        return;
+      }
+      await updateBlotterStatusById(Number(idToUse), {
+        status: "ACTIVE",
+        reason: reason,
+      });
+      setModal(null);
+      await refreshData();
+    } catch (err: any) {
+      alert(err.message || "Action failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -185,13 +249,14 @@ export function KapitanaLuponCaseDetailView({ blotterNumber, onBack }: Props) {
           <OverviewTab
             luponData={luponData}
             mediation={mediation}
-            hasMediationPerm={false}
-            hasStatusPerm={false}
+            hasMediationPerm={true}
+            hasStatusPerm={true}
             onScheduleHearing={noop}
             onMarkSettled={noop}
             onDismissCase={noop}
             onIssueCFA={noop}
             onExtendMediation={noop}
+            onReopenCase={() => setModal("reopen")}
           />
         )}
 
@@ -227,6 +292,20 @@ export function KapitanaLuponCaseDetailView({ blotterNumber, onBack }: Props) {
         )}
 
         {activeTab === "CFA" && <CFATab luponData={luponData} />}
+
+        {modal === "reopen" && (
+          <StatusUpdateModal
+            isOpen={true}
+            onClose={() => setModal(null)}
+            title="Re-open Case"
+            subjectName={luponData.blotterNumber}
+            subjectLabel="(record)"
+            submitLabel="Re-open Case"
+            loading={actionLoading}
+            onSubmit={handleReopenCase}
+            mode="reason-only"
+          />
+        )}
       </div>
     </div>
   );

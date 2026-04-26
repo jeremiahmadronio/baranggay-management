@@ -304,19 +304,8 @@ export default function ArchiveCasesPage() {
         );
       },
     },
-    {
-      key: "archivedRemarks",
-      header: "Archive Remarks",
-      width: "290px",
-      render: (item) => (
-        <span
-          className="block whitespace-normal break-words text-gray-700 leading-snug"
-          title={item.archivedRemarks || ""}
-        >
-          {item.archivedRemarks || "—"}
-        </span>
-      ),
-    },
+    
+    
     {
       key: "dateFiled",
       header: "Date Filed",
@@ -468,9 +457,7 @@ export default function ArchiveCasesPage() {
         loading={loading}
         emptyMessage="No archived blotter records found."
         variant="resident"
-        onRowClick={(item) => {
-          if (canView) setSelectedBlotterNumber(item.blotterNumber);
-        }}
+        onRowClick={undefined}
         hoverable
         striped
         minRows={PAGE_SIZE}

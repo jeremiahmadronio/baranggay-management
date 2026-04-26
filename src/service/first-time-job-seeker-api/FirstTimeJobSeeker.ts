@@ -2,6 +2,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const FTJS_URL = `${BASE}/api/v1/ftjs`;
 const RESIDENT_URL = `${BASE}/api/v1/resident`;
 const PERMISSION_URL = `${BASE}/api/v1/permission`;
+import { searchOfflineResidents, cacheOnlineResidents } from "../offline/residentDb";
 
 class ApiError extends Error {
   status: number;
@@ -307,15 +308,21 @@ export const ftjsApi = {
   },
 
   // resident search for FTJS entry
-  searchResidents: (query: string): Promise<PersonSearchResponseDTO[]> => {
+  searchResidents: async (query: string): Promise<PersonSearchResponseDTO[]> => {
     if (!query || query.trim().length < 2) {
       return Promise.resolve([]);
     }
 
+    if (!navigator.onLine) {
+      return searchOfflineResidents(query.trim());
+    }
+
     const queryParams = new URLSearchParams({ query: query.trim() });
-    return apiFetch<PersonSearchResponseDTO[]>(
+    const results = await apiFetch<PersonSearchResponseDTO[]>(
       `${RESIDENT_URL}/search?${queryParams.toString()}`,
     );
+    cacheOnlineResidents(results).catch(() => {});
+    return results;
   },
 
   // create new requestt

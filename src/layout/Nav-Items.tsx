@@ -15,6 +15,7 @@ import {
   Heart,
   Award,
   BookOpen,
+  CalendarDays
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -43,6 +44,8 @@ export const adminNavItems: NavItemType[] = [
   { label: "User Management", path: "/admin/user-management", icon: Users },
   { label: "Residents", path: "/admin/residents", icon: Users },
   { label: "Officers", path: "/admin/officers", icon: Users },
+  { label: "Events", path: "/admin/events", icon: CalendarDays },
+  { label: "Reports", path: "/admin/reports", icon: ChartNoAxesCombined },
   { label: "Archive", path: "/admin/archive", icon: Archive },
 ];
 
@@ -55,7 +58,8 @@ export const rootAdminNavItems: NavItemType[] = [
   { label: "Officer Management", path: "/rootadmin/officers", icon: Users },
   {label: "Backup Management", path: "/rootadmin/backup-management", icon: Users},
   { label: "Audit Logs", path: "/rootadmin/audit-logs", icon: ScrollText },
-    { label: "Reports", path: "/rootadmin/reports", icon: ChartNoAxesCombined },
+
+  { label: "Reports", path: "/rootadmin/reports", icon: ChartNoAxesCombined },
     { label: "Archive", path: "/rootadmin/archive", icon: Archive },
 
 ];

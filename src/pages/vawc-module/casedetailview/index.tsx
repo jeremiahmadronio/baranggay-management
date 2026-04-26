@@ -129,6 +129,7 @@ export default function CaseDetailsPage() {
   const [followUpError, setFollowUpError] = useState("");
   const [followUpMessage, setFollowUpMessage] = useState("");
   const [showFollowUpSuccess, setShowFollowUpSuccess] = useState(false);
+  const [hasPrintedRequest, setHasPrintedRequest] = useState(false);
 
   const [showWithdrawInput, setShowWithdrawInput] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
@@ -553,6 +554,7 @@ export default function CaseDetailsPage() {
     try {
       setBpoActionMessage("");
       await downloadVawcBpoRequestAsWord(caseData, bpoDetails);
+      setHasPrintedRequest(true);
     } catch (err) {
       setBpoActionMessage(
         err instanceof Error ? err.message : "Failed to generate BPO request letter.",
@@ -1085,6 +1087,7 @@ export default function CaseDetailsPage() {
             bpoLoading={bpoLoading}
             bpoActionLoading={bpoActionLoading}
             bpoActionMessage={bpoActionMessage}
+            hasPrintedRequest={hasPrintedRequest}
             assignOfficerOptions={assignOfficerOptions}
             assignOfficerLoading={assignOfficerLoading}
             interventionLogs={interventionLogs}

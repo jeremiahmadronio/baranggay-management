@@ -155,7 +155,7 @@ function CancelModal({ hearing, onClose, onConfirm }: { hearing: BcpcHearing; on
 type ModalType = 'schedule' | 'recordMinutes' | 'viewMinutes' | 'followUp' | 'cancel' | null;
 
 type MediationTabProps = {
-  caseId: number;
+  caseId: number | string;
   isReadOnly: boolean;
   caseNumber: string;
   childName: string;

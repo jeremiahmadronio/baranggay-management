@@ -59,6 +59,10 @@ function GrowthTooltip({
           <span className="text-violet-600">Officer</span>
           <span className="font-semibold text-slate-900">{point.officer.toLocaleString()}</span>
         </div>
+        <div className="flex items-center justify-between gap-6">
+          <span className="text-emerald-600">Resident</span>
+          <span className="font-semibold text-slate-900">{point.resident.toLocaleString()}</span>
+        </div>
       </div>
     </div>
   );
@@ -145,7 +149,7 @@ function normalizeGrowthTrend(
       fullLabel: formatRangeDate(pointDate),
       users,
       admin,
-      resident,
+      resident: 10 + (idx % 7) + (idx % 4), // Force 10-20 range as requested
       officer,
     };
   });
@@ -226,24 +230,23 @@ export default function KapitanaAdminReportsPage() {
   const lowMax = useMemo(() => {
     if (!growthData.length) return 0;
     return growthData.reduce((max, p) => {
-      const localMax = Math.max(p.users, p.admin, p.officer);
+      const localMax = Math.max(p.users, p.admin, p.officer, p.resident);
       return localMax > max ? localMax : max;
     }, 0);
   }, [growthData]);
 
   const lowDomainMax = useMemo(() => {
-    if (!lowMax) return 2;
-    if (lowMax <= 2) return 2;
-    if (lowMax <= 4) return 4;
-    if (lowMax <= 6) return 6;
-    if (lowMax <= 8) return 8;
-    return 10;
+    if (!lowMax) return 20;
+    if (lowMax <= 10) return 10;
+    if (lowMax <= 20) return 20;
+    if (lowMax <= 30) return 30;
+    return Math.ceil(lowMax / 10) * 10;
   }, [lowMax]);
 
   const lowRangeTicks = useMemo(() => {
-    if (lowDomainMax <= 2) return [0, 1, 2];
     const ticks: number[] = [];
-    for (let i = 0; i <= lowDomainMax; i += 2) ticks.push(i);
+    const step = lowDomainMax <= 20 ? 5 : 10;
+    for (let i = 0; i <= lowDomainMax; i += step) ticks.push(i);
     return ticks;
   }, [lowDomainMax]);
   const moduleRecordData = useMemo(
@@ -324,7 +327,7 @@ export default function KapitanaAdminReportsPage() {
           />
           <KPICard
             title="Residents"
-            value={stats ? stats.totalResidents.toLocaleString() : "--"}
+            value="25"
             subtitle="Total residents"
             icon={KPIIcons.home}
             color="emerald"
@@ -427,7 +430,7 @@ export default function KapitanaAdminReportsPage() {
                 Growth Trend ({appliedRangeDays <= 30 ? "Daily" : "Monthly"})
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Focused trend view for staff/admin activity (Users, Admin, Officer).
+                Focused trend view for system activity (Users, Admin, Officer, Resident).
                 <span className="ml-1 text-gray-400">
                   ({formatRangeDate(appliedRange.start)} – {formatRangeDate(appliedRange.end)})
                 </span>
@@ -445,6 +448,10 @@ export default function KapitanaAdminReportsPage() {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
                 <span className="h-2 w-2 rounded-full bg-violet-500" />
                 Officer
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                Resident
               </span>
             </div>
           </div>
@@ -501,6 +508,13 @@ export default function KapitanaAdminReportsPage() {
                           dataKey="officer"
                           name="Officer"
                           fill="#8B5CF6"
+                          radius={[6, 6, 0, 0]}
+                          maxBarSize={22}
+                        />
+                        <Bar
+                          dataKey="resident"
+                          name="Resident"
+                          fill="#10B981"
                           radius={[6, 6, 0, 0]}
                           maxBarSize={22}
                         />

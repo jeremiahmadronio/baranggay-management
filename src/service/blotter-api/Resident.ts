@@ -1,5 +1,6 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const PEOPLE_URL = `${BASE}/api/v1/resident`;
+import { searchOfflineResidents, cacheOnlineResidents } from "../offline/residentDb";
 
 export interface PersonSearchResponseDTO {
   id: number;
@@ -117,10 +118,16 @@ export async function searchPeople(
 ): Promise<PersonSearchResponseDTO[]> {
   if (!query || query.trim().length < 2) return [];
 
+  if (!navigator.onLine) {
+    return searchOfflineResidents(query.trim());
+  }
+
   const queryParams = new URLSearchParams({ query: query.trim() });
-  return apiFetch<PersonSearchResponseDTO[]>(
+  const results = await apiFetch<PersonSearchResponseDTO[]>(
     `${PEOPLE_URL}/search?${queryParams.toString()}`,
   );
+  cacheOnlineResidents(results).catch(() => {});
+  return results;
 }
 
 export async function getResidentTable(

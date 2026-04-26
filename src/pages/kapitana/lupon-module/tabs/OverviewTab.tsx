@@ -26,6 +26,7 @@ interface OverviewTabProps {
   onDismissCase: () => void;
   onIssueCFA: () => void;
   onExtendMediation: () => void;
+  onReopenCase: (reason: string) => void;
 }
 const MEDIATION_STEPS = [
   {
@@ -124,75 +125,101 @@ export function OverviewTab({
   return (
     <div className="space-y-5">
       {isTerminal ? (
-        <div
-          className={`border shadow-sm rounded-xl p-4 flex items-start gap-3 ${
-            status === "SETTLED"
-              ? "bg-emerald-50 border-emerald-200"
-              : status === "DISMISSED"
-                ? "bg-red-50 border-red-200"
-                : status === "UNDER_CONCILIATION"
-                  ? "bg-blue-50 border-blue-200"
-                  : "bg-amber-50 border-amber-200"
-          }`}
-        >
+        <div className="space-y-5">
           <div
-            className={`mt-0.5 shrink-0 ${
+            className={`border shadow-sm rounded-xl p-4 flex items-start gap-3 ${
               status === "SETTLED"
-                ? "text-emerald-500"
+                ? "bg-emerald-50 border-emerald-200"
                 : status === "DISMISSED"
-                  ? "text-red-500"
+                  ? "bg-red-50 border-red-200"
                   : status === "UNDER_CONCILIATION"
-                    ? "text-blue-500"
-                    : "text-amber-500"
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-amber-50 border-amber-200"
             }`}
           >
-            {status === "SETTLED" ? (
-              <CheckCircleIcon className="w-5 h-5" />
-            ) : status === "DISMISSED" ? (
-              <XIcon className="w-5 h-5" />
-            ) : (
-              <AlertCircleIcon className="w-5 h-5" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p
-                className={`text-sm font-normal ${
-                  status === "SETTLED"
-                    ? "text-emerald-700"
-                    : status === "DISMISSED"
-                      ? "text-red-700"
-                      : status === "UNDER_CONCILIATION"
-                        ? "text-blue-700"
-                        : "text-amber-700"
-                }`}
-              >
-                {status === "SETTLED"
-                  ? "Case Settled"
+            <div
+              className={`mt-0.5 shrink-0 ${
+                status === "SETTLED"
+                  ? "text-emerald-500"
                   : status === "DISMISSED"
-                    ? "Case Dismissed"
+                    ? "text-red-500"
                     : status === "UNDER_CONCILIATION"
-                      ? "Under Conciliation"
-                      : "Case Closed"}
-              </p>
-            </div>
-            <div className="mt-2 flex flex-wrap items-baseline gap-2">
-              <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
-                Reason:
-              </span>
-              {luponData.caseStatusRemarks ? (
-                <span
-                  className={`text-sm ${status === "SETTLED" ? "text-emerald-700" : status === "DISMISSED" ? "text-red-700" : "text-blue-700"}`}
-                >
-                  {luponData.caseStatusRemarks}
-                </span>
+                      ? "text-blue-500"
+                      : "text-amber-500"
+              }`}
+            >
+              {status === "SETTLED" ? (
+                <CheckCircleIcon className="w-5 h-5" />
+              ) : status === "DISMISSED" ? (
+                <XIcon className="w-5 h-5" />
               ) : (
-                <span className="text-sm text-gray-400 italic">
-                  No remarks provided.
-                </span>
+                <AlertCircleIcon className="w-5 h-5" />
               )}
             </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p
+                  className={`text-sm font-normal ${
+                    status === "SETTLED"
+                      ? "text-emerald-700"
+                      : status === "DISMISSED"
+                        ? "text-red-700"
+                        : status === "UNDER_CONCILIATION"
+                          ? "text-blue-700"
+                          : "text-amber-700"
+                  }`}
+                >
+                  {status === "SETTLED"
+                    ? "Case Settled"
+                    : status === "DISMISSED"
+                      ? "Case Dismissed"
+                      : status === "UNDER_CONCILIATION"
+                        ? "Under Conciliation"
+                        : "Case Closed"}
+                </p>
+              </div>
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                  Reason:
+                </span>
+                {luponData.caseStatusRemarks ? (
+                  <span
+                    className={`text-sm ${status === "SETTLED" ? "text-emerald-700" : status === "DISMISSED" ? "text-red-700" : "text-blue-700"}`}
+                  >
+                    {luponData.caseStatusRemarks}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-400 italic">
+                    No remarks provided.
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
+
+          {(hasMediationPerm || hasStatusPerm) && (
+            <div>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">
+                Quick Actions
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button
+                  onClick={() => onReopenCase("Requesting to re-open case")}
+                  className="flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white group hover:border-blue-200"
+                >
+                  <div className="p-2.5 rounded-lg bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                    <RotateCcw className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-semibold text-blue-600">
+                    Re-open Case
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Restore case to active conciliation
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">

@@ -521,7 +521,7 @@ export default function ReportsPage() {
     const natureRows2 = [...nature].sort((a, b) => b.count - a.count).map((item) => {
       const p = totalNature2 > 0 ? ((item.count / totalNature2) * 100).toFixed(1) : "0.0";
       const bw = totalNature2 > 0 ? Math.max(4, (item.count / totalNature2) * 100) : 4;
-      const lbl = String(item.natureName || "").trim() || "Unspecified";
+      const lbl = String(item.nature || "").trim() || "Unspecified";
       return `<tr><td style="padding:6px 8px;font-size:12px;color:#374151;">${lbl}</td><td style="padding:6px 8px;font-size:12px;text-align:right;">${item.count} (${p}%)</td><td style="padding:6px 8px;width:40%;">
         <div style="background:#F3F4F6;border-radius:4px;height:8px;"><div style="background:#6366F1;height:100%;border-radius:4px;width:${bw}%;"></div></div></td></tr>`;
     }).join("");
@@ -769,11 +769,11 @@ export default function ReportsPage() {
     );
   }
 
-  const safe: ReportStatsDTO = stats || {
-    totalCases: 0,
-    totalExpired: 0,
-    resolvedCases: 0,
-    avgResolutionTime: 0,
+  const safe: ReportStatsDTO = {
+    totalCases: stats?.totalCases ?? 0,
+    totalExpired: stats?.totalExpired ?? 0,
+    resolvedCases: stats?.resolvedCases ?? 0,
+    avgResolutionTime: stats?.avgResolutionTime ?? 0,
   };
   const statusTotal = statusRows.reduce((s, r) => s + r.count, 0);
   const totalNature = nature.reduce((s, i) => s + i.count, 0);
@@ -924,89 +924,89 @@ export default function ReportsPage() {
             <div className="rounded-xl border border-slate-100 bg-slate-50/40 p-3">
               <div className="h-[360px]">
                 <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={trendMeta.data}
-                  margin={{ top: 12, right: 12, bottom: 32, left: 0 }}
-                  barCategoryGap={getBarCategoryGap(
-                    trendMeta.data.length,
-                    trendMeta.granularity,
-                  )}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="#CBD5E1"
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tickFormatter={(value) =>
-                      formatTrendAxisLabel(String(value), trendMeta.granularity)
-                    }
-                    interval={getTrendTickInterval(
-                      trendMeta.data.length,
-                      trendMeta.granularity,
-                    )}
-                    minTickGap={trendMeta.granularity === "day" ? 8 : 14}
-                    tickMargin={trendMeta.granularity === "day" ? 12 : 10}
-                    height={trendMeta.granularity === "day" ? 102 : 52}
-                    angle={
-                      trendMeta.granularity === "day"
-                        ? getDailyTickAngle(trendMeta.data.length)
-                        : 0
-                    }
-                    textAnchor={trendMeta.granularity === "day" ? "end" : "middle"}
-                    tick={{
-                      fontSize:
-                        trendMeta.granularity === "day"
-                          ? getDailyTickFontSize(trendMeta.data.length)
-                          : 11,
-                      fill: "#475569",
-                    }}
-                    axisLine={{ stroke: "#94A3B8", strokeWidth: 1.1 }}
-                    tickLine={false}
-                    padding={{ left: 12, right: 12 }}
-                  />
-                  <YAxis
-                    width={34}
-                    tick={{ fontSize: 12, fill: "#475569" }}
-                    axisLine={{ stroke: "#94A3B8", strokeWidth: 1.1 }}
-                    tickLine={false}
-                    allowDecimals={false}
-                    domain={[0, getTrendYAxisMax(trendMeta.data)]}
-                  />
-                  <Tooltip
-                    labelFormatter={(value) =>
-                      formatTrendTooltipLabel(
-                        String(value),
-                        trendMeta.granularity,
-                      )
-                    }
-                    contentStyle={{
-                      borderRadius: 10,
-                      border: "1px solid #E5E7EB",
-                      fontSize: 12,
-                      boxShadow: "0 10px 24px -14px rgb(15 23 42 / 0.3)",
-                      backgroundColor: "#FFFFFF",
-                    }}
-                    formatter={(v: number | undefined) => [v ?? 0, "Cases"]}
-                  />
-                  <Bar
-                    dataKey="count"
-                    radius={[6, 6, 0, 0]}
-                    background={{ fill: "#DBEAFE", opacity: 0.45 }}
-                    maxBarSize={getMaxBarSize(
+                  <BarChart
+                    data={trendMeta.data}
+                    margin={{ top: 12, right: 12, bottom: 32, left: 0 }}
+                    barCategoryGap={getBarCategoryGap(
                       trendMeta.data.length,
                       trendMeta.granularity,
                     )}
                   >
-                    {trendMeta.data.map((entry, index) => (
-                      <Cell
-                        key={index}
-                        fill={entry.count > 0 ? "#3B82F6" : "#93C5FD"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="#CBD5E1"
+                    />
+                    <XAxis
+                      dataKey="label"
+                      tickFormatter={(value) =>
+                        formatTrendAxisLabel(String(value), trendMeta.granularity)
+                      }
+                      interval={getTrendTickInterval(
+                        trendMeta.data.length,
+                        trendMeta.granularity,
+                      )}
+                      minTickGap={trendMeta.granularity === "day" ? 8 : 14}
+                      tickMargin={trendMeta.granularity === "day" ? 12 : 10}
+                      height={trendMeta.granularity === "day" ? 102 : 52}
+                      angle={
+                        trendMeta.granularity === "day"
+                          ? getDailyTickAngle(trendMeta.data.length)
+                          : 0
+                      }
+                      textAnchor={trendMeta.granularity === "day" ? "end" : "middle"}
+                      tick={{
+                        fontSize:
+                          trendMeta.granularity === "day"
+                            ? getDailyTickFontSize(trendMeta.data.length)
+                            : 11,
+                        fill: "#475569",
+                      }}
+                      axisLine={{ stroke: "#94A3B8", strokeWidth: 1.1 }}
+                      tickLine={false}
+                      padding={{ left: 12, right: 12 }}
+                    />
+                    <YAxis
+                      width={34}
+                      tick={{ fontSize: 12, fill: "#475569" }}
+                      axisLine={{ stroke: "#94A3B8", strokeWidth: 1.1 }}
+                      tickLine={false}
+                      allowDecimals={false}
+                      domain={[0, getTrendYAxisMax(trendMeta.data)]}
+                    />
+                    <Tooltip
+                      labelFormatter={(value) =>
+                        formatTrendTooltipLabel(
+                          String(value),
+                          trendMeta.granularity,
+                        )
+                      }
+                      contentStyle={{
+                        borderRadius: 10,
+                        border: "1px solid #E5E7EB",
+                        fontSize: 12,
+                        boxShadow: "0 10px 24px -14px rgb(15 23 42 / 0.3)",
+                        backgroundColor: "#FFFFFF",
+                      }}
+                      formatter={(v: number | undefined) => [v ?? 0, "Cases"]}
+                    />
+                    <Bar
+                      dataKey="count"
+                      radius={[6, 6, 0, 0]}
+                      background={{ fill: "#DBEAFE", opacity: 0.45 }}
+                      maxBarSize={getMaxBarSize(
+                        trendMeta.data.length,
+                        trendMeta.granularity,
+                      )}
+                    >
+                      {trendMeta.data.map((entry, index) => (
+                        <Cell
+                          key={index}
+                          fill={entry.count > 0 ? "#3B82F6" : "#93C5FD"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -1045,7 +1045,7 @@ export default function ReportsPage() {
                           {natureLabel}
                         </p>
                         <span className="shrink-0 text-sm text-gray-800 tabular-nums">
-                          {item.count.toLocaleString()} ({pct.toFixed(1)}%)
+                          {(item?.count ?? 0).toLocaleString()} ({pct.toFixed(1)}%)
                         </span>
                       </div>
 

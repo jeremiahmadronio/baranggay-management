@@ -22,7 +22,7 @@ const REFERRAL_STATUS_PILL: Record<string, string> = {
 };
 
 type ReferralsTabProps = {
-  caseId: number;
+  caseId: number | string;
   isReadOnly: boolean;
 };
 

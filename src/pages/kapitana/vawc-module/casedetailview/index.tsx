@@ -57,6 +57,8 @@ export default function CaseDetailsPage() {
   const isWithdrawn = caseStatus === "WITHDRAWN";
   const isCertifiedToFileAction = caseStatus === "CERTIFIED_TO_FILE_ACTION";
 
+  const [hasPrintedRequest, setHasPrintedRequest] = useState(false);
+
   // ── Load mock data ──
   useEffect(() => {
     setLoading(true);
@@ -289,15 +291,16 @@ export default function CaseDetailsPage() {
           <BpoTab
             caseData={caseData}
             isWithdrawn={isWithdrawn}
-            isReadOnly={true}
-            canIssueBpo={false}
-            canManageIntervention={false}
+            isReadOnly={false}
+            canIssueBpo={true}
+            canManageIntervention={true}
             victimFullName={maskedVictimName}
             respondentFullName={maskedRespondentName}
             bpoDetails={bpoDetails}
             bpoLoading={bpoLoading}
             bpoActionLoading={false}
-            bpoActionMessage=""
+            bpoActionMessage={bpoDetails?.bpoNumber ? "BPO is active." : ""}
+            hasPrintedRequest={hasPrintedRequest}
             assignOfficerOptions={[]}
             assignOfficerLoading={false}
             interventionLogs={interventionLogs}
@@ -322,8 +325,21 @@ export default function CaseDetailsPage() {
             followUpError=""
             followUpMessage=""
             followUpSaveDisabled={true}
-            onActivateBpo={noop}
-            onPrintBpoRequest={noop}
+            onActivateBpo={() => {
+              if (bpoDetails) {
+                setBpoDetails({
+                  ...bpoDetails,
+                  bpoNumber: `BPO-${Math.floor(Math.random() * 10000)}`,
+                  bpoIssuedAt: new Date().toISOString(),
+                  bpoExpiredAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+                });
+              }
+            }}
+            onPrintBpoRequest={async () => {
+              const { downloadVawcBpoRequestAsWord } = await import("./BpoExport");
+              await downloadVawcBpoRequestAsWord(caseData, bpoDetails);
+              setHasPrintedRequest(true);
+            }}
             onInterventionFormChange={noop}
             onAddIntervention={noop}
             onViewIntervention={(interventionId: number) => {

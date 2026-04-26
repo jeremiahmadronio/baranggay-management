@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  ShieldIcon, PrinterIcon, PlusIcon, CalendarDaysIcon, ClockIcon,
+  PrinterIcon, PlusIcon, CalendarDaysIcon, ClockIcon,
   ChevronRightIcon, MessageSquarePlusIcon, XCircleIcon,
 } from 'lucide-react';
 import { InfoField, SectionCard, formatDate } from './shared';
@@ -220,6 +220,7 @@ export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly
 
   const isExpiringSoon = (() => {
     if (!bpoExpiredAt) return false;
+    // eslint-disable-next-line react-hooks/purity
     return new Date(bpoExpiredAt).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
   })();
 

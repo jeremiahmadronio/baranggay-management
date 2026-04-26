@@ -8,6 +8,7 @@ import {
   ClipboardIcon,
   FileTextIcon,
   HashIcon,
+  RotateCcwIcon,
 } from "lucide-react";
 
 import type {
@@ -48,6 +49,7 @@ interface OverviewTabProps {
   onReferToLupon: () => void;
   onDismissCase: () => void;
   onIssueCFA: () => void;
+  onReopenCase: () => void;
 }
 const MEDIATION_STEPS = [
   {
@@ -87,6 +89,7 @@ export function OverviewTab({
   onMarkSettled,
   onReferToLupon,
   onDismissCase,
+  onReopenCase,
 }: OverviewTabProps) {
   const status = docket.caseStatus;
   const isTerminal =
@@ -168,27 +171,27 @@ export function OverviewTab({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p
-                className={`text-sm font-normal ${
-                  status === "SETTLED"
-                    ? "text-emerald-700"
+                <p
+                  className={`text-sm font-normal ${
+                    status === "SETTLED"
+                      ? "text-emerald-700"
+                      : status === "DISMISSED"
+                        ? "text-red-700"
+                        : status === "UNDER_CONCILIATION"
+                          ? "text-blue-700"
+                          : "text-amber-700"
+                  }`}
+                >
+                  {status === "SETTLED"
+                    ? docket.agreementsTerm
+                      ? "Case Settled – Both parties have an agreement"
+                      : "Case Settled"
                     : status === "DISMISSED"
-                      ? "text-red-700"
+                      ? "Case Dismissed"
                       : status === "UNDER_CONCILIATION"
-                        ? "text-blue-700"
-                        : "text-amber-700"
-                }`}
-              >
-                {status === "SETTLED"
-                  ? docket.agreementsTerm
-                    ? "Case Settled – Both parties have an agreement"
-                    : "Case Settled"
-                  : status === "DISMISSED"
-                    ? "Case Dismissed"
-                    : status === "UNDER_CONCILIATION"
-                      ? "Under Conciliation"
-                      : "Case Closed"}
-              </p>
+                        ? "Under Conciliation"
+                        : "Case Closed"}
+                </p>
             </div>
             <div className="mt-2 flex flex-wrap items-baseline gap-2">
               <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
@@ -249,73 +252,87 @@ export function OverviewTab({
         </div>
       )}
 
-      {!isTerminal && (
-        <div>
+      {(true) && (
+        <div className="mb-5">
           <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">
             Quick Actions
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <button
-              onClick={onScheduleHearing}
-              disabled={!hasMediationPerm}
-              className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasMediationPerm ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <div className="p-2.5 rounded-lg bg-blue-50">
-                <CalendarIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-sm text-blue-600">Schedule Mediation</span>
-              <span className="text-xs text-gray-500">Set mediation date</span>
-            </button>
+            {!isTerminal ? (
+              <>
+                <button
+                  onClick={onScheduleHearing}
+                  disabled={!hasMediationPerm}
+                  className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasMediationPerm ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <div className="p-2.5 rounded-lg bg-blue-50">
+                    <CalendarIcon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-sm text-blue-600">Schedule Mediation</span>
+                  <span className="text-xs text-gray-500">Set mediation date</span>
+                </button>
 
-            <button
-              onClick={onMarkSettled}
-              disabled={!hasResolvePerm}
-              className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <div className="p-2.5 rounded-lg bg-emerald-50">
-                <CheckCircleIcon className="w-5 h-5 text-emerald-600" />
-              </div>
-              <span className="text-sm text-emerald-600">Mark as Settled</span>
-              <span className="text-xs text-gray-500">Amicable settlement</span>
-            </button>
+                <button
+                  onClick={onMarkSettled}
+                  disabled={!hasResolvePerm}
+                  className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <div className="p-2.5 rounded-lg bg-emerald-50">
+                    <CheckCircleIcon className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <span className="text-sm text-emerald-600">Mark as Settled</span>
+                  <span className="text-xs text-gray-500">Amicable settlement</span>
+                </button>
 
-            {(status === "UNDER_MEDIATION" ||
-              status === "MEDIATION" ||
-              status === "PENDING" ||
-              status === "ACTIVE") && (
+                {(status === "UNDER_MEDIATION" ||
+                  status === "MEDIATION" ||
+                  status === "PENDING" ||
+                  status === "ACTIVE") && (
+                  <button
+                    onClick={onReferToLupon}
+                    disabled={!hasEscalationPerm}
+                    className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasEscalationPerm ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <div className="p-2.5 rounded-lg bg-violet-50">
+                      <AlertCircleIcon className="w-5 h-5 text-violet-600" />
+                    </div>
+                    <span className="text-sm text-violet-600">
+                      Escalate to Lupon
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {" "}
+                      escalation process
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  onClick={onDismissCase}
+                  disabled={!hasResolvePerm}
+                  className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <div className="p-2.5 rounded-lg bg-gray-100">
+                    <XIcon className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <span className="text-sm text-gray-700">Dismiss Case</span>
+                  <span className="text-xs text-gray-500">
+                    Complainant withdrew
+                  </span>
+                </button>
+              </>
+            ) : (
               <button
-                onClick={onReferToLupon}
-                disabled={!hasEscalationPerm}
-                className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasEscalationPerm ? "opacity-50 cursor-not-allowed" : ""}`}
+                onClick={onReopenCase}
+                disabled={!hasResolvePerm}
+                className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                <div className="p-2.5 rounded-lg bg-violet-50">
-                  <AlertCircleIcon className="w-5 h-5 text-violet-600" />
+                <div className="p-2.5 rounded-lg bg-blue-50">
+                  <RotateCcwIcon className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="text-sm text-violet-600">
-                  Escalate to Lupon
-                </span>
-                <span className="text-xs text-gray-500">
-                  {" "}
-                  escalation process
-                </span>
+                <span className="text-sm text-blue-600">Re-open Case</span>
+                <span className="text-xs text-gray-500">Restore case to active</span>
               </button>
             )}
-
-            {/* Issue CFA button removed as requested */}
-
-            <button
-              onClick={onDismissCase}
-              disabled={!hasResolvePerm}
-              className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <div className="p-2.5 rounded-lg bg-gray-100">
-                <XIcon className="w-5 h-5 text-gray-600" />
-              </div>
-              <span className="text-sm text-gray-700">Dismiss Case</span>
-              <span className="text-xs text-gray-500">
-                Complainant withdrew
-              </span>
-            </button>
           </div>
         </div>
       )}

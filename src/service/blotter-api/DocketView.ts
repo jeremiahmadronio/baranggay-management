@@ -676,3 +676,14 @@ export async function restoreCase(
     body: JSON.stringify(body),
   });
 }
+
+export async function updateBlotterStatusById(
+  caseId: number,
+  body: { status: string; reason: string },
+): Promise<void> {
+  if (!caseId) throw new Error("Case ID is required");
+  return apiFetch<void>(`${BLOTTER_URL}/${caseId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}

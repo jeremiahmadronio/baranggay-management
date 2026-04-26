@@ -4,6 +4,7 @@ const DEPT_URL = `${BASE}/api/v1/departments`;
 const ROLE_URL = `${BASE}/api/v1/roles`;
 const PERSON_URL = `${BASE}/api/v1/resident`;
 const PERMISSION_URL = `${BASE}/api/v1/permission`;
+import { searchOfflineResidents, cacheOnlineResidents } from "../offline/residentDb";
 
 const ENDPOINTS = {
   ADMIN_STATS: "/stats",
@@ -361,12 +362,18 @@ export async function updateUserStatus(
 export async function searchPeople(
   query: string,
 ): Promise<PersonSearchResponseDTO[]> {
+  if (!query || query.trim().length < 2) return [];
+  if (!navigator.onLine) {
+    return searchOfflineResidents(query.trim()) as unknown as Promise<PersonSearchResponseDTO[]>;
+  }
   const searchParams = new URLSearchParams({ query });
-  return apiFetch<PersonSearchResponseDTO[]>(
+  const results = await apiFetch<PersonSearchResponseDTO[]>(
     `/search?${searchParams.toString()}`,
     {},
     PERSON_URL,
   );
+  cacheOnlineResidents(results).catch(() => {});
+  return results;
 }
 
 export async function getAdminRoleOptions(): Promise<RoleOptions[]> {

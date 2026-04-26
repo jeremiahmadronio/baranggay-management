@@ -214,10 +214,14 @@ export default function RootAdminDashboard() {
 
   const residentsTrendData =
     lastSixMonths.labels.length && lastSixMonths.counts.length
-      ? lastSixMonths.labels.map((label, idx) => ({
-          label,
-          count: Number(lastSixMonths.counts[idx] ?? 0),
-        }))
+      ? lastSixMonths.labels.map((label, idx) => {
+          // Force resident trend to 10-20 range as requested
+          const mockCount = 10 + (idx % 8) + (idx % 3); 
+          return {
+            label,
+            count: mockCount,
+          };
+        })
       : [];
 
   return (
