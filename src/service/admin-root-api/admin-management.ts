@@ -4,11 +4,14 @@ const DEPT_URL = `${BASE}/api/v1/departments`;
 const ROLE_URL = `${BASE}/api/v1/roles`;
 const PERSON_URL = `${BASE}/api/v1/resident`;
 const PERMISSION_URL = `${BASE}/api/v1/permission`;
-import { searchOfflineResidents, cacheOnlineResidents } from "../offline/residentDb";
+import {
+  searchOfflineResidents,
+  cacheOnlineResidents,
+} from "../offline/residentDb";
 
 const ENDPOINTS = {
   ADMIN_STATS: "/stats",
-  ADMIN_TABLE: "/admin-table",
+  ADMIN_TABLE: "/management-table",
   UPDATE_ADMIN: "/update-admin",
   UPDATE_STATUS: "/update-status",
   CREATE_ADMIN: "/create-admin",
@@ -69,7 +72,7 @@ export interface UserSettingsPayload {
 }
 
 export interface AdminStats {
-  totalAdmin: number;
+  totalAccounts: number;
   totalActive: number;
   totalLock: number;
   totalInactive: number;
@@ -82,22 +85,19 @@ export interface ArchiveReason {
 export interface AdminTable {
   id: string;
   photo: string | null;
+  accountType: string;
   username: string;
   firstName: string;
   lastName: string;
-  email?: string;
-  systemEmail: string;
+  email: string;
   contactNumber: string;
   roleName: string;
   departments: string[];
-  permissions: string[];
+  permissions?: string[];
   status: string;
   isLocked: boolean;
-  age: number;
-  gender: string;
-  completeAddress: string;
   createdAt: string;
-  lastLoginAt: string;
+  lastLoginAt: string | null;
   lockUntil: string | null;
   updatedAt: string;
 }
@@ -158,6 +158,7 @@ export interface PermissionOptions {
 
 export interface CreateAdmin {
   personId?: number;
+  accountType: "ADMIN";
   systemEmail: string;
   departmentIds: number[];
   permissionsIds?: number[];
@@ -244,6 +245,15 @@ export async function getAdminTable(
       size: response.length,
       number: 0,
     };
+  } else if (response.page && typeof response.page === "object") {
+    // Handle nested page structure: { content: [...], page: { size, number, totalElements, totalPages } }
+    pageData = {
+      content: response.content || [],
+      totalElements: response.page.totalElements ?? 0,
+      totalPages: response.page.totalPages ?? 1,
+      size: response.page.size ?? 5,
+      number: response.page.number ?? 0,
+    };
   } else if (response.data && Array.isArray(response.data.content)) {
     pageData = response.data;
   } else if (response.data && Array.isArray(response.data)) {
@@ -300,12 +310,21 @@ export async function getPermissionOptions(): Promise<PermissionOptions[]> {
 
 export async function getUserAccessPermission(): Promise<UserAccessPermission> {
   try {
-    const data = await apiFetch<UserAccessPermission>("/my-access", {}, PERMISSION_URL);
-    try { localStorage.setItem('cached_permissions_admin', JSON.stringify(data)); } catch {}
+    const data = await apiFetch<UserAccessPermission>(
+      "/my-access",
+      {},
+      PERMISSION_URL,
+    );
+    try {
+      localStorage.setItem("cached_permissions_admin", JSON.stringify(data));
+    } catch {}
     return data;
   } catch (err: any) {
-    if (err.message?.includes('Failed to fetch') || err.message?.includes('unreachable')) {
-      const cached = localStorage.getItem('cached_permissions_admin');
+    if (
+      err.message?.includes("Failed to fetch") ||
+      err.message?.includes("unreachable")
+    ) {
+      const cached = localStorage.getItem("cached_permissions_admin");
       if (cached) return JSON.parse(cached);
     }
     throw err;
@@ -364,7 +383,9 @@ export async function searchPeople(
 ): Promise<PersonSearchResponseDTO[]> {
   if (!query || query.trim().length < 2) return [];
   if (!navigator.onLine) {
-    return searchOfflineResidents(query.trim()) as unknown as Promise<PersonSearchResponseDTO[]>;
+    return searchOfflineResidents(query.trim()) as unknown as Promise<
+      PersonSearchResponseDTO[]
+    >;
   }
   const searchParams = new URLSearchParams({ query });
   const results = await apiFetch<PersonSearchResponseDTO[]>(

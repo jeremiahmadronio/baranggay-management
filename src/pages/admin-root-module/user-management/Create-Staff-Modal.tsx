@@ -275,12 +275,16 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
       !username ||
       username.length < USERNAME_MIN_LENGTH ||
       !USERNAME_PATTERN.test(username)
-    ) return;
+    )
+      return;
     setCheckingUsername(true);
     try {
       const taken = await userManagementApi.checkUsernameExists(username);
       if (taken) {
-        setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
+        setErrors((prev) => ({
+          ...prev,
+          username: "Username is already taken.",
+        }));
       }
     } catch {
       // silently ignore network errors on blur check
@@ -296,7 +300,10 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     try {
       const taken = await userManagementApi.checkEmailExists(email);
       if (taken) {
-        setErrors((prev) => ({ ...prev, systemEmail: "This email is already in use." }));
+        setErrors((prev) => ({
+          ...prev,
+          systemEmail: "This email is already in use.",
+        }));
       }
     } catch {
       // silently ignore network errors on blur check
@@ -332,6 +339,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     try {
       const payload: CreateUserPayload = {
         personId: form.person!.id,
+        accountType: "SYSTEM_USER",
         username,
         systemEmail,
         roleId: form.roleId!,
@@ -538,7 +546,10 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                       }
                       onBlur={async (e) => {
                         const value = e.target.value.trim();
-                        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                        if (
+                          value &&
+                          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+                        ) {
                           setErrors((prev) => ({
                             ...prev,
                             systemEmail: "Please enter a valid email address.",

@@ -213,6 +213,7 @@ export default function CreateAdminModal({ onClose }: Props) {
 
     const payload: CreateAdmin = {
       personId: formData.personId ?? undefined,
+      accountType: "ADMIN",
       systemEmail: formData.systemEmail,
       departmentIds: resolvedDepartmentIds,
       permissionsIds: formData.permissionIds,
@@ -282,7 +283,10 @@ export default function CreateAdminModal({ onClose }: Props) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => {
-                  if (searchResults.length > 0 || searchQuery.trim().length >= 2) {
+                  if (
+                    searchResults.length > 0 ||
+                    searchQuery.trim().length >= 2
+                  ) {
                     setIsSearchOpen(true);
                   }
                 }}
@@ -326,7 +330,9 @@ export default function CreateAdminModal({ onClose }: Props) {
           </div>
 
           {searchQuery.trim().length > 0 && searchQuery.trim().length < 2 && (
-            <p className="mt-2 text-xs text-slate-500">Type at least 2 characters to search.</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Type at least 2 characters to search.
+            </p>
           )}
 
           {formData.personId && (

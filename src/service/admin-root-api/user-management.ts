@@ -6,7 +6,10 @@ const PEOPLE_URL = `${BASE}/api/v1/resident`;
 const DEPT_URL = `${BASE}/api/v1/departments`;
 const ROLE_URL = `${BASE}/api/v1/roles`;
 const PERMISSION_URL = `${BASE}/api/v1/permission`;
-import { searchOfflineResidents, cacheOnlineResidents } from "../offline/residentDb";
+import {
+  searchOfflineResidents,
+  cacheOnlineResidents,
+} from "../offline/residentDb";
 
 async function apiFetch<T>(
   endpoint: string,
@@ -42,8 +45,6 @@ async function apiFetch<T>(
   }
   return response.text() as unknown as T;
 }
-
-
 
 export interface Page<T> {
   content: T[];
@@ -206,6 +207,7 @@ export interface StaffTableParams {
 
 export interface CreateUserPayload {
   personId: number;
+  accountType: "SYSTEM_USER";
   username: string;
   systemEmail: string;
   roleId: number;
@@ -257,13 +259,13 @@ export const userManagementApi = {
     apiFetch<UserViewDTO>(`/user-details/${userId}`),
 
   getDepartmentOptions: (): Promise<Department[]> =>
-  apiFetch<Department[]>("/options", {}, DEPT_URL),
+    apiFetch<Department[]>("/options", {}, DEPT_URL),
 
-getRoleOptions: (): Promise<Role[]> =>
-  apiFetch<Role[]>("/staff-options", {}, ROLE_URL),
+  getRoleOptions: (): Promise<Role[]> =>
+    apiFetch<Role[]>("/staff-options", {}, ROLE_URL),
 
-getPermissionOptions: (): Promise<Permission[]> =>
-  apiFetch<Permission[]>("/options", {}, PERMISSION_URL),
+  getPermissionOptions: (): Promise<Permission[]> =>
+    apiFetch<Permission[]>("/options", {}, PERMISSION_URL),
 
   createUser: (payload: CreateUserPayload): Promise<string> =>
     apiFetch<string>("/create-user", {
@@ -281,7 +283,6 @@ getPermissionOptions: (): Promise<Permission[]> =>
     const qs = new URLSearchParams({ email });
     return apiFetch<boolean>(`/check-email?${qs.toString()}`, {}, USERS_URL);
   },
-
 
   updateUser: (userId: string, payload: EditUserPayload): Promise<string> =>
     apiFetch<string>(`/update-user/${userId}`, {

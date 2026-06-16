@@ -231,14 +231,14 @@ export default function RootAdminDashboard() {
         />
         <KPICard
           title="Total Residents"
-          value={<AnimatedCounter target={stats.totalActiveResident} />}
+          value={<AnimatedCounter target={stats.totalResidents} />}
           icon={KPIIcons.clock}
           color="emerald"
           subtitle="Current active resident records"
         />
         <KPICard
           title="Total Officer"
-          value={<AnimatedCounter target={stats.totalActiveEmployee} />}
+          value={<AnimatedCounter target={stats.totalOfficer} />}
           icon={<ShieldAlert className="w-6 h-6" />}
           color="rose"
           subtitle="Active personnel in barangay office"

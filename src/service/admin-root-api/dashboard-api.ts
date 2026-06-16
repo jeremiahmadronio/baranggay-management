@@ -4,11 +4,10 @@ const SYSTEM_HEALTH_URL = `${BASE}/api/v1/admin/system`;
 
 export interface DashboardStats {
   totalUser: number;
-  totalActiveResident: number;
-  totalActiveEmployee: number;
+  totalResidents: number;
+  totalOfficer: number;
   totalAuditEntry: number;
-  auditGrowth: number;
-  auditDirection: "up" | "down" | "neutral";
+
 }
 
 const ENDPOINTS = {

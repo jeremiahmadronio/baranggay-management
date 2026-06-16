@@ -6,8 +6,8 @@ const RESIDENT_URL = `${BASE}/api/v1/resident`;
 
 const ENDPOINTS = {
   HIRE: "/hire",
-  STATS: "/stats/global",
-  PAGED_TABLE: "/paged-table/global",
+  STATS: "/stats",
+  PAGED_TABLE: "/paged-table",
   VIEW: "/view",
   UPDATE_STATUS: "/update-status",
   EDIT_EMPLOYEE: "/edit-employee",

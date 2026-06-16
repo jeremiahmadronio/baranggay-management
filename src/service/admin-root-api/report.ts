@@ -3,7 +3,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 // ─── DTOs ────────────────────────────────────────────────────────────────────
 
 export interface ReportStatsDTO {
-  totalAdminUsers: number;
+  totalUsers: number;
   totalResidents: number;
   totalOfficers: number;
   totalAuditLogsThisMonth: number;
@@ -11,14 +11,13 @@ export interface ReportStatsDTO {
 
 export interface GrowthTrendDTO {
   labels: string[];
-  adminCounts: number[];
+  userCounts: number[];
   residentCounts: number[];
   officerCounts: number[];
-  userCounts: number[];
 }
 
 export interface ModuleRecordsDTO {
-  admin: number;
+  users: number;
   resident: number;
   officer: number;
   auditLogs: number;
@@ -33,7 +32,6 @@ export interface ArchiveSummaryDTO {
   archivedResidents: number;
   archivedUsers: number;
   archivedOfficers: number;
-  archivedAdmins: number;
 }
 
 // ─── apiFetch ────────────────────────────────────────────────────────────────
@@ -114,8 +112,6 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function toISOParam(date: Date): string {
-  // Use LOCAL time — NOT toISOString() which converts to UTC.
-  // UTC+8: midnight local = 4pm previous day UTC, shifting the entire range wrong.
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
@@ -128,8 +124,14 @@ function toISOParam(date: Date): string {
 const ADMIN_BASE = `${BASE}/api/v1/system-admin`;
 
 export const adminReportsApi = {
-  getStats(): Promise<ReportStatsDTO> {
-    return apiFetch<ReportStatsDTO>(`${ADMIN_BASE}/stats`);
+
+  getStats(start?: Date, end?: Date): Promise<ReportStatsDTO> {
+    const params = new URLSearchParams();
+    if (start) params.append("start", toISOParam(start));
+    if (end) params.append("end", toISOParam(end));
+
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    return apiFetch<ReportStatsDTO>(`${ADMIN_BASE}/stats${queryString}`);
   },
 
   getGrowthTrend(start: Date, end: Date): Promise<GrowthTrendDTO> {
@@ -156,11 +158,8 @@ export const adminReportsApi = {
     return apiFetch<SeverityReportDTO[]>(`${ADMIN_BASE}/audit-severity?${params}`);
   },
 
-  getArchiveSummary(start: Date, end: Date): Promise<ArchiveSummaryDTO> {
-    const params = new URLSearchParams({
-      start: toISOParam(start),
-      end: toISOParam(end),
-    });
-    return apiFetch<ArchiveSummaryDTO>(`${ADMIN_BASE}/archive-summary?${params}`);
+
+  getArchiveSummary(): Promise<ArchiveSummaryDTO> {
+    return apiFetch<ArchiveSummaryDTO>(`${ADMIN_BASE}/archive-summary`);
   },
 };

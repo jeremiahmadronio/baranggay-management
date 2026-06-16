@@ -183,6 +183,7 @@ export function OfficerFormModal({
   onClose,
   onSubmit,
 }: EmployeeFormModalProps) {
+  console.log("OfficerFormModal received departments:", departments);
   const isEdit = mode === "edit";
   const [selectedPerson, setSelectedPerson] =
     useState<PersonSearchResult | null>(null);

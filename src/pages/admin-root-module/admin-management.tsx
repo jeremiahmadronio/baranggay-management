@@ -10,7 +10,10 @@ import {
   RotateCcw,
 } from "lucide-react";
 import CreateAdminModal from "./create-admin-modal";
+import CreateStaffModal from "./user-management/Create-Staff-Modal";
 import { EditUserModal } from "./edit-user-modal";
+import {EditStaffModal} from "./user-management/edit-staff-modal";
+import { CreateAccountTypeModal } from "./create-account-type-modal";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import { Table, type TableColumn } from "../../hooks/Table";
@@ -123,6 +126,32 @@ const buildColumns = (
         {item.roleName}
       </span>
     ),
+  },
+  {
+    key: "accountType",
+    header: "Account Type",
+    render: (item) => {
+      const type = item.accountType || "UNKNOWN";
+      if (type === "ADMIN") {
+        return (
+          <span className="px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+            ADMIN
+          </span>
+        );
+      }
+      if (type === "SYSTEM_USER") {
+        return (
+          <span className="px-2.5 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+            SYSTEM USER
+          </span>
+        );
+      }
+      return (
+        <span className="px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+          {type}
+        </span>
+      );
+    },
   },
   {
     key: "departments",
@@ -270,9 +299,12 @@ export default function AdminManagement() {
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [openAccountTypeModal, setOpenAccountTypeModal] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
+  const [openUserCreate, setOpenUserCreate] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminTable | null>(null);
-  const [openEdit, setOpenEdit] = useState(false);
+  const [openEditAdmin, setOpenEditAdmin] = useState(false);
+  const [openEditUser, setOpenEditUser] = useState(false);
   const [openLock, setOpenLock] = useState(false);
   const [openArchive, setOpenArchive] = useState(false);
   const [openUnarchive, setOpenUnarchive] = useState(false);
@@ -313,6 +345,7 @@ export default function AdminManagement() {
       const visibleTableData = content.filter(
         (item) => (item.status || "").toUpperCase() !== "ARCHIVED",
       );
+      console.log("Table data fetched:", visibleTableData);
       setTableData(visibleTableData);
 
       // Use totalElements from API, or fallback to content.length
@@ -359,7 +392,22 @@ export default function AdminManagement() {
   };
   const handleEdit = (a: AdminTable) => {
     setSelectedAdmin(a);
-    setOpenEdit(true);
+    // Debug log to check account type
+    console.log("Edit clicked - Account Type:", a.accountType, "Trimmed:", a.accountType?.trim());
+
+    const accountType = (a.accountType || "").trim().toUpperCase();
+    
+    // Check account type and open appropriate modal
+    if (accountType === "ADMIN") {
+      setOpenEditAdmin(true);
+      setOpenEditUser(false);
+    } else if (accountType === "SYSTEM_USER" || accountType === "SYSTEM USER") {
+      setOpenEditUser(true);
+      setOpenEditAdmin(false);
+    } else {
+      console.warn("Unknown account type:", a.accountType);
+      setOpenEditAdmin(true); // Default to admin if unknown
+    }
   };
   const handleLock = (a: AdminTable) => {
     setSelectedAdmin(a);
@@ -387,14 +435,12 @@ export default function AdminManagement() {
     <div className="p-6 min-h-screen">
       <div className="flex justify-end items-center mb-6">
         <button
-          onClick={() => setOpenCreate(true)}
+          onClick={() => setOpenAccountTypeModal(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg shadow transition-all active:scale-95"
         >
-          + Create Admin Account
+          + Create Account
         </button>
       </div>
-
-     
 
       {statsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -416,14 +462,14 @@ export default function AdminManagement() {
         <div className="mb-6">
           <KPIGrid columns={4}>
             <KPICard
-              title="Total Admins"
-              value={<AnimatedCounter target={stats?.totalAdmin} />}
+              title="Total Users"
+              value={<AnimatedCounter target={stats?.totalAccounts} />}
               icon={KPIIcons.users}
               color="blue"
               subtitle="Registered accounts"
             />
             <KPICard
-              title="Active Admins"
+              title="Active Users"
               value={<AnimatedCounter target={stats?.totalActive} />}
               icon={KPIIcons.clock}
               color="emerald"
@@ -488,6 +534,13 @@ export default function AdminManagement() {
         }}
       />
 
+      <CreateAccountTypeModal
+        isOpen={openAccountTypeModal}
+        onClose={() => setOpenAccountTypeModal(false)}
+        onSelectAdmin={() => setOpenCreate(true)}
+        onSelectUser={() => setOpenUserCreate(true)}
+      />
+
       {openCreate && (
         <CreateAdminModal
           onClose={() => {
@@ -497,12 +550,38 @@ export default function AdminManagement() {
         />
       )}
 
-      {openEdit && selectedAdmin && (
+      {openUserCreate && (
+        <CreateStaffModal
+          onClose={() => {
+            setOpenUserCreate(false);
+            fetchTable();
+          }}
+          onSuccess={() => {
+            fetchTable();
+          }}
+        />
+      )}
+
+      {openEditAdmin && selectedAdmin && (
         <EditUserModal
           admin={selectedAdmin}
           onClose={() => {
-            setOpenEdit(false);
+            setOpenEditAdmin(false);
             setSelectedAdmin(null);
+            fetchTable();
+          }}
+        />
+      )}
+
+      {openEditUser && selectedAdmin && (
+        <EditStaffModal
+          user={selectedAdmin as any}
+          onClose={() => {
+            setOpenEditUser(false);
+            setSelectedAdmin(null);
+            fetchTable();
+          }}
+          onSuccess={() => {
             fetchTable();
           }}
         />

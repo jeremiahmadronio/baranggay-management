@@ -133,16 +133,26 @@ export function RootOfficerManagementPage() {
   const loadStatsAndFilters = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const [statsRes, departmentRes] = await Promise.all([
-        employeeApi.getStats(),
-        employeeApi.getDepartmentOptions(),
-      ]);
-      setStats(statsRes);
-      setDepartments(departmentRes || []);
-    } catch (e) {
-      console.error("Failed to load officer stats/options:", e);
-      setStats(null);
-      setDepartments([]);
+      // Load stats
+      try {
+        const statsRes = await employeeApi.getStats();
+        console.log("Loaded stats:", statsRes);
+        setStats(statsRes);
+      } catch (statsErr) {
+        console.warn("Failed to load officer stats:", statsErr);
+        setStats(null);
+      }
+
+      // Load departments separately so it's not blocked by stats error
+      try {
+        const departmentRes = await employeeApi.getDepartmentOptions();
+        console.log("Loaded departments FROM API:", departmentRes);
+        console.log("Departments array length:", departmentRes?.length);
+        setDepartments(departmentRes || []);
+      } catch (deptErr) {
+        console.error("Failed to load departments:", deptErr);
+        setDepartments([]);
+      }
     } finally {
       setStatsLoading(false);
     }
@@ -527,14 +537,14 @@ export function RootOfficerManagementPage() {
                             </div>
                           </div>
                         </td>
-                       <td className="px-6 py-4 whitespace-nowrap">
-                                                 <span className="text-gray-700">
-                                                   {String(item.departmentName).toUpperCase() ===
-                                                   "ADMINISTRATION"
-                                                     ? "GLOBAL"
-                                                     : prettifyDepartmentName(item.departmentName)}
-                                                 </span>
-                                               </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-gray-700">
+                            {String(item.departmentName).toUpperCase() ===
+                            "ADMINISTRATION"
+                              ? "GLOBAL"
+                              : prettifyDepartmentName(item.departmentName)}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                           {item.position || "—"}
                         </td>

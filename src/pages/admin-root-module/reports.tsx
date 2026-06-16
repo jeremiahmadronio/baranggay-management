@@ -130,13 +130,12 @@ function normalizeGrowthTrend(
 
   return data.labels.map((_, idx) => {
     const users = Number(data.userCounts[idx] ?? 0);
-    const admin = Number(data.adminCounts[idx] ?? 0);
     const resident = Number(data.residentCounts[idx] ?? 0);
     const officer = Number(data.officerCounts[idx] ?? 0);
     const pointDate = new Date(rangeStart);
     if (isDaily) {
       pointDate.setDate(rangeStart.getDate() + idx);
-    } else {
+    } else {  
       pointDate.setMonth(rangeStart.getMonth() + idx);
       pointDate.setDate(1);
     }
@@ -155,7 +154,7 @@ function normalizeGrowthTrend(
       label: displayLabel,
       fullLabel: formatRangeDate(pointDate),
       users,
-      admin,
+      admin: 0,
       resident: 10 + (idx % 7) + (idx % 4), // Force 10-20 range as requested
       officer,
     };
@@ -211,8 +210,7 @@ export default function RootAdminReportsPage() {
             appliedRange.end,
           ),
           adminReportsApi.getArchiveSummary(
-            appliedRange.start,
-            appliedRange.end,
+            
           ),
         ]);
 
@@ -289,7 +287,7 @@ export default function RootAdminReportsPage() {
     () =>
       records
         ? [
-            { module: "Admin", records: records.admin },
+            { module: "Users", records: records.users },
             { module: "Resident", records: records.resident },
             { module: "Officer", records: records.officer },
             // Audit Logs intentionally removed from display
@@ -305,7 +303,6 @@ export default function RootAdminReportsPage() {
             { category: "Residents", value: archiveSummary.archivedResidents },
             { category: "Users", value: archiveSummary.archivedUsers },
             { category: "Officers", value: archiveSummary.archivedOfficers },
-            { category: "Admins", value: archiveSummary.archivedAdmins },
           ]
         : [],
     [archiveSummary],
@@ -359,7 +356,7 @@ export default function RootAdminReportsPage() {
       });
 
     const kpiCards = [
-      { label: "Admin Users", value: stats?.totalAdminUsers ?? 0, sub: "Total admin users" },
+      { label: "Total Users", value: stats?.totalUsers ?? 0, sub: "Total admin users" },
       { label: "Residents", value: stats?.totalResidents ?? 0, sub: "Total residents" },
       { label: "Officers", value: stats?.totalOfficers ?? 0, sub: "Total officers" },
       { label: "Audit Logs", value: stats?.totalAuditLogsThisMonth ?? 0, sub: "This month" },
@@ -476,7 +473,7 @@ export default function RootAdminReportsPage() {
         <KPIGrid columns={4}>
           <KPICard
             title="Admin Users"
-            value={stats ? stats.totalAdminUsers.toLocaleString() : "--"}
+            value={stats ? stats.totalUsers.toLocaleString() : "--"}
             subtitle="Total admin users"
             icon={KPIIcons.users}
             color="blue"
