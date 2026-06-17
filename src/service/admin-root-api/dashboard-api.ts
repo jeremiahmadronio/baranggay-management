@@ -15,6 +15,8 @@ const ENDPOINTS = {
   OVERVIEW: "/activity-overview",
   RECENT_ACTIONS: "/recent-actions",
   LAST_SIX_MONTHS: "/last-six-months",
+  AUDIT_SEVERITY_DISTRIBUTION: "/audit-severity-distribution",
+  AUDIT_SEVERITY_YEARS: "/audit-severity-years",
 };
 
 const SYSTEM_ENDPOINTS = {
@@ -39,6 +41,18 @@ export interface RecentActions {
   actionTaken: string;
   module: string;
   createdAt: string;
+  year?: number;
+}
+
+export interface AuditSeverityDistribution {
+  name: string;
+  value: number;
+  year?: number;
+}
+
+export interface AuditSeverityYear {
+  year: number;
+  distribution: AuditSeverityDistribution[];
 }
 
 export interface LastSixMonthsResidents {
@@ -102,6 +116,14 @@ export async function getActivityOverview(): Promise<ActivityOverview> {
 
 export async function getRecentActions(): Promise<RecentActions[]> {
   return apiFetch<RecentActions[]>(ENDPOINTS.RECENT_ACTIONS);
+}
+
+export async function getAuditSeverityDistribution(): Promise<AuditSeverityDistribution[]> {
+  return apiFetch<AuditSeverityDistribution[]>(ENDPOINTS.AUDIT_SEVERITY_DISTRIBUTION);
+}
+
+export async function getAuditSeverityYears(): Promise<AuditSeverityYear[]> {
+  return apiFetch<AuditSeverityYear[]>(ENDPOINTS.AUDIT_SEVERITY_YEARS);
 }
 
 export async function getLastSixMonthsResidents(): Promise<LastSixMonthsResidents> {

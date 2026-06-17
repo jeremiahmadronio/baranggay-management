@@ -3,6 +3,8 @@ import {
   getDashboardStats,
   getLastSixMonthsResidents,
   getSystemHealth,
+  getRecentActions,
+  getAuditSeverityDistribution,
 } from "../../service/admin-root-api/dashboard-api";
 import type {
   DashboardStats,
@@ -46,17 +48,58 @@ function AnimatedCounter({ target }: { target: number }) {
 function getSeverityStyle(severity: string): string {
   switch (severity?.toLowerCase()) {
     case "critical":
-      return "bg-rose-100 text-rose-700";
+      return "bg-red-100 text-red-800 font-semibold";
     case "high":
-      return "bg-orange-100 text-orange-700";
+    case "warning":
+      return "bg-orange-100 text-orange-800 font-semibold";
     case "medium":
-      return "bg-amber-100 text-amber-700";
+      return "bg-amber-100 text-amber-800 font-semibold";
     case "low":
-      return "bg-emerald-100 text-emerald-700";
+      return "bg-lime-100 text-lime-800 font-semibold";
+    case "info":
+      return "bg-indigo-100 text-indigo-800 font-semibold";
+    case "error":
+      return "bg-rose-100 text-rose-800 font-semibold";
     default:
-      return "bg-blue-100 text-blue-700";
+      return "bg-slate-100 text-slate-700 font-semibold";
   }
 }
+
+function getSeverityColor(severity: string): string {
+  switch (severity?.toLowerCase()) {
+    case "critical":
+      return "#DC2626";
+    case "high":
+    case "warning":
+      return "#EA580C";
+    case "medium":
+      return "#FBBF24";
+    case "low":
+      return "#84CC16";
+    case "info":
+      return "#4F46E5";
+    case "error":
+      return "#F43F5E";
+    default:
+      return "#6B7280";
+  }
+}
+
+const MOD_STYLES: Record<string, string> = {
+  VAWC: "bg-violet-100 text-violet-700",
+  BCPC: "bg-fuchsia-100 text-fuchsia-700",
+  System: "bg-gray-100 text-gray-600",
+  USER_SECURITY: "bg-pink-100 text-pink-700",
+  FTJS: "bg-cyan-100 text-cyan-700",
+  Operational: "bg-teal-100 text-teal-700",
+  Blotter: "bg-emerald-100 text-emerald-700",
+  Clearance: "bg-green-100 text-green-700",
+  Lupong: "bg-yellow-100 text-yellow-700",
+  "LOGIN_AUTHENTICATION": "bg-blue-100 text-blue-700",
+  "SECURITY": "bg-purple-100 text-purple-700",
+  "USER_MANAGEMENT": "bg-rose-100 text-rose-700",
+  "Admin Management": "bg-purple-100 text-purple-700",
+};
 
 function formatTimestamp(iso: string): string {
   try {
@@ -72,44 +115,8 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-type StaticRecentAction = {
-  createdAt: string;
-  user: string;
-  action: string;
-  module: string;
-  severity: string;
-};
 
-const STATIC_RECENT_ACTIONS: StaticRecentAction[] = [
-  {
-    createdAt: new Date().toISOString(),
-    user: "System Admin",
-    action: "Created officer record",
-    module: "Officer",
-    severity: "LOW",
-  },
-  {
-    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    user: "Root Admin",
-    action: "Generated backup archive",
-    module: "DB Backup",
-    severity: "MEDIUM",
-  },
-  {
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    user: "System",
-    action: "Login attempt flagged",
-    module: "Audit Logs",
-    severity: "HIGH",
-  },
-];
-
-const STATIC_AUDIT_SEVERITY = [
-  { name: "LOW", value: 42, color: "#2563EB" },
-  { name: "MEDIUM", value: 19, color: "#F59E0B" },
-  { name: "HIGH", value: 8, color: "#F97316" },
-  { name: "CRITICAL", value: 2, color: "#DC2626" },
-];
+// Remove static data, will use API
 
 const chartTooltipStyle = {
   borderRadius: "10px",
@@ -125,6 +132,8 @@ export default function RootAdminDashboard() {
     counts: [],
   });
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [recentActions, setRecentActions] = useState<any[]>([]);
+  const [auditSeverity, setAuditSeverity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,10 +144,12 @@ export default function RootAdminDashboard() {
       try {
         setLoading(true);
         setError(null);
-        const [statsResult, sixMonthsResult, healthResult] = await Promise.allSettled([
+        const [statsResult, sixMonthsResult, healthResult, recentActionsResult, auditSeverityResult] = await Promise.allSettled([
           getDashboardStats(),
           getLastSixMonthsResidents(),
           getSystemHealth(),
+          getRecentActions(),
+          getAuditSeverityDistribution(),
         ]);
         if (statsResult.status !== "fulfilled") {
           throw statsResult.reason;
@@ -151,6 +162,12 @@ export default function RootAdminDashboard() {
         );
         setSystemHealth(
           healthResult.status === "fulfilled" ? healthResult.value : null,
+        );
+        setRecentActions(
+          recentActionsResult.status === "fulfilled" ? recentActionsResult.value : []
+        );
+        setAuditSeverity(
+          auditSeverityResult.status === "fulfilled" ? auditSeverityResult.value : []
         );
       } catch (err) {
         setError("Failed to load dashboard.");
@@ -392,7 +409,7 @@ export default function RootAdminDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-gray-800">Recent System Actions</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Static preview list</p>
+              <p className="text-xs text-gray-400 mt-0.5">All logged system audit events</p>
             </div>
           </div>
           <div className="mt-4 overflow-hidden rounded-xl border border-gray-100">
@@ -407,17 +424,17 @@ export default function RootAdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {STATIC_RECENT_ACTIONS.map((row, idx) => (
+                {recentActions.map((row, idx) => (
                   <tr key={idx} className="bg-white">
                     <td className="px-4 py-3 text-xs text-gray-400 font-mono whitespace-nowrap">
                       {formatTimestamp(row.createdAt)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">
-                      {row.user}
+                      {row.firstName} {row.lastName}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{row.action}</td>
+                    <td className="px-4 py-3 text-gray-500">{row.actionTaken}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-md ${MOD_STYLES[row.module?.replace(/\s+/g, "_").toUpperCase()] ?? "bg-purple-100 text-purple-700"}`}>
                         {row.module}
                       </span>
                     </td>
@@ -435,44 +452,50 @@ export default function RootAdminDashboard() {
 
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <h3 className="text-base font-bold text-gray-800">Audit Severity Distribution</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Static snapshot of audit severities</p>
-          <div className="mt-4 grid grid-cols-1 gap-3 items-center">
-            <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={STATIC_AUDIT_SEVERITY}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={54}
-                    outerRadius={82}
-                    paddingAngle={1.5}
-                    stroke="#fff"
-                    strokeWidth={2}
-                  >
-                    {STATIC_AUDIT_SEVERITY.map((s) => (
-                      <Cell key={s.name} fill={s.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={chartTooltipStyle} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-2">
-              {STATIC_AUDIT_SEVERITY.map((s) => (
-                <div key={s.name} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: s.color }}
-                    />
-                    <span className="text-sm text-slate-700">{s.name}</span>
+          <p className="text-xs text-gray-400 mt-0.5">Distribution of audit event severities</p>
+          {auditSeverity && auditSeverity.length > 0 ? (
+            <div className="mt-4 flex flex-row gap-8 items-center justify-center">
+              <div className="h-52 w-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={auditSeverity}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      stroke="#fff"
+                      strokeWidth={2}
+                    >
+                      {auditSeverity.map((s) => (
+                        <Cell key={s.name} fill={getSeverityColor(s.name)} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-col gap-2 min-w-[120px]">
+                {auditSeverity.map((s) => (
+                  <div key={s.name} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: getSeverityColor(s.name) }}
+                      />
+                      <span className="text-sm font-semibold text-gray-700">{s.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">{s.value}</span>
                   </div>
-                  <span className="text-sm font-semibold text-slate-900">{s.value}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 flex flex-col items-center justify-center h-64 text-gray-400">
+              <p className="text-sm">No audit severity data available</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

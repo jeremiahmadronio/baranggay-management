@@ -66,7 +66,7 @@ const normalizeIssuedRows = (rows: unknown): IssuedCertificate[] => {
   return rows.map((row, index) => {
     const item = (row ?? {}) as Record<string, unknown>;
     const certificateType = String(
-      item.certificateType ?? item.certTitle ?? item.templateName ?? "",
+      item.certificateType ?? item.certificateTitle ?? item.certTitle ?? item.templateName ?? "",
     );
     const fee = toNumber(item.fee ?? item.amount ?? item.certFee ?? item.totalFee ?? 0);
     const rawIsFree = item.isFree;
@@ -160,6 +160,10 @@ export const IssuedCertificatePage = () => {
   // ─── KPI ───
   const [KPIData, setKPIData] = useState<IssuedStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // ─── Summary table cert number lookup ───
+  // key = "requesterName|YYYY-MM-DD", value = certNumber
+  const [summaryMap, setSummaryMap] = useState<Map<string, string>>(new Map());
 
   // ─── Table state ───
   const [tableData, setTableData] = useState<IssuedCertificate[]>([]);
@@ -335,14 +339,41 @@ export const IssuedCertificatePage = () => {
     }
   }, [page, search, statusFilter, dateFrom, dateTo]);
 
+  // Build a lookup key from a requester name + date string
+  const buildSummaryKey = (requester: string, dateStr: string): string => {
+    const name = requester.trim().toLowerCase();
+    // Parse YYYY-MM-DD locally to avoid timezone shift
+    const m = String(dateStr).match(/(\d{4})-(\d{2})-(\d{2})/);
+    const dateYmd = m ? `${m[1]}-${m[2]}-${m[3]}` : dateStr.substring(0, 10);
+    return `${name}|${dateYmd}`;
+  };
+
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
       try {
-        const [statsResult, rows] = await Promise.allSettled([
+        const [statsResult, rows, summaryResult] = await Promise.allSettled([
           fetchIssuedStats(),
           loadTable(),
+          clearanceTemplateApi.getSummaryTable(),
         ]);
+
+        // Build certNumber lookup map from summary table
+        if (summaryResult.status === "fulfilled") {
+          const rawSummary = summaryResult.value;
+          const entries = Array.isArray(rawSummary) ? rawSummary : [];
+          const map = new Map<string, string>();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          entries.forEach((item: any) => {
+            const certNum = String(item.certNumber ?? "");
+            const requester = String(item.requestor ?? item.requestorName ?? "");
+            const dateStr = String(item.requestedAt ?? item.date ?? "");
+            if (certNum && requester && dateStr) {
+              map.set(buildSummaryKey(requester, dateStr), certNum);
+            }
+          });
+          setSummaryMap(map);
+        }
 
         const tableRows = rows.status === "fulfilled" ? rows.value : [];
         const fallbackStats = deriveStatsFromRows(tableRows);
@@ -450,13 +481,22 @@ export const IssuedCertificatePage = () => {
     },
     {
       key: "orNumber",
-      header: "OR No.",
-      width: "120px",
-      render: (item) => (
-        <span className="text-xs font-mono text-gray-600">
-          {item.orNumber || (toNumber(item.fee) > 0 ? "—" : "FREE")}
-        </span>
-      ),
+      header: "Cert No.",
+      width: "130px",
+      render: (item) => {
+        // Look up certNumber from summary table by requester + date
+        const key = buildSummaryKey(item.requesterName, item.dateIssued);
+        const certNum = summaryMap.get(key);
+        const display = certNum || item.orNumber || "";
+        if (!display) {
+          return <span className="text-gray-400 text-xs">—</span>;
+        }
+        return (
+          <span className="text-xs font-mono text-blue-700 font-medium">
+            {display}
+          </span>
+        );
+      },
     },
     {
       key: "fee",
