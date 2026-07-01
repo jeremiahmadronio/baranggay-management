@@ -4,16 +4,14 @@ import {
   getLastSixMonthsResidents,
   getSystemHealth,
   getRecentActions,
-<<<<<<< HEAD
-=======
   getAuditSeverityDistribution,
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
 } from "../../service/admin-root-api/dashboard-api";
 import type {
   DashboardStats,
   LastSixMonthsResidents,
   SystemHealth,
   RecentActions,
+  AuditSeverityDistribution,
 } from "../../service/admin-root-api/dashboard-api";
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import {
@@ -50,7 +48,6 @@ function AnimatedCounter({ target }: { target: number }) {
 }
 
 function getSeverityStyle(severity: string): string {
-<<<<<<< HEAD
   switch (severity?.toUpperCase()) {
     case "CRITICAL":
       return "bg-rose-100 text-rose-700";
@@ -66,24 +63,6 @@ function getSeverityStyle(severity: string): string {
       return "bg-blue-100 text-blue-700";
     default:
       return "bg-gray-100 text-gray-600";
-=======
-  switch (severity?.toLowerCase()) {
-    case "critical":
-      return "bg-red-100 text-red-800 font-semibold";
-    case "high":
-    case "warning":
-      return "bg-orange-100 text-orange-800 font-semibold";
-    case "medium":
-      return "bg-amber-100 text-amber-800 font-semibold";
-    case "low":
-      return "bg-lime-100 text-lime-800 font-semibold";
-    case "info":
-      return "bg-indigo-100 text-indigo-800 font-semibold";
-    case "error":
-      return "bg-rose-100 text-rose-800 font-semibold";
-    default:
-      return "bg-slate-100 text-slate-700 font-semibold";
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
   }
 }
 
@@ -137,20 +116,6 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-<<<<<<< HEAD
-// removed static data — now using live API
-
-const STATIC_AUDIT_SEVERITY = [
-  { name: "LOW", value: 42, color: "#2563EB" },
-  { name: "MEDIUM", value: 19, color: "#F59E0B" },
-  { name: "HIGH", value: 8, color: "#F97316" },
-  { name: "CRITICAL", value: 2, color: "#DC2626" },
-];
-=======
-
-// Remove static data, will use API
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
-
 const chartTooltipStyle = {
   borderRadius: "10px",
   border: "1px solid #E5E7EB",
@@ -165,12 +130,8 @@ export default function RootAdminDashboard() {
     counts: [],
   });
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-<<<<<<< HEAD
   const [recentActions, setRecentActions] = useState<RecentActions[]>([]);
-=======
-  const [recentActions, setRecentActions] = useState<any[]>([]);
-  const [auditSeverity, setAuditSeverity] = useState<any[]>([]);
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
+  const [auditSeverity, setAuditSeverity] = useState<AuditSeverityDistribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -181,38 +142,14 @@ export default function RootAdminDashboard() {
       try {
         setLoading(true);
         setError(null);
-<<<<<<< HEAD
-      const [statsResult, sixMonthsResult, healthResult, recentActionsResult] =
-        await Promise.allSettled([
-=======
-        const [statsResult, sixMonthsResult, healthResult, recentActionsResult, auditSeverityResult] = await Promise.allSettled([
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
-          getDashboardStats(),
-          getLastSixMonthsResidents(),
-          getSystemHealth(),
-          getRecentActions(),
-<<<<<<< HEAD
-        ]);
-      if (statsResult.status !== "fulfilled") {
-        throw statsResult.reason;
-      }
-      setStats(statsResult.value);
-      setLastSixMonths(
-        sixMonthsResult.status === "fulfilled"
-          ? sixMonthsResult.value
-          : { labels: [], counts: [] },
-      );
-      setSystemHealth(
-        healthResult.status === "fulfilled" ? healthResult.value : null,
-      );
-      setRecentActions(
-        recentActionsResult.status === "fulfilled"
-          ? recentActionsResult.value
-          : [],
-      );
-=======
-          getAuditSeverityDistribution(),
-        ]);
+        const [statsResult, sixMonthsResult, healthResult, recentActionsResult, auditSeverityResult] =
+          await Promise.allSettled([
+            getDashboardStats(),
+            getLastSixMonthsResidents(),
+            getSystemHealth(),
+            getRecentActions(),
+            getAuditSeverityDistribution(),
+          ]);
         if (statsResult.status !== "fulfilled") {
           throw statsResult.reason;
         }
@@ -226,12 +163,13 @@ export default function RootAdminDashboard() {
           healthResult.status === "fulfilled" ? healthResult.value : null,
         );
         setRecentActions(
-          recentActionsResult.status === "fulfilled" ? recentActionsResult.value : []
+          recentActionsResult.status === "fulfilled"
+            ? recentActionsResult.value
+            : [],
         );
         setAuditSeverity(
-          auditSeverityResult.status === "fulfilled" ? auditSeverityResult.value : []
+          auditSeverityResult.status === "fulfilled" ? auditSeverityResult.value : [],
         );
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
       } catch (err) {
         setError("Failed to load dashboard.");
       } finally {
@@ -472,11 +410,7 @@ export default function RootAdminDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-gray-800">Recent System Actions</h3>
-<<<<<<< HEAD
               <p className="text-xs text-gray-400 mt-0.5">Latest actions logged across all modules</p>
-=======
-              <p className="text-xs text-gray-400 mt-0.5">All logged system audit events</p>
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
             </div>
           </div>
           <div className="mt-4 overflow-hidden rounded-xl border border-gray-100">
@@ -495,25 +429,16 @@ export default function RootAdminDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {recentActions.map((row, idx) => (
-<<<<<<< HEAD
                   <tr key={idx} className="bg-white hover:bg-slate-50 transition-colors">
-=======
-                  <tr key={idx} className="bg-white">
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
                     <td className="px-4 py-3 text-xs text-gray-400 font-mono whitespace-nowrap">
                       {formatTimestamp(row.createdAt)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">
                       {row.firstName} {row.lastName}
-<<<<<<< HEAD
                     </td>
                     <td className="px-4 py-3 text-gray-500 max-w-xs truncate" title={row.actionTaken}>
                       {row.actionTaken}
                     </td>
-=======
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{row.actionTaken}</td>
->>>>>>> 001062fe2bd14a39a3fa0d2bc0efcf1fa3a5809e
                     <td className="px-4 py-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-md ${MOD_STYLES[row.module?.replace(/\s+/g, "_").toUpperCase()] ?? "bg-purple-100 text-purple-700"}`}>
                         {row.module}
