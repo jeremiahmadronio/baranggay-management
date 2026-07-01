@@ -124,7 +124,7 @@ const normalizeIssuedRows = (value: unknown) => {
     id: String(item.id ?? ""),
     requesterName: String(item.requesterName ?? item.requestorName ?? ""),
     certificateType: String(
-      item.certificateType ?? item.certTitle ?? item.templateName ?? "",
+      item.certificateType ?? item.certificateTitle ?? item.certTitle ?? item.templateName ?? "",
     ),
     dateIssued: String(item.dateIssued ?? item.date ?? item.requestedAt ?? ""),
     status: String(item.status ?? ""),
@@ -138,6 +138,8 @@ const normalizeIssuedRows = (value: unknown) => {
       return fee <= 0;
     })(),
     isArchived: Boolean(item.isArchived ?? false),
+    // Preserve OR number for Cert No. column
+    orNumber: String(item.orNumber ?? item.ORNumber ?? item.orNo ?? item.certNo ?? ""),
   }));
 };
 
@@ -257,6 +259,37 @@ const deriveTopFromSummary = (
     .map(([certificateTitle, issuanceCount]) => ({ certificateTitle, issuanceCount }));
 };
 
+const fillWeeklyTrend = (
+  data: WeeklyIssuedTrendDTO[],
+): WeeklyIssuedTrendDTO[] => {
+  const today = new Date();
+  const days: Date[] = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+
+  const counts = new Map<string, number>(
+    days.map((d) => [formatDateYmd(d), 0]),
+  );
+
+  data.forEach((item) => {
+    if (!item.date) return;
+    const parsed = asDate(item.date);
+    if (!parsed) return;
+    const key = formatDateYmd(parsed);
+    if (counts.has(key)) {
+      counts.set(key, counts.get(key)! + (item.count ?? 0));
+    }
+  });
+
+  return days.map((d) => {
+    const key = formatDateYmd(d);
+    return { date: key, count: counts.get(key) ?? 0 };
+  });
+};
+
 const deriveTrendFromSummary = (
   rows: Array<{ requestedAt: string; status: string }>,
 ): WeeklyIssuedTrendDTO[] => {
@@ -290,13 +323,16 @@ const deriveTrendFromSummary = (
 
 const deriveRecentFromSummary = (
   rows: Array<{
+    certNumber: string;
     requestor: string;
     certificateTitle: string;
+    fee: number;
     requestedAt: string;
     status: string;
   }>,
-): RecentRequestResponseDTO[] => {
+): Array<Record<string, unknown>> => {
   return [...rows]
+    .filter((row) => !isVoidedStatus(row.status))
     .sort((a, b) => {
       const ad = asDate(a.requestedAt)?.getTime() ?? 0;
       const bd = asDate(b.requestedAt)?.getTime() ?? 0;
@@ -304,10 +340,21 @@ const deriveRecentFromSummary = (
     })
     .slice(0, 10)
     .map((row) => ({
+      // Standard DTO fields
       requestorName: row.requestor,
       certificateType: row.certificateTitle,
       date: row.requestedAt,
       status: row.status || "PENDING",
+      // Rich fields for dashboard table columns
+      certNumber: row.certNumber,       // → Cert No. column
+      orNumber: row.certNumber,         // → also matched by Cert No. column fallback
+      requestor: row.requestor,         // → Requestor column
+      requesterName: row.requestor,     // → Requestor column fallback
+      certificateTitle: row.certificateTitle, // → Certificate column
+      fee: row.fee,                     // → Fee column
+      isFree: row.fee <= 0,            // → Fee column free detection
+      requestedAt: row.requestedAt,     // → Date column
+      dateIssued: row.requestedAt,      // → Date column fallback
     }));
 };
 
@@ -357,8 +404,11 @@ const deriveRecentFromIssued = (
     dateIssued: string;
     status: string;
     isArchived: boolean;
+    orNumber?: string;
+    fee?: number;
+    isFree?: boolean;
   }>,
-): RecentRequestResponseDTO[] => {
+): Array<RecentRequestResponseDTO & { requesterName: string; orNumber?: string; fee?: number; isFree?: boolean }> => {
   return [...rows]
     .filter((row) => !row.isArchived)
     .sort((a, b) => {
@@ -369,9 +419,14 @@ const deriveRecentFromIssued = (
     .slice(0, 10)
     .map((row) => ({
       requestorName: row.requesterName,
+      requesterName: row.requesterName,
       certificateType: row.certificateType,
       date: row.dateIssued,
+      dateIssued: row.dateIssued,
       status: row.status || "PENDING",
+      orNumber: row.orNumber,
+      fee: row.fee,
+      isFree: row.isFree,
     }));
 };
 
@@ -401,7 +456,8 @@ export const ClearanceDashboard = () => {
   const [kpiData, setKpiData] = React.useState<DashboardStatsResponseDTO | null>(
     null,
   );
-  const [recentCerts, setRecentCerts] = React.useState<RecentRequestResponseDTO[]>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [recentCerts, setRecentCerts] = React.useState<Record<string, any>[]>(
     [],
   );
   const [topCertTypes, setTopCertTypes] = React.useState<TopTemplateResponseDTO[]>(
@@ -423,16 +479,51 @@ export const ClearanceDashboard = () => {
   const numberFormatted = (num: number) =>
     new Intl.NumberFormat("en-US").format(num);
 
-  const columns: ColumnDef<RecentRequestResponseDTO>[] = [
-    { header: "Resident Name", accessorKey: "requestorName" },
-    { header: "Certificate Type", accessorKey: "certificateType" },
+  const columns: ColumnDef<any>[] = [
     {
-      header: "Date Issued",
+      header: "Date",
       render: (row) => {
-        const parsed = asDate(row.date);
-        return parsed
-          ? parsed.toLocaleDateString("en-PH")
-          : row.date || "-";
+        const rawDate = row.dateIssued || row.requestedAt || row.date || "";
+        if (!rawDate) return "-";
+        // Parse YYYY-MM-DD locally to avoid timezone shift
+        const match = String(rawDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+          const local = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+          return local.toLocaleDateString("en-PH");
+        }
+        const parsed = new Date(rawDate);
+        return isNaN(parsed.getTime()) ? rawDate : parsed.toLocaleDateString("en-PH");
+      },
+    },
+    {
+      header: "Cert No.",
+      render: (row) => {
+        const certNo = row.orNumber || row.certNumber || row.certificateNumber || "";
+        if (!certNo) return <span className="text-gray-400 text-xs">—</span>;
+        return <span className="font-mono text-xs">{certNo}</span>;
+      },
+    },
+    {
+      header: "Requestor",
+      render: (row) => {
+        const name = row.requesterName || row.requestorName || row.requestor || "";
+        return name || <span className="text-gray-400 text-xs">—</span>;
+      },
+    },
+    {
+      header: "Certificate",
+      render: (row) => {
+        const cert = row.certificateType || row.certificateTitle || row.certTitle || "";
+        return cert || <span className="text-gray-400 text-xs">—</span>;
+      },
+    },
+    {
+      header: "Fee",
+      render: (row) => {
+        const fee = Number(row.fee ?? row.amount ?? row.certFee ?? row.totalFee ?? 0);
+        if (fee > 0) return `₱${fee.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+        if (row.isFree) return <span className="text-emerald-600 text-xs font-medium">Free</span>;
+        return <span className="text-gray-400 text-xs">—</span>;
       },
     },
     {
@@ -440,16 +531,18 @@ export const ClearanceDashboard = () => {
       render: (row) => {
         const normalizedStatus = String(row.status || "").trim().toUpperCase();
         const isReleased = normalizedStatus.includes("RELEASE") || normalizedStatus === "ISSUED";
-
+        const isVoided = normalizedStatus.includes("VOID") || normalizedStatus.includes("CANCEL");
         return (
           <span
-            className={`px-2 py-1 text-xs rounded border ${
+            className={`px-2 py-1 text-xs rounded border font-medium ${
               isReleased
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-amber-50 text-amber-700 border-amber-200"
+                : isVoided
+                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                  : "bg-amber-50 text-amber-700 border-amber-200"
             }`}
           >
-            {row.status}
+            {row.status || "PENDING"}
           </span>
         );
       },
@@ -610,6 +703,7 @@ export const ClearanceDashboard = () => {
         const derivedRecent = deriveRecentFromSummary(summaryRows);
         const derivedTop = deriveTopFromSummary(summaryRows);
         const derivedTrend = deriveTrendFromSummary(summaryRows);
+        // Always prefer issuedRows for recent/top/trend since they have orNumber, fee, requesterName
         const derivedRecentFromIssued = deriveRecentFromIssued(issuedRows);
         const derivedTopFromIssued = deriveTopFromIssued(issuedRows);
         const derivedTrendFromIssued = deriveTrendFromIssued(issuedRows);
@@ -645,16 +739,27 @@ export const ClearanceDashboard = () => {
         }
 
         if (certs.status === "fulfilled") {
-          const normalizedRecent = normalizeRecentIssued(certs.value);
+          // Prefer summaryRows — they have certNumber from /summary-table
+          // Fall back to issuedRows (have fee + requesterName but no certNumber)
+          const richSummary = summaryRows.length > 0 ? deriveRecentFromSummary(summaryRows) : [];
+          const richIssued = issuedRows.length > 0 ? derivedRecentFromIssued : [];
           setRecentCerts(
-            normalizedRecent.length > 0
-              ? normalizedRecent
-              : derivedRecent.length > 0
-                ? derivedRecent
-                : derivedRecentFromIssued,
+            richSummary.length > 0
+              ? richSummary
+              : richIssued.length > 0
+                ? richIssued
+                : derivedRecent,
           );
         } else {
-          setRecentCerts(derivedRecent.length > 0 ? derivedRecent : derivedRecentFromIssued);
+          // API failed — still prefer summaryRows for certNumber
+          const richSummary = summaryRows.length > 0 ? deriveRecentFromSummary(summaryRows) : [];
+          setRecentCerts(
+            richSummary.length > 0
+              ? richSummary
+              : derivedRecentFromIssued.length > 0
+                ? derivedRecentFromIssued
+                : derivedRecent,
+          );
           failedSections.push("recent issued");
         }
 
@@ -674,17 +779,17 @@ export const ClearanceDashboard = () => {
 
         if (trend.status === "fulfilled") {
           const normalizedTrend = normalizeWeeklyTrend(trend.value);
-          setWeeklyTrend(
+          const chosenTrend =
             normalizedTrend.length > 0
               ? normalizedTrend
               : derivedTrend.some((row) => row.count > 0)
                 ? derivedTrend
-                : derivedTrendFromIssued,
-          );
+                : derivedTrendFromIssued;
+          setWeeklyTrend(fillWeeklyTrend(chosenTrend));
         } else {
-          setWeeklyTrend(
-            derivedTrend.some((row) => row.count > 0) ? derivedTrend : derivedTrendFromIssued,
-          );
+          const chosenTrend =
+            derivedTrend.some((row) => row.count > 0) ? derivedTrend : derivedTrendFromIssued;
+          setWeeklyTrend(fillWeeklyTrend(chosenTrend));
           failedSections.push("weekly trend");
         }
 
@@ -766,24 +871,28 @@ export const ClearanceDashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="date"
-                      tickFormatter={(value) =>
-                        new Date(value).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      }
+                      tickFormatter={(value) => {
+                        // Parse YYYY-MM-DD as local date to avoid timezone shift
+                        const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+                        if (m) {
+                          const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+                          return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                        }
+                        return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                      }}
                       fontSize={12}
                     />
                     <YAxis allowDecimals={false} fontSize={12} />
                     <Tooltip
                       formatter={(value) => [numberFormatted(Number(value)), "Issued"]}
-                      labelFormatter={(value) =>
-                        new Date(value).toLocaleDateString("en-PH", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                      }
+                      labelFormatter={(value) => {
+                        const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+                        if (m) {
+                          const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+                          return d.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
+                        }
+                        return new Date(value).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
+                      }}
                     />
                     <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} barSize={36} />
                   </BarChart>
