@@ -130,8 +130,8 @@ export function Layout({ userRole }: LayoutProps) {
   }, [navigate]);
   // ─────────────────────────────────────────────────────────────────────────
 
-  // ── Session Inactivity Timeout (5 minutes) ─────────────────────────────
-  const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  // ── Session Inactivity Timeout (30 minutes) ─────────────────────────────
+  const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetInactivityTimer = useCallback(() => {

@@ -13,6 +13,7 @@ interface NotesTabProps {
   caseStatus: string;
   hasManageNotes: boolean;
   onNoteAdded: () => void;
+  isAdminView?: boolean;
 }
 export function NotesTab({
   notes,
@@ -21,6 +22,7 @@ export function NotesTab({
   caseStatus,
   hasManageNotes,
   onNoteAdded,
+  isAdminView = false,
 }: NotesTabProps) {
   const isTerminal = isTerminalStatus(caseStatus);
   const [showNoteInput, setShowNoteInput] = useState(false);
@@ -63,7 +65,7 @@ export function NotesTab({
           ) : undefined
         }
       >
-        {!hasManageNotes && (
+        {!hasManageNotes && !isAdminView && (
           <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
             <p>
               You do not have permission to manage case notes. Contact your

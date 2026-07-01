@@ -35,6 +35,7 @@ interface Props {
   blotterNumber: string;
   onBack: () => void;
   caseId?: number;
+  isAdminView?: boolean;
 }
 type TabKey = "overview" | "hearings" | "notes" | "timeline" | "CFA";
 type ModalKey =
@@ -86,6 +87,7 @@ export function LuponCaseDetailView({
   blotterNumber,
   onBack,
   caseId,
+  isAdminView = false,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [luponData, setLuponData] = useState<LuponViewDTO | null>(null);
@@ -110,6 +112,15 @@ export function LuponCaseDetailView({
   );
 
   useEffect(() => {
+    if (isAdminView) {
+      setCanViewCases(true);
+      setCanManageConciliation(false);
+      setCanResolveCase(false);
+      setCanManageCaseNotes(false);
+      setAccessLoading(false);
+      return;
+    }
+
     getMyAccess()
       .then((access) => {
         const granted = access.permissions || [];
@@ -131,7 +142,7 @@ export function LuponCaseDetailView({
       .finally(() => {
         setAccessLoading(false);
       });
-  }, []);
+  }, [isAdminView]);
   const refreshData = async () => {
     try {
       const [d, m, h] = await Promise.all([
@@ -560,6 +571,7 @@ export function LuponCaseDetailView({
             respondentName={respondentName}
             onScheduleHearing={() => setModal("schedule")}
             onAddFollowUp={handleAddFollowUp}
+            isAdminView={isAdminView}
           />
         )}
 
@@ -571,6 +583,7 @@ export function LuponCaseDetailView({
             caseStatus={luponData.caseStatus}
             hasManageNotes={canManageCaseNotes}
             onNoteAdded={loadNotes}
+            isAdminView={isAdminView}
           />
         )}
 

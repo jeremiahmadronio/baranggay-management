@@ -44,6 +44,25 @@ export const adminNavItems: NavItemType[] = [
   { label: "User Management", path: "/admin/user-management", icon: Users },
   { label: "Residents", path: "/admin/residents", icon: Users },
   { label: "Officers", path: "/admin/officers", icon: Users },
+  {
+    label: "Blotter",
+    path: "/admin/blotter",
+    icon: ScrollText,
+    children: [
+      { label: "Docket", path: "/admin/blotter-docket", icon: ScrollText },
+      { label: "Records", path: "/admin/blotter-records", icon: ScrollText },
+      { label: "Reports", path: "/admin/blotter-reports", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    label: "Lupon",
+    path: "/admin/lupon",
+    icon: ScrollText,
+    children: [
+      { label: "Cases", path: "/admin/lupon-cases", icon: ScrollText },
+      
+    ],
+  },
   { label: "Events", path: "/admin/events", icon: CalendarDays },
   { label: "Reports", path: "/admin/reports", icon: ChartNoAxesCombined },
   { label: "Archive", path: "/admin/archive", icon: Archive },

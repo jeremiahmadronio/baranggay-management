@@ -32,6 +32,13 @@ import { OfficerManagementPage } from "./pages/admin-module/officer/officerManag
 import ArchivePage from "./pages/admin-module/archive/archive";
 import EventsManagement from "./pages/admin-module/events/EventsManagement";
 import AdminReportsPage from "./pages/admin-module/reports";
+import AdminDocketview from "./pages/admin-module/blotter-docket/Docketview";
+import AdminBlotterRecordsPage from "./pages/admin-module/blotter-docket/BlotterRecord";
+import AdminBlotterRecordDetailView from "./pages/admin-module/blotter-docket/BlotterRecordDetailView";
+import AdminBlotterReportPage from "./pages/admin-module/blotter-docket/BlotterReport";
+import AdminLuponCases from "./pages/admin-module/lupon-docket/Cases";
+import AdminLuponCaseDetailViewWrapper from "./pages/admin-module/lupon-docket/LuponCaseDetailViewWrapper";
+
 
 // Root Admin
 import RootAdminDashboard from "./pages/admin-root-module/dashboard";
@@ -165,14 +172,25 @@ export function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="user-management" element={<UserManagement />} />
+        <Route path="user-management" element={<AdminManagement />} />
         <Route path="archive" element={<ArchivePage />} />
         <Route path="inputform" element={<RecordInputDemo />} />
         <Route path="residents" element={<ResidentsPage />} />
-        <Route path="officers" element={<OfficerManagementPage />} />
+        <Route path="officers" element={<RootOfficerManagementPage />} />
         <Route path="events" element={<EventsManagement />} />
         <Route path="reports" element={<AdminReportsPage />} />
         <Route path="account-settings" element={<SharedAccountSettings />} />
+        <Route path="blotter-docket" element={<AdminDocketview />} />
+        <Route path="blotter-records" element={<AdminBlotterRecordsPage />} />
+        <Route path="blotter-records/view" element={<AdminBlotterRecordDetailView />} />
+        <Route path="blotter-reports" element={<AdminBlotterReportPage />} />
+        <Route path="lupon-cases" element={<AdminLuponCases />} />
+        <Route path="lupon-cases/view/:blotterNumber" element={<AdminLuponCaseDetailViewWrapper />} />
+
+        
+
+          
+
         <Route
           path="users"
           element={<PagePlaceholder title="User Management" />}

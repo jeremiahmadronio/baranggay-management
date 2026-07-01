@@ -157,11 +157,8 @@ export interface PermissionOptions {
 }
 
 export interface CreateAdmin {
-  personId?: number;
-  accountType: "ADMIN";
+  personId: number;
   systemEmail: string;
-  departmentIds: number[];
-  permissionsIds?: number[];
   activateImmediately: boolean;
 }
 

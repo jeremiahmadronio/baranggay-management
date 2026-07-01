@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { XIcon, CameraIcon, PaperclipIcon } from "lucide-react";
-import { getResidentSuggestions } from "../../../service/admin-module-api/ResidentsManagement";
+import { XIcon, CameraIcon, PaperclipIcon, EyeIcon } from "lucide-react";
+import { getResidentSuggestions, searchRelatives } from "../../../service/admin-module-api/ResidentsManagement";
 import type {
   ResidentProfileViewDTO,
   ResidentDocumentViewDTO,
@@ -9,6 +9,8 @@ import type {
   UpdateDocumentRequest,
   AddResidentRequest,
   UpdateResidentRequest,
+  FamilyAssociationRequest,
+  RelativeSearchResult,
   SuggestionsDTO,
 } from "../../../service/admin-module-api/ResidentsManagement";
 
@@ -62,10 +64,6 @@ const INITIAL_FORM_DATA: AddResidentRequest = {
   bloodType: "",
   barangayIdNumber: "",
   dateOfResidency: "",
-  is4ps: false,
-  isPwd: false,
-  pwdIdNumber: "",
-  isIndigent: false,
   educationalAttainment: "",
 };
 
@@ -108,6 +106,16 @@ export function EditResidentsModal({
   const [photoPositionY, setPhotoPositionY] = useState(50);
   const [photoZoom, setPhotoZoom] = useState(1);
   const [hasPhotoUpdate, setHasPhotoUpdate] = useState(false);
+
+  // Family Association state
+  const [relativeSearchResults, setRelativeSearchResults] = useState<RelativeSearchResult[]>([]);
+  const [relativeSearchLoading, setRelativeSearchLoading] = useState(false);
+  const [selectedAssociations, setSelectedAssociations] = useState<
+    { relative: RelativeSearchResult; relationshipType: string }[]
+  >([]);
+  const [residentPeopleId, setResidentPeopleId] = useState<number | null>(null);
+  const [viewedRelative, setViewedRelative] = useState<RelativeSearchResult | null>(null);
+  const relativeSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getErrorMessage = (error: unknown) => {
     if (error instanceof Error) return error.message;
@@ -350,6 +358,34 @@ export function EditResidentsModal({
           setCustomCitizenship("");
         }
 
+        setResidentPeopleId(profile.peopleId);
+
+        if (profile.associations && profile.associations.length > 0) {
+          setSelectedAssociations(
+            profile.associations.map((assoc) => ({
+              relative: {
+                id: assoc.relativePersonId,
+                firstName: assoc.firstName,
+                lastName: assoc.lastName,
+                middleName: assoc.middleName,
+                suffix: assoc.suffix,
+                completeAddress: "",
+                age: assoc.age,
+                birthDate: "",
+                gender: assoc.gender,
+                civilStatus: "",
+                contactNumber: "",
+                barangayIdNumber: assoc.barangayIdNumber,
+                householdNumber: "",
+                status: "ACTIVE",
+              },
+              relationshipType: assoc.relationshipType,
+            }))
+          );
+        } else {
+          setSelectedAssociations([]);
+        }
+
         setFormData({
           firstName: profile.firstName,
           lastName: profile.lastName,
@@ -371,10 +407,10 @@ export function EditResidentsModal({
           bloodType: profile.bloodType || "",
           barangayIdNumber: profile.barangayIdNumber || "",
           dateOfResidency: profile.dateOfResidency || "",
-          is4ps: profile.is4ps ?? false,
-          isPwd: profile.isPwd ?? false,
-          pwdIdNumber: profile.pwdIdNumber || "",
-          isIndigent: profile.isIndigent ?? false,
+          is4ps: false,
+          isPwd: false,
+          pwdIdNumber: "",
+          isIndigent: false,
         });
       })
       .catch((error) => console.error("Failed to fetch profile:", error))
@@ -422,6 +458,33 @@ export function EditResidentsModal({
 
     return () => clearTimeout(timer);
   }, [formData.householdNumber, formData.precinctNumber, isOpen]);
+
+  // Auto-search relatives whenever lastName changes
+  useEffect(() => {
+    if (!isOpen) return;
+    if (relativeSearchTimerRef.current) clearTimeout(relativeSearchTimerRef.current);
+    const lastName = formData.lastName.trim();
+    if (!lastName) {
+      setRelativeSearchResults([]);
+      return;
+    }
+    relativeSearchTimerRef.current = setTimeout(async () => {
+      setRelativeSearchLoading(true);
+      try {
+        const results = await searchRelatives(lastName);
+        // Exclude the resident themselves from search results
+        const filtered = results.filter((r) => r.id !== residentPeopleId);
+        setRelativeSearchResults(filtered);
+      } catch {
+        setRelativeSearchResults([]);
+      } finally {
+        setRelativeSearchLoading(false);
+      }
+    }, 400);
+    return () => {
+      if (relativeSearchTimerRef.current) clearTimeout(relativeSearchTimerRef.current);
+    };
+  }, [formData.lastName, isOpen, residentPeopleId]);
 
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return undefined;
@@ -790,11 +853,15 @@ export function EditResidentsModal({
           formData.citizenship === "Others"
             ? customCitizenship.trim()
             : formData.citizenship,
-        is4ps: !!formData.is4ps,
-        isPwd: !!formData.isPwd,
-        isIndigent: !!formData.isIndigent,
-        pwdIdNumber: formData.isPwd ? formData.pwdIdNumber : undefined,
         documents: updateDocuments.length ? updateDocuments : undefined,
+        familyAssociations: selectedAssociations.length
+          ? selectedAssociations.map(
+              (a): FamilyAssociationRequest => ({
+                relativeId: a.relative.id,
+                relationshipType: a.relationshipType,
+              }),
+            )
+          : undefined,
       };
 
       await onSubmit(finalData);
@@ -823,6 +890,9 @@ export function EditResidentsModal({
     setHasPhotoUpdate(false);
     setErrors({});
     setSubmitError("");
+    setRelativeSearchResults([]);
+    setSelectedAssociations([]);
+    setViewedRelative(null);
     onClose();
   };
 
@@ -1526,113 +1596,253 @@ export function EditResidentsModal({
                             </p>
                           )}
                       </div>
-
-                      <div className="grid grid-cols-3 gap-4 p-4 mt-4 bg-gray-50 rounded-lg border border-gray-100">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.is4ps}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                is4ps: e.target.checked,
-                              })
-                            }
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="text-sm font-medium text-gray-700">
-                            4Ps Beneficiary
-                          </span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.isPwd}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                isPwd: e.target.checked,
-                                pwdIdNumber: e.target.checked
-                                  ? formData.pwdIdNumber
-                                  : "",
-                              })
-                            }
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="text-sm font-medium text-gray-700">
-                            PWD
-                          </span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.isIndigent}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                isIndigent: e.target.checked,
-                              })
-                            }
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="text-sm font-medium text-gray-700">
-                            Indigent
-                          </span>
-                        </label>
-                      </div>
-
-                      {formData.isPwd && (
-                        <div className="mt-4">
-                          <InputLabel label="PWD ID Number" required />
-                          <input
-                            name="pwdIdNumber"
-                            type="text"
-                            value={formData.pwdIdNumber || ""}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                pwdIdNumber: formatPwdIdInput(e.target.value),
-                              })
-                            }
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.pwdIdNumber ? "border-red-500" : "border-gray-300"}`}
-                            placeholder="13-05-19-247-0000001"
-                          />
-                          <ErrorMsg msg={errors.pwdIdNumber} />
-                        </div>
-                      )}
-                    </div>
                   </div>
-                </div>
 
-                <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 shrink-0">
-                  {submitError && (
-                    <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">
-                      {submitError}
+                  {/* SECTION C — Family Association */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">
+                      Family Association
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Associate this resident with an existing family member in the barangay.
                     </p>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <button
-                      onClick={handleClose}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={loading}
-                      className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {loading ? "Saving..." : "Save Changes"}
-                    </button>
+
+                    {/* Currently associated — always visible */}
+                    {selectedAssociations.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Currently Associated</p>
+                        <div className="space-y-2">
+                          {selectedAssociations.map((assoc) => (
+                            <div
+                              key={assoc.relative.id}
+                              className="border border-blue-300 bg-blue-50 rounded-lg px-4 py-3 flex items-center gap-3"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800">
+                                  {assoc.relative.firstName} {assoc.relative.lastName}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Age {assoc.relative.age} | {assoc.relative.status}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs text-gray-500 whitespace-nowrap">Relationship:</span>
+                                <select
+                                  value={assoc.relationshipType}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSelectedAssociations((prev) =>
+                                      prev.map((a) =>
+                                        a.relative.id === assoc.relative.id ? { ...a, relationshipType: val } : a
+                                      )
+                                    );
+                                  }}
+                                  className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                  <option value="">Select...</option>
+                                  <option value="FATHER">Father</option>
+                                  <option value="MOTHER">Mother</option>
+                                  <option value="PARENT">Parent</option>
+                                  <option value="SON">Son</option>
+                                  <option value="DAUGHTER">Daughter</option>
+                                  <option value="CHILD">Child</option>
+                                  <option value="SPOUSE">Spouse</option>
+                                  <option value="HUSBAND">Husband</option>
+                                  <option value="WIFE">Wife</option>
+                                  <option value="BROTHER">Brother</option>
+                                  <option value="SISTER">Sister</option>
+                                  <option value="SIBLING">Sibling</option>
+                                  <option value="RELATIVE">Relative</option>
+                                </select>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedAssociations((prev) =>
+                                    prev.filter((a) => a.relative.id !== assoc.relative.id)
+                                  )
+                                }
+                                className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Auto-search based on lastName field — for adding new relatives */}
+                    {formData.lastName.trim() ? (
+                      <p className="text-xs text-gray-500 mb-2">
+                        {relativeSearchLoading
+                          ? "Searching..."
+                          : `Residents with last name "${formData.lastName.trim()}"`}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400 italic mb-2">
+                        Fill in the Last Name field above to auto-search for relatives to add.
+                      </p>
+                    )}
+
+                    {/* Search results — only shows people NOT already associated */}
+                    {relativeSearchResults.filter(
+                      (r) => !selectedAssociations.some((a) => a.relative.id === r.id)
+                    ).length > 0 && (
+                      <div className="space-y-2 max-h-56 overflow-y-auto">
+                        {relativeSearchResults
+                          .filter((r) => !selectedAssociations.some((a) => a.relative.id === r.id))
+                          .map((rel) => (
+                            <div
+                              key={rel.id}
+                              className="border border-gray-200 bg-white rounded-lg px-4 py-3 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={false}
+                                  onChange={() => {
+                                    setSelectedAssociations((prev) => [
+                                      ...prev,
+                                      { relative: rel, relationshipType: "" },
+                                    ]);
+                                  }}
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-gray-800">
+                                    {rel.firstName} {rel.lastName}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {rel.completeAddress} | Age {rel.age} | {rel.status}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setViewedRelative(rel)}
+                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium shrink-0"
+                                >
+                                  [View Details]
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
+                    {formData.lastName.trim() &&
+                      !relativeSearchLoading &&
+                      relativeSearchResults.filter(
+                        (r) => !selectedAssociations.some((a) => a.relative.id === r.id)
+                      ).length === 0 &&
+                      selectedAssociations.length === 0 && (
+                        <p className="text-xs text-gray-400 text-center py-3 mb-2">
+                          No residents found with that last name.
+                        </p>
+                      )}
                   </div>
                 </div>
-              </>
-            )}
-          </motion.div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 shrink-0">
+                {submitError && (
+                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">
+                    {submitError}
+                  </p>
+                )}
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={handleClose}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {loading ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </motion.div>
+      </div>
+    )}
+
+    {/* View Details mini-modal */}
+    {viewedRelative && (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+        onClick={() => setViewedRelative(null)}
+      >
+        <div
+          className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-gray-900">Verify Identity</h3>
+            <button
+              type="button"
+              onClick={() => setViewedRelative(null)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Full Name:</span>
+              <span className="font-medium text-gray-800">
+                {viewedRelative.firstName}{" "}
+                {viewedRelative.middleName ? `${viewedRelative.middleName} ` : ""}
+                {viewedRelative.lastName}
+                {viewedRelative.suffix ? ` ${viewedRelative.suffix}` : ""}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Address:</span>
+              <span className="font-medium text-gray-800">{viewedRelative.completeAddress}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Age:</span>
+              <span className="font-medium text-gray-800">{viewedRelative.age}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Gender:</span>
+              <span className="font-medium text-gray-800">{viewedRelative.gender}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Civil Status:</span>
+              <span className="font-medium text-gray-800">{viewedRelative.civilStatus}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Contact No.:</span>
+              <span className="font-medium text-gray-800">{viewedRelative.contactNumber}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Household No.:</span>
+              <span className="font-medium text-gray-800">{viewedRelative.householdNumber}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-28 shrink-0">Barangay ID:</span>
+              <span className="font-medium text-gray-800">{viewedRelative.barangayIdNumber}</span>
+            </div>
+          </div>
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setViewedRelative(null)}
+              className="px-5 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
-      )}
+      </div>
+    )}
     </AnimatePresence>
   );
 }

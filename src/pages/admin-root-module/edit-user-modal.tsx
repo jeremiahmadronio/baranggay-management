@@ -3,14 +3,10 @@ import { AlertTriangle, Loader2, CheckCircle2, X } from "lucide-react";
 import { FormModalShell, FormSectionTitle } from "../../reusable";
 import {
   updateAdmin,
-  getDepartmentOptions,
-  getPermissionOptions,
   checkEmailAvailability,
   checkUsernameAvailability,
   type AdminTable,
   type UpdateAdmin,
-  type DepartmentOptions,
-  type PermissionOptions,
 } from "../../service/admin-root-api/admin-management";
 import { ActionModal } from "../../hooks/SuccessModal";
 
@@ -68,29 +64,18 @@ interface EditUserModalProps {
 interface FormData {
   systemEmail: string;
   username: string;
-  allDepartments: boolean;
-  departmentIds: number[];
-  permissionIds: number[];
 }
 
 type Errors = Partial<
-  Record<"systemEmail" | "username" | "departments", string>
+  Record<"systemEmail" | "username", string>
 >;
 
 export function EditUserModal({ admin, onClose }: EditUserModalProps) {
   const actorId = localStorage.getItem("userId") ?? "";
 
-  const [departments, setDepartments] = useState<DepartmentOptions[]>([]);
-  const [deptLoading, setDeptLoading] = useState(true);
-  const [permissions, setPermissions] = useState<PermissionOptions[]>([]);
-  const [permLoading, setPermLoading] = useState(true);
-
   const [formData, setFormData] = useState<FormData>({
     systemEmail: admin.email ?? admin.systemEmail ?? "",
     username: admin.username,
-    allDepartments: false,
-    departmentIds: [],
-    permissionIds: [],
   });
 
   const [errors, setErrors] = useState<Errors>({});
@@ -112,78 +97,10 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
     useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    async function fetchAll() {
-      try {
-        setDeptLoading(true);
-        setPermLoading(true);
-
-        const [deptOptions, permOptions] = await Promise.all([
-          getDepartmentOptions(),
-          getPermissionOptions(),
-        ]);
-
-        setDepartments(deptOptions);
-        setPermissions(permOptions);
-
-        // Convert enum values (e.g. "BLOTTER") → display names (e.g. "Blotter Management")
-        // then match against the department options returned by the API
-        const adminDeptDisplayNames = (admin.departments ?? []).map((d) => {
-          const mapped = DEPT_ENUM_TO_NAME[d.trim().toUpperCase()];
-          return (mapped ?? d).trim().toLowerCase();
-        });
-
-        const currentDeptIds = deptOptions
-          .filter((opt) =>
-            adminDeptDisplayNames.includes(opt.name.trim().toLowerCase()),
-          )
-          .map((opt) => opt.id);
-
-        // Case-insensitive match for permissions
-        const adminPermNames = (admin.permissions ?? []).map((p) =>
-          p.trim().toLowerCase(),
-        );
-        const currentPermIds = permOptions
-          .filter((opt) =>
-            adminPermNames.includes(opt.permissionName.trim().toLowerCase()),
-          )
-          .map((opt) => opt.id);
-
-        // Set both in one call — no race condition
-        setFormData((prev) => ({
-          ...prev,
-          departmentIds: currentDeptIds,
-          permissionIds: currentPermIds,
-        }));
-      } catch {
-        setSubmitError("Failed to load options.");
-      } finally {
-        setDeptLoading(false);
-        setPermLoading(false);
-      }
-    }
-
-    fetchAll();
+    // No department/permission options needed for edit
   }, []);
 
-  const toggleDepartment = (id: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      departmentIds: prev.departmentIds.includes(id)
-        ? prev.departmentIds.filter((d) => d !== id)
-        : [...prev.departmentIds, id],
-    }));
-    if (errors.departments)
-      setErrors((prev) => ({ ...prev, departments: undefined }));
-  };
 
-  const togglePermission = (id: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      permissionIds: prev.permissionIds.includes(id)
-        ? prev.permissionIds.filter((p) => p !== id)
-        : [...prev.permissionIds, id],
-    }));
-  };
 
   const validate = (): boolean => {
     const e: Errors = {};
@@ -199,10 +116,6 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
     if (emailTaken) {
       e.systemEmail = "This email is already taken.";
     }
-    if (!formData.allDepartments && formData.departmentIds.length === 0) {
-      e.departments =
-        "Please select at least one department or check 'All Departments'.";
-    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -213,9 +126,9 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
     const payload: UpdateAdmin = {
       systemEmail: formData.systemEmail,
       username: formData.username,
-      allDepartments: formData.allDepartments,
-      departmentIds: formData.allDepartments ? [] : formData.departmentIds,
-      permissionIds: formData.permissionIds,
+      allDepartments: false,
+      departmentIds: [],
+      permissionIds: [],
     };
 
     try {
@@ -233,7 +146,8 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
     }
   };
 
-  const loadingOptions = deptLoading || permLoading;
+  const loadingOptions = false;
+
 
   return (
     <FormModalShell
@@ -430,114 +344,6 @@ export function EditUserModal({ admin, onClose }: EditUserModalProps) {
               )}
             </div>
           </div>
-        </div>
-
-        {/* Department Access */}
-        <div>
-          <FormSectionTitle title="Department Access" />
-
-          {!formData.allDepartments && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Select Departments <span className="text-red-500">*</span>
-              </label>
-              {deptLoading ? (
-                <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading
-                  departments…
-                </div>
-              ) : (
-                <div
-                  className={`grid grid-cols-2 gap-3 p-3 rounded-lg transition-all ${
-                    errors.departments
-                      ? "border border-red-300 bg-red-50/40"
-                      : ""
-                  }`}
-                >
-                  {departments.map((dept) => (
-                    <label
-                      key={dept.id}
-                      className="flex items-center gap-3 p-2.5 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors bg-white"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.departmentIds.includes(dept.id)}
-                        onChange={() => toggleDepartment(dept.id)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700">{dept.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-              {errors.departments && (
-                <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> {errors.departments}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Permissions */}
-        <div>
-          <FormSectionTitle title="Permissions" />
-
-          {permLoading ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading permissions…
-            </div>
-          ) : permissions.filter((p) =>
-              ALLOWED_PERMISSIONS.some((allowed) =>
-                p.permissionName.toLowerCase().includes(allowed.toLowerCase()),
-              ),
-            ).length > 0 ? (
-            <div className="space-y-4">
-              {Object.entries(PERMISSION_GROUPS).map(([group, permNames]) => {
-                const groupPermissions = permissions.filter(
-                  (p) =>
-                    permNames.some((perm) =>
-                      p.permissionName
-                        .toLowerCase()
-                        .includes(perm.toLowerCase()),
-                    ) &&
-                    ALLOWED_PERMISSIONS.some((allowed) =>
-                      p.permissionName
-                        .toLowerCase()
-                        .includes(allowed.toLowerCase()),
-                    ),
-                );
-                if (groupPermissions.length === 0) return null;
-                return (
-                  <div key={group}>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                      {group}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3 pl-2">
-                      {groupPermissions.map((perm) => (
-                        <label
-                          key={perm.id}
-                          className="flex items-center gap-3 p-2.5 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors bg-white"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.permissionIds.includes(perm.id)}
-                            onChange={() => togglePermission(perm.id)}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                          />
-                          <span className="text-sm text-gray-700">
-                            {perm.permissionName}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">No permissions available.</p>
-          )}
         </div>
 
         {/* Submit error */}

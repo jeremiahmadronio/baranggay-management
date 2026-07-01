@@ -3,11 +3,13 @@ import {
   getDashboardStats,
   getLastSixMonthsResidents,
   getSystemHealth,
+  getRecentActions,
 } from "../../service/admin-root-api/dashboard-api";
 import type {
   DashboardStats,
   LastSixMonthsResidents,
   SystemHealth,
+  RecentActions,
 } from "../../service/admin-root-api/dashboard-api";
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import {
@@ -44,17 +46,21 @@ function AnimatedCounter({ target }: { target: number }) {
 }
 
 function getSeverityStyle(severity: string): string {
-  switch (severity?.toLowerCase()) {
-    case "critical":
+  switch (severity?.toUpperCase()) {
+    case "CRITICAL":
       return "bg-rose-100 text-rose-700";
-    case "high":
+    case "HIGH":
       return "bg-orange-100 text-orange-700";
-    case "medium":
+    case "WARNING":
       return "bg-amber-100 text-amber-700";
-    case "low":
+    case "MEDIUM":
+      return "bg-yellow-100 text-yellow-700";
+    case "LOW":
       return "bg-emerald-100 text-emerald-700";
-    default:
+    case "INFO":
       return "bg-blue-100 text-blue-700";
+    default:
+      return "bg-gray-100 text-gray-600";
   }
 }
 
@@ -72,37 +78,7 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-type StaticRecentAction = {
-  createdAt: string;
-  user: string;
-  action: string;
-  module: string;
-  severity: string;
-};
-
-const STATIC_RECENT_ACTIONS: StaticRecentAction[] = [
-  {
-    createdAt: new Date().toISOString(),
-    user: "System Admin",
-    action: "Created officer record",
-    module: "Officer",
-    severity: "LOW",
-  },
-  {
-    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    user: "Root Admin",
-    action: "Generated backup archive",
-    module: "DB Backup",
-    severity: "MEDIUM",
-  },
-  {
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    user: "System",
-    action: "Login attempt flagged",
-    module: "Audit Logs",
-    severity: "HIGH",
-  },
-];
+// removed static data — now using live API
 
 const STATIC_AUDIT_SEVERITY = [
   { name: "LOW", value: 42, color: "#2563EB" },
@@ -125,6 +101,7 @@ export default function RootAdminDashboard() {
     counts: [],
   });
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [recentActions, setRecentActions] = useState<RecentActions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,23 +112,30 @@ export default function RootAdminDashboard() {
       try {
         setLoading(true);
         setError(null);
-        const [statsResult, sixMonthsResult, healthResult] = await Promise.allSettled([
+      const [statsResult, sixMonthsResult, healthResult, recentActionsResult] =
+        await Promise.allSettled([
           getDashboardStats(),
           getLastSixMonthsResidents(),
           getSystemHealth(),
+          getRecentActions(),
         ]);
-        if (statsResult.status !== "fulfilled") {
-          throw statsResult.reason;
-        }
-        setStats(statsResult.value);
-        setLastSixMonths(
-          sixMonthsResult.status === "fulfilled"
-            ? sixMonthsResult.value
-            : { labels: [], counts: [] },
-        );
-        setSystemHealth(
-          healthResult.status === "fulfilled" ? healthResult.value : null,
-        );
+      if (statsResult.status !== "fulfilled") {
+        throw statsResult.reason;
+      }
+      setStats(statsResult.value);
+      setLastSixMonths(
+        sixMonthsResult.status === "fulfilled"
+          ? sixMonthsResult.value
+          : { labels: [], counts: [] },
+      );
+      setSystemHealth(
+        healthResult.status === "fulfilled" ? healthResult.value : null,
+      );
+      setRecentActions(
+        recentActionsResult.status === "fulfilled"
+          ? recentActionsResult.value
+          : [],
+      );
       } catch (err) {
         setError("Failed to load dashboard.");
       } finally {
@@ -392,10 +376,13 @@ export default function RootAdminDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-gray-800">Recent System Actions</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Static preview list</p>
+              <p className="text-xs text-gray-400 mt-0.5">Latest actions logged across all modules</p>
             </div>
           </div>
           <div className="mt-4 overflow-hidden rounded-xl border border-gray-100">
+            {recentActions.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-400">No recent actions found.</div>
+            ) : (
             <table className="w-full text-sm">
               <thead className="bg-slate-50">
                 <tr className="text-xs text-slate-500">
@@ -407,15 +394,17 @@ export default function RootAdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {STATIC_RECENT_ACTIONS.map((row, idx) => (
-                  <tr key={idx} className="bg-white">
+                {recentActions.map((row, idx) => (
+                  <tr key={idx} className="bg-white hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 text-xs text-gray-400 font-mono whitespace-nowrap">
                       {formatTimestamp(row.createdAt)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">
-                      {row.user}
+                      {row.firstName} {row.lastName}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{row.action}</td>
+                    <td className="px-4 py-3 text-gray-500 max-w-xs truncate" title={row.actionTaken}>
+                      {row.actionTaken}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
                         {row.module}
@@ -430,6 +419,7 @@ export default function RootAdminDashboard() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </div>
 

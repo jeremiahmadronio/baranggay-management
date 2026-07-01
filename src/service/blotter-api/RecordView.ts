@@ -51,7 +51,6 @@ export interface BlotterRecordViewDTO {
   dateOfIncident: string;
   timeOfIncident: string;
   placeOfIncident: string;
-  narrativeStatement: string;
 
   evidenceNames: string[];
 }
@@ -139,3 +138,11 @@ export async function getRecordStats(): Promise<FtrSummaryStatsDTO> {
   return apiFetch<FtrSummaryStatsDTO>(`${BLOTTER_URL}/records-stats`);
 }
 
+export async function getCaseNarrative(
+  caseNumber: string,
+): Promise<string> {
+  const data = await apiFetch<{ narrative: string }>(
+    `${BLOTTER_URL}/${encodeURIComponent(caseNumber)}/narrative`,
+  );
+  return data?.narrative ?? "";
+}

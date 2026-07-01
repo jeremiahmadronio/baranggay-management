@@ -36,6 +36,7 @@ interface HearingsTabProps {
   onScheduleHearing: () => void;
   onAddFollowUp: (hearing: HearingViewDTO) => void;
   onRefresh?: () => void;
+  isAdminView?: boolean;
 }
 
 export function HearingsTab({
@@ -51,6 +52,7 @@ export function HearingsTab({
   onScheduleHearing,
   onAddFollowUp,
   onRefresh,
+  isAdminView = false,
 }: HearingsTabProps) {
   const isUnderConciliation = caseStatus === "UNDER_CONCILIATION";
   const isTerminal = isTerminalStatus(caseStatus);
@@ -164,7 +166,7 @@ export function HearingsTab({
       )}
 
       {/* ── Permission Warning ── */}
-      {!hasPermission && (
+      {!hasPermission && !isAdminView && (
         <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
           <ShieldOffIcon className="w-4 h-4 shrink-0" />
           <p>

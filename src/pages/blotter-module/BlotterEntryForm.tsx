@@ -127,7 +127,7 @@ export default function BlotterEntryForm() {
     frequency: "",
     injuryDesc: "",
   });
-  const [narrative, setNarrative] = useState("");
+  const [narrativeFile, setNarrativeFile] = useState<File | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<Set<number>>(
     new Set(),
   );
@@ -246,7 +246,7 @@ export default function BlotterEntryForm() {
       frequency: "",
       injuryDesc: "",
     });
-    setNarrative("");
+    setNarrativeFile(null);
     setSelectedEvidence(new Set());
     setCustomEvidence("");
     setAssignedOfficerId("");
@@ -263,9 +263,23 @@ export default function BlotterEntryForm() {
     setErrors({});
     setSubmitError(null);
   };
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = String(reader.result ?? "");
+        // Strip data URL prefix (e.g. "data:application/pdf;base64,")
+        const base64 = raw.includes(",") ? raw.split(",")[1] : raw;
+        resolve(base64);
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
   const validate = (): boolean => {
     const e: Errors = {};
-    if (!assignedOfficerId)
+    // Officer assignment only required for formal complaints
+    if (mode === "formal" && !assignedOfficerId)
       e.assignedOfficerId = "Assigned officer is required.";
     if (!complainant.lastName.trim()) e.cLastName = "Last name is required.";
     if (!complainant.firstName.trim()) e.cFirstName = "First name is required.";
@@ -301,7 +315,7 @@ export default function BlotterEntryForm() {
       e.dateOfIncident = "Date of incident is required.";
     if (!incident.placeOfIncident.trim())
       e.placeOfIncident = "Place of incident is required.";
-    if (!narrative.trim()) e.narrative = "Statement of facts is required.";
+    if (!narrativeFile) e.narrative = "Narrative file is required.";
 
     const selectedEvidenceOptions = evidenceOptions.filter((option) =>
       selectedEvidence.has(option.id),
@@ -380,6 +394,8 @@ export default function BlotterEntryForm() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      if (!narrativeFile) throw new Error("Narrative file is missing.");
+      const narrativeBase64 = await fileToBase64(narrativeFile);
       let resultBlotterNo: string;
       if (mode === "record") {
         const payload: any = {
@@ -407,7 +423,7 @@ export default function BlotterEntryForm() {
             ? `${incident.timeOfIncident}:00`
             : undefined,
           placeOfIncident: incident.placeOfIncident,
-          narrativeStatement: narrative,
+          narrativeStatement: narrativeBase64,
           ...(assignedOfficerId
             ? { assignToId: Number(assignedOfficerId) }
             : {}),
@@ -456,7 +472,7 @@ export default function BlotterEntryForm() {
           frequencyOfIncident: incident.frequency || undefined,
 
           descriptionOfInjuries: incident.injuryDesc || undefined,
-          narrativeStatement: narrative,
+          narrativeStatement: narrativeBase64,
           evidenceTypeIds: buildEvidenceIds().length
             ? buildEvidenceIds()
             : undefined,
@@ -475,8 +491,8 @@ export default function BlotterEntryForm() {
       setSuccessBlotterNo(resultBlotterNo || blotterNumber);
       setShowSuccessModal(true);
     } catch (err: any) {
-      console.error("Submission error:");
-      setSubmitError("Submission failed. Please try again.");
+      console.error("Submission error:", err);
+      setSubmitError(err.message || "Submission failed. Please try again.");
       setShowErrorModal(true);
     } finally {
       setIsSubmitting(false);
@@ -597,8 +613,8 @@ export default function BlotterEntryForm() {
 
         <NarrativeSection
           mode={mode}
-          narrative={narrative}
-          onChange={setNarrative}
+          narrativeFile={narrativeFile}
+          onChange={setNarrativeFile}
           error={errors.narrative}
           clearErr={() => clearErr("narrative")}
         />

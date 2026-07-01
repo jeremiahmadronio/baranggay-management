@@ -88,6 +88,17 @@ export interface ResidentProfileViewDTO {
   status?: string;
   cases: ResidentCaseHistoryDTO[];
   documents?: ResidentDocumentViewDTO[];
+  associations?: {
+    relativePersonId: number;
+    firstName: string;
+    lastName: string;
+    middleName: string;
+    suffix: string;
+    relationshipType: string;
+    barangayIdNumber: string;
+    gender: string;
+    age: number;
+  }[];
 }
 
 export interface ResidentDocumentViewDTO {
@@ -107,6 +118,28 @@ export interface ResidentDocumentRequest {
   documentName: string;
   documentType: string;
   fileData: string;
+}
+
+export interface FamilyAssociationRequest {
+  relativeId: number;
+  relationshipType: string;
+}
+
+export interface RelativeSearchResult {
+  id: number;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  suffix?: string | null;
+  completeAddress: string;
+  age: number;
+  birthDate: string;
+  gender: string;
+  civilStatus: string;
+  contactNumber: string;
+  barangayIdNumber: string;
+  householdNumber: string;
+  status: string;
 }
 
 export interface UpdateDocumentRequest {
@@ -149,12 +182,9 @@ export interface AddResidentRequest {
   bloodType?: string;
   barangayIdNumber: string;
   dateOfResidency: string;
-  is4ps: boolean;
-  isPwd: boolean;
-  pwdIdNumber?: string;
-  isIndigent: boolean;
   educationalAttainment?: string;
   documents?: ResidentDocumentRequest[];
+  familyAssociations?: FamilyAssociationRequest[];
   username?: string; // Optional for backend compatibility
 }
 
@@ -181,12 +211,9 @@ export interface UpdateResidentRequest {
   bloodType?: string;
   barangayIdNumber?: string;
   dateOfResidency?: string;
-  is4ps: boolean;
-  isPwd: boolean;
-  pwdIdNumber?: string;
-  isIndigent: boolean;
   educationalAttainment?: string;
   documents?: UpdateDocumentRequest[];
+  familyAssociations?: FamilyAssociationRequest[];
 }
 
 export interface SuggestionsDTO {
@@ -354,4 +381,22 @@ export async function updateResident(
 //search for next available barangay ID number
 export async function getResidentSuggestions(): Promise<SuggestionsDTO> {
   return apiFetch<SuggestionsDTO>(`${PEOPLE_URL}/suggestions`);
+}
+
+// search relatives by last name
+export async function searchRelatives(
+  lastName: string,
+): Promise<RelativeSearchResult[]> {
+  if (!lastName || lastName.trim().length < 1) return [];
+  const params = new URLSearchParams({ lastName: lastName.trim() });
+  return apiFetch<RelativeSearchResult[]>(
+    `${PEOPLE_URL}/search-relative?${params.toString()}`,
+  );
+}
+
+// get resident family associations
+export async function getResidentAssociations(
+  residentId: number,
+): Promise<{ relativePersonId: number; firstName: string; lastName: string; middleName: string; suffix: string; relationshipType: string; barangayIdNumber: string; gender: string; age: number }[]> {
+  return apiFetch(`${PEOPLE_URL}/${residentId}/associations`);
 }

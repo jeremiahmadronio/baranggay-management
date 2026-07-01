@@ -536,15 +536,31 @@ export function VAWCNewComplaint() {
   const { user } = useUser();
   const submissionLockRef = useRef(false);
 
-  /* ── officer display name ── */
-  let officerName = "Unknown Officer";
-  if (user) {
-    const cap = (s: string) =>
-      s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-    const first = user.firstName ? cap(user.firstName) : "";
-    const last = user.lastName ? cap(user.lastName) : "";
-    officerName = `${first} ${last}`.trim() || "Unknown Officer";
-  }
+  const getOfficerName = () => {
+    if (user) {
+      const first = (user.firstName || "").trim();
+      const last = (user.lastName || "").trim();
+      if (first || last) {
+        return `${first} ${last}`.trim();
+      }
+      if (user.username) return user.username;
+    }
+    const storedFirstName = localStorage.getItem("firstName");
+    const storedLastName = localStorage.getItem("lastName");
+    const storedUsername = localStorage.getItem("username");
+    const storedEmail = localStorage.getItem("userEmail");
+    if (storedFirstName && storedLastName)
+      return `${storedFirstName} ${storedLastName}`.trim();
+    if (storedFirstName) return storedFirstName.trim();
+    if (storedUsername) return storedUsername.trim();
+    if (storedEmail) return storedEmail.split("@")[0];
+    return "Unknown Officer";
+  };
+  const capitalize = (s: string) => {
+    if (!s) return "";
+    return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  };
+  const officerName = capitalize(getOfficerName());
 
   /* ── auto‑generated values ── */
   const [caseNumber] = useState(generateCaseNumber);

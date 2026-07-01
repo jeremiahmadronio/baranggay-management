@@ -25,14 +25,31 @@ export const DocketSection = ({
   clearErr,
 }: DocketSectionProps) => {
   const { user } = useUser();
-  let officerName = "Unknown Officer";
-  if (user) {
-    const capitalize = (s: string) =>
-      s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-    const first = user.firstName ? capitalize(user.firstName) : "";
-    const last = user.lastName ? capitalize(user.lastName) : "";
-    officerName = `${first} ${last}`.trim() || "Unknown Officer";
-  }
+  const getOfficerName = () => {
+    if (user) {
+      const first = (user.firstName || "").trim();
+      const last = (user.lastName || "").trim();
+      if (first || last) {
+        return `${first} ${last}`.trim();
+      }
+      if (user.username) return user.username;
+    }
+    const storedFirstName = localStorage.getItem("firstName");
+    const storedLastName = localStorage.getItem("lastName");
+    const storedUsername = localStorage.getItem("username");
+    const storedEmail = localStorage.getItem("userEmail");
+    if (storedFirstName && storedLastName)
+      return `${storedFirstName} ${storedLastName}`.trim();
+    if (storedFirstName) return storedFirstName.trim();
+    if (storedUsername) return storedUsername.trim();
+    if (storedEmail) return storedEmail.split("@")[0];
+    return "Unknown Officer";
+  };
+  const capitalize = (s: string) => {
+    if (!s) return "";
+    return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  };
+  const officerName = capitalize(getOfficerName());
   const today = new Date();
   const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const formattedTime = today

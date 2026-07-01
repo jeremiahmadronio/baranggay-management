@@ -193,13 +193,6 @@ export default function CreateAdminModal({ onClose }: Props) {
     if (emailTaken) {
       e.systemEmail = "This email is already taken.";
     }
-    if (!formData.allDepartments && formData.departmentIds.length === 0) {
-      e.departments =
-        "Please select at least one department or check 'All Departments'.";
-    }
-    if (formData.permissionIds.length === 0) {
-      e.permissions = "Please select at least one permission.";
-    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -207,15 +200,11 @@ export default function CreateAdminModal({ onClose }: Props) {
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    const resolvedDepartmentIds = formData.allDepartments
-      ? departments.map((d) => d.id)
-      : formData.departmentIds;
+    if (!formData.personId) return;
 
     const payload: CreateAdmin = {
-      personId: formData.personId ?? undefined,
+      personId: formData.personId,
       systemEmail: formData.systemEmail,
-      departmentIds: resolvedDepartmentIds,
-      permissionsIds: formData.permissionIds,
       activateImmediately: formData.activateImmediately,
     };
 
@@ -282,7 +271,10 @@ export default function CreateAdminModal({ onClose }: Props) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => {
-                  if (searchResults.length > 0 || searchQuery.trim().length >= 2) {
+                  if (
+                    searchResults.length > 0 ||
+                    searchQuery.trim().length >= 2
+                  ) {
                     setIsSearchOpen(true);
                   }
                 }}
@@ -326,7 +318,9 @@ export default function CreateAdminModal({ onClose }: Props) {
           </div>
 
           {searchQuery.trim().length > 0 && searchQuery.trim().length < 2 && (
-            <p className="mt-2 text-xs text-slate-500">Type at least 2 characters to search.</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Type at least 2 characters to search.
+            </p>
           )}
 
           {formData.personId && (
@@ -412,128 +406,6 @@ export default function CreateAdminModal({ onClose }: Props) {
           {emailTaken && (
             <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
               This email is already taken
-            </p>
-          )}
-          {errors.systemEmail && !formData.personId && !emailTaken && (
-            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> {errors.systemEmail}
-            </p>
-          )}
-        </div>
-
-        {/* Department Access */}
-        <div>
-          <FormSectionTitle title="Department Access" />
-
-          <div className="flex items-center gap-3 mb-4"></div>
-
-          {!formData.allDepartments && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Select Departments <span className="text-red-500">*</span>
-              </label>
-              {loadingOptions ? (
-                <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading
-                  departments…
-                </div>
-              ) : (
-                <div
-                  className={`grid grid-cols-2 gap-3 p-3 rounded-lg transition-all ${
-                    errors.departments
-                      ? "border border-red-300 bg-red-50/40"
-                      : ""
-                  }`}
-                >
-                  {/* Always show all departments from API, no filtering */}
-                  {departments.map((dept) => (
-                    <label
-                      key={dept.id}
-                      className="flex items-center gap-3 p-2.5 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors bg-white"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.departmentIds.includes(dept.id)}
-                        onChange={() => toggleDept(dept.id)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700">{dept.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-              {errors.departments && (
-                <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> {errors.departments}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Permissions */}
-        <div>
-          <FormSectionTitle title="Permissions" />
-
-          {loadingOptions ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading permissions…
-            </div>
-          ) : permissions.filter((p) =>
-              ALLOWED_PERMISSIONS.some((allowed) =>
-                p.permissionName.toLowerCase().includes(allowed.toLowerCase()),
-              ),
-            ).length > 0 ? (
-            <div className="space-y-4">
-              {Object.entries(PERMISSION_GROUPS).map(([group, permNames]) => {
-                const groupPermissions = permissions.filter(
-                  (p) =>
-                    permNames.some((perm) =>
-                      p.permissionName
-                        .toLowerCase()
-                        .includes(perm.toLowerCase()),
-                    ) &&
-                    ALLOWED_PERMISSIONS.some((allowed) =>
-                      p.permissionName
-                        .toLowerCase()
-                        .includes(allowed.toLowerCase()),
-                    ),
-                );
-                if (groupPermissions.length === 0) return null;
-                return (
-                  <div key={group}>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                      {group}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3 pl-2">
-                      {groupPermissions.map((perm) => (
-                        <label
-                          key={perm.id}
-                          className="flex items-center gap-3 p-2.5 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors bg-white"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.permissionIds.includes(perm.id)}
-                            onChange={() => togglePermission(perm.id)}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                          />
-                          <span className="text-sm text-gray-700">
-                            {perm.permissionName}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">No permissions available.</p>
-          )}
-
-          {errors.permissions && (
-            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> {errors.permissions}
             </p>
           )}
         </div>

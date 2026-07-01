@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { ChevronLeftIcon, CheckIcon, PencilIcon } from "lucide-react";
+import { ChevronLeftIcon, CheckIcon, PencilIcon, XIcon } from "lucide-react";
 import type { ResidentProfileViewDTO } from "../../../service/admin-module-api/ResidentsManagement";
-import { updateResidentStatus } from "../../../service/admin-module-api/ResidentsManagement";
+import { updateResidentStatus, getResidentAssociations } from "../../../service/admin-module-api/ResidentsManagement";
 import { ResidentsOverviewTab } from "./Overview";
 import { ResidentsCaseHistoryTab } from "./CaseHistory";
 import { ResidentsFilesTab } from "./ResidentsFile";
@@ -84,15 +84,33 @@ export function ResidentsView({
     "overview",
   );
 
+  type AssociationItem = NonNullable<ResidentProfileViewDTO["associations"]>[number];
+  const [associations, setAssociations] = useState<AssociationItem[]>([]);
+  const [viewedAssoc, setViewedAssoc] = useState<AssociationItem | null>(null);
+
   useEffect(() => {
     setLoading(true);
     setError(null);
     setProfile(null);
+    setAssociations([]);
     fetchProfile(residentId)
       .then(setProfile)
       .catch((e) => setError(e.message || "Failed to load profile"))
       .finally(() => setLoading(false));
   }, [residentId, fetchProfile]);
+
+  useEffect(() => {
+    if (!profile?.peopleId) return;
+    getResidentAssociations(profile.peopleId)
+      .then((data) => {
+        console.log(`[Associations] peopleId=${profile.peopleId} →`, data);
+        setAssociations(data ?? []);
+      })
+      .catch((err) => {
+        console.error(`[Associations] Failed for peopleId=${profile.peopleId}:`, err);
+        setAssociations([]);
+      });
+  }, [profile?.peopleId]);
 
   const formatDate = (date?: string) => {
     if (!date) return "—";
@@ -417,11 +435,62 @@ export function ResidentsView({
                 </div>
               )}
               {!loading && profile && activeTab === "overview" && (
-                <ResidentsOverviewTab
-                  profile={profile}
-                  fullDisplayName={fullDisplayName}
-                  formatDate={formatDate}
-                />
+                <>
+                  <ResidentsOverviewTab
+                    profile={profile}
+                    fullDisplayName={fullDisplayName}
+                    formatDate={formatDate}
+                  />
+
+                  {/* C. FAMILY ASSOCIATIONS */}
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                      C. Family Associations
+                    </h3>
+                    {associations.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic">No family associations recorded.</p>
+                    ) : (
+                      <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Full Name</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Relationship</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Status</th>
+                              <th className="px-5 py-3"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {associations.map((assoc) => (
+                              <tr key={assoc.relativePersonId} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-5 py-4 font-semibold text-gray-800">
+                                  {assoc.firstName} {assoc.middleName ? `${assoc.middleName[0]}. ` : ""}{assoc.lastName}{assoc.suffix && assoc.suffix !== "null" ? ` ${assoc.suffix}` : ""}
+                                </td>
+                                <td className="px-5 py-4 text-gray-600">
+                                  {assoc.relationshipType.charAt(0) + assoc.relationshipType.slice(1).toLowerCase()}
+                                </td>
+                                <td className="px-5 py-4">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                    Active
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewedAssoc(assoc)}
+                                    className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                                  >
+                                    View
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
               {!loading && profile && activeTab === "cases" && (
                 <ResidentsCaseHistoryTab
@@ -463,6 +532,64 @@ export function ResidentsView({
               alt={fullDisplayName}
               className="w-[70vw] max-w-[520px] aspect-square rounded-full object-cover border-4 border-white shadow-2xl"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Verify Identity popup for associations */}
+      {viewedAssoc && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+          onClick={() => setViewedAssoc(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-gray-900">Verify Identity</h3>
+              <button type="button" onClick={() => setViewedAssoc(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-2">
+                <span className="text-gray-500 w-32 shrink-0">Full Name:</span>
+                <span className="font-medium text-gray-800">
+                  {viewedAssoc.firstName}{" "}
+                  {viewedAssoc.middleName && viewedAssoc.middleName !== "null" ? `${viewedAssoc.middleName} ` : ""}
+                  {viewedAssoc.lastName}
+                  {viewedAssoc.suffix && viewedAssoc.suffix !== "null" ? ` ${viewedAssoc.suffix}` : ""}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-gray-500 w-32 shrink-0">Relationship:</span>
+                <span className="font-medium text-gray-800">
+                  {viewedAssoc.relationshipType.charAt(0) + viewedAssoc.relationshipType.slice(1).toLowerCase()}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-gray-500 w-32 shrink-0">Gender:</span>
+                <span className="font-medium text-gray-800">{viewedAssoc.gender}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-gray-500 w-32 shrink-0">Age:</span>
+                <span className="font-medium text-gray-800">{viewedAssoc.age}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-gray-500 w-32 shrink-0">Barangay ID:</span>
+                <span className="font-medium text-gray-800">{viewedAssoc.barangayIdNumber}</span>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setViewedAssoc(null)}
+                className="px-5 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

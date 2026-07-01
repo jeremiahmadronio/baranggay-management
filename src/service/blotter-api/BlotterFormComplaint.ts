@@ -150,11 +150,49 @@ export interface LuponOptionDTO {
   position: string;
 }
 
+function objectToFormData(obj: any): FormData {
+  const formData = new FormData();
+
+  const appendForm = (key: string, val: any) => {
+    if (val === undefined || val === null) return;
+
+    if (val instanceof File) {
+      formData.append(key, val);
+    } else if (Array.isArray(val)) {
+      val.forEach((item, index) => {
+        if (item === undefined || item === null) return;
+        if (typeof item === "object" && !(item instanceof File)) {
+          // For nested objects inside list, e.g. witnesses[0].fullName
+          Object.keys(item).forEach((subKey) => {
+            appendForm(`${key}[${index}].${subKey}`, item[subKey]);
+          });
+        } else {
+          // For flat arrays, e.g. evidenceTypeIds
+          formData.append(key, String(item));
+        }
+      });
+    } else if (typeof val === "object" && !(val instanceof Date)) {
+      Object.keys(val).forEach((subKey) => {
+        appendForm(`${key}.${subKey}`, val[subKey]);
+      });
+    } else {
+      formData.append(key, String(val));
+    }
+  };
+
+  Object.keys(obj).forEach((key) => {
+    appendForm(key, obj[key]);
+  });
+
+  return formData;
+}
+
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
+  const isFormData = options.body instanceof FormData;
 
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };

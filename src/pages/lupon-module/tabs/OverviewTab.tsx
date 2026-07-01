@@ -16,6 +16,7 @@ import { type LuponViewDTO } from "../../../service/lupon-api/Lupong-tagapamayap
 import { isTerminalStatus } from "../shared/StatusBadge";
 import { InfoRow } from "../shared/InfoRow";
 import { SectionCard } from "../shared/SectionCard";
+import { NarrativeViewer } from "../../blotter-module/shared/NarrativeViewer";
 import { formatDate, formatTime } from "../lib/Utils";
 interface OverviewTabProps {
   luponData: LuponViewDTO;
@@ -490,9 +491,7 @@ export function OverviewTab({
         title="Incident Details"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
       >
-        <p className="text-sm text-gray-900 leading-relaxed">
-          {luponData.narrative || "No narrative provided."}
-        </p>
+        <NarrativeViewer caseNumber={luponData.blotterNumber} />
         {luponData.incidentDetail.descriptionOfInjuries && (
           <div className="mt-4 pt-4 border-t border-gray-100">
             <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1.5">

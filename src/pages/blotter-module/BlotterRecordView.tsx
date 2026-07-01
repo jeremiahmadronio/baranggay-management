@@ -13,6 +13,7 @@ import {
 import { CenteredLoader } from "../../hooks/LoadingStates";
 import { InfoRow } from "./shared/InfoRow";
 import { SectionCard } from "./shared/SectionCard";
+import { NarrativeViewer } from "./shared/NarrativeViewer";
 import { formatDate, formatTime } from "./shared/utils";
 
 const getStatusPillClass = (statusRaw: string) => {
@@ -186,13 +187,8 @@ const BlotterRecordViewPage: React.FC = () => {
               title="Incident Details"
               icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
             >
-              <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
-                {record.narrativeStatement ||
-                  "No narrative statement provided."}
-              </p>
-
-              {record.evidenceNames && record.evidenceNames.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
+              {record.evidenceNames && record.evidenceNames.length > 0 ? (
+                <div>
                   <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1.5">
                     Evidence Submitted
                   </p>
@@ -207,7 +203,17 @@ const BlotterRecordViewPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">No evidence submitted.</p>
               )}
+            </SectionCard>
+
+            {/* Narrative / Statement of Facts */}
+            <SectionCard
+              title="Narrative / Statement of Facts"
+              icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
+            >
+              <NarrativeViewer caseNumber={blotterNumber} />
             </SectionCard>
           </div>
 
