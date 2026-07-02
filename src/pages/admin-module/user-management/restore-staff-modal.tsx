@@ -2,7 +2,7 @@ import { StatusUpdateModal } from "../../../reusable/StatusUpdateModal";
 import {
   userManagementApi,
   type UserTable,
-} from "../../../service/admin-module-api/user-management";
+} from "../../../service/admin-root-api/user-management";
 
 interface RestoreStaffModalProps {
   user: UserTable;

@@ -60,6 +60,7 @@ export const adminNavItems: NavItemType[] = [
     icon: ScrollText,
     children: [
       { label: "Cases", path: "/admin/lupon-cases", icon: ScrollText },
+      { label: "Reports", path: "/admin/lupon-reports", icon: ChartNoAxesCombined },
       
     ],
   },

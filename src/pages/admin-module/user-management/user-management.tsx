@@ -22,7 +22,7 @@ import {
   type UserStats,
   type UserViewDTO,
   type UserTable,
-} from "../../../service/admin-module-api/user-management";
+} from "../../../service/admin-root-api/user-management";
 import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
 import CreateStaffModal from "./Create-Staff-Modal";
 import { LockStaffModal } from "./Lock-staff-modal";
@@ -397,8 +397,14 @@ export default function UserManagement() {
     try {
       setStatsLoading(true);
       const data = await userManagementApi.getStats();
-      setStats(data);
-    } catch {
+      setStats({
+        totalUser: Number(data.totalUser ?? 0),
+        totalActiveUser: Number(data.totalActiveUser ?? 0),
+        totalInactive: Number(data.totalInactive ?? 0),
+        totalLock: Number(data.totalLock ?? 0),
+      });
+    } catch (err) {
+      console.warn("Failed to load staff stats, falling back to zeros", err);
       setStats({
         totalUser: 0,
         totalActiveUser: 0,
@@ -446,7 +452,11 @@ export default function UserManagement() {
         );
       }
 
-      const visibleRows = allRows.filter(isUserVisibleInManagement);
+      const visibleRows = allRows.filter(
+        (r) =>
+          String(r.accountType || "").toUpperCase() !== "ADMIN" &&
+          isUserVisibleInManagement(r),
+      );
       const computedTotalItems = visibleRows.length;
       const computedTotalPages = Math.max(
         Math.ceil(computedTotalItems / 10),

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, UploadCloudIcon, FileTextIcon, XCircleIcon } from "lucide-react";
 import {
   ConfirmModal,
   FormActions,
@@ -47,14 +47,16 @@ const LIMITS = {
   nameMax: 80,
   addressMin: 8,
   addressMax: 180,
-  narrativeMin: 20,
-  narrativeMax: 5000,
   locationMin: 3,
   locationMax: 120,
   shortTextMax: 120,
   descriptionMax: 250,
   testimonyMax: 500,
 };
+
+const NARRATIVE_ACCEPTED = ".pdf,.doc,.docx,.txt";
+const NARRATIVE_MAX_MB = 10;
+const NARRATIVE_MAX_BYTES = NARRATIVE_MAX_MB * 1024 * 1024;
 
 const searchInputCls =
   "w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 pl-10 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all";
@@ -398,7 +400,6 @@ type SanitizedComplaintForm = {
     frequencyOfIncident: string;
     descriptionOfInjuries: string;
   };
-  narrative: string;
   witnesses: SanitizedWitnessEntry[];
 };
 
@@ -442,7 +443,6 @@ type ComplaintDraft = {
     frequencyOfIncident: string;
     descriptionOfInjuries: string;
   };
-  narrative: string;
   witnesses: WitnessEntry[];
 };
 
@@ -478,7 +478,6 @@ const sanitizeComplaintForm = (
     frequencyOfIncident: string;
     descriptionOfInjuries: string;
   },
-  narrative: string,
   witnesses: WitnessEntry[],
 ): SanitizedComplaintForm => ({
   complainant: {
@@ -518,7 +517,6 @@ const sanitizeComplaintForm = (
       LIMITS.descriptionMax,
     ),
   },
-  narrative: sanitizeParagraph(narrative, LIMITS.narrativeMax),
   witnesses: witnesses.map((witness) => ({
     id: witness.id,
     firstName: sanitizeText(witness.firstName, LIMITS.nameMax),
@@ -535,6 +533,7 @@ export function VAWCNewComplaint() {
   const navigate = useNavigate();
   const { user } = useUser();
   const submissionLockRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getOfficerName = () => {
     if (user) {
@@ -655,7 +654,7 @@ export function VAWCNewComplaint() {
     setIncident((prev) => ({ ...prev, [field]: value }));
 
   /* ── narrative ── */
-  const [narrative, setNarrative] = useState("");
+  const [narrativeFile, setNarrativeFile] = useState<File | null>(null);
 
   /* ── witnesses ── */
   const [witnesses, setWitnesses] = useState<WitnessEntry[]>([emptyWitness()]);
@@ -705,7 +704,6 @@ export function VAWCNewComplaint() {
     livingWithComplainant,
     natureOfComplaintId,
     incident,
-    narrative,
     witnesses,
   });
 
@@ -808,7 +806,6 @@ export function VAWCNewComplaint() {
       setLivingWithComplainant(Boolean(draft.livingWithComplainant));
       setNatureOfComplaintId(draft.natureOfComplaintId || "");
       setIncident(draft.incident);
-      setNarrative(draft.narrative || "");
       setWitnesses(
         Array.isArray(draft.witnesses) && draft.witnesses.length > 0
           ? draft.witnesses
@@ -910,6 +907,19 @@ export function VAWCNewComplaint() {
     return false;
   };
 
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = String(reader.result ?? "");
+        // Strip data URL prefix (e.g. "data:application/pdf;base64,")
+        const base64 = raw.includes(",") ? raw.split(",")[1] : raw;
+        resolve(base64);
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
   /* ── validation ── */
   const validate = (): boolean => {
     const sanitized = sanitizeComplaintForm(
@@ -917,7 +927,6 @@ export function VAWCNewComplaint() {
       respondent,
       relationshipTypeName,
       incident,
-      narrative,
       witnesses,
     );
     const e: Record<string, string> = {};
@@ -1021,9 +1030,9 @@ export function VAWCNewComplaint() {
       e.placeOfIncident = "Place of incident must be at least 3 characters.";
     if (selectedViolenceIds.length === 0)
       e.violence = "Select at least one type of violence.";
-    if (!sanitized.narrative) e.narrative = "Narrative statement is required.";
-    else if (sanitized.narrative.length < LIMITS.narrativeMin)
-      e.narrative = "Narrative statement must be at least 20 characters.";
+    if (!narrativeFile) {
+      e.narrative = "Narrative file is required.";
+    }
 
     sanitized.witnesses.forEach((witness, index) => {
       if (!hasWitnessContent(witness)) return;
@@ -1104,13 +1113,12 @@ export function VAWCNewComplaint() {
   };
 
   /* ── build DTO ── */
-  const buildDTO = (): ComplaintDTO => {
+  const buildDTO = (narrativeBase64: string): ComplaintDTO => {
     const sanitized = sanitizeComplaintForm(
       complainant,
       respondent,
       relationshipTypeName,
       incident,
-      narrative,
       witnesses,
     );
 
@@ -1151,7 +1159,7 @@ export function VAWCNewComplaint() {
       frequencyOfIncident: sanitized.incident.frequencyOfIncident || undefined,
       descriptionOfInjuries:
         sanitized.incident.descriptionOfInjuries || undefined,
-      narrativeStatement: sanitized.narrative,
+      narrativeStatement: narrativeBase64,
       violenceTypeIds: selectedViolenceIds,
       assignToId: assignToId ? Number(assignToId) : undefined,
       evidenceTypeIds: selectedEvidenceIds.length
@@ -1188,10 +1196,8 @@ export function VAWCNewComplaint() {
     setShowConfirmModal(false);
     if (submissionLockRef.current || isSubmitting) return;
 
-    const dto = buildDTO();
-    const fingerprint = buildComplaintFingerprint(dto);
-    if (hasRecentMatchingSubmission(fingerprint)) {
-      setSubmitError("This complaint was already submitted recently.");
+    if (!narrativeFile) {
+      setSubmitError("Narrative file is required.");
       setShowErrorModal(true);
       return;
     }
@@ -1201,6 +1207,17 @@ export function VAWCNewComplaint() {
     setSubmitError(null);
 
     try {
+      const narrativeBase64 = await fileToBase64(narrativeFile);
+      const dto = buildDTO(narrativeBase64);
+      const fingerprint = buildComplaintFingerprint(dto);
+      if (hasRecentMatchingSubmission(fingerprint)) {
+        setSubmitError("This complaint was already submitted recently.");
+        setShowErrorModal(true);
+        setIsSubmitting(false);
+        submissionLockRef.current = false;
+        return;
+      }
+
       await fileVawcComplaint(dto);
 
       sessionStorage.setItem(
@@ -1704,23 +1721,96 @@ export function VAWCNewComplaint() {
         </SectionCard>
 
         {/* ─── Section F: Narrative / Statement of Facts ──────────────────── */}
-        <SectionCard step="F" title="Narrative / Statement of Facts">
-          <FormTextarea
-            id="field-narrative"
-            label="Detailed Statement of Facts"
-            required
-            rows={6}
-            placeholder="Provide a complete and detailed account of the incident. Include the sequence of events, actions taken by each party, words exchanged, any threats made, injuries sustained, and all other relevant circumstances..."
-            hint="Include all relevant details: who, what, when, where, how, and why."
-            value={narrative}
-            maxLength={5000}
-            onChange={(e) => {
-              setNarrative(e.target.value);
-              clearErr("narrative");
-            }}
-            error={errors.narrative}
-          />
-          <CharCounter current={narrative.length} max={5000} />
+        <SectionCard step="F" title="Narrative / Sworn Statement">
+          <p className="text-xs text-slate-500 mb-4">
+            Upload a document containing the detailed narrative/statement of facts. Accepted formats: PDF, DOC, DOCX, TXT (max {NARRATIVE_MAX_MB} MB).
+          </p>
+
+          {/* Drop zone */}
+          {!narrativeFile ? (
+            <div
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files?.[0] ?? null;
+                if (file) {
+                  if (file.size <= NARRATIVE_MAX_BYTES) {
+                    setNarrativeFile(file);
+                    clearErr("narrative");
+                  }
+                }
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl px-6 py-10 cursor-pointer transition-colors ${
+                errors.narrative
+                  ? "border-red-300 bg-red-50/40"
+                  : "border-slate-300 bg-slate-50/60 hover:border-blue-400 hover:bg-blue-50/40"
+              }`}
+            >
+              <UploadCloudIcon className="w-10 h-10 text-slate-400" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-slate-700">
+                  Drag & drop your narrative file here
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  or click to browse — {NARRATIVE_ACCEPTED.split(",").join(", ")}
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                id="field-narrative"
+                type="file"
+                accept={NARRATIVE_ACCEPTED}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  if (file) {
+                    if (file.size <= NARRATIVE_MAX_BYTES) {
+                      setNarrativeFile(file);
+                      clearErr("narrative");
+                    }
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            /* File selected preview */
+            <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <FileTextIcon className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">
+                  {narrativeFile.name}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {(() => {
+                    const bytes = narrativeFile.size;
+                    if (bytes < 1024) return `${bytes} B`;
+                    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+                  })()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setNarrativeFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors"
+                title="Remove file"
+              >
+                <XCircleIcon className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {errors.narrative && (
+            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+              ⚠ {errors.narrative}
+            </p>
+          )}
         </SectionCard>
 
         {/* ─── Section G: Evidence Provided ───────────────────────────────── */}

@@ -9,7 +9,8 @@ import {
   type Permission,
   type PersonSearchResponseDTO,
   type Role,
-} from "../../../service/admin-module-api/user-management";
+} from "../../../service/admin-root-api/user-management";
+import { userManagementApi as legacyUserManagementApi } from "../../../service/admin-module-api/user-management";
 import { ActionModal } from "../../../reusable";
 import { FormModalShell, FormSectionTitle } from "../../../reusable";
 import {
@@ -44,7 +45,6 @@ type Errors = Partial<
   >
 >;
 
-
 const USERNAME_MIN_LENGTH = 4;
 const USERNAME_MAX_LENGTH = 20;
 const SYSTEM_EMAIL_MAX_LENGTH = 100;
@@ -64,7 +64,9 @@ function fieldClass(hasError: boolean) {
 
 export default function CreateStaffModal({ onClose, onSuccess }: Props) {
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<PersonSearchResponseDTO[]>([]);
+  const [searchResults, setSearchResults] = useState<PersonSearchResponseDTO[]>(
+    [],
+  );
   const [searchLoading, setSearchLoading] = useState(false);
 
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -105,37 +107,69 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     const loadOptions = async () => {
       setLoadingOptions(true);
       setOptionsError(null);
-      const [deptsRes, rolesRes, permsRes] = await Promise.allSettled([
-        userManagementApi.getDepartmentOptions(),
-        userManagementApi.getRoleOptions(),
-        userManagementApi.getPermissionOptions(),
-      ]);
 
       const failed: string[] = [];
+      // Try primary admin-root-api first, fallback to legacy admin-module-api on error or empty
+      let rootErrMsg: string | null = null;
+      let fallbackErrMsg: string | null = null;
+      try {
+        const [depts, rolesRes, permsRes] = await Promise.all([
+          userManagementApi.getDepartmentOptions(),
+          userManagementApi.getRoleOptions(),
+          userManagementApi.getPermissionOptions(),
+        ]);
 
-      if (deptsRes.status === "fulfilled") {
-        setDepartments(deptsRes.value || []);
-      } else {
-        setDepartments([]);
-        failed.push("departments");
-      }
+        if (Array.isArray(depts) && depts.length > 0) setDepartments(depts);
+        else throw new Error("empty-departments");
 
-      if (rolesRes.status === "fulfilled") {
-        setRoles(rolesRes.value || []);
-      } else {
-        setRoles([]);
-        failed.push("roles");
-      }
+        if (Array.isArray(rolesRes) && rolesRes.length > 0) setRoles(rolesRes);
+        else setRoles([]);
 
-      if (permsRes.status === "fulfilled") {
-        setPermissions(permsRes.value || []);
-      } else {
-        setPermissions([]);
-        failed.push("permissions");
+        if (Array.isArray(permsRes) && permsRes.length > 0)
+          setPermissions(permsRes);
+        else setPermissions([]);
+      } catch (err: any) {
+        rootErrMsg = err?.message ?? String(err);
+        // fallback to legacy service
+        try {
+          const [depts2, roles2, perms2] = await Promise.all([
+            legacyUserManagementApi.getDepartmentOptions(),
+            legacyUserManagementApi.getRoleOptions(),
+            legacyUserManagementApi.getPermissionOptions(),
+          ]);
+
+          if (Array.isArray(depts2) && depts2.length > 0)
+            setDepartments(depts2);
+          else failed.push("departments");
+
+          if (Array.isArray(roles2) && roles2.length > 0) setRoles(roles2);
+          else failed.push("roles");
+
+          if (Array.isArray(perms2) && perms2.length > 0)
+            setPermissions(perms2);
+          else failed.push("permissions");
+        } catch (err2: any) {
+          fallbackErrMsg = err2?.message ?? String(err2);
+          // both failed
+          failed.push("departments", "roles", "permissions");
+        }
       }
 
       if (failed.length > 0) {
-        setOptionsError(`Some options failed to load: ${failed.join(", ")}.`);
+        const baseMsg = `Some options failed to load: ${[...new Set(failed)].join(", ")}.`;
+        const details = [
+          rootErrMsg ? `root: ${rootErrMsg}` : null,
+          fallbackErrMsg ? `fallback: ${fallbackErrMsg}` : null,
+        ]
+          .filter(Boolean)
+          .join(" | ");
+        setOptionsError(details ? `${baseMsg} (${details})` : baseMsg);
+        // eslint-disable-next-line no-console
+        console.error("Options load errors:", {
+          failed,
+          rootErrMsg,
+          fallbackErrMsg,
+        });
       }
 
       setLoadingOptions(false);
@@ -190,7 +224,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     const timer = window.setTimeout(async () => {
       try {
         setUsernameCheck({ checking: true, taken: false, message: "" });
-        const taken = await userManagementApi.checkUsernameAvailability(username);
+        const taken = await userManagementApi.checkUsernameExists(username);
         setUsernameCheck({
           checking: false,
           taken,
@@ -215,7 +249,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     const timer = window.setTimeout(async () => {
       try {
         setEmailCheck({ checking: true, taken: false, message: "" });
-        const taken = await userManagementApi.checkEmailAvailability(email);
+        const taken = await userManagementApi.checkEmailExists(email);
         setEmailCheck({
           checking: false,
           taken,
@@ -354,6 +388,7 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     try {
       const payload: CreateUserPayload = {
         personId: form.person!.id,
+        accountType: "SYSTEM_USER",
         username,
         systemEmail,
         roleId: form.roleId!,
@@ -453,39 +488,43 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                   </p>
                 )}
 
-                {(query.trim().length >= 2 || searchLoading) && !form.person && (
-                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                    {searchLoading ? (
-                      <p className="px-3 py-2 text-xs text-gray-500">Searching...</p>
-                    ) : searchResults.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-gray-500">
-                        No matching resident found.
-                      </p>
-                    ) : (
-                      searchResults.map((person) => (
-                        <button
-                          key={person.id}
-                          type="button"
-                          onClick={() => {
-                            setField("person", person);
-                            setQuery(fullName(person));
-                            setSearchResults([]);
-                          }}
-                          className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
-                        >
-                          <p className="text-sm font-medium text-gray-800">
-                            {fullName(person)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {(person.barangayIdNumber
-                              ? `${person.barangayIdNumber} • `
-                              : "") + (person.completeAddress || "No address")}
-                          </p>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
+                {(query.trim().length >= 2 || searchLoading) &&
+                  !form.person && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                      {searchLoading ? (
+                        <p className="px-3 py-2 text-xs text-gray-500">
+                          Searching...
+                        </p>
+                      ) : searchResults.length === 0 ? (
+                        <p className="px-3 py-2 text-xs text-gray-500">
+                          No matching resident found.
+                        </p>
+                      ) : (
+                        searchResults.map((person) => (
+                          <button
+                            key={person.id}
+                            type="button"
+                            onClick={() => {
+                              setField("person", person);
+                              setQuery(fullName(person));
+                              setSearchResults([]);
+                            }}
+                            className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                          >
+                            <p className="text-sm font-medium text-gray-800">
+                              {fullName(person)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {(person.barangayIdNumber
+                                ? `${person.barangayIdNumber} • `
+                                : "") +
+                                (person.completeAddress || "No address")}
+                            </p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 {errors.person && (
                   <p className="text-xs text-red-500 mt-1">{errors.person}</p>
                 )}
@@ -512,11 +551,16 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                     type="text"
                     value={form.username}
                     onChange={(e) =>
-                      setField("username", normalizeUsernameInput(e.target.value))
+                      setField(
+                        "username",
+                        normalizeUsernameInput(e.target.value),
+                      )
                     }
                     maxLength={USERNAME_MAX_LENGTH}
                     placeholder="juan.delacruz"
-                    className={fieldClass(!!errors.username || usernameCheck.taken)}
+                    className={fieldClass(
+                      !!errors.username || usernameCheck.taken,
+                    )}
                   />
 
                   {usernameCheck.checking && (
@@ -530,7 +574,9 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                     </p>
                   )}
                   {errors.username && !usernameCheck.taken && (
-                    <p className="text-xs text-red-500 mt-1">{errors.username}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.username}
+                    </p>
                   )}
                 </div>
 
@@ -567,7 +613,9 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                     }}
                     maxLength={SYSTEM_EMAIL_MAX_LENGTH}
                     placeholder="juan@barangay.gov.ph"
-                    className={fieldClass(!!errors.systemEmail || emailCheck.taken)}
+                    className={fieldClass(
+                      !!errors.systemEmail || emailCheck.taken,
+                    )}
                   />
 
                   {emailCheck.checking && (
@@ -616,7 +664,9 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                   ))}
                 </select>
                 {errors.departmentIds && (
-                  <p className="text-xs text-red-500 mt-1">{errors.departmentIds}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.departmentIds}
+                  </p>
                 )}
               </div>
 
@@ -627,13 +677,18 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                 <select
                   value={form.roleId ?? ""}
                   onChange={(e) =>
-                    setField("roleId", e.target.value ? Number(e.target.value) : null)
+                    setField(
+                      "roleId",
+                      e.target.value ? Number(e.target.value) : null,
+                    )
                   }
                   className={fieldClass(!!errors.roleId)}
                   disabled={loadingOptions || !form.departmentId}
                 >
                   <option value="">
-                    {!form.departmentId ? "Select department first" : "Select a role"}
+                    {!form.departmentId
+                      ? "Select department first"
+                      : "Select a role"}
                   </option>
                   {filteredRoles.map((role) => (
                     <option key={role.id} value={role.id}>
@@ -667,14 +722,18 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                       )
                     }
                     className="text-xs font-medium text-blue-600 hover:text-blue-700"
-                    disabled={!form.departmentId || filteredPermissions.length === 0}
+                    disabled={
+                      !form.departmentId || filteredPermissions.length === 0
+                    }
                   >
                     {allPermissionsSelected ? "Clear all" : "Select all"}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50/60 max-h-56 overflow-y-auto">
                   {!form.departmentId ? (
-                    <p className="text-xs text-gray-500">Select department first.</p>
+                    <p className="text-xs text-gray-500">
+                      Select department first.
+                    </p>
                   ) : filteredPermissions.length === 0 ? (
                     <p className="text-xs text-gray-500">
                       No permission mapping available for selected department.
@@ -703,7 +762,9 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                   )}
                 </div>
                 {errors.permissionIds && (
-                  <p className="text-xs text-red-500 mt-1">{errors.permissionIds}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.permissionIds}
+                  </p>
                 )}
               </div>
 
@@ -711,7 +772,9 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
                 <input
                   type="checkbox"
                   checked={form.activateImmediately}
-                  onChange={(e) => setField("activateImmediately", e.target.checked)}
+                  onChange={(e) =>
+                    setField("activateImmediately", e.target.checked)
+                  }
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded"
                 />
                 Activate account immediately
@@ -736,8 +799,8 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
       >
         <p>
           User account for{" "}
-          <span className="font-semibold">{selectedPersonName}</span> was created
-          successfully.
+          <span className="font-semibold">{selectedPersonName}</span> was
+          created successfully.
         </p>
       </ActionModal>
     </>

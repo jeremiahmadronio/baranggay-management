@@ -141,6 +141,7 @@ export interface UserTable {
   contactNumber?: string;
   roleName: string;
   departmentName: string;
+  accountType?: string;
   permissions: string[];
   isLocked: boolean;
   status: string;
@@ -241,7 +242,14 @@ export interface ResetPasswordPayload {
 
 export const userManagementApi = {
   //stats
-  getStats: (): Promise<UserStats> => apiFetch<UserStats>("/stats/global"),
+  getStats: async (): Promise<UserStats> => {
+    try {
+      return await apiFetch<UserStats>("/stats");
+    } catch (err) {
+      console.warn("/stats failed, falling back to /stats/global", err);
+      return apiFetch<UserStats>("/stats/global");
+    }
+  },
 
   getStaffTable: (params: StaffTableParams = {}): Promise<Page<UserTable>> => {
     const qs = new URLSearchParams();
@@ -258,8 +266,21 @@ export const userManagementApi = {
   getUserDetails: (userId: string): Promise<UserViewDTO> =>
     apiFetch<UserViewDTO>(`/user-details/${userId}`),
 
-  getDepartmentOptions: (): Promise<Department[]> =>
-    apiFetch<Department[]>("/options", {}, DEPT_URL),
+  getDepartmentOptions: async (): Promise<Department[]> => {
+    const endpoints = ["/admin-options", "/staff-options", "/options"];
+    let lastErr: unknown = null;
+    for (const ep of endpoints) {
+      try {
+        const res = await apiFetch<Department[]>(ep, {}, DEPT_URL);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr instanceof Error
+      ? lastErr
+      : new Error("Failed to fetch departments options.");
+  },
 
   getRoleOptions: (): Promise<Role[]> =>
     apiFetch<Role[]>("/staff-options", {}, ROLE_URL),

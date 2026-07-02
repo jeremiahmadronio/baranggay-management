@@ -28,7 +28,7 @@ import {
   Statuses,
   type UserViewDTO,
   type UserTable,
-} from "../../../service/admin-module-api/user-management";
+} from "../../../service/admin-root-api/user-management";
 import {
   employeeApi,
   EmployeeStatuses,

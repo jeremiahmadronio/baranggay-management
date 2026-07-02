@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { CaseViewDTO } from "../../../service/vawc-api/vawc-api";
 import { InfoField, SectionCard, formatDate } from "./shared";
+import { VawcNarrativeViewer } from "./VawcNarrativeViewer";
 
 type OverviewTabProps = {
   caseData: CaseViewDTO;
@@ -478,9 +479,9 @@ export function OverviewTab({
         title="Incident Details"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
       >
-        <p className="text-sm text-gray-900 leading-relaxed">
-          {caseData.narrative || "\u2014"}
-        </p>
+        <div className="mb-4">
+          <VawcNarrativeViewer caseNumber={caseData.caseNumber} />
+        </div>
         {caseData.descriptionOfInjuries && (
           <div className="mt-4 pt-4 border-t border-gray-100">
             <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1.5">

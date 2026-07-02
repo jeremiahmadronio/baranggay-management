@@ -10,7 +10,8 @@ import {
   type Role,
   type UserTable,
   type UserViewDTO,
-} from "../../../service/admin-module-api/user-management";
+} from "../../../service/admin-root-api/user-management";
+import { userManagementApi as legacyUserManagementApi } from "../../../service/admin-module-api/user-management";
 import { ActionModal } from "../../../hooks/SuccessModal";
 import { FormModalShell, FormSectionTitle } from "../../../reusable";
 import {
@@ -132,37 +133,69 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     const loadOptions = async () => {
       setLoadingOptions(true);
       setOptionsError(null);
-      const [deptsRes, rolesRes, permsRes] = await Promise.allSettled([
-        userManagementApi.getDepartmentOptions(),
-        userManagementApi.getRoleOptions(),
-        userManagementApi.getPermissionOptions(),
-      ]);
 
       const failed: string[] = [];
+      // Try primary admin-root-api first, fallback to legacy admin-module-api on error or empty
+      let rootErrMsg: string | null = null;
+      let fallbackErrMsg: string | null = null;
+      try {
+        const [depts, rolesRes, permsRes] = await Promise.all([
+          userManagementApi.getDepartmentOptions(),
+          userManagementApi.getRoleOptions(),
+          userManagementApi.getPermissionOptions(),
+        ]);
 
-      if (deptsRes.status === "fulfilled") {
-        setDepartments(deptsRes.value || []);
-      } else {
-        setDepartments([]);
-        failed.push("departments");
-      }
+        if (Array.isArray(depts) && depts.length > 0) setDepartments(depts);
+        else throw new Error("empty-departments");
 
-      if (rolesRes.status === "fulfilled") {
-        setRoles(rolesRes.value || []);
-      } else {
-        setRoles([]);
-        failed.push("roles");
-      }
+        if (Array.isArray(rolesRes) && rolesRes.length > 0) setRoles(rolesRes);
+        else setRoles([]);
 
-      if (permsRes.status === "fulfilled") {
-        setPermissions(permsRes.value || []);
-      } else {
-        setPermissions([]);
-        failed.push("permissions");
+        if (Array.isArray(permsRes) && permsRes.length > 0)
+          setPermissions(permsRes);
+        else setPermissions([]);
+      } catch (err: any) {
+        rootErrMsg = err?.message ?? String(err);
+        // fallback to legacy service
+        try {
+          const [depts2, roles2, perms2] = await Promise.all([
+            legacyUserManagementApi.getDepartmentOptions(),
+            legacyUserManagementApi.getRoleOptions(),
+            legacyUserManagementApi.getPermissionOptions(),
+          ]);
+
+          if (Array.isArray(depts2) && depts2.length > 0)
+            setDepartments(depts2);
+          else failed.push("departments");
+
+          if (Array.isArray(roles2) && roles2.length > 0) setRoles(roles2);
+          else failed.push("roles");
+
+          if (Array.isArray(perms2) && perms2.length > 0)
+            setPermissions(perms2);
+          else failed.push("permissions");
+        } catch (err2: any) {
+          fallbackErrMsg = err2?.message ?? String(err2);
+          // both failed
+          failed.push("departments", "roles", "permissions");
+        }
       }
 
       if (failed.length > 0) {
-        setOptionsError(`Some options failed to load: ${failed.join(", ")}.`);
+        const baseMsg = `Some options failed to load: ${[...new Set(failed)].join(", ")}.`;
+        const details = [
+          rootErrMsg ? `root: ${rootErrMsg}` : null,
+          fallbackErrMsg ? `fallback: ${fallbackErrMsg}` : null,
+        ]
+          .filter(Boolean)
+          .join(" | ");
+        setOptionsError(details ? `${baseMsg} (${details})` : baseMsg);
+        // eslint-disable-next-line no-console
+        console.error("Options load errors:", {
+          failed,
+          rootErrMsg,
+          fallbackErrMsg,
+        });
       }
 
       setLoadingOptions(false);
@@ -187,7 +220,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     const timer = window.setTimeout(async () => {
       try {
         setUsernameCheck({ checking: true, taken: false, message: "" });
-        const taken = await userManagementApi.checkUsernameAvailability(username);
+        const taken = await userManagementApi.checkUsernameExists(username);
         setUsernameCheck({
           checking: false,
           taken,
@@ -217,7 +250,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     const timer = window.setTimeout(async () => {
       try {
         setEmailCheck({ checking: true, taken: false, message: "" });
-        const taken = await userManagementApi.checkEmailAvailability(email);
+        const taken = await userManagementApi.checkEmailExists(email);
         setEmailCheck({
           checking: false,
           taken,
@@ -517,7 +550,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                     maxLength={USERNAME_MAX_LENGTH}
                     placeholder="juan.delacruz"
                     className={fieldClass(
-                      !!errors.username || usernameCheck.taken
+                      !!errors.username || usernameCheck.taken,
                     )}
                     disabled={loading}
                   />
@@ -571,7 +604,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                     maxLength={SYSTEM_EMAIL_MAX_LENGTH}
                     placeholder="juan@barangay.gov.ph"
                     className={fieldClass(
-                      !!errors.systemEmail || emailCheck.taken
+                      !!errors.systemEmail || emailCheck.taken,
                     )}
                     disabled={loading}
                   />

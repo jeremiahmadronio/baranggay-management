@@ -38,7 +38,8 @@ import AdminBlotterRecordDetailView from "./pages/admin-module/blotter-docket/Bl
 import AdminBlotterReportPage from "./pages/admin-module/blotter-docket/BlotterReport";
 import AdminLuponCases from "./pages/admin-module/lupon-docket/Cases";
 import AdminLuponCaseDetailViewWrapper from "./pages/admin-module/lupon-docket/LuponCaseDetailViewWrapper";
-
+import {AdminLuponReportsPage} from "./pages/admin-module/lupon-docket/LuponReports";
+import AdminUserManagement from "./pages/admin-module/user-management/admin-management";
 
 // Root Admin
 import RootAdminDashboard from "./pages/admin-root-module/dashboard";
@@ -172,7 +173,7 @@ export function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="user-management" element={<AdminManagement />} />
+        <Route path="user-management" element={<AdminUserManagement />} />
         <Route path="archive" element={<ArchivePage />} />
         <Route path="inputform" element={<RecordInputDemo />} />
         <Route path="residents" element={<ResidentsPage />} />
@@ -186,7 +187,7 @@ export function App() {
         <Route path="blotter-reports" element={<AdminBlotterReportPage />} />
         <Route path="lupon-cases" element={<AdminLuponCases />} />
         <Route path="lupon-cases/view/:blotterNumber" element={<AdminLuponCaseDetailViewWrapper />} />
-
+        <Route path="lupon-reports" element={<AdminLuponReportsPage />} />
         
 
           

@@ -567,3 +567,13 @@ export async function searchPeople(
   
   return results;
 }
+
+// get narrative document (base64) for a VAWC case by case number
+export async function getVawcCaseNarrative(
+  caseNumber: string,
+): Promise<string> {
+  const data = await apiFetch<{ narrative: string }>(
+    `${VAWC_URL}/${encodeURIComponent(caseNumber)}/narrative`,
+  );
+  return data?.narrative ?? "";
+}

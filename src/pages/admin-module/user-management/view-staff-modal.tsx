@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { FormModalShell } from "../../../reusable/FormModalShell";
-import { type UserTable } from "../../../service/admin-module-api/user-management";
+import { type UserTable } from "../../../service/admin-root-api/user-management";
 
 interface ViewStaffModalProps {
   user: UserTable | null;
