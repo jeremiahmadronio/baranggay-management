@@ -6,18 +6,18 @@ import {
   Table,
   TableFilter,
   type TableColumn,
-} from "../../reusable";
-import { ArchiveReasonModal } from "../../hooks/archive-modal";
-import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
-import { CenteredLoader } from "../../hooks/LoadingStates";
+} from "../../../reusable";
+import { ArchiveReasonModal } from "../../../hooks/archive-modal";
+import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
+import { CenteredLoader } from "../../../hooks/LoadingStates";
 import {
   ftjsApi,
   FTJS_PERMISSIONS,
   hasFtjsPermission,
   type FtjsStatsResponseDTO,
   type FtjsTableDTO,
-} from "../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
-import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
+} from "../../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
+import { PermissionDeniedPage } from "../../blotter-module/reusable/PermissionDeniedPage";
 import {
   buildFtjsAutoArchiveReason,
   formatDate,
@@ -27,8 +27,7 @@ import {
   paginateItems,
   SectionCard,
   StatusPill,
-} from "./shared";
-import { useFtjsAccess } from "./useFtjsAccess";
+} from "../../first-time-job-seeker-module/shared";
 
 const PAGE_SIZE = 10;
 
@@ -46,9 +45,8 @@ function isArchivedStatus(status?: string | null) {
   );
 }
 
-export default function FtjsManagementPage() {
+export default function AdminFtjsManagementPage() {
   const navigate = useNavigate();
-  const { accessLoading, userAccess } = useFtjsAccess();
   const [stats, setStats] = useState<FtjsStatsResponseDTO | null>(null);
   const [records, setRecords] = useState<FtjsTableDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,14 +58,8 @@ export default function FtjsManagementPage() {
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [archiveEntry, setArchiveEntry] = useState<FtjsTableDTO | null>(null);
 
-  const canViewRecords = hasFtjsPermission(
-    userAccess,
-    FTJS_PERMISSIONS.VIEW_RECORDS,
-  );
-  const canUpdateApplicantInfo = hasFtjsPermission(
-    userAccess,
-    FTJS_PERMISSIONS.UPDATE_APPLICANT_INFO,
-  );
+  const canViewRecords = true;
+  const canUpdateApplicantInfo = false;
 
   async function handleArchiveSubmit(reason: string) {
     if (!archiveEntry) return;
@@ -174,12 +166,12 @@ export default function FtjsManagementPage() {
   }
 
   useEffect(() => {
-    if (!accessLoading && canViewRecords) {
+    if (canViewRecords) {
       refreshData();
-    } else if (!accessLoading) {
+    } else {
       setLoading(false);
     }
-  }, [accessLoading, canUpdateApplicantInfo, canViewRecords]);
+  }, [canViewRecords]);
 
   // Auto-refresh when offline sync completes
   useEffect(() => {
@@ -306,7 +298,7 @@ export default function FtjsManagementPage() {
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                navigate(`/first-time-job-seeker/management/${item.id}`);
+                navigate(`/admin/ftjs-cases/${item.id}`);
               }}
               className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
               title="View request"
@@ -332,9 +324,7 @@ export default function FtjsManagementPage() {
     },
   ];
 
-  if (accessLoading) {
-    return <CenteredLoader minHeight="min-h-[70vh]" />;
-  }
+
 
   if (!canViewRecords) {
     return (

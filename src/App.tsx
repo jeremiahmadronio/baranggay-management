@@ -38,8 +38,14 @@ import AdminBlotterRecordDetailView from "./pages/admin-module/blotter-docket/Bl
 import AdminBlotterReportPage from "./pages/admin-module/blotter-docket/BlotterReport";
 import AdminLuponCases from "./pages/admin-module/lupon-docket/Cases";
 import AdminLuponCaseDetailViewWrapper from "./pages/admin-module/lupon-docket/LuponCaseDetailViewWrapper";
-import {AdminLuponReportsPage} from "./pages/admin-module/lupon-docket/LuponReports";
+import { AdminLuponReportsPage } from "./pages/admin-module/lupon-docket/LuponReports";
 import AdminUserManagement from "./pages/admin-module/user-management/admin-management";
+import AdminVawcCaseTable from "./pages/admin-module/vawc-docket/cases";
+import AdminVawcCaseDetailViewPage from "./pages/admin-module/vawc-docket/casedetailview";
+import AdminVawcReportsPage from "./pages/admin-module/vawc-docket/reports";
+import AdminFtjsManagementPage from "./pages/admin-module/ftjs-docket/ftjsManagement";
+import AdminFtjsDetailViewPage from "./pages/admin-module/ftjs-docket/FtjsDetailView";
+import AdminFtjsReportPage from "./pages/admin-module/ftjs-docket/report";
 
 // Root Admin
 import RootAdminDashboard from "./pages/admin-root-module/dashboard";
@@ -183,14 +189,27 @@ export function App() {
         <Route path="account-settings" element={<SharedAccountSettings />} />
         <Route path="blotter-docket" element={<AdminDocketview />} />
         <Route path="blotter-records" element={<AdminBlotterRecordsPage />} />
-        <Route path="blotter-records/view" element={<AdminBlotterRecordDetailView />} />
+        <Route
+          path="blotter-records/view"
+          element={<AdminBlotterRecordDetailView />}
+        />
         <Route path="blotter-reports" element={<AdminBlotterReportPage />} />
         <Route path="lupon-cases" element={<AdminLuponCases />} />
-        <Route path="lupon-cases/view/:blotterNumber" element={<AdminLuponCaseDetailViewWrapper />} />
+        <Route
+          path="lupon-cases/view/:blotterNumber"
+          element={<AdminLuponCaseDetailViewWrapper />}
+        />
         <Route path="lupon-reports" element={<AdminLuponReportsPage />} />
+        <Route path="vawc-cases" element={<AdminVawcCaseTable />} />
+        <Route
+          path="vawc-casedetailview"
+          element={<AdminVawcCaseDetailViewPage />}
+        />
+         <Route path="vawc-reports" element={<AdminVawcReportsPage />} />
         
-
-          
+        <Route path="ftjs-cases" element={<AdminFtjsManagementPage />} />
+        <Route path="ftjs-cases/:ftjsId" element={<AdminFtjsDetailViewPage />} />
+        <Route path="ftjs-reports" element={<AdminFtjsReportPage />} />
 
         <Route
           path="users"
@@ -257,7 +276,6 @@ export function App() {
         <Route path="new-case-entry" element={<BcpcNewCaseEntry />} />
         <Route path="case-management" element={<BcpcCaseManagement />} />
         <Route path="casedetailview" element={<BcpcCaseDetailsPage />} />{" "}
-        {/* ✅ added */}
         <Route path="report" element={<BcpcReport />} />
         <Route path="resident-records" element={<ResidentListPage />} />
       </Route>
@@ -315,14 +333,13 @@ export function App() {
         />
 
         {/* Kapitana */}
-          <Route path="admin-management" element={<KapitanaAdminManagement />} />
-            <Route
+        <Route path="admin-management" element={<KapitanaAdminManagement />} />
+        <Route
           path="kapitana-admin-management/view/:adminId"
           element={<KapitanaAdminViewPage />}
         />
-          
 
-            <Route path="user-management" element={<Kapitana_User_Management />} />
+        <Route path="user-management" element={<Kapitana_User_Management />} />
         <Route path="reports" element={<KapitanaAdminReportsPage />} />
         <Route path="backup-management" element={<KapitanaBackupPage />} />
         <Route path="audit-logs" element={<KapitanaAuditLogs />} />
@@ -340,14 +357,23 @@ export function App() {
 
         <Route path="lupon/cases" element={<KapitanaLuponCases />} />
         <Route path="lupon/reports" element={<KapitanaLuponReportsPage />} />
-        <Route path="lupon/case-detail/:blotterNumber" element={<KapitanaLuponCaseDetailViewWrapper />} />
+        <Route
+          path="lupon/case-detail/:blotterNumber"
+          element={<KapitanaLuponCaseDetailViewWrapper />}
+        />
 
         <Route path="vawc/cases" element={<KapitanaVawcCaseTable />} />
-        <Route path="vawc/casedetailview" element={<KapitanaVawcCaseDetailsPage />} />
+        <Route
+          path="vawc/casedetailview"
+          element={<KapitanaVawcCaseDetailsPage />}
+        />
         <Route path="vawc/reports" element={<KapitanaVawcReportsPage />} />
 
         <Route path="bcpc/cases" element={<KapitanaBcpcCaseManagement />} />
-        <Route path="bcpc/casedetailview" element={<KapitanaBcpcCaseDetailsPage />} />
+        <Route
+          path="bcpc/casedetailview"
+          element={<KapitanaBcpcCaseDetailsPage />}
+        />
         <Route path="bcpc/reports" element={<KapitanaBcpcReportPage />} />
 
         <Route
@@ -363,7 +389,10 @@ export function App() {
           path="ftjs/management"
           element={<KapitanaFtjsManagementPage />}
         />
-        <Route path="ftjs/management/:ftjsId" element={<KapitanaFtjsDetailViewPage />} />
+        <Route
+          path="ftjs/management/:ftjsId"
+          element={<KapitanaFtjsDetailViewPage />}
+        />
         <Route path="ftjs/reports" element={<KapitanaFtjsReportPage />} />
       </Route>
     </Routes>
