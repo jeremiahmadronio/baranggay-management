@@ -39,6 +39,7 @@ const EDUCATION_MIN_LENGTH = 2;
 const EDUCATION_MAX_LENGTH = 80;
 const EMAIL_MAX_LENGTH = 100;
 const CUSTOM_TEXT_MAX_LENGTH = 60;
+const HOUSEHOLD_SAMPLE = "1010";
 
 const INITIAL_FORM_DATA: AddResidentRequest = {
   firstName: "",
@@ -282,33 +283,13 @@ export function AddResidentsModal({
     return parts.join("-");
   };
 
-  const normalizePrecinctInput = (value: string) => {
-    const upper = value.toUpperCase();
-    const filtered = upper.replace(/[^A-Z0-9-]/g, "");
+  const normalizeHouseholdInput = (value: string) =>
+    value.replace(/\D/g, "").slice(0, 4);
 
-    let hasHyphen = false;
-    let coreCount = 0;
-    let result = "";
-
-    for (const ch of filtered) {
-      if (ch === "-") {
-        if (hasHyphen) continue;
-        if (result.length === 0 || coreCount === 0) continue;
-        hasHyphen = true;
-        result += ch;
-        continue;
-      }
-
-      if (coreCount >= 5) continue;
-      coreCount += 1;
-      result += ch;
-    }
-
-    if (result.endsWith("-")) {
-      result = result.slice(0, -1);
-    }
-
-    return result;
+  const normalizeHouseholdSuggestion = (value?: string | null) => {
+    const digits = (value ?? "").replace(/\D/g, "");
+    if (!digits) return "";
+    return digits.length <= 4 ? digits : digits.slice(-4);
   };
 
   useEffect(() => {
@@ -326,9 +307,6 @@ export function AddResidentsModal({
           ...prev,
           barangayIdNumber:
             prev.barangayIdNumber || next.suggestedBarangayId || "",
-          householdNumber:
-            prev.householdNumber || next.suggestedHouseholdNumber || "",
-          precinctNumber: prev.precinctNumber || next.suggestedPrecinct || "",
         }));
       } catch (error) {
         console.error("Failed to fetch resident suggestions:", error);
@@ -363,7 +341,6 @@ export function AddResidentsModal({
   }, [
     formData.barangayIdNumber,
     formData.householdNumber,
-    formData.precinctNumber,
     isOpen,
   ]);
 
@@ -459,32 +436,8 @@ export function AddResidentsModal({
 
   const validateHousehold = (value: string) => {
     if (!value) return null;
-    const match = value.match(/^(\d{4})-HH-(\d{4})$/);
-    if (!match) return "Format: YYYY-HH-0000";
-
-    const year = Number(match[1]);
-    if (!isValidYearRange(year)) {
-      return `Year must be between ${MIN_YEAR} and ${currentYear}`;
-    }
-
-    return null;
-  };
-
-  const validatePrecinct = (value: string) => {
-    if (!value) return null;
-    const core = value.replace(/-/g, "");
-    const hyphenCount = (value.match(/-/g) || []).length;
-
-    if (!/^[A-Z0-9-]+$/.test(value)) {
-      return "A-Z, 0-9, and optional one - only";
-    }
-
-    if (hyphenCount > 1) {
-      return "Only one - is allowed";
-    }
-
-    if (core.length !== 5) {
-      return "Must have exactly 5 letters/numbers";
+    if (!/^\d{4}$/.test(value)) {
+      return "Must be exactly 4 digits";
     }
 
     return null;
@@ -597,8 +550,7 @@ export function AddResidentsModal({
     } else if (formData.completeAddress.trim().length > ADDRESS_MAX_LENGTH) {
       newErrors.completeAddress = `Max ${ADDRESS_MAX_LENGTH} characters`;
     }
-    if (!formData.barangayIdNumber) newErrors.barangayIdNumber = "Required";
-    else {
+    if (formData.barangayIdNumber) {
       const err = validateBarangayId(formData.barangayIdNumber);
       if (err) newErrors.barangayIdNumber = err;
     }
@@ -607,12 +559,6 @@ export function AddResidentsModal({
     else {
       const err = validateHousehold(formData.householdNumber);
       if (err) newErrors.householdNumber = err;
-    }
-
-    if (!formData.precinctNumber) newErrors.precinctNumber = "Required";
-    else {
-      const err = validatePrecinct(formData.precinctNumber);
-      if (err) newErrors.precinctNumber = err;
     }
 
     {
@@ -1058,9 +1004,9 @@ export function AddResidentsModal({
               <ErrorMsg msg={errors.completeAddress} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
-                <InputLabel label="Barangay ID Number" required />
+                <InputLabel label="Barangay ID Number" />
                 <input
                   type="text"
                   value={formData.barangayIdNumber}
@@ -1102,14 +1048,13 @@ export function AddResidentsModal({
                   type="text"
                   value={formData.householdNumber}
                   onChange={(e) => {
-                    const val = e.target.value
-                      .toUpperCase()
-                      .replace(/[^A-Z0-9\-]/g, "")
-                      .slice(0, 12);
+                    const val = normalizeHouseholdInput(e.target.value);
                     setFormData({ ...formData, householdNumber: val });
                   }}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.householdNumber ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="YYYY-HH-0000"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="0000"
                 />
                 {suggestions?.suggestedHouseholdNumber && (
                   <div className="mt-1 flex items-center gap-2 text-xs">
@@ -1119,50 +1064,16 @@ export function AddResidentsModal({
                       onClick={() =>
                         setFormData({
                           ...formData,
-                          householdNumber: suggestions.suggestedHouseholdNumber,
+                          householdNumber: HOUSEHOLD_SAMPLE,
                         })
                       }
                       className="text-blue-600 hover:text-blue-700 underline"
                     >
-                      {suggestions.suggestedHouseholdNumber}
+                      {HOUSEHOLD_SAMPLE}
                     </button>
                   </div>
                 )}
                 <ErrorMsg msg={errors.householdNumber} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <InputLabel label="Precinct Number" required />
-                <input
-                  type="text"
-                  value={formData.precinctNumber}
-                  onChange={(e) => {
-                    const val = normalizePrecinctInput(e.target.value);
-                    setFormData({ ...formData, precinctNumber: val });
-                  }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.precinctNumber ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="AB123 or AB-123"
-                />
-                {suggestions?.suggestedPrecinct && (
-                  <div className="mt-1 flex items-center gap-2 text-xs">
-                    <span className="text-gray-500">Suggested:</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          precinctNumber: suggestions.suggestedPrecinct,
-                        })
-                      }
-                      className="text-blue-600 hover:text-blue-700 underline"
-                    >
-                      {suggestions.suggestedPrecinct}
-                    </button>
-                  </div>
-                )}
-                <ErrorMsg msg={errors.precinctNumber} />
               </div>
               <div>
                 <InputLabel label="Date of Residency" required />
@@ -1183,22 +1094,6 @@ export function AddResidentsModal({
             </div>
 
             <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isVoter}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      isVoter: e.target.checked,
-                    })
-                  }
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Registered Voter
-                </span>
-              </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
