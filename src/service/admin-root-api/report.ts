@@ -34,6 +34,35 @@ export interface ArchiveSummaryDTO {
   archivedOfficers: number;
 }
 
+export interface GrowthPointDTO {
+  label: string;
+  fullLabel: string;
+  residents: number;
+  officers: number;
+  events: number;
+}
+
+export interface EventStatusCountDTO {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export interface ArchiveCountDTO {
+  category: string;
+  value: number;
+}
+
+export interface AdminReportSummaryDTO {
+  totalResidents: number;
+  totalOfficers: number;
+  totalEvents: number;
+  totalUsers: number;
+  growthTrend: GrowthPointDTO[];
+  eventStatusDistribution: EventStatusCountDTO[];
+  archiveSummary: ArchiveCountDTO[];
+}
+
 // ─── apiFetch ────────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -161,5 +190,13 @@ export const adminReportsApi = {
 
   getArchiveSummary(): Promise<ArchiveSummaryDTO> {
     return apiFetch<ArchiveSummaryDTO>(`${ADMIN_BASE}/archive-summary`);
+  },
+
+  getAdminSummary(start: Date, end: Date): Promise<AdminReportSummaryDTO> {
+    const params = new URLSearchParams({
+      start: toISOParam(start),
+      end: toISOParam(end),
+    });
+    return apiFetch<AdminReportSummaryDTO>(`${BASE}/api/v1/reports/admin-summary?${params}`);
   },
 };
