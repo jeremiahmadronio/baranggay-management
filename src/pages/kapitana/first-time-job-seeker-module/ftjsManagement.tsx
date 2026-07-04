@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye } from "lucide-react";
+import { Eye, Archive } from "lucide-react";
 import {
   ActionModal,
   Table,
   TableFilter,
   type TableColumn,
 } from "../../../reusable";
+import { ArchiveReasonModal } from "../../../hooks/archive-modal";
 import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
 import { CenteredLoader } from "../../../hooks/LoadingStates";
 import {
   ftjsApi,
+  FTJS_PERMISSIONS,
+  hasFtjsPermission,
   type FtjsStatsResponseDTO,
   type FtjsTableDTO,
 } from "../../../service/first-time-job-seeker-api/FirstTimeJobSeeker";
@@ -24,6 +27,7 @@ import {
   SectionCard,
   StatusPill,
 } from "./shared";
+import { useFtjsAccess } from "./useFtjsAccess";
 import { useKapitanaMockData } from "../mock/kapitana-mock-flag";
 import { mockKapitanaFtjsStats, mockKapitanaFtjsTable } from "../mock/ftjs-kapitana-mock";
 
@@ -54,6 +58,49 @@ export default function KapitanaFtjsManagementPage() {
   const [residentFilter, setResidentFilter] = useState("");
   const [page, setPage] = useState(0);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [archiveEntry, setArchiveEntry] = useState<FtjsTableDTO | null>(null);
+
+  const { accessLoading, userAccess } = useFtjsAccess();
+  const isMock = useKapitanaMockData();
+  const canUpdateApplicantInfo = isMock || hasFtjsPermission(
+    userAccess,
+    FTJS_PERMISSIONS.UPDATE_APPLICANT_INFO,
+  );
+
+  async function handleArchiveSubmit(reason: string) {
+    if (!archiveEntry) return;
+    if (!canUpdateApplicantInfo) {
+      setFeedback({
+        type: "danger",
+        title: "Permission required",
+        message: "You do not have permission to update FTJS applicant information.",
+      });
+      return;
+    }
+
+    try {
+      if (!isMock) {
+        await ftjsApi.updateStatus(archiveEntry.id, {
+          isArchived: true,
+          remarks: reason,
+        });
+      }
+
+      setArchiveEntry(null);
+      setFeedback({
+        type: "success",
+        title: "Request archived",
+        message: `${archiveEntry.trackingNumber} was moved to the FTJS archive successfully.`,
+      });
+      refreshData();
+    } catch (error) {
+      setFeedback({
+        type: "danger",
+        title: "Archive failed",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  }
 
   async function archiveExpiredRecords(recordsRes: FtjsTableDTO[]) {
     const expiredRecords = recordsRes.filter((record) => {
@@ -241,7 +288,7 @@ export default function KapitanaFtjsManagementPage() {
       key: "actions",
       header: "Actions",
       align: "right",
-      width: "80px",
+      width: "120px",
       render: (item) => {
         return (
           <div className="flex items-center justify-end gap-1.5">
@@ -256,13 +303,28 @@ export default function KapitanaFtjsManagementPage() {
             >
               <Eye className="w-4 h-4" />
             </button>
+            {canUpdateApplicantInfo && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setArchiveEntry(item);
+                }}
+                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
+                title="Archive request"
+              >
+                <Archive className="w-4 h-4" />
+              </button>
+            )}
           </div>
         );
       },
     },
   ];
 
-
+  if (accessLoading) {
+    return <CenteredLoader minHeight="min-h-[70vh]" />;
+  }
 
   if (loading) {
     return (
@@ -387,6 +449,18 @@ export default function KapitanaFtjsManagementPage() {
         >
           {feedback?.message}
         </ActionModal>
+
+        {archiveEntry && (
+          <ArchiveReasonModal
+            isOpen={!!archiveEntry}
+            onClose={() => setArchiveEntry(null)}
+            title="Archive FTJS Request"
+            subjectName={archiveEntry.trackingNumber}
+            subjectLabel="request"
+            submitLabel="Archive"
+            onSubmit={handleArchiveSubmit}
+          />
+        )}
       </div>
     </div>
   );

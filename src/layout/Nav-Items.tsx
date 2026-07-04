@@ -64,6 +64,32 @@ export const adminNavItems: NavItemType[] = [
       
     ],
   },
+
+  {
+    label: "Vawc",
+    path: "/admin/vawc",
+    icon: ScrollText,
+    children: [
+      { label: "Cases", path: "/admin/vawc-cases", icon: ScrollText },
+      { label: "Reports", path: "/admin/vawc-reports", icon: ChartNoAxesCombined },
+      
+    ],
+
+    },
+
+    {
+    label: "Ftjs",
+    path: "/admin/ftjs",
+    icon: ScrollText,
+    children: [
+      { label: "Request", path: "/admin/ftjs-cases", icon: ScrollText },
+      { label: "Reports", path: "/admin/ftjs-reports", icon: ChartNoAxesCombined },
+      
+    ],
+
+    },
+
+
   { label: "Events", path: "/admin/events", icon: CalendarDays },
   { label: "Reports", path: "/admin/reports", icon: ChartNoAxesCombined },
   { label: "Archive", path: "/admin/archive", icon: Archive },

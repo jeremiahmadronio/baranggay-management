@@ -13,6 +13,7 @@ import {
 import { KPIGrid, KPICard, KPIIcons } from "../../hooks/KPICard";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Printer } from "lucide-react";
+import { adminReportsApi } from "../../service/admin-root-api/report";
 
 type GrowthPoint = {
   label: string;
@@ -125,67 +126,35 @@ export default function AdminReportsPage() {
     [appliedRange],
   );
 
+  const [apiError, setApiError] = useState<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
-    const loadReports = () => {
+    const loadReports = async () => {
       setLoading(true);
+      setApiError(null);
 
-      setTimeout(() => {
+      try {
+        const data = await adminReportsApi.getAdminSummary(appliedRange.start, appliedRange.end);
         if (!isMounted) return;
 
-        // 1. KPI Stats
         setStats({
-          totalResidents: 25,
-          totalOfficers: 12,
-          totalEvents: 45,
-          totalUsers: 156,
+          totalResidents: data.totalResidents,
+          totalOfficers: data.totalOfficers,
+          totalEvents: data.totalEvents,
+          totalUsers: data.totalUsers,
         });
 
-        // 2. Growth Trend Generator based on date range
-        const days = getRangeDays(appliedRange.start, appliedRange.end);
-        const isDaily = days <= 30;
-        const count = isDaily ? days : Math.ceil(days / 30) || 1;
-
-        const generatedGrowth: GrowthPoint[] = Array.from({ length: count }).map((_, idx) => {
-          const pointDate = new Date(appliedRange.start);
-          if (isDaily) {
-            pointDate.setDate(appliedRange.start.getDate() + idx);
-          } else {
-            pointDate.setMonth(appliedRange.start.getMonth() + idx);
-            pointDate.setDate(1);
-          }
-
-          const displayLabel = isDaily
-            ? new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" }).format(pointDate)
-            : new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(pointDate);
-
-          return {
-            label: displayLabel,
-            fullLabel: formatRangeDate(pointDate),
-            residents: 10 + idx + Math.floor(Math.random() * 5),
-            officers: 5 + idx * 2 + Math.floor(Math.random() * 2),
-            events: 2 + idx + Math.floor(Math.random() * 5),
-          };
-        });
-        setGrowthData(generatedGrowth);
-
-        // 3. User Demographics / Events Status
-        setEventsData([
-          { name: "Upcoming", value: 12, color: "#2563EB" },
-          { name: "Completed", value: 28, color: "#059669" },
-          { name: "Cancelled", value: 5, color: "#DC2626" },
-        ]);
-
-        // 4. Archive Summary
-        setArchiveData([
-          { category: "Residents", value: 45 },
-          { category: "Officers", value: 2 },
-          { category: "Events", value: 18 },
-          { category: "Users", value: 12 },
-        ]);
-
-        setLoading(false);
-      }, 600); // fake loading delay
+        setGrowthData(data.growthTrend);
+        setEventsData(data.eventStatusDistribution);
+        setArchiveData(data.archiveSummary);
+      } catch (err: any) {
+        if (!isMounted) return;
+        setApiError(err.message || "Failed to load report data");
+        console.error(err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
 
     loadReports();
@@ -473,6 +442,10 @@ export default function AdminReportsPage() {
 
           {dateError ? (
             <p className="text-xs text-red-500 px-1 mt-2">{dateError}</p>
+          ) : null}
+
+          {apiError ? (
+            <p className="text-xs text-red-500 px-1 mt-2">{apiError}</p>
           ) : null}
         </div>
 
