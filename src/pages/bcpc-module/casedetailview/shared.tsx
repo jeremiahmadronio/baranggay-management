@@ -92,40 +92,44 @@ export function formatDateTime(date?: string) {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ActiveTab = 'overview' | 'mediation' | 'notes' | 'referrals' | 'bpo' | 'timeline';
+export type ActiveTab = 'overview' | 'mediation' | 'intervention' | 'notes' | 'referrals' | 'bpo' | 'timeline';
 
 export interface BcpcCaseDetailDTO {
   id: number;
   caseNumber: string;
-  // child info
   childFirstName: string;
   childMiddleName?: string;
   childLastName: string;
-  childAge?: number;
-  childGender?: string;
-  childAddress?: string;
+  childGender: string;
+  childAge: number;
   childContact?: string;
-  // respondent / guardian
-  respondentFirstName?: string;
+  childAddress?: string;
+  childRelationship?: string;
+
+  respondentFirstName: string;
   respondentMiddleName?: string;
-  respondentLastName?: string;
-  respondentRelationship?: string;
-  respondentAddress?: string;
+  respondentLastName: string;
+  respondentGender: string;
+  respondentAge: number;
   respondentContact?: string;
-  // case info
+  respondentAddress?: string;
+  /** Relationship of respondent to the child — maps to backend `relationshipToChild` */
+  relationshipToChild: string;
+  /** Alias kept for legacy compatibility — same as relationshipToChild */
+  respondentRelationship?: string;
+
   caseStatus: string;
-  caseType?: string;
-  violenceTypes?: string;
-  dateFiled: string;
+  natureOfComplaint: string;
+  violenceType?: string;
+  narrative?: string;
+
   incidentDate?: string;
   incidentTime?: string;
   incidentLocation?: string;
-  narrative?: string;
+  dateFiled: string;
   assignedOfficer?: string;
   bpoDeadline?: string;
   remainingTime?: string;
-  natureOfComplaint?: string;
-  caseFiledBy?: string;
 }
 
 export interface BcpcCaseNote {
@@ -142,15 +146,6 @@ export interface BcpcTimelineEvent {
   description?: string;
   performedBy?: string;
   eventDate: string;
-}
-
-export interface BcpcMediationSession {
-  id: number;
-  sessionDate: string;
-  sessionType: string;
-  notes?: string;
-  outcome?: string;
-  mediator?: string;
 }
 
 export interface BcpcReferral {

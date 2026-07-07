@@ -633,6 +633,22 @@ export async function recordHearingFollowUp(
   });
 }
 
+export interface UpdateHearingStatusRequest {
+  newStatus: string;
+  remarks: string;
+}
+
+export async function updateHearingStatus(
+  hearingId: number,
+  body: UpdateHearingStatusRequest
+): Promise<string> {
+  if (!hearingId) throw new Error("Hearing ID is required");
+  return apiFetch<string>(`${HEARING_URL}/new-status/${hearingId}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function getHearingFullDetails(
   hearingId: number,
 ): Promise<HearingFullDetailsDTO> {

@@ -42,8 +42,8 @@ export type UserRole =
 export const adminNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
   { label: "User Management", path: "/admin/user-management", icon: Users },
-  { label: "Residents", path: "/admin/residents", icon: Users },
-  { label: "Officers", path: "/admin/officers", icon: Users },
+  { label: "Residents Records", path: "/admin/residents", icon: Users },
+  { label: "Officers list", path: "/admin/officers", icon: Users },
   {
     label: "Blotter",
     path: "/admin/blotter",
@@ -112,7 +112,7 @@ export const rootAdminNavItems: NavItemType[] = [
 // Blotter navigation items
 export const blotterNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/blotter/dashboard", icon: LayoutDashboard },
-  { label: "Residents", path: "/blotter/residents", icon: Users },
+  { label: "Residents Records", path: "/blotter/residents", icon: Users },
   { label: "Docket Books", path: "/blotter/docket", icon: ScrollText },
   { label: "Archive Cases", path: "/blotter/archive", icon: Archive },
   { label: "New Complaints", path: "/blotter/entry-form", icon: FilePlus2 },
@@ -127,7 +127,7 @@ export const lupongTagapamayapaNavItems: NavItemType[] = [
     path: "/lupongtagapamayapa/dashboard",
     icon: LayoutDashboard,
   },
-  { label: "Residents", path: "/lupongtagapamayapa/residents", icon: Users },
+  { label: "Residents Records", path: "/lupongtagapamayapa/residents", icon: Users },
   { label: "Cases", path: "/lupongtagapamayapa/cases", icon: FileText },
   {
     label: "Archive Cases",
@@ -150,10 +150,11 @@ export const lupongTagapamayapaNavItems: NavItemType[] = [
 // BCPC navigation items
 export const BcpcNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/bcpc/dashboard", icon: LayoutDashboard },
-    { label:"Resident", path: "/bcpc/resident-records", icon: Users },
+  { label: "Resident", path: "/bcpc/resident-records", icon: Users },
   { label: "Case Entry", path: "/bcpc/new-case-entry", icon: FilePlus2 },
   { label: "Case Management", path: "/bcpc/case-management", icon: FileText },
-  { label: "Report", path: "/bcpc/report", icon: ChartNoAxesCombined },
+  { label: "Reports", path: "/bcpc/report", icon: ChartNoAxesCombined },
+  { label: "Archived", path: "/bcpc/archive", icon: Archive },
 ];
 
 //Clearance navigation items
@@ -197,7 +198,7 @@ export const clearanceNavItems: NavItemType[] = [
 // VAWC navigation items
 export const vawcNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/vawc/dashboard", icon: LayoutDashboard },
-  { label: "Residents", path: "/vawc/residents", icon: Users },
+  { label: "Residents Records", path: "/vawc/residents", icon: Users },
   { label: "New Complaint", path: "/vawc/newcomplaint", icon: FilePlus2 },
   { label: "Cases", path: "/vawc/cases", icon: FileText },
   { label: "Reports", path: "/vawc/reports", icon: ChartNoAxesCombined },

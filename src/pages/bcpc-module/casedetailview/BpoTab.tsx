@@ -1,41 +1,95 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  PrinterIcon, PlusIcon, CalendarDaysIcon, ClockIcon,
-  ChevronRightIcon, MessageSquarePlusIcon, XCircleIcon,
+  PrinterIcon, PlusIcon, CalendarDaysIcon,
+  ChevronRightIcon, XCircleIcon, Loader2Icon
 } from 'lucide-react';
 import { InfoField, SectionCard, formatDate } from './shared';
-import type { BcpcCaseDetailDTO } from './shared';
+import { BcpcCaseDetailDTO, BcpcInterventionDTO } from '../../../service/bcpc-api/CaseDetail';
+import { activateBpo, getInterventions, scheduleIntervention } from '../../../service/bcpc-api/CaseDetail';
+import { getCaseTimeline } from '../../../service/blotter-api/DocketView';
+import { ActionModal } from '../../../hooks/SuccessModal';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-interface BcpcIntervention {
-  id: number;
-  activityType: string;
-  details: string;
-  interventionDate: string;
-  duration: number;
-  performedBy: string[];
-  followUps: { id: number; notes: string; createdBy: string; createdAt: string }[];
+function printBpoRequestLetter(data: { caseNumber: string; childName: string; respondentName: string; officer: string }) {
+  const formattedDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>BPO Request Letter — ${data.caseNumber}</title>
+<style>
+  @media print { @page { size: A4; margin: 25mm 20mm; } }
+  body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; margin: 0; padding: 0; }
+  .page { max-width: 680px; margin: 0 auto; padding: 40px; }
+  .header { text-align: center; margin-bottom: 24px; }
+  .header .brgy { font-size: 10pt; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+  .header .title { font-size: 16pt; font-weight: bold; text-transform: uppercase; margin: 8px 0 4px; }
+  .header .sub { font-size: 10pt; color: #444; }
+  hr { border: 2px solid #000; margin: 16px 0; }
+  .ref-number { font-size: 10pt; margin-bottom: 20px; }
+  .date-line { text-align: right; margin-bottom: 24px; }
+  .addressee { margin-bottom: 20px; font-weight: bold; }
+  .body-text { line-height: 1.8; margin-bottom: 14px; text-align: justify; }
+  .indent { margin-left: 40px; }
+  .signatory { margin-top: 48px; }
+  .signatory .name { font-weight: bold; text-transform: uppercase; margin-top: 48px; }
+  .signatory .title-label { font-size: 10pt; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="brgy">Republic of the Philippines</div>
+    <div class="title">Barangay Child Protection Council</div>
+    <div class="sub">Barangay Protection Order (BPO) Request</div>
+  </div>
+  <hr/>
+
+  <p class="ref-number">Ref. Case No.: <strong>${data.caseNumber}</strong></p>
+  <p class="date-line">${formattedDate}</p>
+
+  <div class="addressee">
+    To the Punong Barangay,<br/>
+  </div>
+
+  <p class="body-text">Greetings!</p>
+
+  <p class="body-text">
+    This is to formally request the issuance of a Barangay Protection Order (BPO) for the protection of 
+    <strong>${data.childName}</strong> against the respondent <strong>${data.respondentName || '______________'}</strong>.
+  </p>
+
+  <p class="body-text indent">
+    Following the initial assessment and mediation efforts conducted by the BCPC, it has been determined that the issuance of a BPO is necessary to ensure the immediate safety and welfare of the child.
+  </p>
+
+  <p class="body-text">
+    Attached herewith are the preliminary case notes and assessments for your review and approval.
+  </p>
+
+  <div class="signatory">
+    <p>Requested by,</p>
+    <p class="name">${data.officer}</p>
+    <p class="title-label">BCPC Assigned Officer / Social Worker</p>
+  </div>
+  
+  <div class="signatory" style="margin-top: 80px;">
+    <p>Approved and Issued by,</p>
+    <p class="name">_________________________________</p>
+    <p class="title-label">Punong Barangay</p>
+  </div>
+</div>
+<script>window.onload = () => { window.print(); };</script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=800,height=900');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+  }
 }
-
-// ─── Mock Data (only used after activation) ──────────────────────────────────
-
-const MOCK_INTERVENTIONS: BcpcIntervention[] = [
-  {
-    id: 1, activityType: 'Assessment',
-    details: 'Initial psychosocial assessment conducted with the child and guardian.',
-    interventionDate: '2026-01-20T09:00:00', duration: 60,
-    performedBy: ['MSW Joana Reyes'],
-    followUps: [{ id: 1, notes: 'Guardian confirmed understanding of safety plan.', createdBy: 'MSW Joana Reyes', createdAt: '2026-01-21T10:00:00' }],
-  },
-  {
-    id: 2, activityType: 'Home Visit',
-    details: 'Follow-up home visit. Situation observed to be stable.',
-    interventionDate: '2026-01-27T14:00:00', duration: 45,
-    performedBy: ['MSW Joana Reyes', 'Off. Cruz'],
-    followUps: [],
-  },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,93 +97,117 @@ function formatShortDate(d: string) {
   try { return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }); }
   catch { return d; }
 }
-function formatTimeRange(d: string, dur: number) {
-  try {
-    const s = new Date(d), e = new Date(s.getTime() + dur * 60_000);
-    const f = (dt: Date) => dt.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
-    return `${f(s)} – ${f(e)}`;
-  } catch { return '—'; }
-}
 
 // ─── Add Intervention Modal ───────────────────────────────────────────────────
+
+import { getBcpcOfficerOptions, type BcpcOfficerOptionDTO } from '../../../service/bcpc-api/BcpcFormService';
 
 const ACTIVITY_TYPES = ['Assessment', 'Home Visit', 'Counseling', 'Case Conference', 'Safety Planning', 'Others'];
 
 function AddInterventionModal({ onClose, onSave }: {
   onClose: () => void;
-  onSave: (data: Omit<BcpcIntervention, 'id' | 'followUps'>) => void;
+  onSave: (data: Omit<BcpcInterventionDTO, 'id'>) => void;
 }) {
   const [activityType, setActivityType] = useState('Assessment');
   const [customType, setCustomType] = useState('');
   const [details, setDetails] = useState('');
   const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('10:00');
-  const [officer, setOfficer] = useState('MSW Joana Reyes');
+  const [startTime, setStartTime] = useState('');
+  const [officer, setOfficer] = useState('');
   const [error, setError] = useState('');
+  
+  // Officer dropdown state
+  const [officers, setOfficers] = useState<BcpcOfficerOptionDTO[]>([]);
+  const [officersLoading, setOfficersLoading] = useState(true);
 
-  const handleSave = () => {
+  useEffect(() => {
+    getBcpcOfficerOptions()
+      .then(setOfficers)
+      .catch(() => setOfficers([]))
+      .finally(() => setOfficersLoading(false));
+  }, []);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
     const resolved = activityType === 'Others' ? customType.trim() : activityType;
-    if (!resolved || !details.trim() || !date || !startTime || !endTime) { setError('All fields are required.'); return; }
-    const [sh, sm] = startTime.split(':').map(Number);
-    const [eh, em] = endTime.split(':').map(Number);
-    const dur = eh * 60 + em - (sh * 60 + sm);
-    if (dur <= 0) { setError('End time must be after start time.'); return; }
-    onSave({ activityType: resolved, details: details.trim(), interventionDate: `${date}T${startTime}:00`, duration: dur, performedBy: [officer] });
+    if (!resolved || !details.trim() || !date || !startTime || !officer) { 
+      setError('Please fill in all required fields.'); 
+      return; 
+    }
+    onSave({ 
+      sessionType: resolved, 
+      remarks: details.trim(), 
+      scheduledDate: `${date}T${startTime}:00`, 
+      conductedBy: officer,
+      status: 'COMPLETED'
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
         <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-gray-900">Add Intervention Log</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Add Intervention Log</h3>
         </div>
-        <div className="px-6 py-5 space-y-4">
+        <form onSubmit={handleSave} className="px-6 py-5 space-y-4">
+          {error && <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-lg">{error}</div>}
+
           <div>
-            <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Activity Type *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Intervention Type</label>
             <select value={activityType} onChange={e => setActivityType(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-              {ACTIVITY_TYPES.map(t => <option key={t}>{t}</option>)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+              {ACTIVITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
+          
           {activityType === 'Others' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Specify Activity *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Specify Activity <span className="text-red-500">*</span></label>
               <input type="text" value={customType} onChange={e => setCustomType(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
             </div>
           )}
+
           <div>
-            <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Details *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Details <span className="text-red-500">*</span></label>
             <textarea rows={3} value={details} onChange={e => setDetails(e.target.value)} placeholder="Describe the intervention..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none resize-none" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Date *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date <span className="text-red-500">*</span></label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Start *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Time <span className="text-red-500">*</span></label>
               <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">End *</label>
-              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
             </div>
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Performed By *</label>
-            <input type="text" value={officer} onChange={e => setOfficer(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Worker / Officer <span className="text-red-500">*</span></label>
+            <select
+              value={officer}
+              onChange={(e) => setOfficer(e.target.value)}
+              disabled={officersLoading}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">
+                {officersLoading ? 'Loading officers...' : '— Select Officer / Social Worker —'}
+              </option>
+              {officers.map((o) => (
+                <option key={o.id} value={o.name}>
+                  {o.name}{o.position ? ` — ${o.position}` : ''}
+                </option>
+              ))}
+            </select>
           </div>
-          {error && <p className="text-xs text-red-500">{error}</p>}
-        </div>
-        <div className="flex justify-end gap-2 border-t border-gray-200 px-6 py-4">
-          <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+        </form>
+        <div className="flex justify-end gap-2 border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl">
+          <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
           <button onClick={handleSave} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Save Log</button>
         </div>
       </div>
@@ -139,55 +217,28 @@ function AddInterventionModal({ onClose, onSave }: {
 
 // ─── Intervention Details Modal ───────────────────────────────────────────────
 
-function InterventionDetailsModal({ intervention, onClose, onAddFollowUp }: {
-  intervention: BcpcIntervention; onClose: () => void; onAddFollowUp: (text: string) => void;
+function InterventionDetailsModal({ intervention, onClose }: {
+  intervention: BcpcInterventionDTO; onClose: () => void;
 }) {
-  const [followUpText, setFollowUpText] = useState('');
-  const [error, setError] = useState('');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-xl max-h-[90vh] flex flex-col">
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">{intervention.activityType}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{formatShortDate(intervention.interventionDate)} · {formatTimeRange(intervention.interventionDate, intervention.duration)}</p>
+            <h3 className="text-base font-semibold text-gray-900">{intervention.sessionType}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{formatShortDate(intervention.scheduledDate)}</p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100"><XCircleIcon className="w-5 h-5" /></button>
         </div>
         <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Details</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{intervention.details}</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{intervention.remarks}</p>
           </div>
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Performed By</p>
-            <p className="text-sm text-gray-700">{intervention.performedBy.join(', ') || '—'}</p>
-          </div>
-          {intervention.followUps.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-2">Follow-up Notes</p>
-              <div className="space-y-2">
-                {intervention.followUps.map(fu => (
-                  <div key={fu.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-sm text-gray-700">{fu.notes}</p>
-                    <p className="text-xs text-gray-400 mt-1">{fu.createdBy} · {formatShortDate(fu.createdAt)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div>
-            <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Add Follow-up</p>
-            <textarea rows={2} value={followUpText} onChange={e => setFollowUpText(e.target.value)} placeholder="Enter follow-up notes..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
-            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-            <div className="flex justify-end mt-2">
-              <button onClick={() => {
-                if (!followUpText.trim()) { setError('Required.'); return; }
-                onAddFollowUp(followUpText.trim()); setFollowUpText(''); setError('');
-              }} className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">Save Follow-up</button>
-            </div>
+            <p className="text-sm text-gray-700">{intervention.conductedBy || '—'}</p>
           </div>
         </div>
       </div>
@@ -206,17 +257,54 @@ type BpoTabProps = {
 
 export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly }: BpoTabProps) {
   const [isActive, setIsActive] = useState(false);
+  const [hasPrinted, setHasPrinted] = useState(false);
   const [bpoNumber, setBpoNumber] = useState('');
   const [bpoIssuedAt, setBpoIssuedAt] = useState('');
   const [bpoExpiredAt, setBpoExpiredAt] = useState('');
   const [activating, setActivating] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [interventions, setInterventions] = useState<BcpcIntervention[]>([]);
+  const fetchInterventions = async () => {
+    try {
+      const data = await getInterventions(caseData.id);
+      setInterventions(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    getCaseTimeline(caseData.caseNumber).then(timeline => {
+      const bpoEvent = timeline.find(e => e.eventType === 'BPO_ISSUED');
+      if (bpoEvent) {
+        setIsActive(true);
+        // The description is like: "Barangay Protection Order BPO-BCPC-2026-0707 has been activated and is valid for 15 days."
+        const match = bpoEvent.description.match(/BPO-BCPC-[0-9-]+/);
+        if (match) setBpoNumber(match[0]);
+        else setBpoNumber('BPO-ACTIVATED');
+        
+        const issuedDate = new Date(bpoEvent.eventDate);
+        setBpoIssuedAt(issuedDate.toISOString().slice(0, 10));
+        
+        const expiryDate = new Date(issuedDate.getTime() + 15 * 86400000);
+        setBpoExpiredAt(expiryDate.toISOString().slice(0, 10));
+        
+        
+        fetchInterventions(); // load actual interventions from backend
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, [caseData.caseNumber]);
+
+  const [interventions, setInterventions] = useState<BcpcInterventionDTO[]>([]);
   const [showAddLog, setShowAddLog] = useState(false);
-  const [selectedIntervention, setSelectedIntervention] = useState<BcpcIntervention | null>(null);
-  const [successMsg, setSuccessMsg] = useState('');
+  const [selectedIntervention, setSelectedIntervention] = useState<BcpcInterventionDTO | null>(null);
+  const [successModal, setSuccessModal] = useState<{ open: boolean; msg: string }>({ open: false, msg: '' });
 
-  const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
+  const showSuccess = (msg: string) => setSuccessModal({ open: true, msg });
 
   const isExpiringSoon = (() => {
     if (!bpoExpiredAt) return false;
@@ -224,32 +312,38 @@ export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly
     return new Date(bpoExpiredAt).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
   })();
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     setActivating(true);
-    setTimeout(() => {
-      const now = new Date();
-      const expiry = new Date(now.getTime() + 15 * 86400000);
-      setBpoNumber(`BPO-BCPC-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`);
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 15 * 86400000);
+    const newBpoNum = `BPO-BCPC-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    
+    try {
+      await activateBpo(caseData.id, newBpoNum);
+      setBpoNumber(newBpoNum);
       setBpoIssuedAt(now.toISOString().slice(0, 10));
       setBpoExpiredAt(expiry.toISOString().slice(0, 10));
-      setInterventions(MOCK_INTERVENTIONS);
+      fetchInterventions();
       setIsActive(true);
       setActivating(false);
       showSuccess('BPO activated successfully. 15-day validity period has started.');
-    }, 600);
+    } catch (err: any) {
+      console.error(err);
+      setActivating(false);
+      alert('Failed to activate BPO. Please check the backend connection.');
+    }
   };
 
-  const handleAddIntervention = (data: Omit<BcpcIntervention, 'id' | 'followUps'>) => {
-    setInterventions(prev => [...prev, { id: Date.now(), followUps: [], ...data }]);
-    setShowAddLog(false);
-    showSuccess('Intervention log saved successfully.');
-  };
-
-  const handleAddFollowUp = (interventionId: number, notes: string) => {
-    const fu = { id: Date.now(), notes, createdBy: 'Current User', createdAt: new Date().toISOString() };
-    setInterventions(prev => prev.map(i => i.id === interventionId ? { ...i, followUps: [...i.followUps, fu] } : i));
-    setSelectedIntervention(prev => prev?.id === interventionId ? { ...prev, followUps: [...prev.followUps, fu] } : prev);
-    showSuccess('Follow-up saved successfully.');
+  const handleAddIntervention = async (data: Omit<BcpcInterventionDTO, 'id'>) => {
+    try {
+      await scheduleIntervention(caseData.id, data);
+      setShowAddLog(false);
+      showSuccess('Intervention log saved successfully.');
+      fetchInterventions();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save intervention log.');
+    }
   };
 
   return (
@@ -260,27 +354,62 @@ export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly
         <InterventionDetailsModal
           intervention={selectedIntervention}
           onClose={() => setSelectedIntervention(null)}
-          onAddFollowUp={notes => handleAddFollowUp(selectedIntervention.id, notes)}
         />
       )}
 
-      {/* Success */}
-      {successMsg && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMsg}</div>}
+      {/* Success Modal */}
+      <ActionModal
+        isOpen={successModal.open}
+        onClose={() => setSuccessModal({ open: false, msg: '' })}
+        title="Success"
+        type="success"
+      >
+        {successModal.msg}
+      </ActionModal>
 
       {/* ── BPO DETAILS CARD ── */}
+      {loading ? (
+        <div className="flex justify-center items-center py-12 text-gray-400">
+          <Loader2Icon className="w-8 h-8 animate-spin" />
+        </div>
+      ) : (
+      <>
       <SectionCard
         title="Barangay Protection Order Details"
         action={
           !isActive && !isReadOnly ? (
-            <div className="flex items-center gap-2">
-              <button onClick={() => showSuccess('BPO Request Letter generated.')}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
-                <PrinterIcon className="w-3.5 h-3.5" /> Print BPO Request Letter
-              </button>
-              <button onClick={handleActivate} disabled={activating}
-                className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50">
-                {activating ? 'Activating...' : 'Activate BPO (Post-Signature)'}
-              </button>
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    printBpoRequestLetter({
+                      caseNumber: caseData.caseNumber,
+                      childName: childFullName,
+                      respondentName: respondentFullName,
+                      officer: caseData.assignedOfficer || 'BCPC Officer',
+                    });
+                    setHasPrinted(true);
+                    showSuccess('BPO Request Letter generated. Please have the Punong Barangay sign it before activating.');
+                  }}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5"
+                >
+                  <PrinterIcon className="w-3.5 h-3.5" /> Print BPO Request Letter
+                </button>
+                <div className="relative group">
+                  <button
+                    onClick={handleActivate}
+                    disabled={activating || !hasPrinted}
+                    className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {activating ? 'Activating...' : 'Activate BPO (Post-Signature)'}
+                  </button>
+                  {!hasPrinted && (
+                    <div className="absolute right-0 top-full mt-1.5 w-60 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                      Print the BPO Request Letter first and have the Punong Barangay sign it before activating.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           ) : undefined
         }
@@ -342,15 +471,9 @@ export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly
                 <div key={log.id} className="w-full rounded-lg border border-slate-200 bg-white p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <button type="button" onClick={() => setSelectedIntervention(log)} className="min-w-0 flex-1 text-left">
-                      <p className="text-sm font-bold text-gray-900">{log.activityType}</p>
+                      <p className="text-sm font-bold text-gray-900">{log.sessionType}</p>
                       <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 flex-wrap">
-                        <span className="inline-flex items-center gap-1"><CalendarDaysIcon className="w-3.5 h-3.5" />{formatShortDate(log.interventionDate)}</span>
-                        <span className="inline-flex items-center gap-1"><ClockIcon className="w-3.5 h-3.5" />{formatTimeRange(log.interventionDate, log.duration)}</span>
-                        {log.followUps.length > 0 && (
-                          <span className="inline-flex items-center gap-1 text-blue-500">
-                            <MessageSquarePlusIcon className="w-3.5 h-3.5" />{log.followUps.length} follow-up{log.followUps.length > 1 ? 's' : ''}
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-1"><CalendarDaysIcon className="w-3.5 h-3.5" />{formatShortDate(log.scheduledDate)}</span>
                       </div>
                     </button>
                     <div className="flex items-center gap-4 shrink-0">
@@ -365,6 +488,8 @@ export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly
             </div>
           )}
         </SectionCard>
+      )}
+      </>
       )}
     </div>
   );

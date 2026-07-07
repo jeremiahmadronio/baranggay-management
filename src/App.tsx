@@ -65,6 +65,7 @@ import BcpcNewCaseEntry from "./pages/bcpc-module/new-case-entry";
 import BcpcCaseManagement from "./pages/bcpc-module/case-management";
 import BcpcCaseDetailsPage from "./pages/bcpc-module/casedetailview";
 import BcpcReport from "./pages/bcpc-module/report";
+import BcpcArchivePage from "./pages/bcpc-module/archive";
 
 // Blotter
 import BlotterDashboard from "./pages/blotter-module/dashboard";
@@ -278,6 +279,7 @@ export function App() {
         <Route path="case-management" element={<BcpcCaseManagement />} />
         <Route path="casedetailview" element={<BcpcCaseDetailsPage />} />{" "}
         <Route path="report" element={<BcpcReport />} />
+        <Route path="archive" element={<BcpcArchivePage />} />
         <Route path="resident-records" element={<ResidentListPage />} />
       </Route>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import {
   userManagementApi,
@@ -192,6 +192,8 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
     filteredPermissions.length > 0 &&
     filteredPermissions.every((p) => form.permissionIds.includes(p.id));
 
+  const previousDepartmentIdRef = useRef<number | null>(null);
+
   const selectedPersonName = useMemo(
     () => (form.person ? fullName(form.person) : ""),
     [form.person],
@@ -205,15 +207,21 @@ export default function CreateStaffModal({ onClose, onSuccess }: Props) {
   }, [filteredRoles, form.roleId]);
 
   useEffect(() => {
-    const allowedPermissionIds = new Set(filteredPermissions.map((p) => p.id));
-    const nextPermissionIds = form.permissionIds.filter((id) =>
-      allowedPermissionIds.has(id),
-    );
+    const departmentChanged = previousDepartmentIdRef.current !== form.departmentId;
 
-    if (nextPermissionIds.length !== form.permissionIds.length) {
-      setForm((prev) => ({ ...prev, permissionIds: nextPermissionIds }));
+    if (departmentChanged) {
+      previousDepartmentIdRef.current = form.departmentId;
+
+      if (filteredPermissions.length > 0) {
+        setForm((prev) => ({
+          ...prev,
+          permissionIds: filteredPermissions.map((permission) => permission.id),
+        }));
+      } else if (form.permissionIds.length > 0) {
+        setForm((prev) => ({ ...prev, permissionIds: [] }));
+      }
     }
-  }, [filteredPermissions, form.permissionIds]);
+  }, [filteredPermissions, form.departmentId, form.permissionIds.length]);
 
   const setField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));

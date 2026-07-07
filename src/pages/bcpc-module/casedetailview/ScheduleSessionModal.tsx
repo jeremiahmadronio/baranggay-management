@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   XIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon,
-  AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, MapPinIcon,
+  AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, MapPinIcon, Loader2Icon
 } from 'lucide-react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -48,7 +48,7 @@ interface Props {
   childName: string;
   respondentName: string;
   caseNumber: string;
-  onSave: (data: { date: string; startTime: string; endTime: string; venue: string; notes: string }) => void;
+  onSave: (data: { date: string; startTime: string; endTime: string; venue: string; notes: string }) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -63,6 +63,7 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
   const [customVenue, setCustomVenue] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const isCustom = venueOption === 'Other (specify)';
   const finalVenue = isCustom ? customVenue.trim() : venueOption;
@@ -80,9 +81,17 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
   const prevMonth = () => { if (viewMonth===0){setViewYear(y=>y-1);setViewMonth(11);}else setViewMonth(m=>m-1); };
   const nextMonth = () => { if (viewMonth===11){setViewYear(y=>y+1);setViewMonth(0);}else setViewMonth(m=>m+1); };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isValid) { setError(timeStatus&&timeStatus!=='valid' ? TIME_MSG[timeStatus] : 'Please complete all required fields.'); return; }
-    onSave({ date: selectedDate, startTime, endTime, venue: finalVenue, notes: notes.trim() });
+    try {
+      setLoading(true);
+      setError('');
+      await onSave({ date: selectedDate, startTime, endTime, venue: finalVenue, notes: notes.trim() });
+    } catch (err: any) {
+      setError(err.message || 'Failed to schedule mediation');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -214,9 +223,15 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
               </div>
             )}
 
-            <button onClick={handleSubmit} disabled={!isValid}
-              className="w-full py-2.5 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              Schedule Mediation & Generate Paanyaya
+            <button onClick={handleSubmit} disabled={!isValid || loading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              {loading ? (
+                <>
+                  <Loader2Icon className="w-4 h-4 animate-spin" /> Scheduling...
+                </>
+              ) : (
+                'Schedule Mediation & Generate Paanyaya'
+              )}
             </button>
             <p className="text-[10px] text-gray-400 text-center leading-relaxed">
               Ang Paanyaya (summon letter) ay awtomatikong mabubuo pagkatapos mag-schedule.
