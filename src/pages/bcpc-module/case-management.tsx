@@ -1,69 +1,19 @@
-import { useState, useEffect } from "react";
-import { Eye } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Eye, Archive } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { TableFilter } from "../../hooks/TableFilter";
-import { Table, type TableColumn } from "../../hooks/Table";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CaseSummaryDTO {
-  id: number;
-  caseNumber: string;
-  victimFullName: string;
-  violenceTypes: string;
-  status: string;
-  dateFiled: string;
-  assignedOfficer: string;
-}
-
-interface CaseStatsDTO {
-  totalPending: number;
-  totalClose: number;
-  totalExpiringSoon: number;
-  totalCases: number;
-}
-
-interface ViolenceOptionDTO {
-  type: string;
-}
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const MOCK_CASES: CaseSummaryDTO[] = [
-  { id: 1,  caseNumber: "BCPC-2026-0001", victimFullName: "Maria Dela Cruz",     violenceTypes: "Physical, Psychological",           status: "PENDING",                   dateFiled: "2026-01-05", assignedOfficer: "Off. Reyes" },
-  { id: 2,  caseNumber: "BCPC-2026-0002", victimFullName: "Ana Santos",          violenceTypes: "Sexual",                            status: "ONGOING",                   dateFiled: "2026-01-10", assignedOfficer: "Off. Mendoza" },
-  { id: 3,  caseNumber: "BCPC-2026-0003", victimFullName: "Luz Garcia",          violenceTypes: "Economic, Psychological",            status: "RESOLVED",                  dateFiled: "2026-01-14", assignedOfficer: "Off. Reyes" },
-  { id: 4,  caseNumber: "BCPC-2026-0004", victimFullName: "Rosa Villanueva",     violenceTypes: "Physical",                          status: "UNDER_INTERVENTION",        dateFiled: "2026-01-18", assignedOfficer: "Off. Cruz" },
-  { id: 5,  caseNumber: "BCPC-2026-0005", victimFullName: "Elena Bautista",      violenceTypes: "Psychological",                     status: "REFERRED",                  dateFiled: "2026-01-22", assignedOfficer: "Off. Mendoza" },
-  { id: 6,  caseNumber: "BCPC-2026-0006", victimFullName: "Carmen Lopez",        violenceTypes: "Physical, Sexual",                  status: "CERTIFIED_TO_FILE_ACTION",  dateFiled: "2026-02-01", assignedOfficer: "Off. Cruz" },
-  { id: 7,  caseNumber: "BCPC-2026-0007", victimFullName: "Imelda Torres",       violenceTypes: "Economic",                          status: "DISMISSED",                 dateFiled: "2026-02-05", assignedOfficer: "Off. Reyes" },
-  { id: 8,  caseNumber: "BCPC-2026-0008", victimFullName: "Norma Aquino",        violenceTypes: "Physical, Economic",                status: "WITHDRAWN",                 dateFiled: "2026-02-09", assignedOfficer: "Off. Mendoza" },
-  { id: 9,  caseNumber: "BCPC-2026-0009", victimFullName: "Gloria Ramos",        violenceTypes: "Psychological",                     status: "PENDING",                   dateFiled: "2026-02-14", assignedOfficer: "Off. Cruz" },
-  { id: 10, caseNumber: "BCPC-2026-0010", victimFullName: "Perla Castillo",      violenceTypes: "Sexual, Psychological",             status: "ONGOING",                   dateFiled: "2026-02-18", assignedOfficer: "Off. Reyes" },
-  { id: 11, caseNumber: "BCPC-2026-0011", victimFullName: "Josefa Navarro",      violenceTypes: "Physical",                          status: "RESOLVED",                  dateFiled: "2026-02-22", assignedOfficer: "Off. Cruz" },
-  { id: 12, caseNumber: "BCPC-2026-0012", victimFullName: "Teresita Soriano",    violenceTypes: "Economic, Physical",                status: "PENDING",                   dateFiled: "2026-03-01", assignedOfficer: "Off. Mendoza" },
-  { id: 13, caseNumber: "BCPC-2026-0013", victimFullName: "Maribel Abad",        violenceTypes: "Psychological",                     status: "UNDER_INTERVENTION",        dateFiled: "2026-03-05", assignedOfficer: "Off. Reyes" },
-  { id: 14, caseNumber: "BCPC-2026-0014", victimFullName: "Corazon Manalang",    violenceTypes: "Sexual",                            status: "REFERRED",                  dateFiled: "2026-03-09", assignedOfficer: "Off. Cruz" },
-  { id: 15, caseNumber: "BCPC-2026-0015", victimFullName: "Florencia Padilla",   violenceTypes: "Physical, Psychological, Economic", status: "ONGOING",                   dateFiled: "2026-03-14", assignedOfficer: "Off. Mendoza" },
-];
-
-const MOCK_VIOLENCE_OPTIONS: ViolenceOptionDTO[] = [
-  { type: "Physical" },
-  { type: "Sexual" },
-  { type: "Psychological" },
-  { type: "Economic" },
-];
-
-const MOCK_STATS: CaseStatsDTO = {
-  totalPending:      MOCK_CASES.filter((c) => c.status === "PENDING").length,
-  totalClose:        MOCK_CASES.filter((c) => c.status === "RESOLVED").length,
-  totalExpiringSoon: 3,
-  totalCases:        MOCK_CASES.length,
-};
-
-const MOCK_RESOLVED_CASES = MOCK_CASES.filter((c) => c.status === "RESOLVED").length;
+import { Table, type TableColumn } from "../../reusable";
+import {
+  getBcpcCaseTable,
+  getBcpcStats,
+  type BcpcCaseSummaryDTO,
+  type BcpcStatsDTO,
+} from "../../service/bcpc-api/BcpcFormService";
+import { archiveCase } from "../../service/bcpc-api/CaseDetail";
+import { ArchiveReasonModal } from "../../hooks/archive-modal";
+import { ActionModal } from "../../hooks/SuccessModal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,126 +25,178 @@ const VIOLENCE_TYPE_TONE: string[] = [
   "bg-violet-50 text-violet-700 border border-violet-200",
 ];
 
-const STATUS_LABEL_OVERRIDES: Record<string, string> = {
-  UNDER_MEDIATION: "Under Intervention",
+// Normalize status for internal logic
+const normalizeStatus = (s: string) => s.toLowerCase().replace(/_/g, " ");
+
+// Map status to display label
+const getStatusDisplay = (status: string) => {
+  if (normalizeStatus(status) === "elevated to formal")
+    return "ESCALATED TO CASE";
+  if (normalizeStatus(status) === "recorded") return "RECORDED";
+  return status.replace(/_/g, " ").toUpperCase();
 };
 
-const formatStatusLabel = (status: string) =>
-  STATUS_LABEL_OVERRIDES[status] ??
-  status
-    .toLowerCase()
-    .split("_")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-
 const formatNameAsInitials = (fullName?: string) => {
-  const parts = String(fullName || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "-";
-  return parts.map((part) => `${part.charAt(0).toUpperCase()}.`).join(" ");
+  return parts.map((p) => `${p.charAt(0).toUpperCase()}.`).join(" ");
 };
 
 const getStatusPillClass = (status: string) => {
   switch (status) {
-    case "PENDING":                  return "bg-amber-50 text-amber-700 border border-amber-200";
+    case "PENDING":
+      return "bg-amber-50 text-amber-700 border border-amber-200";
     case "UNDER_MEDIATION":
-    case "UNDER_INTERVENTION":       return "bg-sky-50 text-sky-700 border border-sky-200";
-    case "RESOLVED":                 return "bg-emerald-50 text-emerald-700 border border-emerald-200";
-    case "CERTIFIED_TO_FILE_ACTION": return "bg-indigo-50 text-indigo-700 border border-indigo-200";
-    case "WITHDRAWN":                return "bg-gray-100 text-gray-600 border border-gray-200";
-    case "DISMISSED":                return "bg-rose-50 text-rose-700 border border-rose-200";
-    default:                         return "bg-gray-100 text-gray-600 border border-gray-200";
+    case "UNDER_INTERVENTION":
+      return "bg-sky-50 text-sky-700 border border-sky-200";
+    case "UNDER_CONCILIATION":
+      return "bg-indigo-50 text-indigo-700 border border-indigo-200";
+    case "REFERRED_TO_LUPON":
+    case "REFERRED":
+    case "ISSUED_REFERRAL":
+      return "bg-violet-50 text-violet-700 border border-violet-200";
+    case "SETTLED":
+    case "RESOLVED":
+      return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    case "RECORDED":
+      return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    case "DISMISSED":
+      return "bg-rose-50 text-rose-700 border border-rose-200";
+    case "CERTIFIED_TO_FILE_ACTION":
+      return "bg-cyan-50 text-cyan-700 border border-cyan-200";
+    case "EXPIRED_UNACTIONED":
+      return "bg-red-50 text-red-700 border border-red-200";
+    case "WITHDRAWN":
+      return "bg-gray-100 text-gray-600 border border-gray-200";
+    case "CLOSED":
+      return "bg-slate-100 text-slate-700 border border-slate-200";
+    case "ELEVATED_TO_FORMAL":
+      return "bg-red-50 text-red-700 border border-red-200";
+    default:
+      return "bg-gray-100 text-gray-600 border border-gray-200";
   }
+};
+
+const StatusBadge = ({ status }: { status: string }) => {
+  const normalized = String(status || "")
+    .toUpperCase()
+    .trim();
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusPillClass(normalized)}`}
+    >
+      {getStatusDisplay(status)}
+    </span>
+  );
+};
+
+const ARCHIVABLE_STATUSES = new Set([
+  "RECORDED",
+  "SETTLED",
+  "RESOLVED",
+  "DISMISSED",
+  "WITHDRAWN",
+  "CLOSED",
+  "CERTIFIED_TO_FILE_ACTION",
+]);
+
+// nature stored as "NATURE" or "NATURE | VIOLENCE_TYPE"
+const parseNatureAndViolence = (raw: string) => {
+  if (!raw) return { nature: "-", violenceTypes: [] as string[] };
+  const parts = raw.split("|").map((p) => p.trim());
+  return {
+    nature: parts[0] || "-",
+    violenceTypes: parts.slice(1).filter(Boolean),
+  };
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+const EMPTY_STATS: BcpcStatsDTO = {
+  totalPending: 0,
+  totalClosed: 0,
+  totalExpiringSoon: 0,
+  totalCases: 0,
+};
+
+const SIZE = 10;
+
 export default function BcpcCaseManagement() {
   const navigate = useNavigate();
 
-  const [stats]          = useState<CaseStatsDTO>(MOCK_STATS);
-  const [resolvedCases]  = useState<number>(MOCK_RESOLVED_CASES);
-  const [violenceOptions] = useState<ViolenceOptionDTO[]>(MOCK_VIOLENCE_OPTIONS);
+  const [stats, setStats]           = useState<BcpcStatsDTO>(EMPTY_STATS);
+  const [loadingStats, setLoadingStats] = useState(true);
 
-  const [cases, setCases]               = useState<CaseSummaryDTO[]>([]);
+  const [cases, setCases]               = useState<BcpcCaseSummaryDTO[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages]       = useState(0);
   const [currentPage, setCurrentPage]     = useState(0);
+  const [loadingTable, setLoadingTable]   = useState(false);
+  const [tableError, setTableError]       = useState<string | null>(null);
 
-  const [loadingTable, setLoadingTable] = useState(false);
-  const [tableError, setTableError]     = useState<string | null>(null);
+  const [search, setSearch]           = useState("");
+  const [status, setStatus]           = useState("");
+  const [dateFrom, setDateFrom]       = useState("");
+  const [dateTo, setDateTo]           = useState("");
 
-  const [search, setSearch]             = useState("");
-  const [status, setStatus]             = useState("");
-  const [violenceType, setViolenceType] = useState("");
-  const [dateFrom, setDateFrom]         = useState("");
-  const [dateTo, setDateTo]             = useState("");
+  const [archiveEntry, setArchiveEntry] = useState<BcpcCaseSummaryDTO | null>(null);
+  const [archiveSuccessOpen, setArchiveSuccessOpen] = useState(false);
 
-  const SIZE = 10;
+  // ── Fetch KPI stats ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    getBcpcStats()
+      .then(setStats)
+      .catch(() => setStats(EMPTY_STATS))
+      .finally(() => setLoadingStats(false));
+  }, []);
 
-  // ── Filter + paginate mock data locally ─────────────────────────────────────
-  const fetchCases = () => {
+  // ── Fetch case table ────────────────────────────────────────────────────────
+  const fetchCases = useCallback(async () => {
+    setLoadingTable(true);
+    setTableError(null);
     try {
-      setLoadingTable(true);
-      setTableError(null);
-
-      let filtered = [...MOCK_CASES];
-
-      if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(
-          (c) =>
-            c.caseNumber.toLowerCase().includes(q) ||
-            c.victimFullName.toLowerCase().includes(q),
-        );
-      }
-
-      if (status) {
-        filtered = filtered.filter((c) => c.status === status);
-      }
-
-      if (violenceType) {
-        filtered = filtered.filter((c) =>
-          c.violenceTypes.toLowerCase().includes(violenceType.toLowerCase()),
-        );
-      }
-
-      if (dateFrom) {
-        filtered = filtered.filter((c) => c.dateFiled >= dateFrom);
-      }
-
-      if (dateTo) {
-        filtered = filtered.filter((c) => c.dateFiled <= dateTo);
-      }
-
-      const total = filtered.length;
-      const pages = Math.ceil(total / SIZE) || 1;
-      const safePage = Math.min(currentPage, pages - 1);
-      const slice = filtered.slice(safePage * SIZE, safePage * SIZE + SIZE);
-
-      setCases(slice);
-      setTotalElements(total);
-      setTotalPages(pages);
-      setCurrentPage(safePage);
-    } catch (err) {
-      console.error("Error filtering cases:", err);
+      const page = await getBcpcCaseTable({
+        search: search || undefined,
+        status: status || undefined,
+        start:  dateFrom || undefined,
+        end:    dateTo   || undefined,
+        page:   currentPage,
+        size:   SIZE,
+      });
+      setCases(page.content ?? []);
+      setTotalElements(page.totalElements ?? 0);
+      setTotalPages(page.totalPages ?? 0);
+    } catch (err: any) {
+      setTableError(err?.message || "Failed to load BCPC cases.");
       setCases([]);
       setTotalElements(0);
       setTotalPages(0);
-      setTableError("Failed to load BCPC cases.");
     } finally {
       setLoadingTable(false);
     }
+  }, [search, status, dateFrom, dateTo, currentPage]);
+
+  useEffect(() => { fetchCases(); }, [fetchCases]);
+
+  const handleArchiveSubmit = async (reason: string) => {
+    if (!archiveEntry) return;
+    try {
+      await archiveCase(archiveEntry.id, reason);
+      setArchiveEntry(null);
+      setArchiveSuccessOpen(true);
+      fetchCases();
+      // Refresh stats
+      getBcpcStats()
+        .then(setStats)
+        .catch(() => setStats(EMPTY_STATS));
+    } catch (err) {
+      console.error("Failed to archive case:", err);
+      alert("Failed to archive case. Please try again.");
+    }
   };
 
-  useEffect(() => {
-    fetchCases();
-  }, [search, status, violenceType, dateFrom, dateTo, currentPage]);
-
   // ── Table columns ────────────────────────────────────────────────────────────
-  const columns: TableColumn<CaseSummaryDTO>[] = [
+  const columns: TableColumn<BcpcCaseSummaryDTO>[] = [
     { key: "caseNumber", header: "CASE NUMBER", align: "left" },
     {
       key: "victimFullName",
@@ -203,30 +205,29 @@ export default function BcpcCaseManagement() {
       render: (item) => formatNameAsInitials(item.victimFullName),
     },
     {
-      key: "violenceTypes",
-      header: "VIOLENCE TYPE",
+      key: "natureOfCase",
+      header: "NATURE / VIOLENCE TYPE",
       align: "left",
       render: (item) => {
-        const types = item.violenceTypes
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean);
-
-        return types.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {types.map((v, index) => (
-              <span
-                key={`${item.id}-${v}-${index}`}
-                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                  VIOLENCE_TYPE_TONE[index % VIOLENCE_TYPE_TONE.length]
-                }`}
-              >
-                {v}
-              </span>
-            ))}
+        const { nature, violenceTypes } = parseNatureAndViolence(item.natureOfCase);
+        return (
+          <div className="flex flex-col gap-1">
+            <span className="text-sm text-slate-700">{nature}</span>
+            {violenceTypes.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {violenceTypes.map((v, i) => (
+                  <span
+                    key={i}
+                    className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      VIOLENCE_TYPE_TONE[i % VIOLENCE_TYPE_TONE.length]
+                    }`}
+                  >
+                    {v}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <span className="text-sm text-gray-400">-</span>
         );
       },
     },
@@ -234,13 +235,7 @@ export default function BcpcCaseManagement() {
       key: "status",
       header: "STATUS",
       align: "center",
-      render: (item) => (
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusPillClass(item.status)}`}
-        >
-          {formatStatusLabel(item.status)}
-        </span>
-      ),
+      render: (item) => <StatusBadge status={item.status} />,
     },
     {
       key: "dateFiled",
@@ -253,41 +248,65 @@ export default function BcpcCaseManagement() {
     },
     { key: "assignedOfficer", header: "ASSIGNED OFFICER", align: "left" },
     {
-     key: "actions",
-  header: "ACTION",
-  align: "center",
-  render: (item) => (
-    <button
-      onClick={() => navigate(`/bcpc/casedetailview?id=${item.id}`)}
-      className="rounded-lg p-2 text-neutral-400 hover:bg-gray-50 hover:text-blue-600 transition-colors"
-      title="View case details"
-    >
-      <Eye className="h-5 w-5" />
-    </button>
-      ),
+      key: "actions" as any,
+      header: "ACTION",
+      align: "center",
+      render: (item) => {
+        const statusKey = String(item.status || "").toUpperCase().trim();
+        const canArchiveThisStatus = ARCHIVABLE_STATUSES.has(statusKey);
+        
+        return (
+          <div className="flex items-center justify-center gap-1.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/bcpc/casedetailview?id=${item.id}`);
+              }}
+              className="rounded-lg p-2 text-neutral-400 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+              title="View case details"
+            >
+              <Eye className="h-5 w-5" />
+            </button>
+
+            <button
+              disabled={!canArchiveThisStatus}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canArchiveThisStatus) setArchiveEntry(item);
+              }}
+              title={
+                canArchiveThisStatus
+                  ? "Archive case"
+                  : "Archiving is not allowed for this status"
+              }
+              className={`p-2 rounded-lg transition-colors ${
+                !canArchiveThisStatus
+                  ? "text-gray-300 bg-gray-50/50 cursor-not-allowed"
+                  : "text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+              }`}
+            >
+              <Archive className="h-5 w-5" />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
   // ── Filter configs ───────────────────────────────────────────────────────────
   const filterConfigs = [
     {
-      label: "Violence Type",
-      key: "violenceType",
-      options: violenceOptions.map((o) => ({ value: o.type, label: o.type })),
-      value: violenceType,
-    },
-    {
       label: "Status",
       key: "status",
       options: [
         { value: "PENDING",                  label: "Pending" },
-        { value: "ONGOING",                  label: "Active" },
         { value: "UNDER_INTERVENTION",       label: "Under Intervention" },
-        { value: "RESOLVED",                 label: "Resolved" },
+        { value: "SETTLED",                  label: "Resolved / Settled" },
         { value: "CERTIFIED_TO_FILE_ACTION", label: "Certified To File Action" },
         { value: "REFERRED",                 label: "Referred" },
         { value: "WITHDRAWN",                label: "Withdrawn" },
         { value: "DISMISSED",                label: "Dismissed" },
+        { value: "CLOSED",                   label: "Closed" },
       ],
       value: status,
     },
@@ -298,53 +317,75 @@ export default function BcpcCaseManagement() {
     endLabel: "To",
     startValue: dateFrom,
     endValue: dateTo,
-    onStartChange: (value: string) => { setDateFrom(value); setCurrentPage(0); },
-    onEndChange:   (value: string) => { setDateTo(value);   setCurrentPage(0); },
+    onStartChange: (v: string) => { setDateFrom(v); setCurrentPage(0); },
+    onEndChange:   (v: string) => { setDateTo(v);   setCurrentPage(0); },
   };
 
-  const activeFilterCount = [violenceType, status, dateFrom, dateTo].filter(Boolean).length;
+  const activeFilterCount = [status, dateFrom, dateTo].filter(Boolean).length;
 
-  const handleSearchChange = (value: string) => { setSearch(value); setCurrentPage(0); };
-  const handleFilterChange = (key: string, value: string) => {
-    if (key === "violenceType") setViolenceType(value);
-    else if (key === "status")  setStatus(value);
+  const handleSearchChange = (v: string) => { setSearch(v);  setCurrentPage(0); };
+  const handleFilterChange = (key: string, v: string) => {
+    if (key === "status") setStatus(v);
     setCurrentPage(0);
   };
   const handleClearAll = () => {
-    setSearch(""); setStatus(""); setViolenceType("");
-    setDateFrom(""); setDateTo(""); setCurrentPage(0);
+    setSearch(""); setStatus(""); setDateFrom(""); setDateTo(""); setCurrentPage(0);
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-7xl px-4 py-8">
+
+        {/* Modals */}
+        {archiveEntry && (
+          <ArchiveReasonModal
+            isOpen={!!archiveEntry}
+            onClose={() => setArchiveEntry(null)}
+            title="Archive BCPC Case"
+            subjectName={archiveEntry.caseNumber}
+            subjectLabel="case"
+            submitLabel="Archive"
+            onSubmit={handleArchiveSubmit}
+          />
+        )}
+
+        <ActionModal
+          isOpen={archiveSuccessOpen}
+          onClose={() => setArchiveSuccessOpen(false)}
+          title="Case archived"
+          type="success"
+        >
+          The BCPC case has been archived successfully.
+        </ActionModal>
+
+        {/* KPI Cards */}
         <div className="mb-8">
           <KPIGrid columns={4}>
             <KPICard
               title="Pending Cases"
-              value={stats.totalPending.toLocaleString()}
+              value={loadingStats ? "—" : stats.totalPending.toLocaleString()}
               icon={KPIIcons["clock"]}
               color="amber"
               subtitle="Awaiting action or review"
             />
             <KPICard
               title="Closed Cases"
-              value={resolvedCases.toLocaleString()}
+              value={loadingStats ? "—" : stats.totalClosed.toLocaleString()}
               icon={KPIIcons["check"]}
               color="emerald"
-              subtitle="Cases marked resolved"
+              subtitle="Settled, dismissed or closed"
             />
             <KPICard
               title="Expiring Soon"
-              value={stats.totalExpiringSoon.toLocaleString()}
+              value={loadingStats ? "—" : stats.totalExpiringSoon.toLocaleString()}
               icon={KPIIcons["month"]}
               color="rose"
-              subtitle="Cases within 3 days"
+              subtitle="Pending cases near 15-day limit"
             />
             <KPICard
               title="Total Cases"
-              value={stats.totalCases.toLocaleString()}
+              value={loadingStats ? "—" : stats.totalCases.toLocaleString()}
               icon={KPIIcons["document"]}
               color="blue"
               subtitle="All BCPC records"
@@ -352,12 +393,14 @@ export default function BcpcCaseManagement() {
           </KPIGrid>
         </div>
 
+        {/* Error banner */}
         {tableError && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
             {tableError}
           </div>
         )}
 
+        {/* Filters */}
         <TableFilter
           searchPlaceholder="Search by Case Number or Victim Name..."
           searchValue={search}
@@ -373,24 +416,26 @@ export default function BcpcCaseManagement() {
           onClearClick={handleClearAll}
         />
 
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <Table
-            columns={columns}
-            data={cases}
-            keyExtractor={(item) => item.id}
-            emptyMessage="No cases found."
-            loading={loadingTable}
-            hoverable={true}
-            striped={false}
-            pagination={{
-              currentPage: currentPage + 1,
-              totalPages:  totalPages || 1,
-              totalItems:  totalElements,
-              itemsPerPage: SIZE,
-              onPageChange: (page) => setCurrentPage(page - 1),
-            }}
-          />
-        </div>
+        {/* Table */}
+        <Table
+          columns={columns}
+          data={cases}
+          keyExtractor={(item) => String(item.id)}
+          emptyMessage="No BCPC cases found."
+          loading={loadingTable}
+          hoverable={true}
+          striped={true}
+          variant="resident"
+          minRows={SIZE}
+          onRowClick={(item) => navigate(`/bcpc/casedetailview?id=${item.id}`)}
+          pagination={{
+            currentPage: Math.min(currentPage + 1, Math.max(1, totalPages || 0)),
+            totalPages: Math.max(1, totalPages || 0),
+            totalItems: totalElements,
+            itemsPerPage: SIZE,
+            onPageChange: (p) => setCurrentPage(p - 1),
+          }}
+        />
       </div>
     </div>
   );

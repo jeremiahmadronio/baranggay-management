@@ -10,7 +10,7 @@ interface NarrativeSectionProps {
   clearErr: () => void;
 }
 
-const ACCEPTED = ".pdf,.doc,.docx,.txt";
+const ACCEPTED = ".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png";
 const MAX_MB = 10;
 const MAX_BYTES = MAX_MB * 1024 * 1024;
 
@@ -59,7 +59,7 @@ export const NarrativeSection = ({
       }
     >
       <p className="text-xs text-slate-500 mb-4">
-        Upload a document containing the detailed narrative/statement of facts. Accepted formats: PDF, DOC, DOCX, TXT (max {MAX_MB} MB).
+        Upload a document or image containing the narrative/statement of facts. Accepted formats: PDF, DOC, DOCX, TXT, JPG, PNG (max {MAX_MB} MB).
       </p>
 
       {/* Drop zone */}
@@ -80,7 +80,7 @@ export const NarrativeSection = ({
               Drag & drop your narrative file here
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              or click to browse — {ACCEPTED.split(",").join(", ")}
+              or click to browse — .pdf, .doc, .docx, .txt, .jpg, .png
             </p>
           </div>
           <input

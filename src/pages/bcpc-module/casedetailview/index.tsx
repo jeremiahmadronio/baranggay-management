@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ChevronLeftIcon } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { OverviewTab } from './OverviewTab';
 import { MediationTab } from './MediationTab';
+import { InterventionTab } from './InterventionTab';
 import { NotesTab } from './NotesTab';
 import { ReferralsTab } from './ReferralsTab';
 import { BpoTab } from './BpoTab';
@@ -11,145 +12,19 @@ import { TimelineTab } from './TimelineTab';
 import { SkeletonBlock, formatDate } from './shared';
 import type {
   ActiveTab,
-  BcpcCaseDetailDTO,
-  BcpcCaseNote,
-  BcpcTimelineEvent,
 } from './shared';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+import {
+  getCaseDetail,
+  updateCaseStatus,
+  BcpcCaseDetailDTO,
+} from '../../../service/bcpc-api/CaseDetail';
 
-const MOCK_CASES: BcpcCaseDetailDTO[] = [
-  {
-    id: 1,
-    caseNumber: 'BCPC-2026-0001',
-    childFirstName: 'Maria',
-    childMiddleName: 'Santos',
-    childLastName: 'Dela Cruz',
-    childAge: 10,
-    childGender: 'Female',
-    childAddress: '123 Sampaguita St., Brgy. Poblacion, Valenzuela City',
-    childContact: '09171234567',
-    respondentFirstName: 'Jose',
-    respondentLastName: 'Dela Cruz',
-    respondentRelationship: 'Parent',
-    respondentAddress: '123 Sampaguita St., Brgy. Poblacion, Valenzuela City',
-    respondentContact: '09181234567',
-    caseStatus: 'PENDING',
-    caseType: 'Physical Abuse',
-    violenceTypes: 'Physical, Psychological',
-    dateFiled: '2026-01-05',
-    incidentDate: '2026-01-03',
-    incidentTime: '14:30',
-    incidentLocation: 'Residence of the respondent',
-    narrative:
-      'The child reported recurring physical abuse by her father. Multiple bruises were noted during initial assessment by the BCPC desk officer.',
-    assignedOfficer: 'Off. Reyes',
-    natureOfComplaint: 'Child Abuse',
-  },
-  {
-    id: 2,
-    caseNumber: 'BCPC-2026-0002',
-    childFirstName: 'Juan',
-    childLastName: 'Santos',
-    childAge: 8,
-    childGender: 'Male',
-    childAddress: '456 Rosal St., Brgy. Lingunan, Valenzuela City',
-    respondentFirstName: 'Ana',
-    respondentLastName: 'Santos',
-    respondentRelationship: 'Parent',
-    caseStatus: 'ONGOING',
-    caseType: 'Neglect',
-    violenceTypes: 'Neglect',
-    dateFiled: '2026-01-10',
-    incidentDate: '2026-01-08',
-    incidentLocation: 'Home',
-    narrative: 'Child found unsupervised for extended periods without adequate food and care.',
-    assignedOfficer: 'Off. Mendoza',
-    natureOfComplaint: 'Child Neglect',
-  },
-  {
-    id: 3, caseNumber: 'BCPC-2026-0003', childFirstName: 'Luz', childLastName: 'Garcia', childAge: 12, childGender: 'Female', caseStatus: 'RESOLVED', dateFiled: '2026-01-14', assignedOfficer: 'Off. Reyes', natureOfComplaint: 'Child Labor',
-  },
-  {
-    id: 4, caseNumber: 'BCPC-2026-0004', childFirstName: 'Rosa', childLastName: 'Villanueva', childAge: 9, childGender: 'Female', caseStatus: 'UNDER_INTERVENTION', dateFiled: '2026-01-18', assignedOfficer: 'Off. Cruz', natureOfComplaint: 'Physical Abuse',
-  },
-  {
-    id: 5, caseNumber: 'BCPC-2026-0005', childFirstName: 'Elena', childLastName: 'Bautista', childAge: 11, childGender: 'Female', caseStatus: 'REFERRED', dateFiled: '2026-01-22', assignedOfficer: 'Off. Mendoza', natureOfComplaint: 'Psychological Abuse',
-  },
-  {
-    id: 6, caseNumber: 'BCPC-2026-0006', childFirstName: 'Carmen', childLastName: 'Lopez', childAge: 7, childGender: 'Female', caseStatus: 'CERTIFIED_TO_FILE_ACTION', dateFiled: '2026-02-01', assignedOfficer: 'Off. Cruz', natureOfComplaint: 'Sexual Abuse',
-  },
-  {
-    id: 7, caseNumber: 'BCPC-2026-0007', childFirstName: 'Imelda', childLastName: 'Torres', childAge: 13, childGender: 'Female', caseStatus: 'DISMISSED', dateFiled: '2026-02-05', assignedOfficer: 'Off. Reyes', natureOfComplaint: 'Economic Abuse',
-  },
-  {
-    id: 8, caseNumber: 'BCPC-2026-0008', childFirstName: 'Norma', childLastName: 'Aquino', childAge: 6, childGender: 'Female', caseStatus: 'WITHDRAWN', dateFiled: '2026-02-09', assignedOfficer: 'Off. Mendoza', natureOfComplaint: 'Child Neglect',
-  },
-  {
-    id: 9, caseNumber: 'BCPC-2026-0009', childFirstName: 'Gloria', childLastName: 'Ramos', childAge: 14, childGender: 'Female', caseStatus: 'PENDING', dateFiled: '2026-02-14', assignedOfficer: 'Off. Cruz', natureOfComplaint: 'Psychological Abuse',
-  },
-  {
-    id: 10, caseNumber: 'BCPC-2026-0010', childFirstName: 'Perla', childLastName: 'Castillo', childAge: 5, childGender: 'Female', caseStatus: 'ONGOING', dateFiled: '2026-02-18', assignedOfficer: 'Off. Reyes', natureOfComplaint: 'Sexual Abuse',
-  },
-  {
-    id: 11, caseNumber: 'BCPC-2026-0011', childFirstName: 'Josefa', childLastName: 'Navarro', childAge: 10, childGender: 'Female', caseStatus: 'RESOLVED', dateFiled: '2026-02-22', assignedOfficer: 'Off. Cruz', natureOfComplaint: 'Physical Abuse',
-  },
-  {
-    id: 12, caseNumber: 'BCPC-2026-0012', childFirstName: 'Teresita', childLastName: 'Soriano', childAge: 8, childGender: 'Female', caseStatus: 'PENDING', dateFiled: '2026-03-01', assignedOfficer: 'Off. Mendoza', natureOfComplaint: 'Child Labor',
-  },
-  {
-    id: 13, caseNumber: 'BCPC-2026-0013', childFirstName: 'Maribel', childLastName: 'Abad', childAge: 11, childGender: 'Female', caseStatus: 'UNDER_INTERVENTION', dateFiled: '2026-03-05', assignedOfficer: 'Off. Reyes', natureOfComplaint: 'Psychological Abuse',
-  },
-  {
-    id: 14, caseNumber: 'BCPC-2026-0014', childFirstName: 'Corazon', childLastName: 'Manalang', childAge: 9, childGender: 'Female', caseStatus: 'REFERRED', dateFiled: '2026-03-09', assignedOfficer: 'Off. Cruz', natureOfComplaint: 'Sexual Abuse',
-  },
-  {
-    id: 15, caseNumber: 'BCPC-2026-0015', childFirstName: 'Florencia', childLastName: 'Padilla', childAge: 7, childGender: 'Female', caseStatus: 'ONGOING', dateFiled: '2026-03-14', assignedOfficer: 'Off. Mendoza', natureOfComplaint: 'Physical Abuse',
-  },
-];
-
-const MOCK_NOTES: BcpcCaseNote[] = [
-  {
-    id: 1,
-    note: 'Initial assessment conducted. Child is currently residing with maternal grandmother.',
-    createdBy: 'MSW Joana Reyes',
-    createdAt: '2026-01-06T09:00:00',
-  },
-  {
-    id: 2,
-    note: 'Follow-up home visit completed. No signs of further abuse observed.',
-    createdBy: 'MSW Joana Reyes',
-    createdAt: '2026-01-12T14:30:00',
-  },
-];
-
-const MOCK_TIMELINE: BcpcTimelineEvent[] = [
-  {
-    id: 1,
-    eventType: 'CASE_FILED',
-    title: 'Case Filed',
-    description: 'BCPC case was filed and assigned to Off. Reyes.',
-    performedBy: 'Off. Reyes',
-    eventDate: '2026-01-05T08:00:00',
-  },
-  {
-    id: 2,
-    eventType: 'ASSESSMENT',
-    title: 'Initial Assessment Conducted',
-    description:
-      'Social worker conducted initial assessment of the child. Child is currently in a safe environment.',
-    performedBy: 'MSW Joana Reyes',
-    eventDate: '2026-01-06T09:30:00',
-  },
-  {
-    id: 3,
-    eventType: 'HOME_VISIT',
-    title: 'Home Visit',
-    description: 'Follow-up home visit completed. Situation is stable.',
-    performedBy: 'MSW Joana Reyes',
-    eventDate: '2026-01-12T14:30:00',
-  },
-];
+import {
+  getCaseNotes,
+  CaseNoteViewDTO,
+  addCaseNote,
+} from '../../../service/blotter-api/DocketView';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -157,7 +32,9 @@ const STATUS_LABEL: Record<string, string> = {
   PENDING: 'Pending',
   ONGOING: 'Ongoing',
   UNDER_INTERVENTION: 'Under Intervention',
+  UNDER_MEDIATION: 'Under Intervention', // Map it in case Blotter enum is used
   RESOLVED: 'Resolved',
+  SETTLED: 'Resolved',
   REFERRED: 'Referred',
   CERTIFIED_TO_FILE_ACTION: 'Certified to File Action',
   WITHDRAWN: 'Withdrawn',
@@ -168,7 +45,9 @@ const STATUS_PILL: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
   ONGOING: 'bg-blue-50 text-blue-700 border border-blue-200',
   UNDER_INTERVENTION: 'bg-sky-50 text-sky-700 border border-sky-200',
+  UNDER_MEDIATION: 'bg-sky-50 text-sky-700 border border-sky-200',
   RESOLVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  SETTLED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   REFERRED: 'bg-violet-50 text-violet-700 border border-violet-200',
   CERTIFIED_TO_FILE_ACTION: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
   WITHDRAWN: 'bg-gray-100 text-gray-600 border border-gray-200',
@@ -179,18 +58,15 @@ export default function BcpcCaseDetailsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawId = searchParams.get('id') || '1';
-  const id: number | string = rawId.startsWith('local_') ? rawId : Number(rawId);
+  const id: number = Number(rawId);
 
   const [caseData, setCaseData] = useState<BcpcCaseDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
 
-  const [notes, setNotes] = useState<BcpcCaseNote[]>([]);
+  const [notes, setNotes] = useState<CaseNoteViewDTO[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
-
-  const [timeline, setTimeline] = useState<BcpcTimelineEvent[]>([]);
-  const [timelineLoading, setTimelineLoading] = useState(false);
 
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteText, setNoteText] = useState('');
@@ -203,55 +79,42 @@ export default function BcpcCaseDetailsPage() {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   // ── Fetch case ─────────────────────────────────────────────────────────────
-  const fetchCase = () => {
+  const fetchCase = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const found = MOCK_CASES.find((c) => c.id === id) ?? null;
-      if (!found && !rawId.startsWith('local_')) {
-        setError('Case not found.');
-      } else if (rawId.startsWith('local_')) {
-        // Fallback for offline mock records
-        setError('Offline BCPC cases are not fully implemented yet.');
-      }
-      setCaseData(found);
-    } catch {
-      setError('Failed to load case details.');
+      if (isNaN(id)) throw new Error('Invalid case ID');
+      const data = await getCaseDetail(id);
+      setCaseData(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load case details.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const loadNotes = () => {
+  const loadNotes = useCallback(async () => {
+    if (!caseData?.caseNumber) return;
     setNotesLoading(true);
-    setTimeout(() => {
-      setNotes(MOCK_NOTES);
+    try {
+      const data = await getCaseNotes(caseData.caseNumber);
+      setNotes(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setNotesLoading(false);
-    }, 300);
-  };
+    }
+  }, [caseData?.caseNumber]);
 
-  const loadTimeline = () => {
-    setTimelineLoading(true);
-    setTimeout(() => {
-      setTimeline(MOCK_TIMELINE);
-      setTimelineLoading(false);
-    }, 300);
-  };
+
 
   useEffect(() => {
     fetchCase();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [fetchCase]);
 
   useEffect(() => {
     if (activeTab === 'notes') loadNotes();
-     
-  }, [activeTab, id]);
-
-  useEffect(() => {
-    if (activeTab === 'timeline' && timeline.length === 0) loadTimeline();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, id]);
+  }, [activeTab, loadNotes]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const childFullName = caseData
@@ -271,48 +134,54 @@ export default function BcpcCaseDetailsPage() {
     : '';
 
   const caseStatus = (caseData?.caseStatus || '').toUpperCase();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isOfflineRecord = !!(caseData as any)?._offline;
   const isReadOnly =
     caseStatus === 'WITHDRAWN' ||
     caseStatus === 'RESOLVED' ||
+    caseStatus === 'SETTLED' ||
     caseStatus === 'DISMISSED' ||
     caseStatus === 'CERTIFIED_TO_FILE_ACTION' ||
-    isOfflineRecord;
+    caseStatus === 'ISSUED_REFERRAL' ||
+    caseStatus === 'REFERRED';
 
   // ── Note handler ───────────────────────────────────────────────────────────
-  const handleAddNote = () => {
-    if (!noteText.trim()) return;
+  const handleAddNote = async () => {
+    if (!noteText.trim() || !caseData) return;
     setNoteLoading(true);
     setNoteError('');
-    setTimeout(() => {
-      const newNote: BcpcCaseNote = {
-        id: Date.now(),
+    try {
+      await addCaseNote({
+        blotterNumber: caseData.caseNumber,
         note: noteText.trim(),
-        createdBy: 'Current User',
-        createdAt: new Date().toISOString(),
-      };
-      setNotes((prev) => [newNote, ...prev]);
+        attachments: [], // if supported
+      });
       setNoteText('');
       setShowNoteInput(false);
+      loadNotes();
+    } catch (err: any) {
+      setNoteError(err.message || 'Failed to add note');
+    } finally {
       setNoteLoading(false);
-    }, 500);
+    }
   };
 
   // ── Withdraw handler ────────────────────────────────────────────────────────
-  const handleWithdrawCase = () => {
-    if (!withdrawReason.trim()) {
+  const handleWithdrawCase = async () => {
+    if (!withdrawReason.trim() || !caseData) {
       setWithdrawError('Reason is required.');
       return;
     }
     setWithdrawLoading(true);
     setWithdrawError('');
-    setTimeout(() => {
-      setCaseData((prev) => prev ? { ...prev, caseStatus: 'WITHDRAWN' } : prev);
+    try {
+      await updateCaseStatus(caseData.id, 'WITHDRAWN', withdrawReason);
       setShowWithdrawInput(false);
       setWithdrawReason('');
+      fetchCase(); // Refresh case to get new status
+    } catch (err: any) {
+      setWithdrawError(err.message || 'Failed to withdraw case.');
+    } finally {
       setWithdrawLoading(false);
-    }, 600);
+    }
   };
 
   // ── Tab definitions ────────────────────────────────────────────────────────
@@ -463,16 +332,18 @@ export default function BcpcCaseDetailsPage() {
           <MediationTab
             caseId={id}
             isReadOnly={isReadOnly}
-            caseNumber={caseData.caseNumber || ''}
+            caseNumber={caseData.caseNumber}
             childName={childFullName}
             respondentName={respondentFullName}
-            natureOfComplaint={caseData.natureOfComplaint || ''}
+            natureOfComplaint={caseData.natureOfComplaint}
           />
         )}
 
+
+
         {activeTab === 'notes' && (
           <NotesTab
-            notes={notes}
+            notes={notes as any}
             isReadOnly={isReadOnly}
             notesLoading={notesLoading}
             showNoteInput={showNoteInput}
@@ -493,7 +364,13 @@ export default function BcpcCaseDetailsPage() {
         )}
 
         {activeTab === 'referrals' && (
-          <ReferralsTab caseId={id} isReadOnly={isReadOnly} />
+          <ReferralsTab 
+            caseId={id} 
+            isReadOnly={isReadOnly}
+            caseNumber={caseData.caseNumber}
+            childName={childFullName}
+            onRefresh={fetchCase}
+          />
         )}
 
         {activeTab === 'bpo' && (
@@ -506,11 +383,7 @@ export default function BcpcCaseDetailsPage() {
         )}
 
         {activeTab === 'timeline' && (
-          <TimelineTab
-            timeline={timeline}
-            timelineLoading={timelineLoading}
-            formatDate={formatDate}
-          />
+          <TimelineTab caseNumber={caseData.caseNumber} />
         )}
       </div>
     </div>
