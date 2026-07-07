@@ -124,7 +124,6 @@ interface UserProfileViewProps {
   detailsLoading: boolean;
   onBack: () => void;
   onEdit: (u: UserTable) => void;
-  onUpdateStatus: (u: UserTable) => void;
   onResetPassword: (u: UserTable) => void;
   onArchive: (u: UserTable) => void;
   onRestore: (u: UserTable) => void;
@@ -136,7 +135,6 @@ function UserProfileView({
   detailsLoading,
   onBack,
   onEdit,
-  onUpdateStatus,
   onResetPassword,
 }: UserProfileViewProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "access">("overview");
@@ -144,7 +142,6 @@ function UserProfileView({
   const statusLabel = normalizeUserStatus(user);
   const rawStatus = String(user.status || "").toUpperCase();
   const isArchived = rawStatus === "ARCHIVED";
-  const canUpdateStatus = !isArchived;
 
   const fullName =
     userDetails?.fullName || `${user.firstName} ${user.lastName}`;
@@ -194,15 +191,7 @@ function UserProfileView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          {canUpdateStatus && (
-            <button
-              onClick={() => onUpdateStatus(user)}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto"
-            >
-              <Lock className="w-4 h-4" />
-              Update Status
-            </button>
-          )}
+
 
           {!isArchived && (
             <button
@@ -637,7 +626,6 @@ export default function UserManagement() {
             fetchTable();
           }}
           onEdit={handleEdit}
-          onUpdateStatus={handleUpdateStatus}
           onResetPassword={handleResetPassword}
           onArchive={handleDelete}
           onRestore={handleRestore}

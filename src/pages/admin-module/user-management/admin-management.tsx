@@ -297,7 +297,6 @@ export default function AdminUserManagement() {
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [openAccountTypeModal, setOpenAccountTypeModal] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
   const [openUserCreate, setOpenUserCreate] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminTable | null>(null);
@@ -382,10 +381,6 @@ export default function AdminUserManagement() {
     fetchTable();
   }, [fetchTable]);
 
-  const handleFilterApply = () => {
-    setCurrentPage(1);
-    fetchTable();
-  };
   const handleFilterClear = () => {
     setSearch("");
     setStatusFilter("");
@@ -393,7 +388,7 @@ export default function AdminUserManagement() {
   };
 
   const handleView = (a: AdminTable) => {
-    navigate(`/rootadmin/admin-management/view/${a.id}`, {
+    navigate(`/admin/user-management/view/${a.id}`, {
       state: { admin: a },
     });
   };
@@ -447,7 +442,7 @@ export default function AdminUserManagement() {
     <div className="p-6 min-h-screen">
       <div className="flex justify-end items-center mb-6">
         <button
-          onClick={() => setOpenAccountTypeModal(true)}
+          onClick={() => setOpenUserCreate(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg shadow transition-all active:scale-95"
         >
           + Create Account
@@ -508,7 +503,7 @@ export default function AdminUserManagement() {
       <TableFilter
         searchPlaceholder="Search by name, username or email..."
         searchValue={search}
-        onSearchChange={setSearch}
+        onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}
         filters={[
           {
             label: "Status",
@@ -523,9 +518,12 @@ export default function AdminUserManagement() {
           },
         ]}
         onFilterChange={(key, value) => {
-          if (key === "status") setStatusFilter(value);
+          if (key === "status") {
+            setStatusFilter(value);
+            setCurrentPage(1);
+          }
         }}
-        onFilterClick={handleFilterApply}
+        showFilterButton={false}
         onClearClick={handleFilterClear}
       />
 
@@ -546,12 +544,7 @@ export default function AdminUserManagement() {
         }}
       />
 
-      <CreateAccountTypeModal
-        isOpen={openAccountTypeModal}
-        onClose={() => setOpenAccountTypeModal(false)}
-        onSelectAdmin={() => setOpenCreate(true)}
-        onSelectUser={() => setOpenUserCreate(true)}
-      />
+
 
       {openCreate && (
         <CreateAdminModal
@@ -600,36 +593,31 @@ export default function AdminUserManagement() {
       )}
 
       {openLock && selectedAdmin && (
-        <ArchiveReasonModal
+        <StatusUpdateModal
           isOpen={openLock}
-          onClose={() => {
-            setOpenLock(false);
-            setSelectedAdmin(null);
-            fetchTable();
-          }}
-          onSubmit={async (reason) => {
-            // Lock or unlock depending on current state
+          mode={selectedAdmin.isLocked ? "reason-only" : "reason-and-lock-until"}
+          title={selectedAdmin.isLocked ? "Unlock Admin Account" : "Lock Admin Account"}
+          subjectName={selectedAdmin.firstName + " " + selectedAdmin.lastName}
+          subjectLabel="admin"
+          submitLabel={selectedAdmin.isLocked ? "Unlock" : "Lock"}
+          onSubmit={async ({ reason, lockUntil }) => {
             const willLock = !selectedAdmin.isLocked;
             await import("../../../service/admin-root-api/admin-management").then(
               ({ toggleUserLock }) =>
                 toggleUserLock(selectedAdmin.id, willLock, {
                   reason,
-                  lockUntil: null,
+                  lockUntil: lockUntil || null,
                 }),
             );
             setOpenLock(false);
             setSelectedAdmin(null);
             fetchTable();
           }}
-          title={
-            selectedAdmin.isLocked
-              ? "Unlock Admin Account"
-              : "Lock Admin Account"
-          }
-          subjectName={selectedAdmin.firstName + " " + selectedAdmin.lastName}
-          subjectLabel="admin"
-          submitLabel={selectedAdmin.isLocked ? "Unlock" : "Lock"}
-          placeholder={`Enter reason for ${selectedAdmin.isLocked ? "unlocking" : "locking"} this account...`}
+          onClose={() => {
+            setOpenLock(false);
+            setSelectedAdmin(null);
+            fetchTable();
+          }}
         />
       )}
 

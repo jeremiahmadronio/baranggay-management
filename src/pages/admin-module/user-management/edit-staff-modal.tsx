@@ -32,7 +32,6 @@ interface FormData {
   roleId: number | null;
   departmentId: number | null;
   permissionIds: number[];
-  status: "ACTIVE" | "INACTIVE" | "ARCHIVED";
 }
 
 type Errors = Partial<
@@ -88,12 +87,6 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
     roleId: null,
     departmentId: null,
     permissionIds: [],
-    status:
-      user.status?.toUpperCase() === "ARCHIVED"
-        ? "ARCHIVED"
-        : user.status?.toUpperCase() === "INACTIVE"
-          ? "INACTIVE"
-          : "ACTIVE",
   });
   const [errors, setErrors] = useState<Errors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -111,12 +104,6 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
           ...prev,
           username: res.username || user.username,
           systemEmail: res.systemEmail || "",
-          status:
-            res.status?.toUpperCase() === "ARCHIVED"
-              ? "ARCHIVED"
-              : res.status?.toUpperCase() === "INACTIVE"
-                ? "INACTIVE"
-                : "ACTIVE",
         }));
       } catch {
         setSubmitError("Unable to load user details.");
@@ -446,7 +433,6 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
         roleId: form.roleId!,
         departmentIds: [form.departmentId!],
         permissionIds: form.permissionIds,
-        status: form.status,
       };
 
       await userManagementApi.updateUser(user.id, payload);
@@ -626,27 +612,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Account Status
-                </label>
-                <select
-                  value={form.status}
-                  onChange={(e) =>
-                    setField(
-                      "status",
-                      (e.target.value as "ACTIVE" | "INACTIVE" | "ARCHIVED") ||
-                        "ACTIVE",
-                    )
-                  }
-                  className={fieldClass(false)}
-                  disabled={loading}
-                >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="INACTIVE">INACTIVE</option>
-                  <option value="ARCHIVED">ARCHIVED</option>
-                </select>
-              </div>
+
             </div>
 
             <div className="space-y-4">
