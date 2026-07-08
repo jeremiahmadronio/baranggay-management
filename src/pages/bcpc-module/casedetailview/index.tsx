@@ -17,14 +17,14 @@ import type {
 import {
   getCaseDetail,
   updateCaseStatus,
-  BcpcCaseDetailDTO,
 } from '../../../service/bcpc-api/CaseDetail';
+import type { BcpcCaseDetailDTO } from '../../../service/bcpc-api/CaseDetail';
 
 import {
   getCaseNotes,
-  CaseNoteViewDTO,
   addCaseNote,
 } from '../../../service/blotter-api/DocketView';
+import type { CaseNoteViewDTO } from '../../../service/blotter-api/DocketView';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

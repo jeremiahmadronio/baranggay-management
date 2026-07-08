@@ -9,9 +9,10 @@ import { ScheduleSessionModal } from './ScheduleSessionModal';
 import { RecordSessionMinutesModal } from './RecordSessionMinutesModal';
 import { ActionModal } from '../../../hooks/SuccessModal';
 import { 
-  getHearingView, HearingViewDTO, scheduleHearing, recordHearingMinutes, 
-  recordHearingFollowUp, updateHearingStatus, getHearingFullDetails, HearingFullDetailsDTO
+  getHearingView, scheduleHearing, recordHearingMinutes, 
+  recordHearingFollowUp, updateHearingStatus, getHearingFullDetails
 } from '../../../service/blotter-api/DocketView';
+import type { HearingViewDTO, HearingFullDetailsDTO } from '../../../service/blotter-api/DocketView';
 
 // ─── Types (exported for RecordSessionMinutesModal) ───────────────────────────
 

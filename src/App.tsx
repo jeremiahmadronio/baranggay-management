@@ -181,6 +181,7 @@ export function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="user-management" element={<AdminUserManagement />} />
+        <Route path="user-management/view/:adminId" element={<AdminViewPage />} />
         <Route path="archive" element={<ArchivePage />} />
         <Route path="inputform" element={<RecordInputDemo />} />
         <Route path="residents" element={<ResidentsPage />} />

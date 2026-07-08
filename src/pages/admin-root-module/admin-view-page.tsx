@@ -128,7 +128,6 @@ const STATUS_OPTIONS = [
   { value: Statuses.ACTIVE, label: "Active (fully operational)" },
   { value: Statuses.INACTIVE, label: "Inactive (user not available)" },
   { value: Statuses.PENDING, label: "Pending (for verification)" },
-  { value: Statuses.LOCKED, label: "Locked (temporary restriction)" },
 ] as const;
 
 export default function AdminViewPage() {
@@ -139,37 +138,22 @@ export default function AdminViewPage() {
   const initialAdmin = (location.state as { admin?: AdminTable } | null)?.admin;
   const [admin, setAdmin] = useState<AdminTable | null>(initialAdmin ?? null);
   const [activeTab, setActiveTab] = useState<"overview" | "access">("overview");
-  const [openStatusModal, setOpenStatusModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const [selectedStatus, setSelectedStatus] = useState<string>(
-    initialAdmin?.isLocked
-      ? "LOCKED"
-      : (initialAdmin?.status?.toUpperCase() ?? "ACTIVE"),
-  );
-  const [reason, setReason] = useState("");
-  const [lockUntil, setLockUntil] = useState("");
+  const backPath = location.pathname.startsWith("/admin/")
+    ? "/admin/user-management"
+    : "/rootadmin/admin-management";
+
   const [formError, setFormError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!openStatusModal || !admin) return;
-    setSelectedStatus(
-      admin.isLocked
-        ? Statuses.LOCKED
-        : (admin.status?.toUpperCase() ?? Statuses.ACTIVE),
-    );
-    setReason("");
-    setLockUntil("");
-    setFormError("");
-  }, [openStatusModal, admin]);
+
 
   if (!admin) {
     return (
       <div className="p-6">
         <button
-          onClick={() => navigate("/rootadmin/admin-management")}
+          onClick={() => navigate(backPath)}
           className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Admin Management
@@ -208,80 +192,12 @@ export default function AdminViewPage() {
   const permissions = extractPermissions(admin);
   const primaryEmail = admin.systemEmail ?? admin.email ?? "No email";
 
-  const handleUpdateStatus = async () => {
-    setFormError("");
-    setSuccessMsg("");
 
-    if (!selectedStatus) {
-      setFormError("Please select a status.");
-      return;
-    }
-    if (!reason.trim()) {
-      setFormError("Reason is required for accountability.");
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-
-      if (selectedStatus === "LOCKED") {
-        await toggleUserLock(admin.id, true, {
-          reason: reason.trim(),
-          lockUntil: lockUntil.trim() || null,
-        });
-
-        setAdmin((prev) =>
-          prev
-            ? {
-                ...prev,
-                isLocked: true,
-                lockUntil: lockUntil.trim() || prev.lockUntil,
-              }
-            : prev,
-        );
-      } else {
-        if (admin.isLocked) {
-          await toggleUserLock(admin.id, false, {
-            reason: reason.trim(),
-            lockUntil: null,
-          });
-        }
-
-        await updateUserStatus(admin.id, selectedStatus as Status, {
-          reason: reason.trim(),
-          lockUntil: null,
-        });
-
-        setAdmin((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: selectedStatus,
-                isLocked: false,
-                lockUntil: null,
-              }
-            : prev,
-        );
-      }
-
-      setSuccessMsg("Status updated successfully.");
-      setReason("");
-      setLockUntil("");
-      setOpenStatusModal(false);
-      setShowSuccessModal(true);
-    } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Failed to update status.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <div className="p-6 space-y-5">
       <button
-        onClick={() => navigate("/rootadmin/admin-management")}
+        onClick={() => navigate(backPath)}
         className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Admin Management
@@ -317,18 +233,6 @@ export default function AdminViewPage() {
             </span>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setSuccessMsg("");
-            setOpenStatusModal(true);
-          }}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors w-full sm:w-auto"
-        >
-          <PencilIcon className="w-4 h-4" />
-          Update Status
-        </button>
       </div>
 
       <div className="rounded-xl overflow-hidden border border-gray-200 bg-white">
@@ -454,89 +358,7 @@ export default function AdminViewPage() {
         </div>
       </div>
 
-      <FormModalShell
-        isOpen={openStatusModal}
-        onClose={() => setOpenStatusModal(false)}
-        title="Update Admin Status"
-        maxWidthClass="max-w-xl"
-        footer={
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setOpenStatusModal(false)}
-              disabled={submitting}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleUpdateStatus}
-              disabled={submitting}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {submitting ? "Updating..." : "Update Status"}
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Updating{" "}
-            <span className="font-semibold text-gray-900">{fullName}</span>{" "}
-            <span className="text-gray-500">(admin)</span>
-          </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <FormFieldLabel label="Select New Status" required />
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedStatus === Statuses.LOCKED && (
-              <div>
-                <FormFieldLabel label="Lock Until (optional)" />
-                <input
-                  type="datetime-local"
-                  value={lockUntil}
-                  onChange={(e) => setLockUntil(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            )}
-          </div>
-
-          <div>
-            <FormFieldLabel label="Reason" required />
-            <textarea
-              value={reason}
-              onChange={(e) => {
-                if (e.target.value.length <= REASON_LIMIT)
-                  setReason(e.target.value);
-                if (formError) setFormError("");
-              }}
-              rows={4}
-              placeholder="Provide a reason for this status change..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-            <p className="text-xs text-gray-400 mt-1 text-right">
-              {reason.length} / {REASON_LIMIT}
-            </p>
-          </div>
-
-          <FormFieldError msg={formError} />
-        </div>
-      </FormModalShell>
 
       <ActionModal
         isOpen={showSuccessModal}

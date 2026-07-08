@@ -13,7 +13,8 @@ import {
   XCircleIcon,
 } from 'lucide-react';
 import { SectionCard } from './shared';
-import { getCaseTimeline, CaseTimelineDTO } from '../../../service/blotter-api/DocketView';
+import { getCaseTimeline } from '../../../service/blotter-api/DocketView';
+import type { CaseTimelineDTO } from '../../../service/blotter-api/DocketView';
 
 // Maps event type to an icon + color
 const EVENT_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {

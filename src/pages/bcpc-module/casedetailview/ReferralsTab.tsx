@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileOutputIcon, PlusIcon, UserCircle2Icon, CalendarDaysIcon, PrinterIcon } from 'lucide-react';
 import { SectionCard, formatDate } from './shared';
-import { getReferrals, BcpcReferralDTO } from '../../../service/bcpc-api/CaseDetail';
+import { getReferrals } from '../../../service/bcpc-api/CaseDetail';
+import type { BcpcReferralDTO } from '../../../service/bcpc-api/CaseDetail';
 import { IssueReferralModal, printReferralLetter } from './IssueReferralModal';
 
 const REFERRAL_STATUS_PILL: Record<string, string> = {

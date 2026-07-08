@@ -4,7 +4,7 @@ import {
   ChevronRightIcon, XCircleIcon, Loader2Icon
 } from 'lucide-react';
 import { InfoField, SectionCard, formatDate } from './shared';
-import { BcpcCaseDetailDTO, BcpcInterventionDTO } from '../../../service/bcpc-api/CaseDetail';
+import type { BcpcCaseDetailDTO, BcpcInterventionDTO } from '../../../service/bcpc-api/CaseDetail';
 import { activateBpo, getInterventions, scheduleIntervention } from '../../../service/bcpc-api/CaseDetail';
 import { getCaseTimeline } from '../../../service/blotter-api/DocketView';
 import { ActionModal } from '../../../hooks/SuccessModal';

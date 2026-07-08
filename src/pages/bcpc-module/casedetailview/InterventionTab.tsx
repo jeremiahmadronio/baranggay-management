@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CalendarIcon, PlusIcon, FileTextIcon } from 'lucide-react';
-import { getInterventions, BcpcInterventionDTO } from '../../../service/bcpc-api/CaseDetail';
+import { getInterventions } from '../../../service/bcpc-api/CaseDetail';
+import type { BcpcInterventionDTO } from '../../../service/bcpc-api/CaseDetail';
 import { ScheduleInterventionModal } from './ScheduleInterventionModal';
 import { RecordInterventionModal } from './RecordInterventionModal';
 

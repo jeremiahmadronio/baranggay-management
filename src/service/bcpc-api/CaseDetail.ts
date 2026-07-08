@@ -21,6 +21,8 @@ export interface BcpcCaseDetailDTO {
   respondentContact?: string;
   respondentAddress?: string;
   relationshipToChild: string;
+  /** Alias kept for legacy compatibility — same as relationshipToChild */
+  respondentRelationship?: string;
 
   caseStatus: string;
   natureOfComplaint: string;
@@ -32,6 +34,8 @@ export interface BcpcCaseDetailDTO {
   incidentLocation?: string;
   dateFiled: string;
   assignedOfficer?: string;
+  bpoDeadline?: string;
+  remainingTime?: string;
 }
 
 export interface BcpcInterventionDTO {
