@@ -61,66 +61,7 @@ export interface PermissionOptions {
   permissionName: string;
 }
 
-export interface UserAccessPermission {
-  userId: string;
-  username: string;
-  role: string;
-  department: string;
-  permissions: string[];
-}
 
-export const VAWC_PERMISSIONS = {
-  VIEW_CASES: "View Cases",
-  ARCHIVE_CASES: "Archive Cases",
-  MANAGE_CASE_NOTES: "Manage Case notes",
-  ISSUE_REFERRAL: "Issue Referral",
-  ISSUE_BPO: "Issue BPO",
-  CREATE_CASE_ENTRY: "Create Case Entry",
-  RESOLVE_FINALIZE_CASE: "Resolve & Finalize Case",
-  MANAGE_REPORTS: "Manage Reports",
-  UPDATE_CASE_INFORMATION: "Update Case information",
-  MANAGE_INTERVENTION: "Manage Intervention",
-} as const;
-
-function normalizePermissionName(value?: string | null): string {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/[^a-z0-9& ]/g, "");
-}
-
-export function hasVawcPermission(
-  user: Pick<UserAccessPermission, "permissions"> | null | undefined,
-  permission: string,
-): boolean {
-  if (!user?.permissions?.length) return false;
-
-  const normalizedOwnedList = user.permissions.map((entry) =>
-    normalizePermissionName(entry),
-  );
-  const normalizedOwned = new Set(normalizedOwnedList);
-  const normalizedTarget = normalizePermissionName(permission);
-
-  if (normalizedOwned.has(normalizedTarget)) return true;
-
-  const targetWords = normalizedTarget.split(" ").filter(Boolean);
-  return normalizedOwnedList.some((owned) => {
-    if (owned.includes(normalizedTarget) || normalizedTarget.includes(owned)) {
-      return true;
-    }
-
-    return targetWords.every((word) => owned.includes(word));
-  });
-}
-
-export function hasAnyVawcPermission(
-  user: Pick<UserAccessPermission, "permissions"> | null | undefined,
-  permissions: string[],
-): boolean {
-  return permissions.some((permission) => hasVawcPermission(user, permission));
-}
 
 export interface PageResponse<T> {
   content: T[];
@@ -489,19 +430,7 @@ export async function getPermissionOptions(): Promise<PermissionOptions[]> {
   return apiFetch(`${PERMISSION_URL}/options`);
 }
 
-export async function getMyAccess(): Promise<UserAccessPermission> {
-  try {
-    const data = await apiFetch<UserAccessPermission>(`${PERMISSION_URL}/my-access`);
-    try { localStorage.setItem('cached_permissions_vawc', JSON.stringify(data)); } catch {}
-    return data;
-  } catch (err: any) {
-    if (err.message?.includes('Failed to fetch') || err.message?.includes('unreachable')) {
-      const cached = localStorage.getItem('cached_permissions_vawc');
-      if (cached) return JSON.parse(cached);
-    }
-    throw err;
-  }
-}
+
 
 //add case note for a vawc case
 export async function addCaseNote(dto: AddCaseNoteRequest): Promise<string> {

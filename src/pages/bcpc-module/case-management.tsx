@@ -14,6 +14,13 @@ import {
 import { archiveCase } from "../../service/bcpc-api/CaseDetail";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
 import { ActionModal } from "../../hooks/SuccessModal";
+import {
+  BCPC_PERMISSIONS,
+  getMyAccess,
+  hasBcpcPermission,
+  type UserSecurityProfile,
+} from "../../service/bcpc-api/BcpcPermission";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -142,6 +149,19 @@ export default function BcpcCaseManagement() {
   const [archiveEntry, setArchiveEntry] = useState<BcpcCaseSummaryDTO | null>(null);
   const [archiveSuccessOpen, setArchiveSuccessOpen] = useState(false);
 
+  // ── Permissions ──────────────────────────────────────────────────────────────
+  const [userAccess, setUserAccess] = useState<UserSecurityProfile | null>(null);
+
+  useEffect(() => {
+    getMyAccess()
+      .then((access) => setUserAccess(access))
+      .catch(() => setUserAccess(null));
+  }, []);
+
+  const canView    = hasBcpcPermission(userAccess, BCPC_PERMISSIONS.VIEW_CASES);
+  const canArchive = hasBcpcPermission(userAccess, BCPC_PERMISSIONS.ARCHIVE_CASES);
+  const canCreate  = hasBcpcPermission(userAccess, BCPC_PERMISSIONS.CREATE_CASE_ENTRY);
+
   // ── Fetch KPI stats ─────────────────────────────────────────────────────────
   useEffect(() => {
     getBcpcStats()
@@ -254,33 +274,41 @@ export default function BcpcCaseManagement() {
       render: (item) => {
         const statusKey = String(item.status || "").toUpperCase().trim();
         const canArchiveThisStatus = ARCHIVABLE_STATUSES.has(statusKey);
-        
+        const archiveAllowed = canArchive && canArchiveThisStatus;
+
         return (
           <div className="flex items-center justify-center gap-1.5">
             <button
+              disabled={!canView}
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/bcpc/casedetailview?id=${item.id}`);
+                if (canView) navigate(`/bcpc/casedetailview?id=${item.id}`);
               }}
-              className="rounded-lg p-2 text-neutral-400 hover:bg-gray-50 hover:text-blue-600 transition-colors"
-              title="View case details"
+              title={canView ? "View case details" : "You don't have permission to view cases"}
+              className={`rounded-lg p-2 transition-colors ${
+                !canView
+                  ? "text-gray-300 bg-gray-50/50 cursor-not-allowed"
+                  : "text-neutral-400 hover:bg-gray-50 hover:text-blue-600"
+              }`}
             >
               <Eye className="h-5 w-5" />
             </button>
 
             <button
-              disabled={!canArchiveThisStatus}
+              disabled={!archiveAllowed}
               onClick={(e) => {
                 e.stopPropagation();
-                if (canArchiveThisStatus) setArchiveEntry(item);
+                if (archiveAllowed) setArchiveEntry(item);
               }}
               title={
-                canArchiveThisStatus
-                  ? "Archive case"
-                  : "Archiving is not allowed for this status"
+                !canArchive
+                  ? "You don't have permission to archive cases"
+                  : canArchiveThisStatus
+                    ? "Archive case"
+                    : "Archiving is not allowed for this status"
               }
               className={`p-2 rounded-lg transition-colors ${
-                !canArchiveThisStatus
+                !archiveAllowed
                   ? "text-gray-300 bg-gray-50/50 cursor-not-allowed"
                   : "text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
               }`}
@@ -333,6 +361,17 @@ export default function BcpcCaseManagement() {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
+  if (userAccess !== null && !canView) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to access BCPC case management."
+        hint="Ask your administrator to grant the View Cases permission."
+        actionLabel="Go to Dashboard"
+        onAction={() => window.location.assign('/bcpc/dashboard')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -427,7 +466,7 @@ export default function BcpcCaseManagement() {
           striped={true}
           variant="resident"
           minRows={SIZE}
-          onRowClick={(item) => navigate(`/bcpc/casedetailview?id=${item.id}`)}
+          onRowClick={(item) => { if (canView) navigate(`/bcpc/casedetailview?id=${item.id}`); }}
           pagination={{
             currentPage: Math.min(currentPage + 1, Math.max(1, totalPages || 0)),
             totalPages: Math.max(1, totalPages || 0),

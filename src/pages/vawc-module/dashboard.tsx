@@ -27,7 +27,7 @@ import {
   hasVawcPermission,
   VAWC_PERMISSIONS,
   type UserAccessPermission,
-} from "../../service/vawc-api/vawc-api";
+} from "../../service/vawc-api/VawcPermission";
 import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 const DISTRIBUTION_COLORS = [

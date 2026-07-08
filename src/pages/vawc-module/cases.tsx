@@ -9,14 +9,16 @@ import {
   getVawcCaseSummary,
   getVawcStats,
   getViolenceOptions,
-  getMyAccess,
-  hasVawcPermission,
-  VAWC_PERMISSIONS,
   type CaseSummaryDTO,
   type CaseStatsDTO,
   type ViolenceOptionDTO,
-  type UserAccessPermission,
 } from "../../service/vawc-api/vawc-api";
+import {
+  getMyAccess,
+  hasVawcPermission,
+  VAWC_PERMISSIONS,
+  type UserAccessPermission,
+} from "../../service/vawc-api/VawcPermission";
 
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
 import { TableFilter } from "../../hooks/TableFilter";

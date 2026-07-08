@@ -17,19 +17,21 @@ import {
   fileVawcComplaint,
   getAssignOfficerComplaintOptions,
   getEvidenceOptions,
-  getMyAccess,
   getViolenceOptions,
-  hasVawcPermission,
   searchPeople,
-  VAWC_PERMISSIONS,
 } from "../../service/vawc-api/vawc-api";
+import {
+  getMyAccess,
+  hasVawcPermission,
+  VAWC_PERMISSIONS,
+  type UserAccessPermission,
+} from "../../service/vawc-api/VawcPermission";
 import type {
   ComplaintDTO,
   ViolenceOptionDTO,
   AssignOfficerOptionDTO,
   EvidenceOptionDTO,
   PersonSearchResponseDTO,
-  UserAccessPermission,
 } from "../../service/vawc-api/vawc-api";
 import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 

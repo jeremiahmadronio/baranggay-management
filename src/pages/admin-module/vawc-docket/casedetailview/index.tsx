@@ -8,7 +8,6 @@ import {
   addCaseNote,
   addFollowUp,
   addIntervention,
-  getMyAccess,
   getAssignOfficerOptions,
   getBpoDetails,
   getCaseNotes,
@@ -16,9 +15,7 @@ import {
   getInterventionDetails,
   getInterventionLogs,
   getVawcCaseDetails,
-  hasVawcPermission,
   withdrawVawcCase,
-  VAWC_PERMISSIONS,
   type AssignOfficerOptionDTO,
   type BpoDetails,
   type CaseNoteViewDTO,
@@ -26,8 +23,13 @@ import {
   type CaseViewDTO,
   type FollowUpViewDTO,
   type InterventionViewDTO,
-  type UserAccessPermission,
 } from "../../../../service/vawc-api/vawc-api";
+import {
+  getMyAccess,
+  hasVawcPermission,
+  VAWC_PERMISSIONS,
+  type UserAccessPermission,
+} from "../../../../service/vawc-api/VawcPermission";
 import { ActionModal } from "../../../../hooks/SuccessModal";
 import { BpoTab } from "./BpoTab";
 import { downloadVawcBpoRequestAsWord } from "./BpoExport";
@@ -150,12 +152,12 @@ export default function CaseDetailsPage() {
   const isOfflineRecord = !!caseData?._offline;
   const isReadOnlyCase =
     isWithdrawn || isCertifiedToFileAction || isOfflineRecord;
-  const canViewCases = true;
-  const canManageCaseNotes = false;
-  const canIssueBpo = false;
-  const canManageIntervention = false;
-  const canIssueReferral = false;
-  const canResolveFinalize = false;
+  const canViewCases = hasVawcPermission(userAccess, VAWC_PERMISSIONS.VIEW_CASES);
+  const canManageCaseNotes = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_CASE_NOTES);
+  const canIssueBpo = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_BPO) && !isOfflineRecord;
+  const canManageIntervention = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_INTERVENTION) && !isOfflineRecord;
+  const canIssueReferral = hasVawcPermission(userAccess, VAWC_PERMISSIONS.ISSUE_REFERRAL) && !isOfflineRecord;
+  const canResolveFinalize = hasVawcPermission(userAccess, VAWC_PERMISSIONS.RESOLVE_FINALIZE_CASE) && !isOfflineRecord;
 
   const readCachedInterventionLogs = (): LocalInterventionViewDTO[] => {
     try {

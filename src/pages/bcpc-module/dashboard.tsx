@@ -27,6 +27,13 @@ import {
   CircleLoader,
   NoRecords,
 } from "../../hooks/LoadingStates";
+import {
+  BCPC_PERMISSIONS,
+  getMyAccess,
+  hasBcpcPermission,
+  type UserSecurityProfile,
+} from "../../service/bcpc-api/BcpcPermission";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 const DONUT_COLORS = ["#38BDF8", "#2563EB", "#60A5FA", "#93C5FD"];
 
@@ -130,9 +137,33 @@ const BcpcDashboard = () => {
   const [recentCases, setRecentCases] = useState<api.RecentCaseDTO[]>([]);
   const [hearings, setHearings] = useState<api.UpcomingHearingDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [userAccess, setUserAccess] = useState<UserSecurityProfile | null>(null);
   const navigate = useNavigate();
 
+  const canViewCases = hasBcpcPermission(userAccess, BCPC_PERMISSIONS.VIEW_CASES);
+  const canViewReports = hasBcpcPermission(userAccess, BCPC_PERMISSIONS.MANAGE_REPORTS);
+
+  // Load permissions first
   useEffect(() => {
+    const loadAccess = async () => {
+      try {
+        setAccessLoading(true);
+        const access = await getMyAccess();
+        setUserAccess(access);
+      } catch {
+        setUserAccess(null);
+      } finally {
+        setAccessLoading(false);
+      }
+    };
+    void loadAccess();
+  }, []);
+
+  // Only fetch data if user has permission
+  useEffect(() => {
+    if (accessLoading || !canViewCases) return;
+
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -146,7 +177,6 @@ const BcpcDashboard = () => {
 
         setStats(s);
         setChartData(c);
-        // Format names directly here para sa Legend ng Pie Chart
         setDistribution(
           d.map((item) => ({
             ...item,
@@ -162,7 +192,7 @@ const BcpcDashboard = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [accessLoading, canViewCases]);
 
   const formatStatusText = (text: string) => {
     if (!text) return "";
@@ -198,6 +228,29 @@ const BcpcDashboard = () => {
     (sum, item) => sum + (item.count || 0),
     0,
   );
+
+  // Access loading spinner
+  if (accessLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50/50">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <CenteredLoader minHeight="min-h-[320px]" />
+        </div>
+      </div>
+    );
+  }
+
+  // Permission denied
+  if (!canViewCases) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to access the BCPC dashboard."
+        hint="Ask your administrator to grant the View Cases permission."
+        actionLabel="New Case Entry"
+        onAction={() => navigate('/bcpc/new-case-entry')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/50">

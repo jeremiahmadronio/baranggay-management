@@ -18,7 +18,8 @@ import {
   FileText,
   Timer,
   Printer,
-  ArchiveX
+  ArchiveX,
+  ShieldOff
 } from "lucide-react";
 import * as api from "../../service/bcpc-api/Reports";
 import {
@@ -27,6 +28,12 @@ import {
   NoRecords,
 } from "../../hooks/LoadingStates";
 import { KPICard, KPIGrid, KPIIcons } from "../../hooks/KPICard";
+import {
+  BCPC_PERMISSIONS,
+  getMyAccess,
+  hasBcpcPermission,
+} from "../../service/bcpc-api/BcpcPermission";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 const NATURE_COLORS = [
   "#6366F1",
@@ -221,6 +228,15 @@ export default function BcpcReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+
+  // ── Permissions ────────────────────────────────────────────────────────
+  const [canReport, setCanReport] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getMyAccess()
+      .then((access) => setCanReport(hasBcpcPermission(access, BCPC_PERMISSIONS.MANAGE_REPORTS)))
+      .catch(() => setCanReport(false));
+  }, []);
 
   const fetchAll = useCallback(async (start: string, end: string) => {
     setLoading(true);
@@ -458,6 +474,31 @@ export default function BcpcReportsPage() {
   }, [appliedStart, appliedEnd, trend]);
 
   const hasAnyReportData = stats !== null || trend.length > 0 || nature.length > 0 || statusData.length > 0;
+
+  if (canReport === null) {
+    return (
+      <div className="min-h-screen bg-gray-50/50">
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-4">
+          <KPIGrid columns={4}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <KPICard key={index} title="Loading" value={<CircleLoader size="sm" />} color="slate" icon={KPIIcons.document} />
+            ))}
+          </KPIGrid>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canReport) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to access BCPC reports."
+        hint="Ask your administrator to grant the Manage Reports permission."
+        actionLabel="Go to Dashboard"
+        onAction={() => window.location.assign('/bcpc/dashboard')}
+      />
+    );
+  }
 
   if (loading) {
     return (

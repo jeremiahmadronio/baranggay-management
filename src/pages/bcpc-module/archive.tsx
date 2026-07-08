@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Eye, Archive, RotateCcw } from "lucide-react";
+import { Eye, Archive, RotateCcw, ShieldOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
@@ -15,6 +15,13 @@ import {
   type BcpcCaseSummaryDTO,
   type BcpcArchiveStatsDTO,
 } from "../../service/bcpc-api/BcpcFormService";
+import {
+  BCPC_PERMISSIONS,
+  getMyAccess,
+  hasBcpcPermission,
+  type UserSecurityProfile,
+} from "../../service/bcpc-api/BcpcPermission";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +113,18 @@ export default function BcpcArchivePage() {
 
   const [stats, setStats] = useState<BcpcArchiveStatsDTO | null>(null);
 
+  // ── Permissions ────────────────────────────────────────────────────────
+  const [userAccess, setUserAccess] = useState<UserSecurityProfile | null>(null);
+
+  useEffect(() => {
+    getMyAccess()
+      .then((access) => setUserAccess(access))
+      .catch(() => setUserAccess(null));
+  }, []);
+
+  const canView    = hasBcpcPermission(userAccess, BCPC_PERMISSIONS.VIEW_CASES);
+  const canArchive = hasBcpcPermission(userAccess, BCPC_PERMISSIONS.ARCHIVE_CASES);
+
   const fetchStats = useCallback(async () => {
     try {
       setStats(await getBcpcArchiveStats());
@@ -193,23 +212,33 @@ export default function BcpcArchivePage() {
       render: (item) => (
         <div className="flex items-center justify-end gap-1.5">
           <button
+            disabled={!canView}
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/bcpc/casedetailview?id=${item.id}`);
+              if (canView) navigate(`/bcpc/casedetailview?id=${item.id}`);
             }}
-            className="rounded-lg p-1.5 text-blue-600 hover:bg-blue-50 transition-colors"
-            title="View case details"
+            title={canView ? "View case details" : "You don't have permission to view cases"}
+            className={`rounded-lg p-1.5 transition-colors ${
+              !canView
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-blue-600 hover:bg-blue-50"
+            }`}
           >
             <Eye className="w-4 h-4" />
           </button>
           
           <button
+            disabled={!canArchive}
             onClick={(e) => {
               e.stopPropagation();
-              setRestoreEntry(item);
+              if (canArchive) setRestoreEntry(item);
             }}
-            title="Restore case"
-            className="p-1.5 rounded-lg transition-colors text-emerald-600 hover:bg-emerald-50"
+            title={canArchive ? "Restore case" : "You don't have permission to restore cases"}
+            className={`p-1.5 rounded-lg transition-colors ${
+              !canArchive
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-emerald-600 hover:bg-emerald-50"
+            }`}
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -232,6 +261,17 @@ export default function BcpcArchivePage() {
     fetchCases();
   };
 
+  if (userAccess !== null && !canView) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to access BCPC archived cases."
+        hint="Ask your administrator to grant the View Cases permission."
+        actionLabel="Go to Dashboard"
+        onAction={() => window.location.assign('/bcpc/dashboard')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -248,6 +288,17 @@ export default function BcpcArchivePage() {
             </p>
           </div>
         </div>
+
+        {/* Permission Warning */}
+        {userAccess && !canArchive && (
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
+            <ShieldOff className="w-5 h-5 text-amber-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Limited Access</p>
+              <p className="text-xs text-amber-700">You don't have permission to restore archived cases. Contact your administrator.</p>
+            </div>
+          </div>
+        )}
 
         {/* KPI */}
         <div className="mb-8">
@@ -346,7 +397,7 @@ export default function BcpcArchivePage() {
           striped={true}
           variant="resident"
           minRows={SIZE}
-          onRowClick={(item) => navigate(`/bcpc/casedetailview?id=${item.id}`)}
+          onRowClick={(item) => { if (canView) navigate(`/bcpc/casedetailview?id=${item.id}`); }}
           pagination={{
             currentPage: Math.min(currentPage + 1, Math.max(1, totalPages || 0)),
             totalPages: Math.max(1, totalPages || 0),

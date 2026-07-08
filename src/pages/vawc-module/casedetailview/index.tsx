@@ -8,7 +8,6 @@ import {
   addCaseNote,
   addFollowUp,
   addIntervention,
-  getMyAccess,
   getAssignOfficerOptions,
   getBpoDetails,
   getCaseNotes,
@@ -16,9 +15,7 @@ import {
   getInterventionDetails,
   getInterventionLogs,
   getVawcCaseDetails,
-  hasVawcPermission,
   withdrawVawcCase,
-  VAWC_PERMISSIONS,
   type AssignOfficerOptionDTO,
   type BpoDetails,
   type CaseNoteViewDTO,
@@ -26,8 +23,13 @@ import {
   type CaseViewDTO,
   type FollowUpViewDTO,
   type InterventionViewDTO,
-  type UserAccessPermission,
 } from "../../../service/vawc-api/vawc-api";
+import {
+  getMyAccess,
+  hasVawcPermission,
+  VAWC_PERMISSIONS,
+  type UserAccessPermission,
+} from "../../../service/vawc-api/VawcPermission";
 import { ActionModal } from "../../../hooks/SuccessModal";
 import { BpoTab } from "./BpoTab";
 import { downloadVawcBpoRequestAsWord } from "./BpoExport";

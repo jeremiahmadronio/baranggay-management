@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, ShieldOff } from "lucide-react";
 import {
   DocketInfoCard,
   FormActions,
@@ -13,6 +13,7 @@ import {
   ConfirmModal,
 } from "../blotter-module/reusable/FormComponents";
 import { ActionModal } from "../blotter-module/reusable/SuccessModal";
+import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDeniedPage";
 import { NarrativeSection } from "../blotter-module/blotter-form/NarrativeSection";
 import { searchPeople } from "../../service/blotter-api/Resident";
 import type { PersonSearchResponseDTO } from "../../service/blotter-api/Resident";
@@ -23,6 +24,11 @@ import {
 } from "../../service/bcpc-api/BcpcFormService";
 import type { BcpcOfficerOptionDTO } from "../../service/bcpc-api/BcpcFormService";
 import { useUser, getUserDisplayName } from "../../context/UserContext";
+import {
+  BCPC_PERMISSIONS,
+  getMyAccess,
+  hasBcpcPermission,
+} from "../../service/bcpc-api/BcpcPermission";
 
 // ── Resident Search ───────────────────────────────────────────────────────────
 
@@ -157,6 +163,15 @@ export default function BcpcNewCaseEntryPage() {
   const filedByName = user
     ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username
     : "Loading...";
+
+  // ── Permission guard ───────────────────────────────────────────────────
+  const [canCreate, setCanCreate] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getMyAccess()
+      .then((access) => setCanCreate(hasBcpcPermission(access, BCPC_PERMISSIONS.CREATE_CASE_ENTRY)))
+      .catch(() => setCanCreate(false));
+  }, []);
 
   // Modals
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -336,6 +351,27 @@ export default function BcpcNewCaseEntryPage() {
     setNarrativeFile(null); setCertified(false); setErrors({});
   };
 
+  // Permission gate — loading
+  if (canCreate === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-blue-50/40">
+        <div className="w-10 h-10 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  // Permission gate — denied
+  if (!canCreate) {
+    return (
+      <PermissionDeniedPage
+        message="You do not have permission to create BCPC case entries."
+        hint="Ask your administrator to grant the Create Case Entry permission."
+        actionLabel="Go to Dashboard"
+        onAction={() => window.location.assign('/bcpc/dashboard')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-blue-50/40">
       <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
@@ -498,11 +534,14 @@ export default function BcpcNewCaseEntryPage() {
               label="Birthday"
               value={cBirthday}
               onChange={(e) => {
+                if (cPersonId) return;
                 const bday = e.target.value;
                 setCBirthday(bday);
                 const computed = computeAgeFromBirthday(bday);
                 if (computed) { setCAge(computed); clearErr("cAge"); }
               }}
+              disabled={!!cPersonId}
+              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
             />
             <FormSelect
               id="field-cGender"
@@ -652,11 +691,14 @@ export default function BcpcNewCaseEntryPage() {
               label="Birthday"
               value={rBirthday}
               onChange={(e) => {
+                if (rPersonId) return;
                 const bday = e.target.value;
                 setRBirthday(bday);
                 const computed = computeAgeFromBirthday(bday);
                 if (computed) setRAge(computed);
               }}
+              disabled={!!rPersonId}
+              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
             />
             <FormSelect
               label="Gender"

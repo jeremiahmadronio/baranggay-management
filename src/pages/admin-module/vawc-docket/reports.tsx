@@ -36,7 +36,7 @@ import {
   hasVawcPermission,
   VAWC_PERMISSIONS,
   type UserAccessPermission,
-} from "../../../service/vawc-api/vawc-api";
+} from "../../../service/vawc-api/VawcPermission";
 import {
   CenteredLoader,
   CircleLoader,
@@ -391,7 +391,7 @@ export default function AdminVawcReportsPage() {
   const [accessLoading, setAccessLoading] = useState(true);
   const [userAccess, setUserAccess] = useState<UserAccessPermission | null>(null);
 
-  const canManageReports = true;
+  const canManageReports = hasVawcPermission(userAccess, VAWC_PERMISSIONS.MANAGE_REPORTS);
 
   const fetchAll = useCallback(async (start: string, end: string) => {
     setLoading(true);

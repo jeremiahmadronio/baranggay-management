@@ -36,7 +36,7 @@ import {
   hasVawcPermission,
   VAWC_PERMISSIONS,
   type UserAccessPermission,
-} from "../../service/vawc-api/vawc-api";
+} from "../../service/vawc-api/VawcPermission";
 import {
   CenteredLoader,
   CircleLoader,
