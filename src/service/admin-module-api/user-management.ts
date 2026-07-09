@@ -5,7 +5,10 @@ const PEOPLE_URL = `${BASE}/api/v1/resident`;
 const DEPT_URL = `${BASE}/api/v1/departments`;
 const ROLE_URL = `${BASE}/api/v1/roles`;
 const PERMISSION_URL = `${BASE}/api/v1/permission`;
-import { searchOfflineResidents, cacheOnlineResidents } from "../offline/residentDb";
+import {
+  searchOfflineResidents,
+  cacheOnlineResidents,
+} from "../offline/residentDb";
 
 async function apiFetch<T>(
   endpoint: string,
@@ -218,6 +221,7 @@ export interface StaffTableParams {
   search?: string;
   roleName?: string;
   departmentName?: string;
+  status?: string;
 }
 
 export interface CreateUserPayload {
@@ -261,9 +265,10 @@ export const userManagementApi = {
     const qs = new URLSearchParams();
     qs.set("page", String(params.page ?? 0));
     qs.set("size", String(params.size ?? 10));
-    if (params.search) qs.set("search", params.search);
+    if (params.search !== undefined) qs.set("search", params.search);
     if (params.roleName) qs.set("roleName", params.roleName);
     if (params.departmentName) qs.set("departmentName", params.departmentName);
+    if (params.status) qs.set("status", params.status);
     return apiFetch<BackendPageEnvelope<UserTable>>(
       `/staff-table?${qs.toString()}`,
     ).then(normalizePageResponse);
@@ -324,19 +329,19 @@ export const userManagementApi = {
     apiFetch<string>(`/${id}/unlock`, {
       method: "PUT",
     }),
-checkUsernameAvailability: (username: string): Promise<boolean> =>
-  apiFetch<boolean>(
-    `/check-username?${new URLSearchParams({ username }).toString()}`,
-    {},
-    `${BASE}/api/v1/users`,
-  ),
+  checkUsernameAvailability: (username: string): Promise<boolean> =>
+    apiFetch<boolean>(
+      `/check-username?${new URLSearchParams({ username }).toString()}`,
+      {},
+      `${BASE}/api/v1/users`,
+    ),
 
-checkEmailAvailability: (email: string): Promise<boolean> =>
-  apiFetch<boolean>(
-    `/check-email?${new URLSearchParams({ email }).toString()}`,
-    {},
-    `${BASE}/api/v1/users`,
-  ),
+  checkEmailAvailability: (email: string): Promise<boolean> =>
+    apiFetch<boolean>(
+      `/check-email?${new URLSearchParams({ email }).toString()}`,
+      {},
+      `${BASE}/api/v1/users`,
+    ),
 
   searchPeople: async (query: string): Promise<PersonSearchResponseDTO[]> => {
     if (!query || query.trim().length < 2) return Promise.resolve([]);

@@ -26,9 +26,7 @@ import { ChangePasswordNewAccountPage } from "./pages/login/ChangePasswordNewAcc
 // Admin
 import RecordInputDemo from "./pages/admin-module/user-management/record-input";
 import AdminDashboard from "./pages/admin-module/dashboard/dashboard";
-import UserManagement from "./pages/admin-module/user-management/user-management";
 import { ResidentsPage } from "./pages/admin-module/resident/ResidentsPage";
-import { OfficerManagementPage } from "./pages/admin-module/officer/officerManagement";
 import ArchivePage from "./pages/admin-module/archive/archive";
 import EventsManagement from "./pages/admin-module/events/EventsManagement";
 import AdminReportsPage from "./pages/admin-module/reports";
@@ -46,6 +44,9 @@ import AdminVawcReportsPage from "./pages/admin-module/vawc-docket/reports";
 import AdminFtjsManagementPage from "./pages/admin-module/ftjs-docket/ftjsManagement";
 import AdminFtjsDetailViewPage from "./pages/admin-module/ftjs-docket/FtjsDetailView";
 import AdminFtjsReportPage from "./pages/admin-module/ftjs-docket/report";
+import AdminBcpcCaseTable from "./pages/admin-module/bcpc-docket/cases";
+import AdminBcpcCaseDetailsPage from "./pages/admin-module/bcpc-docket/BcpcCaseDetailViewWrapper";
+import AdminBcpcReportPage from "./pages/admin-module/bcpc-docket/report";
 
 // Root Admin
 import RootAdminDashboard from "./pages/admin-root-module/dashboard";
@@ -212,6 +213,12 @@ export function App() {
         <Route path="ftjs-cases" element={<AdminFtjsManagementPage />} />
         <Route path="ftjs-cases/:ftjsId" element={<AdminFtjsDetailViewPage />} />
         <Route path="ftjs-reports" element={<AdminFtjsReportPage />} />
+        <Route path="bcpc-cases" element={<AdminBcpcCaseTable />} />
+        <Route
+          path="bcpc-casedetailview"
+          element={<AdminBcpcCaseDetailsPage />}
+        />
+        <Route path="bcpc-reports" element={<AdminBcpcReportPage />} />
 
         <Route
           path="users"

@@ -54,7 +54,7 @@ const STATUS_PILL: Record<string, string> = {
   DISMISSED: 'bg-rose-50 text-rose-700 border border-rose-200',
 };
 
-export default function BcpcCaseDetailsPage() {
+export default function BcpcCaseDetailsPage({ isAdminView = false }: { isAdminView?: boolean }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawId = searchParams.get('id') || '1';
@@ -135,6 +135,7 @@ export default function BcpcCaseDetailsPage() {
 
   const caseStatus = (caseData?.caseStatus || '').toUpperCase();
   const isReadOnly =
+    isAdminView ||
     caseStatus === 'WITHDRAWN' ||
     caseStatus === 'RESOLVED' ||
     caseStatus === 'SETTLED' ||
@@ -233,7 +234,7 @@ export default function BcpcCaseDetailsPage() {
       <div className="min-h-screen">
         <div className="mx-auto px-6 py-6 space-y-5">
           <button
-            onClick={() => navigate('/bcpc/case-management')}
+            onClick={() => navigate(isAdminView ? '/admin/bcpc-cases' : '/bcpc/case-management')}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
             <ChevronLeftIcon className="h-4 w-4" />
@@ -254,7 +255,7 @@ export default function BcpcCaseDetailsPage() {
         {/* ── HEADER ── */}
         <div>
           <button
-            onClick={() => navigate('/bcpc/case-management')}
+            onClick={() => navigate(isAdminView ? '/admin/bcpc-cases' : '/bcpc/case-management')}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-4 transition-colors"
           >
             <ChevronLeftIcon className="h-4 w-4" /> Back to Case Management
