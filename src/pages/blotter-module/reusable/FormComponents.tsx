@@ -80,6 +80,7 @@ interface FormActionsProps {
   onSubmit: () => void;
   submitLabel?: string;
   isSubmitting?: boolean;
+  disabled?: boolean;
   mode?: "record" | "formal";
 }
 interface SectionDividerProps {
@@ -110,7 +111,7 @@ export const FormInput = ({
   className = "",
   ...props
 }: FormInputProps) => {
-  const maxLength = props.maxLength;
+  const maxLength = props.maxLength ?? 255;
   const rawValue = props.value;
   const currentLength =
     typeof rawValue === "string"
@@ -122,6 +123,31 @@ export const FormInput = ({
           : 0;
   const shouldShowCounter = showCounter && typeof maxLength === "number";
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let sanitized = e.target.value;
+    const identifier = (props.name || props.label || props.id || "").toLowerCase();
+
+    if (props.type === "email" || identifier.includes("email")) {
+      // Only allow alphanumeric, @, ., and _
+      sanitized = sanitized.replace(/[^a-zA-Z0-9@._]/g, "");
+    } else if (props.type === "tel" || identifier.includes("contact") || identifier.includes("phone")) {
+      // Only allow numbers
+      sanitized = sanitized.replace(/[^0-9]/g, "");
+    } else if (identifier.includes("name") && !identifier.includes("username")) {
+      // No numbers and standard name characters only
+      sanitized = sanitized.replace(/[0-9]/g, "");
+      sanitized = sanitized.replace(/[^a-zA-Z\s.,-ñÑ]/g, "");
+    } else if (props.type !== "password") {
+      // General sanitization
+      sanitized = sanitized.replace(/[^a-zA-Z0-9\s.,-ñÑ/]/g, "");
+    }
+    
+    if (e.target.value !== sanitized) {
+      e.target.value = sanitized;
+    }
+    props.onChange?.(e);
+  };
+
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm font-semibold text-slate-700 tracking-wide">
@@ -129,7 +155,9 @@ export const FormInput = ({
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <input
+        maxLength={maxLength}
         {...props}
+        onChange={handleChange}
         className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all ${className}`}
       />
       {(hint && !error) || shouldShowCounter ? (
@@ -229,20 +257,32 @@ export const FormTextarea = ({
   hint,
   className = "",
   ...props
-}: FormTextareaProps) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-sm font-semibold text-slate-700 tracking-wide">
-      {label}
-      {required && <span className="text-red-500 ml-0.5">*</span>}
-    </label>
-    <textarea
-      {...props}
-      className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all resize-none ${className}`}
-    />
+}: FormTextareaProps) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s.,-ñÑ!?()'"/]/g, "");
+    if (e.target.value !== sanitized) {
+      e.target.value = sanitized;
+    }
+    props.onChange?.(e);
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-semibold text-slate-700 tracking-wide">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <textarea
+        maxLength={props.maxLength ?? 2000}
+        {...props}
+        onChange={handleChange}
+        className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all resize-none ${className}`}
+      />
     {hint && !error && <p className="text-sm text-slate-600">{hint}</p>}
     {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
   </div>
-);
+  );
+};
 
 export const FormNotice = ({
   text,
@@ -362,6 +402,7 @@ export const FormActions = ({
   onSubmit,
   submitLabel = "Save & Record Entry",
   isSubmitting = false,
+  disabled = false,
   mode = "record",
 }: FormActionsProps) => (
   <div className="bg-white border border-slate-200 rounded-xl shadow-md px-6 py-4 flex items-center justify-between">
@@ -393,8 +434,8 @@ export const FormActions = ({
       <button
         type="button"
         onClick={onSubmit}
-        disabled={isSubmitting}
-        className={`flex items-center gap-2 text-sm font-semibold text-white disabled:opacity-60 px-5 py-2.5 rounded-lg transition-all shadow-sm ${mode === "formal" ? "bg-blue-700 hover:bg-blue-800" : "bg-blue-600 hover:bg-blue-700"}`}
+        disabled={isSubmitting || disabled}
+        className={`flex items-center gap-2 text-sm font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed px-5 py-2.5 rounded-lg transition-all shadow-sm ${mode === "formal" ? "bg-blue-700 hover:bg-blue-800" : "bg-blue-600 hover:bg-blue-700"}`}
       >
         {isSubmitting ? (
           <>

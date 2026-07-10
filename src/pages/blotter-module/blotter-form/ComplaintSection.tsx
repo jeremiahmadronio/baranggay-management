@@ -6,6 +6,7 @@ import {
 } from "../reusable/FormComponents";
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
 import { type PersonSearchResponseDTO } from "../../../service/blotter-api/Resident";
+import { XCircle } from "lucide-react";
 
 export const GENDER_OPTIONS = [
   { value: "Male", label: "Male" },
@@ -38,6 +39,7 @@ interface ComplainantSectionProps {
   onChange: (field: keyof ComplainantState, value: any) => void;
   errors: Record<string, string>;
   clearErr: (key: string) => void;
+  onClearPerson?: () => void;
 }
 
 const CharCounter = ({ current, max }: { current: number; max: number }) => (
@@ -55,6 +57,7 @@ export const ComplainantSection = ({
   onChange,
   errors,
   clearErr,
+  onClearPerson,
 }: ComplainantSectionProps) => {
   const NAME_LIMIT = 50;
   const ADDRESS_LIMIT = 200;
@@ -91,6 +94,21 @@ export const ComplainantSection = ({
         placeholder="Search by name..."
         onSelect={handleSelectPerson}
       />
+      
+      {!!data.id && (
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
+          <p className="text-xs text-blue-700">
+            ℹ️ Fields are locked — auto-filled from resident record.
+          </p>
+          <button
+            type="button"
+            onClick={onClearPerson}
+            className="ml-4 rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+          >
+            Cancel Autofill
+          </button>
+        </div>
+      )}
 
       <FormRow cols={3}>
         <div>
@@ -101,6 +119,8 @@ export const ComplainantSection = ({
             placeholder="e.g. Dela Cruz"
             value={data.lastName}
             maxLength={NAME_LIMIT}
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               onChange("lastName", e.target.value);
               clearErr("cLastName");
@@ -118,6 +138,8 @@ export const ComplainantSection = ({
             placeholder="e.g. Juan"
             value={data.firstName}
             maxLength={NAME_LIMIT}
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               onChange("firstName", e.target.value);
               clearErr("cFirstName");
@@ -133,6 +155,8 @@ export const ComplainantSection = ({
             placeholder="e.g. Santos"
             value={data.middleName}
             maxLength={NAME_LIMIT}
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               onChange("middleName", e.target.value)
             }
@@ -149,6 +173,8 @@ export const ComplainantSection = ({
           inputMode="numeric"
           maxLength={11}
           value={data.contact}
+          disabled={!!data.id}
+          className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             const v = e.target.value.replace(/\D/g, "");
             onChange("contact", v);
@@ -166,6 +192,8 @@ export const ComplainantSection = ({
             placeholder="e.g. 35"
             maxLength={3}
             value={data.age}
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
             error={errors.cAge}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               // Allow numbers only, max 3 digits
@@ -183,6 +211,8 @@ export const ComplainantSection = ({
           options={GENDER_OPTIONS}
           placeholder="Select Gender"
           value={data.gender}
+          disabled={!!data.id}
+          className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
             onChange("gender", e.target.value);
             clearErr("cGender");
@@ -199,6 +229,8 @@ export const ComplainantSection = ({
           options={CIVIL_STATUS_OPTIONS}
           placeholder="Select Civil Status"
           value={data.civilStatus}
+          disabled={!!data.id}
+          className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
             onChange("civilStatus", e.target.value);
             clearErr("cCivilStatus");
@@ -212,6 +244,8 @@ export const ComplainantSection = ({
             placeholder="email@example.com"
             maxLength={50}
             value={data.email}
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const v = e.target.value;
               onChange("email", v);
@@ -236,6 +270,8 @@ export const ComplainantSection = ({
           placeholder="House No., Street, Barangay, Municipality/City"
           value={data.address}
           maxLength={ADDRESS_LIMIT}
+          disabled={!!data.id}
+          className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             onChange("address", e.target.value);
             clearErr("cAddress");

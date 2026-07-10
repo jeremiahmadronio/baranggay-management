@@ -153,7 +153,8 @@ export const WitnessSection = ({
               error={errors[`witnessTestimony${i}`]}
               hint={`Max ${MAX_WITNESS_TESTIMONY_LENGTH} characters`}
               onChange={(e) => {
-                updateWitness(i, "testimony", e.target.value);
+                const sanitized = e.target.value.replace(/[^a-zA-Z0-9.,\s]/g, "");
+                updateWitness(i, "testimony", sanitized);
                 clearErr(`witnessTestimony${i}`);
               }}
             />

@@ -95,6 +95,7 @@ export const IncidentDetailsSection = ({
             id="field-placeOfIncident"
             label="Place / Location of Incident"
             required
+            maxLength={150}
             placeholder="e.g. Residence, Public Market"
             value={data.placeOfIncident}
             onChange={(e) => {
@@ -119,6 +120,7 @@ export const IncidentDetailsSection = ({
           <FormInput
             label="Description of Injuries / Damages"
             placeholder="If any physical injuries or property damage"
+            maxLength={150}
             value={data.injuryDesc}
             onChange={(e) => onChange("injuryDesc", e.target.value)}
           />
@@ -128,6 +130,7 @@ export const IncidentDetailsSection = ({
           id="field-placeOfIncident"
           label="Place / Location of Incident"
           required
+          maxLength={150}
           placeholder="e.g. Near the basketball court, Purok 3"
           value={data.placeOfIncident}
           onChange={(e) => {

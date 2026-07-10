@@ -1,0 +1,443 @@
+import { jsPDF } from "jspdf";
+
+const BRGY_NAME     = "Barangay Ugong";
+const BRGY_CITY     = "Valenzuela City";
+const BRGY_PROVINCE = "Metro Manila";
+const BRGY_KAPITANA = "HON. MARICEL PINEDA";
+const BRGY_POSITION = "Punong Barangay / Tagapangulo ng Lupon";
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+export interface InvitationData {
+  caseNumber:        string;
+  natureOfComplaint: string;
+  blotterNumber:     string;
+  complainantName:   string;
+  respondentName:    string;
+  date:              string;   // "YYYY-MM-DD"
+  logoBase64?: string;
+  logoFormat?: "PNG" | "JPEG" | "WEBP";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function fmtDate(iso: string): string {
+  return new Date(iso + "T00:00").toLocaleDateString("en-PH", {
+    weekday: "long",
+    year:    "numeric",
+    month:   "long",
+    day:     "numeric",
+  });
+}
+
+function fmtTime(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const ampm   = h >= 12 ? "PM" : "AM";
+  const hour   = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+function rule(
+  doc:   jsPDF,
+  y:     number,
+  left:  number,
+  right: number,
+  gray   = 150,
+  thick  = 0.3
+): void {
+  doc.setDrawColor(gray, gray, gray);
+  doc.setLineWidth(thick);
+  doc.line(left, y, right, y);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  MAIN GENERATOR
+// ─────────────────────────────────────────────────────────────────────────────
+export function generateInvitation(data: InvitationData): void {
+  const doc = buildInvitationDoc(data);
+
+  const pageW = doc.internal.pageSize.getWidth();   // 210 mm
+  const pageH = doc.internal.pageSize.getHeight();  // 297 mm
+  const ML    = 28;               // left margin  — slightly wider so text stays safe
+  const MR    = 28;               // right margin
+  const cW    = pageW - ML - MR;  // content width = 154 mm (safe zone)
+  const cx    = pageW / 2;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  WATERMARK LOGO
+  // ══════════════════════════════════════════════════════════════════════════
+  if (data.logoBase64) {
+    const fmt  = data.logoFormat ?? "PNG";
+    const size = 80;
+    const lx   = (pageW - size) / 2;
+    const ly   = (pageH - size) / 2;
+    try {
+      doc.setGState(new (doc as any).GState({ opacity: 0.08, "stroke-opacity": 0.08 }));
+      doc.addImage(data.logoBase64, fmt, lx, ly, size, size);
+      doc.setGState(new (doc as any).GState({ opacity: 1, "stroke-opacity": 1 }));
+    } catch {
+      doc.addImage(data.logoBase64, fmt, lx, ly, size, size);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  LETTERHEAD
+  // ══════════════════════════════════════════════════════════════════════════
+  let y = 20;
+
+  doc.setFontSize(8);
+  doc.setFont("times", "normal");
+  doc.setTextColor(90, 90, 90);
+  doc.text("Republic of the Philippines", cx, y, { align: "center" });
+  y += 5.5;
+
+  doc.setFontSize(14);
+  doc.setFont("times", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text(BRGY_NAME.toUpperCase(), cx, y, { align: "center" });
+  y += 5.5;
+
+  doc.setFontSize(9.5);
+  doc.setFont("times", "normal");
+  doc.setTextColor(35, 35, 35);
+  doc.text(`${BRGY_CITY}, ${BRGY_PROVINCE}`, cx, y, { align: "center" });
+  y += 5;
+
+  doc.setFontSize(8.5);
+  doc.setTextColor(80, 80, 80);
+  doc.text("Office of the Lupong Tagapamayapa", cx, y, { align: "center" });
+
+  // Double rule
+  y += 6.5;
+  rule(doc, y, ML, pageW - MR, 20, 1.4);
+  y += 2.2;
+  rule(doc, y, ML, pageW - MR, 20, 0.4);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  DOCUMENT TITLE
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 13;
+  doc.setFontSize(18);
+  doc.setFont("times", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text("PAANYAYA", cx, y, { align: "center" });
+
+  y += 6;
+  doc.setFontSize(9);
+  doc.setFont("times", "italic");
+  doc.setTextColor(90, 90, 90);
+  doc.text("(Summon / Notice to Appear)", cx, y, { align: "center" });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  REFERENCE NUMBERS
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 10;
+  rule(doc, y, ML, pageW - MR, 160, 0.3);
+  y += 5.5;
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(40, 40, 40);
+
+  const today = fmtDate(new Date().toISOString().split("T")[0]);
+  doc.text(`Case No.:  ${data.blotterNumber}`, ML, y);
+  doc.text(`Date Issued:  ${today}`, pageW - MR, y, { align: "right" });
+
+  y += 5.5;
+  rule(doc, y, ML, pageW - MR, 160, 0.3);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  ADDRESSEE
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 9;
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(90, 90, 90);
+  doc.text("Kay / To:", ML, y);
+
+  y += 5.5;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text(data.respondentName.toUpperCase(), ML, y);
+
+  y += 4.5;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(110, 110, 110);
+  doc.text("Nasasakdal)", ML, y);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  BODY TEXT
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 12;
+  doc.setFontSize(10);
+  doc.setFont("times", "normal");
+  doc.setTextColor(15, 15, 15);
+
+  doc.text("Mahal na Ginoo/Ginang:", ML, y);
+  y += 10;
+
+  const p1 = doc.splitTextToSize(
+    `Kayo ay magalang na inaanyayahang humarap sa Barangay Hall, Brgy. Ugong upang tugunan ang reklamong nakatala bilang ${data.blotterNumber} tungkol sa ${data.natureOfComplaint}.`,
+    cW
+  );
+  doc.text(p1, ML, y);
+  y += p1.length * 5.5 + 5;
+
+  const p2 = doc.splitTextToSize(
+    `Ang Barangay Ugong ay umaasa sa inyong pakikiisa upang mabigyan ng maayos at mapayapang resolusyon ang usaping ito.`,
+    cW
+  );
+  doc.text(p2, ML, y);
+  y += p2.length * 5.5 + 7;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SIGNATURE BLOCK — right-aligned
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 14;
+  const sigR = pageW - MR;
+
+  doc.setFontSize(10);
+  doc.setFont("times", "normal");
+  doc.setTextColor(20, 20, 20);
+  doc.text("Taos-pusong gumagalang,", sigR, y, { align: "right" });
+
+  y += 22;
+  doc.setDrawColor(30, 30, 30);
+  doc.setLineWidth(0.5);
+  doc.line(sigR - 60, y, sigR, y);
+
+  y += 5;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text(BRGY_KAPITANA, sigR, y, { align: "right" });
+
+  y += 5;
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(100, 100, 100);
+  doc.text(BRGY_POSITION, sigR, y, { align: "right" });
+
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  //  FOOTER
+  // ══════════════════════════════════════════════════════════════════════════
+  rule(doc, pageH - 18, ML, pageW - MR, 170, 0.3);
+
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(145, 145, 145);
+  doc.text(
+    `Lupong Tagapamayapa  ·  ${BRGY_NAME}, ${BRGY_CITY}  ·  Case No. ${data.caseNumber}`,
+    cx, pageH - 12, { align: "center" }
+  );
+  doc.text(
+    "This document is strictly confidential and intended solely for the named recipient.",
+    cx, pageH - 8, { align: "center" }
+  );
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SAVE
+  // ══════════════════════════════════════════════════════════════════════════
+  doc.save(`Invitation_${data.blotterNumber}.pdf`);
+}
+
+export function getInvitationPdfUrl(data: InvitationData): string {
+  const doc = buildInvitationDoc(data);
+  return doc.output("bloburl").toString();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  INTERNAL DOC BUILDER
+// ─────────────────────────────────────────────────────────────────────────────
+function buildInvitationDoc(data: InvitationData): jsPDF {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const pageW = doc.internal.pageSize.getWidth();   // 210 mm
+  const pageH = doc.internal.pageSize.getHeight();  // 297 mm
+  const ML    = 28;               // left margin  — slightly wider so text stays safe
+  const MR    = 28;               // right margin
+  const cW    = pageW - ML - MR;  // content width = 154 mm (safe zone)
+  const cx    = pageW / 2;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  WATERMARK LOGO
+  // ══════════════════════════════════════════════════════════════════════════
+  if (data.logoBase64) {
+    const fmt  = data.logoFormat ?? "PNG";
+    const size = 80;
+    const lx   = (pageW - size) / 2;
+    const ly   = (pageH - size) / 2;
+    try {
+      doc.setGState(new (doc as any).GState({ opacity: 0.08, "stroke-opacity": 0.08 }));
+      doc.addImage(data.logoBase64, fmt, lx, ly, size, size);
+      doc.setGState(new (doc as any).GState({ opacity: 1, "stroke-opacity": 1 }));
+    } catch {
+      doc.addImage(data.logoBase64, fmt, lx, ly, size, size);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  LETTERHEAD
+  // ══════════════════════════════════════════════════════════════════════════
+  let y = 20;
+
+  doc.setFontSize(8);
+  doc.setFont("times", "normal");
+  doc.setTextColor(90, 90, 90);
+  doc.text("Republic of the Philippines", cx, y, { align: "center" });
+  y += 5.5;
+
+  doc.setFontSize(14);
+  doc.setFont("times", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text(BRGY_NAME.toUpperCase(), cx, y, { align: "center" });
+  y += 5.5;
+
+  doc.setFontSize(9.5);
+  doc.setFont("times", "normal");
+  doc.setTextColor(35, 35, 35);
+  doc.text(`${BRGY_CITY}, ${BRGY_PROVINCE}`, cx, y, { align: "center" });
+  y += 5;
+
+  doc.setFontSize(8.5);
+  doc.setTextColor(80, 80, 80);
+  doc.text("Office of the Lupong Tagapamayapa", cx, y, { align: "center" });
+
+  // Double rule
+  y += 6.5;
+  rule(doc, y, ML, pageW - MR, 20, 1.4);
+  y += 2.2;
+  rule(doc, y, ML, pageW - MR, 20, 0.4);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  DOCUMENT TITLE
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 13;
+  doc.setFontSize(18);
+  doc.setFont("times", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text("PAANYAYA", cx, y, { align: "center" });
+
+  y += 6;
+  doc.setFontSize(9);
+  doc.setFont("times", "italic");
+  doc.setTextColor(90, 90, 90);
+  doc.text("(Summon / Notice to Appear)", cx, y, { align: "center" });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  REFERENCE NUMBERS
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 10;
+  rule(doc, y, ML, pageW - MR, 160, 0.3);
+  y += 5.5;
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(40, 40, 40);
+
+  const today = fmtDate(new Date().toISOString().split("T")[0]);
+  doc.text(`Case No.:  ${data.blotterNumber}`, ML, y);
+  doc.text(`Date Issued:  ${today}`, pageW - MR, y, { align: "right" });
+
+  y += 5.5;
+  rule(doc, y, ML, pageW - MR, 160, 0.3);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  ADDRESSEE
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 9;
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(90, 90, 90);
+  doc.text("Kay / To:", ML, y);
+
+  y += 5.5;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text(data.respondentName.toUpperCase(), ML, y);
+
+  y += 4.5;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(110, 110, 110);
+  doc.text("Nasasakdal)", ML, y);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  BODY TEXT
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 12;
+  doc.setFontSize(10);
+  doc.setFont("times", "normal");
+  doc.setTextColor(15, 15, 15);
+
+  doc.text("Mahal na Ginoo/Ginang:", ML, y);
+  y += 10;
+
+  const p1 = doc.splitTextToSize(
+    `Kayo ay magalang na inaanyayahang humarap sa Barangay Hall, Brgy. Ugong upang tugunan ang reklamong nakatala bilang ${data.blotterNumber} tungkol sa ${data.natureOfComplaint}.`,
+    cW
+  );
+  doc.text(p1, ML, y);
+  y += p1.length * 5.5 + 5;
+
+  const p2 = doc.splitTextToSize(
+    `Ang Barangay Ugong ay umaasa sa inyong pakikiisa upang mabigyan ng maayos at mapayapang resolusyon ang usaping ito.`,
+    cW
+  );
+  doc.text(p2, ML, y);
+  y += p2.length * 5.5 + 7;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SIGNATURE BLOCK — right-aligned
+  // ══════════════════════════════════════════════════════════════════════════
+  y += 14;
+  const sigR = pageW - MR;
+
+  doc.setFontSize(10);
+  doc.setFont("times", "normal");
+  doc.setTextColor(20, 20, 20);
+  doc.text("Taos-pusong gumagalang,", sigR, y, { align: "right" });
+
+  y += 22;
+  doc.setDrawColor(30, 30, 30);
+  doc.setLineWidth(0.5);
+  doc.line(sigR - 60, y, sigR, y);
+
+  y += 5;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(10, 10, 10);
+  doc.text(BRGY_KAPITANA, sigR, y, { align: "right" });
+
+  y += 5;
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(100, 100, 100);
+  doc.text(BRGY_POSITION, sigR, y, { align: "right" });
+
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  //  FOOTER
+  // ══════════════════════════════════════════════════════════════════════════
+  rule(doc, pageH - 18, ML, pageW - MR, 170, 0.3);
+
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(145, 145, 145);
+  doc.text(
+    `Lupong Tagapamayapa  ·  ${BRGY_NAME}, ${BRGY_CITY}  ·  Case No. ${data.caseNumber}`,
+    cx, pageH - 12, { align: "center" }
+  );
+  doc.text(
+    "This document is strictly confidential and intended solely for the named recipient.",
+    cx, pageH - 8, { align: "center" }
+  );
+
+  return doc;
+}
