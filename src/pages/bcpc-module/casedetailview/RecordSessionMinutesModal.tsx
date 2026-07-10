@@ -162,7 +162,7 @@ export function RecordSessionMinutesModal({ hearing, caseNumber, natureOfComplai
           <button onClick={onCancel} className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 transition-colors">
             Cancel
           </button>
-          <button onClick={handleSubmit} disabled={!outcome || (outcome === 'SETTLED' && !settlementTerms.trim())}
+          <button autoFocus onClick={handleSubmit} disabled={!outcome || (outcome === 'SETTLED' && !settlementTerms.trim())}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors">
             Save Minutes
           </button>

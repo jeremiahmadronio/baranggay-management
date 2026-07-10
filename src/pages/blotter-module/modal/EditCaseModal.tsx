@@ -202,6 +202,19 @@ export function EditCaseModal({
         setEvidenceOptions(evidences);
         setOfficerOptions(officers);
 
+        setSelectedEvidence((prev) => {
+          const next = new Set<string>();
+          prev.forEach((val) => {
+            if (!isNaN(Number(val)) && val.trim() !== "") {
+              next.add(val);
+            } else {
+              const found = evidences.find((e) => e.typName === val);
+              if (found) next.add(String(found.id));
+            }
+          });
+          return next;
+        });
+
         if (!form.natureOfComplaintId && natures.length > 0) {
           const found = natures.find(
             (n) => n.natureName === docket.natureOfComplaint,
@@ -314,28 +327,6 @@ export function EditCaseModal({
   const validate = () => {
     const nextErrors: Record<string, string> = {};
 
-    if (!form.complainantFirstName.trim())
-      nextErrors.complainantFirstName = "Required";
-    if (!form.complainantLastName.trim())
-      nextErrors.complainantLastName = "Required";
-    if (!form.complainantContact.trim())
-      nextErrors.complainantContact = "Required";
-    if (!form.complainantAddress.trim())
-      nextErrors.complainantAddress = "Required";
-
-    if (!form.respondentFirstName.trim())
-      nextErrors.respondentFirstName = "Required";
-    if (!form.respondentLastName.trim())
-      nextErrors.respondentLastName = "Required";
-
-    if (!form.natureOfComplaintId) nextErrors.natureOfComplaintId = "Required";
-    if (!form.dateOfIncident) nextErrors.dateOfIncident = "Required";
-    if (!form.placeOfIncident.trim()) nextErrors.placeOfIncident = "Required";
-    if (!form.narrativeStatement.trim())
-      nextErrors.narrativeStatement = "Required";
-    if (!form.assignToId)
-      nextErrors.assignToId = "Assigned officer is required";
-
     witnesses.forEach((w, idx) => {
       const testimony = (w.testimony ?? "").trim();
       if (testimony.length > MAX_WITNESS_TESTIMONY_LENGTH) {
@@ -424,7 +415,24 @@ export function EditCaseModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl max-h-[92vh] overflow-y-auto border border-slate-200">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const target = e.target as HTMLElement;
+            const tagName = target.tagName.toLowerCase();
+            if (tagName === "textarea" || tagName === "button" || target.isContentEditable) {
+              return;
+            }
+            e.preventDefault();
+            handleSubmit();
+          }
+        }}
+        className="bg-white rounded-lg shadow-lg w-full max-w-5xl max-h-[92vh] overflow-y-auto border border-slate-200"
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div>
             <h3 className="text-base font-semibold text-gray-900">
@@ -435,6 +443,7 @@ export function EditCaseModal({
             </p>
           </div>
           <button
+            type="button"
             onClick={onCancel}
             className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
           >
@@ -893,7 +902,7 @@ export function EditCaseModal({
                       >
                         <input
                           type="checkbox"
-                          checked={checked} disabled
+                          checked={checked}
                           onChange={() => toggleEvidence(key)}
                         />
                         <span>{ev.typName}</span>
@@ -1023,13 +1032,15 @@ export function EditCaseModal({
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
           <button
+            type="button"
             onClick={onCancel}
             disabled={submitting}
             className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-50"
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
+            type="submit"
             onClick={handleSubmit}
             disabled={submitting || !hasPermission || loadingOptions}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
@@ -1040,7 +1051,7 @@ export function EditCaseModal({
             {submitting ? "Updating..." : "Save Updates"}
           </button>
         </div>
-      </div>
+      </form>
 
       <style>{`
         .input {

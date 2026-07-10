@@ -344,7 +344,7 @@ export function OfficerFormModal({
             >
               Cancel
             </button>
-            <button
+            <button autoFocus
               type="button"
               onClick={handleSubmit}
               disabled={saving}

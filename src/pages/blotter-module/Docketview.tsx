@@ -152,6 +152,7 @@ const Docketview = () => {
     null,
   );
   const [archiveSuccessOpen, setArchiveSuccessOpen] = useState(false);
+  const [editSuccessOpen, setEditSuccessOpen] = useState(false);
   const safeTotalPages = Math.max(1, totalPages || 0);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -361,11 +362,15 @@ const Docketview = () => {
     {
       key: "natureOfComplaint",
       header: "Nature of Complaint",
-      render: (item) => (
-        <span className="text-gray-600 truncate block max-w-[180px]">
-          {item.natureOfComplaint}
-        </span>
-      ),
+      render: (item) => {
+        const found = natureOptions.find((n) => String(n.id) === String(item.natureOfComplaint));
+        const displayValue = found ? found.natureName : item.natureOfComplaint;
+        return (
+          <span className="text-gray-600 truncate block max-w-[180px]">
+            {displayValue}
+          </span>
+        );
+      },
     },
     {
       key: "status",
@@ -437,6 +442,7 @@ const Docketview = () => {
                   setFetchingEdit(item.blotterNumber);
                   try {
                     const fullDocket = await getFullBlotterDocket(item.blotterNumber);
+                    fullDocket.caseId = item.id;
                     setEditDocket(fullDocket);
                   } catch {
                     alert("Failed to load case details for editing.");
@@ -548,9 +554,19 @@ const Docketview = () => {
             setEditDocket(null);
             fetchTable(params);
             fetchStats();
+            setEditSuccessOpen(true);
           }}
         />
       )}
+
+      <ActionModal
+        isOpen={editSuccessOpen}
+        onClose={() => setEditSuccessOpen(false)}
+        title="Successfully Saved"
+        type="success"
+      >
+        The case information has been successfully updated and saved.
+      </ActionModal>
 
       <ActionModal
         isOpen={referSuccessOpen}

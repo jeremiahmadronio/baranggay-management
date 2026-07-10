@@ -96,16 +96,20 @@ export const ComplainantSection = ({
       />
       
       {!!data.id && (
-        <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
-          <p className="text-xs text-blue-700">
-            ℹ️ Fields are locked — auto-filled from resident record.
-          </p>
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <span>
+            Existing resident record selected: <span className="font-semibold">{data.firstName} {data.lastName}</span>
+          </span>
           <button
             type="button"
             onClick={onClearPerson}
-            className="ml-4 rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+            className="text-emerald-700 hover:text-emerald-900 hover:underline font-medium text-xs flex items-center gap-1 transition-colors"
           >
-            Cancel Autofill
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Clear Selection
           </button>
         </div>
       )}

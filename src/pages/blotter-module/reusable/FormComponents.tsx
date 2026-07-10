@@ -158,7 +158,7 @@ export const FormInput = ({
         maxLength={maxLength}
         {...props}
         onChange={handleChange}
-        className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all ${className}`}
+        className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed transition-all ${className}`}
       />
       {(hint && !error) || shouldShowCounter ? (
         <div
@@ -195,7 +195,7 @@ export const FormSelect = ({
     </label>
     <select
       {...props}
-      className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-3 text-[15px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all ${className}`}
+      className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-3 text-[15px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed transition-all ${className}`}
     >
       <option value="">{placeholder}</option>
       {options.map((o) => (
@@ -224,7 +224,7 @@ export const FormDatePicker = ({
       type="date"
       required={required}
       {...props}
-      className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all ${className}`}
+      className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed transition-all ${className}`}
     />
     {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
   </div>
@@ -245,7 +245,7 @@ export const FormTimePicker = ({
       type="time"
       required={required}
       {...props}
-      className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all ${className}`}
+      className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed transition-all ${className}`}
     />
     {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
   </div>
@@ -276,7 +276,7 @@ export const FormTextarea = ({
         maxLength={props.maxLength ?? 2000}
         {...props}
         onChange={handleChange}
-        className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all resize-none ${className}`}
+        className={`w-full rounded-lg border ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"} px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed transition-all resize-none ${className}`}
       />
     {hint && !error && <p className="text-sm text-slate-600">{hint}</p>}
     {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
@@ -432,7 +432,7 @@ export const FormActions = ({
         Cancel
       </button>
       <button
-        type="button"
+        type="submit"
         onClick={onSubmit}
         disabled={isSubmitting || disabled}
         className={`flex items-center gap-2 text-sm font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed px-5 py-2.5 rounded-lg transition-all shadow-sm ${mode === "formal" ? "bg-blue-700 hover:bg-blue-800" : "bg-blue-600 hover:bg-blue-700"}`}
@@ -570,13 +570,16 @@ export const ConfirmModal = ({
         <p className="text-gray-500 text-sm mb-6">{message}</p>
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={onCancel}
             className="flex-1 py-2.5 font-medium rounded border-2 border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
           >
             {cancelText}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
+            autoFocus
             className={`flex-1 py-2.5 font-medium rounded transition-colors ${confirmBtn}`}
           >
             {confirmText}

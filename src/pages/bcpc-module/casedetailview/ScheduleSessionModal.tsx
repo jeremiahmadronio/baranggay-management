@@ -223,7 +223,7 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
               </div>
             )}
 
-            <button onClick={handleSubmit} disabled={!isValid || loading}
+            <button autoFocus onClick={handleSubmit} disabled={!isValid || loading}
               className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               {loading ? (
                 <>

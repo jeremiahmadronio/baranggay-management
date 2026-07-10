@@ -1028,7 +1028,7 @@ export function EditCaseModal({
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             onClick={handleSubmit}
             disabled={submitting || !hasPermission || loadingOptions}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"

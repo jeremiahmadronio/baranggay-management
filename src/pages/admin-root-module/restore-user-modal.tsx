@@ -109,7 +109,7 @@ export function RestoreUserModal({ admin, onClose }: RestoreUserModalProps) {
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             onClick={handleConfirm}
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"

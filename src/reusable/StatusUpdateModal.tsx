@@ -137,7 +137,7 @@ export function StatusUpdateModal({
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             type="button"
             onClick={handleSubmit}
             disabled={submitting}

@@ -84,7 +84,7 @@ export const InputModal = ({
           >
             {cancelText}
           </button>
-          <button
+          <button autoFocus
             onClick={handleSubmit}
             className="flex-1 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
           >
@@ -274,7 +274,7 @@ export const InputGroupModal = ({
           >
             {cancelText}
           </button>
-          <button
+          <button autoFocus
             onClick={handleSubmit}
             className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
           >

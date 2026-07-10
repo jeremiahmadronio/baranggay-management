@@ -578,7 +578,24 @@ export default function BlotterEntryForm() {
     );
   }
   return (
-    <div className="min-h-screen bg-blue-50/40">
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmitClick();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          const target = e.target as HTMLElement;
+          const tagName = target.tagName.toLowerCase();
+          if (tagName === "textarea" || tagName === "button" || target.isContentEditable) {
+            return;
+          }
+          e.preventDefault();
+          handleSubmitClick();
+        }
+      }}
+      className="min-h-screen bg-blue-50/40"
+    >
       <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
         <FormNotice
           tone="warning"
@@ -798,6 +815,6 @@ export default function BlotterEntryForm() {
           mode={mode}
         />
       </div>
-    </div>
+    </form>
   );
 }

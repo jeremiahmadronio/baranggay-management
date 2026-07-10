@@ -116,7 +116,7 @@ export function FollowUpModal({
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             onClick={handlePost}
             disabled={!text.trim() || saving || !hasPermission}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"

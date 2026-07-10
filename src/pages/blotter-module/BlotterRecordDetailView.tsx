@@ -21,6 +21,10 @@ import { closeRecordCase, getSettlementDocument } from "../../service/blotter-ap
 import { Upload, X, PrinterIcon, Download } from "lucide-react";
 import { TimelineTab } from "../admin-module/blotter-docket/tabs/TimeLineTab";
 import { ActionModal } from "./reusable/SuccessModal";
+import {
+  getNatureOfComplaintOptions,
+  type NatureOptionDTO,
+} from "../../service/blotter-api/BlotterFormComplaint";
 
 const getStatusPillClass = (statusRaw: string) => {
   const status = String(statusRaw || "")
@@ -121,6 +125,7 @@ const BlotterRecordDetailViewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "invitation" | "closure" | "timeline">("overview");
+  const [natureOptions, setNatureOptions] = useState<NatureOptionDTO[]>([]);
 
   const [closingDate, setClosingDate] = useState("");
   const [closingVenue, setClosingVenue] = useState("");
@@ -155,8 +160,14 @@ const BlotterRecordDetailViewPage: React.FC = () => {
     if (!blotterNumber) return;
     setLoading(true);
     setError(null);
-    getFullBlotterRecord(blotterNumber)
-      .then(setRecord)
+    Promise.all([
+      getFullBlotterRecord(blotterNumber),
+      getNatureOfComplaintOptions(),
+    ])
+      .then(([rec, natures]) => {
+        setRecord(rec);
+        setNatureOptions(natures);
+      })
       .catch((err: any) => setError(err.message ?? "Failed to load record."))
       .finally(() => setLoading(false));
   }, [blotterNumber]);
@@ -216,7 +227,7 @@ const BlotterRecordDetailViewPage: React.FC = () => {
             </h1>
           </div>
           <p className="text-sm text-gray-500">
-            {record.natureOfComplaint || "For the Record"}
+            {natureOptions.find((n) => String(n.id) === String(record.natureOfComplaint))?.natureName || record.natureOfComplaint || "For the Record"}
           </p>
         </div>
 

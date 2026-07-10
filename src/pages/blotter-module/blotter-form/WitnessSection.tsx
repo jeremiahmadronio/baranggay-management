@@ -51,6 +51,7 @@ export const WitnessSection = ({
               </span>
               {witnesses.length > 1 && (
                 <button
+                  type="button"
                   onClick={() => removeWitness(i)}
                   className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1"
                 >
@@ -163,6 +164,7 @@ export const WitnessSection = ({
       </div>
 
       <button
+        type="button"
         onClick={addWitness}
         className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors self-start"
       >

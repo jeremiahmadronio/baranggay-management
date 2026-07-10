@@ -367,7 +367,7 @@ export function RecordMinutesModal({ hearingId, onSuccess, onCancel }: Props) {
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             onClick={handleSubmit}
             disabled={loading}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md disabled:opacity-50 transition-colors"
