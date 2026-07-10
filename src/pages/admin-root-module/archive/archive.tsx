@@ -27,10 +27,8 @@ import {
   userManagementApi,
   Statuses,
 } from "../../../service/admin-root-api/user-management";
-import type { UserTable } from "../../../service/admin-root-api/user-management";
 import {
   getAdminTable,
-  restoreArchive,
   type AdminTable,
 } from "../../../service/admin-root-api/admin-management";
 import {
@@ -41,7 +39,7 @@ import {
 import { ResidentsView } from "../../admin-module/resident/ResidentsView";
 import { OfficerProfileView } from "../officer/officer-profile-view";
 
-type ArchiveTab = "residents" | "users" | "officers" | "admins";
+type ArchiveTab = "residents" | "users" | "officers";
 type RestoreKind = "resident" | "user" | "officer";
 
 interface RestoreTarget {
@@ -143,7 +141,7 @@ function formatDateTime(iso?: string | null): string {
 }
 
 function normalizeUserStatus(
-  user: UserTable,
+  user: AdminTable,
 ): "ACTIVE" | "INACTIVE" | "ARCHIVED" | "LOCK" {
   if (user.isLocked) return "LOCK";
   const normalized = user.status?.toUpperCase();
@@ -224,7 +222,7 @@ function UserArchiveProfileView({
   user,
   onBack,
 }: {
-  user: UserTable;
+  user: AdminTable;
   onBack: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "access">("overview");
@@ -280,7 +278,7 @@ function UserArchiveProfileView({
               {prettify(user.roleName)}
             </span>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
-              {prettify(user.departmentName) || "No department"}
+              {Array.isArray(user.departments) ? user.departments.map(prettify).join(", ") : (prettify(user.departments) || "No department")}
             </span>
           </div>
         </div>
@@ -326,7 +324,7 @@ function UserArchiveProfileView({
                 </p>
                 <p className="text-sm text-gray-700">
                   <span className="text-gray-500">Department:</span>{" "}
-                  {prettify(user.departmentName) || "—"}
+                  {Array.isArray(user.departments) ? user.departments.map(prettify).join(", ") : (prettify(user.departments) || "—")}
                 </p>
               </div>
 
@@ -395,7 +393,7 @@ export default function RootArchivePage() {
   const [residentPage, setResidentPage] = useState(1);
 
   // Users
-  const [userRows, setUserRows] = useState<UserTable[]>([]);
+  const [userRows, setUserRows] = useState<AdminTable[]>([]);
   const [userLoading, setUserLoading] = useState(true);
   const [userPage, setUserPage] = useState(1);
 
@@ -406,27 +404,17 @@ export default function RootArchivePage() {
   const [officerTotalPages, setOfficerTotalPages] = useState(1);
   const [officerTotalItems, setOfficerTotalItems] = useState(0);
 
-  // Admins
-  const [adminRows, setAdminRows] = useState<AdminTable[]>([]);
-  const [adminLoading, setAdminLoading] = useState(true);
-  // Removed unused adminPage
-
-  // Admin view modal state
-  const [selectedAdmin, setSelectedAdmin] = useState<AdminTable | null>(null);
-
   // View/Restore state
   const [selectedResidentId, setSelectedResidentId] = useState<number | null>(
     null,
   );
-  const [selectedUser, setSelectedUser] = useState<UserTable | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminTable | null>(null);
   const [selectedOfficerId, setSelectedOfficerId] = useState<number | null>(
     null,
   );
   const [restoreTarget, setRestoreTarget] = useState<RestoreTarget | null>(
     null,
   );
-  const [adminRestoreTarget, setAdminRestoreTarget] =
-    useState<AdminTable | null>(null);
 
   // ── Loaders ────────────────────────────────────────────────────────────────
   const loadStats = useCallback(async () => {
@@ -469,16 +457,13 @@ export default function RootArchivePage() {
     async (resetPage = true) => {
       try {
         setUserLoading(true);
-        const first = await userManagementApi.getStaffTable({
+        const res = await getAdminTable({
           page: 0,
           size: 200,
           search: search || undefined,
+          status: "ARCHIVED",
         });
-        setUserRows(
-          (first.content || []).filter(
-            (u) => String(u.status || "").toUpperCase() === "ARCHIVED",
-          ),
-        );
+        setUserRows(res.content || []);
         if (resetPage) setUserPage(1);
       } catch {
         setUserRows([]);
@@ -510,23 +495,6 @@ export default function RootArchivePage() {
     }
   }, [officerPage, search]);
 
-  const loadAdmins = useCallback(async () => {
-    try {
-      setAdminLoading(true);
-      const res = await getAdminTable({
-        page: 0,
-        size: 200,
-        status: "ARCHIVED",
-        search: search || undefined,
-      });
-      setAdminRows(res.content || []);
-    } catch {
-      setAdminRows([]);
-    } finally {
-      setAdminLoading(false);
-    }
-  }, [search]);
-
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
     loadStats();
@@ -536,8 +504,7 @@ export default function RootArchivePage() {
     if (activeTab === "residents") loadResidents();
     if (activeTab === "users") loadUsers();
     if (activeTab === "officers") loadOfficers();
-    if (activeTab === "admins") loadAdmins();
-  }, [activeTab, loadResidents, loadUsers, loadOfficers, loadAdmins]);
+  }, [activeTab, loadResidents, loadUsers, loadOfficers]);
 
   useEffect(() => {
     if (activeTab === "officers") setOfficerPage(1);
@@ -684,7 +651,6 @@ export default function RootArchivePage() {
                   ["residents", "Residents"],
                   ["users", "Users"],
                   ["officers", "Officers"],
-                  ["admins", "Admins"],
                 ] as const
               ).map(([key, label]) => (
                 <button
@@ -831,9 +797,10 @@ export default function RootArchivePage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     {[
-                      "Employee",
+                      "Full Name",
+                      "Email",
                       "Role",
-                      "Department",
+                      "Departments",
                       "Status",
                       "Last Login",
                       "Actions",
@@ -851,13 +818,13 @@ export default function RootArchivePage() {
                   {userLoading ? (
                     Array.from({ length: PAGE_SIZE }).map((_, i) => (
                       <tr key={i} className="animate-pulse">
-                        {skeletonCells(6)}
+                        {skeletonCells(7)}
                       </tr>
                     ))
                   ) : pagedUsers.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-6 py-12 text-center text-gray-500"
                       >
                         No archived users found.
@@ -877,19 +844,19 @@ export default function RootArchivePage() {
                           key={u.id}
                           className="hover:bg-gray-50 transition-colors"
                         >
-                          <td className="px-6 py-4">
-                            <div className="font-medium text-gray-800">
-                              {u.firstName} {u.lastName}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              @{u.username}
-                            </div>
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            {u.firstName} {u.lastName}
+                          </td>
+                          <td className="px-6 py-4 text-gray-700">
+                            {u.email || "—"}
                           </td>
                           <td className="px-6 py-4 text-gray-700">
                             {prettify(u.roleName)}
                           </td>
                           <td className="px-6 py-4 text-gray-700">
-                            {prettify(u.departmentName)}
+                            {Array.isArray(u.departments)
+                              ? u.departments.map(prettify).join(", ")
+                              : prettify(u.departments)}
                           </td>
                           <td className="px-6 py-4">
                             <span
@@ -903,7 +870,13 @@ export default function RootArchivePage() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                             
+                              <button
+                                onClick={() => setSelectedUser(u)}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                title="View"
+                              >
+                                <EyeIcon className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() =>
                                   setRestoreTarget({
@@ -1040,110 +1013,6 @@ export default function RootArchivePage() {
             />
           </div>
         )}
-
-        {/* ── ADMINS TAB ────────────────────────────────────────────────────── */}
-        {activeTab === "admins" && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    {[
-                      "Full Name",
-                      "Email",
-                      "Role",
-                      "Departments",
-                      "Status",
-                      "Last Login",
-                      "Actions",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {adminLoading ? (
-                    Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        {skeletonCells(7)}
-                      </tr>
-                    ))
-                  ) : adminRows.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="px-6 py-12 text-center text-gray-500"
-                      >
-                        No archived admins found.
-                      </td>
-                    </tr>
-                  ) : (
-                    <>
-                      {adminRows.slice(0, 2).map((admin) => (
-                        <tr
-                          key={admin.id}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="px-6 py-4 font-medium text-gray-900">
-                            {admin.firstName} {admin.lastName}
-                          </td>
-                          <td className="px-6 py-4 text-gray-700">
-                            {admin.email ?? admin.systemEmail ?? "—"}
-                          </td>
-                          <td className="px-6 py-4 text-gray-700">
-                            {admin.roleName}
-                          </td>
-                          <td className="px-6 py-4 text-gray-700">
-                            {admin.departments && admin.departments.length > 0
-                              ? admin.departments.slice(0, 2).join(", ") +
-                                (admin.departments.length > 2
-                                  ? `, +${admin.departments.length - 2} more`
-                                  : "")
-                              : "—"}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                              ARCHIVED
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-gray-500">
-                            {formatLastLogin(admin.lastLoginAt)}
-                          </td>
-                          <td className="px-6 py-4 text-right flex gap-2 justify-end">
-                           
-                            <button
-                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
-                              onClick={() => setAdminRestoreTarget(admin)}
-                              title="Restore"
-                            >
-                              <RotateCcwIcon className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {adminRows.length > 2 && (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-6 py-4 text-center text-gray-500 bg-gray-50"
-                          >
-                            +{adminRows.length - 2} more archived admin
-                            {adminRows.length - 2 > 1 ? "s" : ""}
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
@@ -1161,62 +1030,6 @@ export default function RootArchivePage() {
             setRestoreTarget(null);
           }}
         />
-      )}
-
-      {adminRestoreTarget && (
-        <StatusUpdateModal
-          isOpen
-          onClose={() => setAdminRestoreTarget(null)}
-          title="Restore Admin Account"
-          mode="reason-only"
-          subjectName={`${adminRestoreTarget.firstName} ${adminRestoreTarget.lastName}`}
-          subjectLabel="admin"
-          submitLabel="Restore"
-          onSubmit={async ({ reason }) => {
-            await restoreArchive(adminRestoreTarget.id, { remarks: reason });
-            setAdminRestoreTarget(null);
-            loadAdmins();
-            loadStats();
-          }}
-        />
-      )}
-      {selectedAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
-              onClick={() => setSelectedAdmin(null)}
-              title="Close"
-            >
-              ×
-            </button>
-            <h2 className="text-xl font-bold mb-4">Admin Details</h2>
-            <div className="mb-2">
-              <span className="font-semibold">Full Name:</span>{" "}
-              {selectedAdmin.firstName} {selectedAdmin.lastName}
-            </div>
-            <div className="mb-2">
-              <span className="font-semibold">Email:</span>{" "}
-              {selectedAdmin.email ?? selectedAdmin.systemEmail ?? "—"}
-            </div>
-            <div className="mb-2">
-              <span className="font-semibold">Role:</span>{" "}
-              {selectedAdmin.roleName}
-            </div>
-            <div className="mb-2">
-              <span className="font-semibold">Departments:</span>{" "}
-              {selectedAdmin.departments?.join(", ") || "—"}
-            </div>
-            <div className="mb-2">
-              <span className="font-semibold">Status:</span>{" "}
-              {selectedAdmin.status}
-            </div>
-            <div className="mb-2">
-              <span className="font-semibold">Last Login:</span>{" "}
-              {formatLastLogin(selectedAdmin.lastLoginAt)}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -204,6 +204,7 @@ export interface StaffTableParams {
   search?: string;
   roleName?: string;
   departmentName?: string;
+  status?: string;
 }
 
 export interface CreateUserPayload {
@@ -255,11 +256,12 @@ export const userManagementApi = {
     const qs = new URLSearchParams();
     qs.set("page", String(params.page ?? 0));
     qs.set("size", String(params.size ?? 10));
-    if (params.search) qs.set("search", params.search);
+    if (params.search !== undefined) qs.set("search", params.search);
     if (params.roleName) qs.set("roleName", params.roleName);
     if (params.departmentName) qs.set("departmentName", params.departmentName);
+    if (params.status) qs.set("status", params.status);
     return apiFetch<BackendPageEnvelope<UserTable>>(
-      `/staff-table/global?${qs.toString()}`,
+      `/staff-table?${qs.toString()}`,
     ).then(normalizePageResponse);
   },
 

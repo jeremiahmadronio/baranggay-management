@@ -112,6 +112,40 @@ function prettify(value?: string | null) {
     .join(" ");
 }
 
+async function fetchAllPagedRows<T>(
+  fetchPage: (page: number) => Promise<{ content?: T[]; totalPages?: number }>,
+): Promise<T[]> {
+  const firstPage = await fetchPage(0);
+  const rows = [...(firstPage.content || [])];
+  const totalPages = Math.max(Number(firstPage.totalPages || 1), 1);
+
+  if (totalPages > 1) {
+    const remainingPages = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, idx) => fetchPage(idx + 1)),
+    );
+    for (const page of remainingPages) {
+      rows.push(...(page.content || []));
+    }
+  }
+
+  return rows;
+}
+
+function mergeUniqueRows<T extends { id: string | number }>(
+  rows: T[],
+  extra: T[],
+): T[] {
+  const seen = new Set<string>();
+  const merged: T[] = [];
+  for (const row of [...rows, ...extra]) {
+    const key = String(row.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+  return merged;
+}
+
 function normalizeUserStatus(
   user: UserTable,
 ): "ACTIVE" | "INACTIVE" | "ARCHIVED" | "LOCK" {
@@ -122,21 +156,74 @@ function normalizeUserStatus(
   return "ACTIVE";
 }
 
-function formatLastLogin(iso: string | null): string {
-  if (!iso) return "Never";
-  try {
-    return new Date(iso).toLocaleString("en-US", {
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  } catch {
-    return iso;
-  }
+// ─── Pagination Component ────────────────────────────────────────────────────
+function Pagination({
+  prefix,
+  currentPage,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPageChange,
+}: {
+  prefix: string;
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-gray-200">
+      <p className="text-sm text-gray-500">
+        Showing {(currentPage - 1) * pageSize + 1} to{" "}
+        {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronLeftIcon className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-1">
+          {getVisiblePages(currentPage, totalPages).map((page, idx) =>
+            page === "..." ? (
+              <span
+                key={`${prefix}-ellipsis-${idx}`}
+                className="px-2 py-1 text-sm text-gray-400"
+              >
+                ...
+              </span>
+            ) : (
+              <button
+                key={`${prefix}-page-${page}`}
+                onClick={() => onPageChange(Number(page))}
+                className={`min-w-9 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  currentPage === page
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {page}
+              </button>
+            ),
+          )}
+        </div>
+        <button
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronRightIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
+// ─── User Archive Profile View ───────────────────────────────────────────────
 function UserArchiveProfileView({
   user,
   onBack,
@@ -144,197 +231,189 @@ function UserArchiveProfileView({
   user: UserTable;
   onBack: () => void;
 }) {
-  const [details, setDetails] = useState<UserViewDTO | null>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "access">("overview");
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setDetailsLoading(true);
-      try {
-        const res = await userManagementApi.getUserDetails(user.id);
-        if (!active) return;
-        setDetails(res);
-      } catch {
-        if (!active) return;
-        setDetails(null);
-      } finally {
-        if (active) setDetailsLoading(false);
-      }
-    };
-
-    load();
-
-    return () => {
-      active = false;
-    };
-  }, [user.id]);
-
   const fullName = `${user.firstName} ${user.lastName}`;
-  const initials = fullName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
-  const status = normalizeUserStatus(user);
-  const permissions = details?.permissions || user.permissions || [];
+  const userStatus = user.isLocked
+    ? "LOCK"
+    : user.status?.toUpperCase() === "INACTIVE"
+      ? "INACTIVE"
+      : user.status?.toUpperCase() === "ARCHIVED"
+        ? "ARCHIVED"
+        : "ACTIVE";
 
-  const field = (label: string, value?: string | number | null) => (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-        {label}
-      </p>
-      <p className="text-sm text-gray-800">{value || "—"}</p>
-    </div>
+  const initials = useMemo(
+    () =>
+      fullName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase() || "US",
+    [fullName],
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
+    <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-6">
+      {/* Back button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors w-fit"
+        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors w-fit"
       >
         <ChevronLeftIcon className="w-4 h-4" />
         Back to Archive
       </button>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col sm:flex-row sm:items-start gap-4">
-        <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
-          {initials || "US"}
+      {/* Profile Header */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col sm:flex-row items-center gap-6">
+        <div className="w-20 h-20 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-2xl font-bold text-blue-600">
+          {initials}
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{fullName}</h1>
+        <div className="flex-1 text-center sm:text-left">
+          <h2 className="text-xl font-bold text-gray-900">{fullName}</h2>
           <p className="text-sm text-gray-500 mt-1">@{user.username}</p>
-          <p className="text-sm text-gray-500">
-            {details?.systemEmail || user.email || "No system email"}
-          </p>
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status === "ACTIVE" ? "bg-green-100 text-green-700" : status === "INACTIVE" ? "bg-gray-100 text-gray-600" : status === "LOCK" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}
-            >
-              {status}
-            </span>
-          </div>
-          <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-            <p className="text-xs text-gray-500">Assigned Department(s)</p>
-            <p className="text-sm text-gray-800 mt-0.5">
-              {details?.departments || prettify(user.departmentName)}
-            </p>
-          </div>
         </div>
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+            userStatus === "ACTIVE"
+              ? "bg-green-100 text-green-700"
+              : userStatus === "INACTIVE"
+                ? "bg-gray-100 text-gray-600"
+                : userStatus === "LOCK"
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-red-100 text-red-700"
+          }`}
+        >
+          {userStatus === "LOCK"
+            ? "LOCKED"
+            : userStatus === "ARCHIVED"
+              ? "ARCHIVED"
+              : userStatus}
+        </span>
       </div>
 
-      <div className="rounded-xl overflow-hidden border border-gray-200 bg-white">
-        <div className="flex border-b border-gray-200 px-6 bg-white overflow-x-auto whitespace-nowrap">
-          {(
-            [
-              ["overview", "Overview"],
-              ["access", `Permissions (${permissions.length})`],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`py-4 px-1 mr-8 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px ${
+            activeTab === "overview"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveTab("access")}
+          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px ${
+            activeTab === "access"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          Access & Security
+        </button>
+      </div>
 
-        <div className="p-6">
-          {detailsLoading && (
-            <div className="mb-4 text-sm text-gray-500">
-              Loading user details...
+      {/* Tab Content */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[300px]">
+        {activeTab === "overview" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                System Email Address
+              </h3>
+              <p className="text-sm text-gray-900 mt-1">
+                {user.email || "No email"}
+              </p>
             </div>
-          )}
-          {activeTab === "overview" ? (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-              <div className="xl:col-span-2 border border-gray-200 rounded-xl p-5 bg-white">
-                <h2 className="text-sm font-semibold text-gray-900">
-                  User Information
-                </h2>
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
-                  {field("Full Name", details?.fullName || fullName)}
-                  {field("Username", `@${user.username}`)}
-                  {field(
-                    "System Email",
-                    details?.systemEmail || user.email || "—",
-                  )}
-                  {field(
-                    "Contact Number",
-                    details?.contactNumber || user.contactNumber || "—",
-                  )}
-                  {field(
-                    "Age",
-                    details?.age ? `${details.age} years old` : "—",
-                  )}
-                  {field("Gender", details?.gender || "—")}
-                  {field("Civil Status", details?.civilStatus || "—")}
-                  {field("Role", details?.roleName || prettify(user.roleName))}
-                  {field(
-                    "Department(s)",
-                    details?.departments || prettify(user.departmentName),
-                  )}
-                  {field("Complete Address", details?.completeAddress || "—")}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Contact Number
+              </h3>
+              <p className="text-sm text-gray-900 mt-1">
+                {user.contactNumber || "No contact number"}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Role Assignment
+              </h3>
+              <p className="text-sm text-gray-900 mt-1">
+                {prettify(user.roleName)}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Department Assignment
+              </h3>
+              <p className="text-sm text-gray-900 mt-1">
+                {prettify(user.departmentName)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Account Type
+              </h3>
+              <p className="text-sm text-gray-900 mt-1">
+                {user.accountType || "SYSTEM_USER"}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Account Security Details
+              </h3>
+              <div className="mt-2 space-y-2">
+                <div className="flex justify-between text-sm py-2 border-b border-gray-100">
+                  <span className="text-gray-500">Lockout Status</span>
+                  <span className="font-medium text-gray-900">
+                    {user.isLocked ? "Temporary Lockout Active" : "No Lockout"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm py-2 border-b border-gray-100">
+                  <span className="text-gray-500">Lockout Expiration</span>
+                  <span className="font-medium text-gray-900">
+                    {user.lockUntil
+                      ? new Date(user.lockUntil).toLocaleString()
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm py-2">
+                  <span className="text-gray-500">Last System Login</span>
+                  <span className="font-medium text-gray-900">
+                    {user.lastLoginAt
+                      ? new Date(user.lastLoginAt).toLocaleString()
+                      : "Never logged in"}
+                  </span>
                 </div>
               </div>
-
-              <div className="border border-gray-200 rounded-xl p-5 bg-white">
-                <h2 className="text-sm font-semibold text-gray-900">
-                  System Information
-                </h2>
-                <div className="mt-4 space-y-5">
-                  {field("Account Lock", user.isLocked ? "Locked" : "Unlocked")}
-                  {field("Status", details?.status || status)}
-                  {field(
-                    "Created At",
-                    details?.createdAt
-                      ? formatLastLogin(details.createdAt)
-                      : user.createdAt
-                        ? formatLastLogin(user.createdAt)
-                        : "Never",
-                  )}
-                  {field(
-                    "Last Updated At",
-                    details?.updatedAt
-                      ? formatLastLogin(details.updatedAt)
-                      : "Never",
-                  )}
-                  {field(
-                    "Last Login",
-                    formatLastLogin(details?.lastLoginAt || user.lastLoginAt),
-                  )}
-                </div>
-              </div>
             </div>
-          ) : (
-            <div className="border border-gray-200 rounded-xl p-5 bg-white">
-              <h2 className="text-sm font-semibold text-gray-900">
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                 Assigned Permissions
-              </h2>
-              {permissions.length === 0 ? (
-                <p className="text-sm text-gray-500 mt-4">
-                  No assigned permissions.
-                </p>
-              ) : (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {permissions.map((perm, index) => (
-                    <div
-                      key={`${perm}-${index}`}
-                      className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-700"
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {user.permissions?.length > 0 ? (
+                  user.permissions.map((perm) => (
+                    <span
+                      key={perm}
+                      className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-medium"
                     >
-                      {perm}
-                    </div>
-                  ))}
-                </div>
-              )}
+                      {prettify(perm)}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-400">No permissions</p>
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -419,17 +498,51 @@ export default function ArchivePage() {
     async (resetPage = true) => {
       try {
         setUserLoading(true);
-        const first = await userManagementApi.getStaffTable({
-          page: 0,
-          size: 200,
-          search: search || undefined,
+        const [activeUsers, inactiveUsers, archivedUsers, lockedUsers] =
+          await Promise.all([
+            fetchAllPagedRows((page) =>
+              userManagementApi.getStaffTable({
+                page,
+                size: PAGE_SIZE,
+                search,
+                status: "ACTIVE",
+              }),
+            ),
+            fetchAllPagedRows((page) =>
+              userManagementApi.getStaffTable({
+                page,
+                size: PAGE_SIZE,
+                search,
+                status: "INACTIVE",
+              }),
+            ),
+            fetchAllPagedRows((page) =>
+              userManagementApi.getStaffTable({
+                page,
+                size: PAGE_SIZE,
+                search,
+                status: "ARCHIVED",
+              }),
+            ),
+            fetchAllPagedRows((page) =>
+              userManagementApi.getStaffTable({
+                page,
+                size: PAGE_SIZE,
+                search,
+                status: "LOCKED",
+              }),
+            ),
+          ]);
+
+        const combinedUsers = mergeUniqueRows(
+          mergeUniqueRows(activeUsers, inactiveUsers),
+          mergeUniqueRows(archivedUsers, lockedUsers),
+        ).filter((u) => {
+          const status = normalizeUserStatus(u);
+          return status !== "ACTIVE";
         });
-        setUserRows(
-          (first.content || []).filter((u) => {
-            const status = String(u.status || "").toUpperCase();
-            return status === "ARCHIVED" || status === "INACTIVE";
-          }),
-        );
+
+        setUserRows(combinedUsers);
         if (resetPage) {
           setUserPage(1);
         }
@@ -446,15 +559,35 @@ export default function ArchivePage() {
   const loadOfficers = useCallback(async () => {
     try {
       setOfficerLoading(true);
-      const res = await employeeApi.getPagedTable({
-        page: Math.max(officerPage - 1, 0),
-        size: PAGE_SIZE,
-        search: search || undefined,
-        status: "ARCHIVED",
+      const archivedOfficers = await fetchAllPagedRows((page) =>
+        employeeApi.getPagedTable({
+          page,
+          size: PAGE_SIZE,
+          search: search || undefined,
+          status: "ARCHIVED",
+        }),
+      );
+      const inactiveOfficers = await fetchAllPagedRows((page) =>
+        employeeApi.getPagedTable({
+          page,
+          size: PAGE_SIZE,
+          search: search || undefined,
+          status: "INACTIVE",
+        }),
+      );
+
+      const combinedOfficers = mergeUniqueRows(
+        archivedOfficers,
+        inactiveOfficers,
+      ).filter((o) => {
+        const status = String(o.status || "").toUpperCase();
+        return status === "ARCHIVED" || status === "INACTIVE";
       });
-      setOfficerRows(res.content || []);
-      setOfficerTotalItems(res.totalElements || 0);
-      setOfficerTotalPages(Math.max(res.totalPages || 1, 1));
+      setOfficerRows(combinedOfficers);
+      setOfficerTotalItems(combinedOfficers.length);
+      setOfficerTotalPages(
+        Math.max(Math.ceil(combinedOfficers.length / PAGE_SIZE), 1),
+      );
     } catch (e) {
       console.error("Failed to load archived officers", e);
       setOfficerRows([]);
@@ -463,7 +596,7 @@ export default function ArchivePage() {
     } finally {
       setOfficerLoading(false);
     }
-  }, [officerPage, search]);
+  }, [search]);
 
   useEffect(() => {
     loadStats();
@@ -480,12 +613,6 @@ export default function ArchivePage() {
       setOfficerPage(1);
     }
   }, [search, activeTab]);
-
-  useEffect(() => {
-    if (activeTab === "officers") {
-      loadOfficers();
-    }
-  }, [officerPage, activeTab, loadOfficers]);
 
   const pagedResidents = useMemo(
     () =>
@@ -506,6 +633,12 @@ export default function ArchivePage() {
   );
   const userTotalPages = Math.max(Math.ceil(userRows.length / PAGE_SIZE), 1);
 
+  const pagedOfficers = useMemo(
+    () =>
+      officerRows.slice((officerPage - 1) * PAGE_SIZE, officerPage * PAGE_SIZE),
+    [officerRows, officerPage],
+  );
+
   const performRestore = async (reason: string) => {
     if (!restoreTarget) return;
 
@@ -518,17 +651,13 @@ export default function ArchivePage() {
         reason,
       });
       await loadResidents();
-    }
-
-    if (restoreTarget.kind === "user") {
+    } else if (restoreTarget.kind === "user") {
       await updateUserStatus(String(restoreTarget.id), Statuses.ACTIVE, {
         reason,
         lockUntil: null,
       });
       await loadUsers();
-    }
-
-    if (restoreTarget.kind === "officer") {
+    } else if (restoreTarget.kind === "officer") {
       await employeeApi.updateStatus(Number(restoreTarget.id), {
         reason,
         newStatus: EmployeeStatuses.ACTIVE,
@@ -1062,7 +1191,7 @@ export default function ArchivePage() {
                         </td>
                       </tr>
                     ))
-                  ) : officerRows.length === 0 ? (
+                  ) : pagedOfficers.length === 0 ? (
                     <tr>
                       <td
                         colSpan={6}
@@ -1072,7 +1201,7 @@ export default function ArchivePage() {
                       </td>
                     </tr>
                   ) : (
-                    officerRows.map((o) => (
+                    pagedOfficers.map((o) => (
                       <tr
                         key={o.id}
                         className="hover:bg-gray-50 transition-colors"

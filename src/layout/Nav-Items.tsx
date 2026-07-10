@@ -89,6 +89,16 @@ export const adminNavItems: NavItemType[] = [
 
     },
 
+    {
+    label: "Bcpc",
+    path: "/admin/bcpc",
+    icon: Shield,
+    children: [
+      { label: "Cases", path: "/admin/bcpc-cases", icon: ScrollText },
+      { label: "Reports", path: "/admin/bcpc-reports", icon: ChartNoAxesCombined },
+    ],
+    },
+
 
   { label: "Events", path: "/admin/events", icon: CalendarDays },
   { label: "Reports", path: "/admin/reports", icon: ChartNoAxesCombined },

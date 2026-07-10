@@ -294,10 +294,9 @@ export async function archiveAdmin(
   userId: string,
   body: ArchiveReason,
 ): Promise<string> {
-  const query = new URLSearchParams({ userId });
-  return apiFetch<string>(`/archive-admin?${query.toString()}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
+  return updateUserStatus(userId, "ARCHIVED" as Status, {
+    reason: body.remarks,
+    lockUntil: null,
   });
 }
 
@@ -332,10 +331,9 @@ export async function restoreArchive(
   userId: string,
   body: ArchiveReason,
 ): Promise<string> {
-  const query = new URLSearchParams({ userId });
-  return apiFetch<string>(`/unarchive-admin?${query.toString()}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
+  return updateUserStatus(userId, "ACTIVE" as Status, {
+    reason: body.remarks,
+    lockUntil: null,
   });
 }
 

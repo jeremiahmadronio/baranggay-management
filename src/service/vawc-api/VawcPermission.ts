@@ -60,9 +60,21 @@ function normalizePermissionName(value?: string | null): string {
 }
 
 export function hasVawcPermission(
-  user: Pick<UserAccessPermission, "permissions"> | null | undefined,
+  user: (Pick<UserAccessPermission, "permissions"> & { role?: string }) | null | undefined,
   permission: string,
 ): boolean {
+  if (user) {
+    const userRole = String(user.role || "").toUpperCase().trim();
+    if (
+      userRole === "ADMIN" ||
+      userRole === "ROOTADMIN" ||
+      userRole === "ADMINISTRATOR" ||
+      userRole === "ROOT_ADMIN"
+    ) {
+      return true;
+    }
+  }
+
   if (!user?.permissions?.length) return false;
 
   const normalizedOwnedList = user.permissions.map((p) =>

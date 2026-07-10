@@ -23,6 +23,44 @@ type GrowthPoint = {
   events: number;
 };
 
+type ArchivePoint = {
+  category: string;
+  value: number;
+};
+
+function normalizeArchiveSummary(input: unknown): ArchivePoint[] {
+  const rows = Array.isArray(input) ? input : [];
+  const totals = new Map<string, number>([
+    ["Residents", 0],
+    ["Users", 0],
+    ["Officers", 0],
+  ]);
+
+  for (const row of rows as Array<Record<string, unknown>>) {
+    const rawCategory = String(row.category ?? row.name ?? row.label ?? "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "_");
+    const value = Number(row.value ?? row.count ?? 0) || 0;
+
+    if (rawCategory === "RESIDENT" || rawCategory === "RESIDENTS") {
+      totals.set("Residents", (totals.get("Residents") ?? 0) + value);
+      continue;
+    }
+
+    if (rawCategory === "USER" || rawCategory === "USERS") {
+      totals.set("Users", (totals.get("Users") ?? 0) + value);
+      continue;
+    }
+
+    if (rawCategory === "OFFICER" || rawCategory === "OFFICERS") {
+      totals.set("Officers", (totals.get("Officers") ?? 0) + value);
+    }
+  }
+
+  return Array.from(totals, ([category, value]) => ({ category, value }));
+}
+
 function GrowthTooltip({
   active,
   payload,
@@ -135,7 +173,10 @@ export default function AdminReportsPage() {
       setApiError(null);
 
       try {
-        const data = await adminReportsApi.getAdminSummary(appliedRange.start, appliedRange.end);
+        const data = await adminReportsApi.getAdminSummary(
+          appliedRange.start,
+          appliedRange.end,
+        );
         if (!isMounted) return;
 
         setStats({
@@ -147,7 +188,7 @@ export default function AdminReportsPage() {
 
         setGrowthData(data.growthTrend);
         setEventsData(data.eventStatusDistribution);
-        setArchiveData(data.archiveSummary);
+        setArchiveData(normalizeArchiveSummary(data.archiveSummary));
       } catch (err: any) {
         if (!isMounted) return;
         setApiError(err.message || "Failed to load report data");
@@ -165,11 +206,16 @@ export default function AdminReportsPage() {
 
   const lowDomainMax = useMemo(() => {
     if (!growthData.length) return 100;
-    const maxVal = Math.max(...growthData.map(d => Math.max(d.residents, d.officers, d.events)));
+    const maxVal = Math.max(
+      ...growthData.map((d) => Math.max(d.residents, d.officers, d.events)),
+    );
     return Math.ceil(maxVal / 10) * 10 || 20; // Round up to nearest 10
   }, [growthData]);
 
-  const eventsTotal = useMemo(() => eventsData.reduce((acc, curr) => acc + curr.value, 0), [eventsData]);
+  const eventsTotal = useMemo(
+    () => eventsData.reduce((acc, curr) => acc + curr.value, 0),
+    [eventsData],
+  );
 
   const handleApplyFilter = () => {
     setDateError(null);
@@ -214,10 +260,26 @@ export default function AdminReportsPage() {
       });
 
     const kpiCards = [
-      { label: "Residents", value: stats?.totalResidents ?? 0, sub: "Registered residents" },
-      { label: "Officers", value: stats?.totalOfficers ?? 0, sub: "Active officers" },
-      { label: "Events", value: stats?.totalEvents ?? 0, sub: "Barangay events" },
-      { label: "Users", value: stats?.totalUsers ?? 0, sub: "Registered users" },
+      {
+        label: "Residents",
+        value: stats?.totalResidents ?? 0,
+        sub: "Registered residents",
+      },
+      {
+        label: "Officers",
+        value: stats?.totalOfficers ?? 0,
+        sub: "Active officers",
+      },
+      {
+        label: "Events",
+        value: stats?.totalEvents ?? 0,
+        sub: "Barangay events",
+      },
+      {
+        label: "Users",
+        value: stats?.totalUsers ?? 0,
+        sub: "Registered users",
+      },
     ];
 
     const trendRows = growthData
@@ -309,10 +371,14 @@ export default function AdminReportsPage() {
 </html>`;
 
     const iframe = document.createElement("iframe");
-    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;";
+    iframe.style.cssText =
+      "position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;";
     document.body.appendChild(iframe);
     const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
-    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+    if (!iframeDoc) {
+      document.body.removeChild(iframe);
+      return;
+    }
     iframeDoc.open();
     iframeDoc.write(html);
     iframeDoc.close();
@@ -456,7 +522,8 @@ export default function AdminReportsPage() {
                 Activity Trend ({appliedRangeDays <= 30 ? "Daily" : "Monthly"})
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Focused trend view for core operations (Residents, Officers, Events).
+                Focused trend view for core operations (Residents, Officers,
+                Events).
                 <span className="ml-1 text-gray-400">
                   ({formatRangeDate(appliedRange.start)} –{" "}
                   {formatRangeDate(appliedRange.end)})
@@ -584,10 +651,7 @@ export default function AdminReportsPage() {
                       strokeWidth={2}
                     >
                       {eventsData.map((item, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={item.color}
-                        />
+                        <Cell key={`cell-${index}`} fill={item.color} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -678,26 +742,58 @@ export default function AdminReportsPage() {
             <table className="w-full text-sm text-left text-gray-600">
               <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
                 <tr>
-                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider">Date</th>
-                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider text-right">Residents</th>
-                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider text-right">Officers</th>
-                  <th scope="col" className="px-6 py-4 font-semibold tracking-wider text-right">Events</th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 font-semibold tracking-wider"
+                  >
+                    Date
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 font-semibold tracking-wider text-right"
+                  >
+                    Residents
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 font-semibold tracking-wider text-right"
+                  >
+                    Officers
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 font-semibold tracking-wider text-right"
+                  >
+                    Events
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {growthData.map((row, i) => (
-                  <tr key={i} className="bg-white hover:bg-blue-50/50 transition-colors">
+                  <tr
+                    key={i}
+                    className="bg-white hover:bg-blue-50/50 transition-colors"
+                  >
                     <td className="px-6 py-3.5 font-medium text-gray-900 whitespace-nowrap">
                       {row.fullLabel}
                     </td>
-                    <td className="px-6 py-3.5 text-right font-medium text-emerald-600">{row.residents.toLocaleString()}</td>
-                    <td className="px-6 py-3.5 text-right font-medium text-violet-600">{row.officers.toLocaleString()}</td>
-                    <td className="px-6 py-3.5 text-right font-medium text-amber-600">{row.events.toLocaleString()}</td>
+                    <td className="px-6 py-3.5 text-right font-medium text-emerald-600">
+                      {row.residents.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3.5 text-right font-medium text-violet-600">
+                      {row.officers.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3.5 text-right font-medium text-amber-600">
+                      {row.events.toLocaleString()}
+                    </td>
                   </tr>
                 ))}
                 {!growthData.length && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-400 bg-gray-50">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-12 text-center text-gray-400 bg-gray-50"
+                    >
                       No data available for the selected range.
                     </td>
                   </tr>
