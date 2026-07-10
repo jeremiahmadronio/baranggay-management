@@ -14,7 +14,7 @@ import {
   getHearingView,
   getCaseNotes,
   updateCaseStatus,
-  updateBlotterStatusById,
+  restoreCase,
 } from "../../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
@@ -242,8 +242,9 @@ export function BlotterDocketDetailView({
         setDocket((prev) => (prev ? { ...prev, caseStatus: "ACTIVE" } : prev));
         return;
       }
-      await updateBlotterStatusById(Number(idToUse), {
-        status: "ACTIVE",
+      await updateCaseStatus({
+        blotterNumber,
+        newStatus: "PENDING",
         reason: reason,
       });
       setModal(null);

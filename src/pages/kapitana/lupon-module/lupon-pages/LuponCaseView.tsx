@@ -7,6 +7,7 @@ import {
   getMediationProcess,
   getHearingView,
   getCaseNotes,
+  updateCaseStatus,
 } from "../../../../service/lupon-api/LuponCaseManagement-view-api-v2";
 import { getLuponCaseView } from "../../../../service/lupon-api/Lupong-tagapamayapa-view-api";
 import { OverviewTab } from "../tabs/OverviewTab";
@@ -21,7 +22,7 @@ import {
   mockLuponHearingView,
   mockLuponMediationProcess,
 } from "../../mock/lupon-kapitana-mock";
-import { updateBlotterStatusById } from "../../../../service/blotter-api/DocketView";
+
 import { StatusUpdateModal } from "../../../../reusable/StatusUpdateModal";
 
 interface Props {
@@ -92,8 +93,9 @@ export function KapitanaLuponCaseDetailView({
         setLuponData((prev) => (prev ? { ...prev, caseStatus: "ACTIVE" } : prev));
         return;
       }
-      await updateBlotterStatusById(Number(idToUse), {
-        status: "ACTIVE",
+      await updateCaseStatus({
+        blotterNumber,
+        newStatus: "PENDING",
         reason: reason,
       });
       setModal(null);

@@ -196,8 +196,9 @@ export function UpdateStaffStatusModal({
           <textarea
             value={reason}
             onChange={(e) => {
-              if (e.target.value.length <= REASON_LIMIT) {
-                setReason(e.target.value);
+              const cleanedValue = e.target.value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()"\n]/g, "");
+              if (cleanedValue.length <= REASON_LIMIT) {
+                setReason(cleanedValue);
               }
               setReasonError("");
             }}
