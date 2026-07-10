@@ -30,6 +30,7 @@ export default function FtjsArchivePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [pendingStatusFilter, setPendingStatusFilter] = useState("");
   const [page, setPage] = useState(0);
 
   const [selectedArchive, setSelectedArchive] =
@@ -171,19 +172,12 @@ export default function FtjsArchivePage() {
     });
   }, [records, search, statusFilter]);
 
-  const statusOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          records
-            .map((record) => String(record.status || "").toUpperCase())
-            .filter(Boolean),
-        ),
-      )
-        .sort()
-        .map((status) => ({ label: status.replace(/_/g, " "), value: status })),
-    [records],
-  );
+  const statusOptions = useMemo(() => {
+    return [
+      { label: "Certificate Issued", value: "ISSUED" },
+      { label: "Re-issuance Request", value: "RE_ISSUANCE" },
+    ];
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
   const pagedRecords = useMemo(
@@ -437,16 +431,19 @@ export default function FtjsArchivePage() {
               label: "Status",
               key: "status",
               options: statusOptions,
-              value: statusFilter,
+              value: pendingStatusFilter,
             },
           ]}
           onFilterChange={(key, value) => {
-            if (key === "status") setStatusFilter(value);
+            if (key === "status") setPendingStatusFilter(value);
+          }}
+          onFilterClick={() => {
+            setStatusFilter(pendingStatusFilter);
             setPage(0);
           }}
-          onFilterClick={() => setPage(0)}
           onClearClick={() => {
             setSearch("");
+            setPendingStatusFilter("");
             setStatusFilter("");
             setPage(0);
           }}

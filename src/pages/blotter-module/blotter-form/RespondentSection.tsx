@@ -8,6 +8,7 @@ import {
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
 import { type PersonSearchResponseDTO } from "../../../service/blotter-api/Resident";
 import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS } from "./ComplaintSection";
+import { XCircle } from "lucide-react";
 
 export const RELATIONSHIP_OPTIONS = [
   { value: "Spouse / Partner", label: "Spouse / Partner" },
@@ -42,6 +43,7 @@ interface RespondentSectionProps {
   onChange: (field: keyof RespondentState, value: any) => void;
   errors: Record<string, string>;
   clearErr: (key: string) => void;
+  onClearPerson?: () => void;
 }
 
 const CharCounter = ({ current, max }: { current: number; max: number }) => (
@@ -60,6 +62,7 @@ export const RespondentSection = ({
   onChange,
   errors,
   clearErr,
+  onClearPerson,
 }: RespondentSectionProps) => {
   const NAME_LIMIT = 50;
   const ADDRESS_LIMIT = 150;
@@ -95,6 +98,25 @@ export const RespondentSection = ({
           placeholder="Search by name..."
           onSelect={handleSelectPerson}
         />
+        
+        {!!data.id && (
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <span>
+              Existing resident record selected: <span className="font-semibold">{data.firstName} {data.lastName}</span>
+            </span>
+            <button
+              type="button"
+              onClick={onClearPerson}
+              className="text-emerald-700 hover:text-emerald-900 hover:underline font-medium text-xs flex items-center gap-1 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+              Clear Selection
+            </button>
+          </div>
+        )}
         <FormRow cols={3}>
           <div>
             <FormInput
@@ -104,6 +126,8 @@ export const RespondentSection = ({
               placeholder='e.g. Santos (or "Unknown")'
               value={data.lastName}
               maxLength={NAME_LIMIT}
+              disabled={!!data.id}
+              className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
               onChange={(e) => {
                 onChange("lastName", e.target.value);
                 clearErr("rLastName");
@@ -120,6 +144,8 @@ export const RespondentSection = ({
               placeholder='e.g. Pedro (or "Unknown")'
               value={data.firstName}
               maxLength={NAME_LIMIT}
+              disabled={!!data.id}
+              className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
               onChange={(e) => {
                 onChange("firstName", e.target.value);
                 clearErr("rFirstName");
@@ -134,6 +160,8 @@ export const RespondentSection = ({
               placeholder="e.g. Reyes (if known)"
               value={data.middleName}
               maxLength={NAME_LIMIT}
+              disabled={!!data.id}
+              className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
               onChange={(e) => onChange("middleName", e.target.value)}
             />
             <CharCounter current={data.middleName.length} max={NAME_LIMIT} />
@@ -147,6 +175,8 @@ export const RespondentSection = ({
               inputMode="numeric"
               maxLength={11}
               value={data.contact}
+              disabled={!!data.id}
+              className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
               onChange={(e) => {
                 const v = e.target.value.replace(/\D/g, "");
                 onChange("contact", v);
@@ -184,6 +214,8 @@ export const RespondentSection = ({
               placeholder="Address (if known)"
               value={data.address}
               maxLength={ADDRESS_LIMIT}
+              disabled={!!data.id}
+              className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
               onChange={(e) => onChange("address", e.target.value)}
             />
             <CharCounter current={data.address.length} max={ADDRESS_LIMIT} />
@@ -195,17 +227,32 @@ export const RespondentSection = ({
 
   // --- FORMAL MODE VIEW ---
   return (
-    <SectionCard
-      letter="C"
-      title="Respondent Information"
-      notice='Please provide all available details. If the respondent is unidentified, enter "Unknown".'
-      noticeTone="warning"
-    >
+    <SectionCard letter="C" title="Respondent Information">
       <PersonSearchInput
         label="Search Respondent (Auto-fill)"
         placeholder="Search by name..."
         onSelect={handleSelectPerson}
       />
+      
+      {!!data.id && (
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <span>
+            Existing resident record selected: <span className="font-semibold">{data.firstName} {data.lastName}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onClearPerson}
+            className="text-emerald-700 hover:text-emerald-900 hover:underline font-medium text-xs flex items-center gap-1 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Clear Selection
+          </button>
+        </div>
+      )}
+
       <FormRow cols={3}>
         <div>
           <FormInput
@@ -215,7 +262,9 @@ export const RespondentSection = ({
             placeholder="e.g. Santos"
             value={data.lastName}
             maxLength={NAME_LIMIT}
-            onChange={(e) => {
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               onChange("lastName", e.target.value);
               clearErr("rLastName");
             }}
@@ -231,7 +280,9 @@ export const RespondentSection = ({
             placeholder="e.g. Pedro"
             value={data.firstName}
             maxLength={NAME_LIMIT}
-            onChange={(e) => {
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               onChange("firstName", e.target.value);
               clearErr("rFirstName");
             }}
@@ -245,6 +296,8 @@ export const RespondentSection = ({
             placeholder="e.g. Reyes"
             value={data.middleName}
             maxLength={NAME_LIMIT}
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
             onChange={(e) => onChange("middleName", e.target.value)}
           />
           <CharCounter current={data.middleName.length} max={NAME_LIMIT} />
@@ -257,6 +310,8 @@ export const RespondentSection = ({
             placeholder="If any"
             value={data.alias}
             maxLength={ALIAS_LIMIT}
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
             onChange={(e) => onChange("alias", e.target.value)}
           />
           <CharCounter current={data.alias.length} max={ALIAS_LIMIT} />
@@ -269,11 +324,15 @@ export const RespondentSection = ({
             placeholder="e.g. 40"
             maxLength={3}
             value={data.age}
-            onChange={(e) => {
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
+            error={errors.rAge}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              // Allow numbers only, max 3 digits
               const v = e.target.value.replace(/\D/g, "").slice(0, 3);
               onChange("age", v);
-            }}
-          />
+              clearErr("rAge");
+            }}/>
           <CharCounter current={data.age.length} max={3} />
         </div>
         <FormSelect
@@ -281,10 +340,10 @@ export const RespondentSection = ({
           options={GENDER_OPTIONS}
           placeholder="Select Gender"
           value={data.gender}
+          disabled={!!data.id}
+          className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
           onChange={(e) => onChange("gender", e.target.value)}
         />
-        
-      
         
         <div>
           <FormInput
@@ -293,9 +352,12 @@ export const RespondentSection = ({
             inputMode="numeric"
             maxLength={11}
             value={data.contact}
-            onChange={(e) => {
+            disabled={!!data.id}
+            className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const v = e.target.value.replace(/\D/g, "");
               onChange("contact", v);
+              clearErr("rContact");
               // Validation: must start with 09 and be 11 digits
               if (v.length > 0 && !v.startsWith("09")) {
                 errors.contact = "Must start with 09";
@@ -321,6 +383,8 @@ export const RespondentSection = ({
           placeholder="House No., Street, Barangay, Municipality/City, Province"
           value={data.address}
           maxLength={ADDRESS_LIMIT}
+          disabled={!!data.id}
+          className={!!data.id ? "bg-slate-100 cursor-not-allowed" : ""}
           onChange={(e) => onChange("address", e.target.value)}
         />
         <CharCounter current={data.address.length} max={ADDRESS_LIMIT} />

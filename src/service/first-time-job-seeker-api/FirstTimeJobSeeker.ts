@@ -22,11 +22,18 @@ export interface FtjsRequestDTO {
   resident_id?: number | null;
 
   firstName?: string;
+  middleName?: string;
   lastName?: string;
+  suffix?: string;
+  birthDate?: string;
+  age?: number;
   gender?: string;
+  civilStatus?: string;
   address?: string;
   contactNumber?: string;
   email?: string;
+  religion?: string;
+  residencyDate?: string;
 
   schoolAddress?: string;
   educationalAttainment: string;
@@ -172,11 +179,20 @@ export interface FtjsFullResponseDTO {
 
   residentId: number | null;
   fullName: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
+  birthDate?: string;
+  age?: number;
   gender: string;
+  civilStatus?: string;
   contactNumber: string;
   email: string;
   fullAddress: string;
   isRegisteredResident: boolean;
+  religion?: string;
+  residencyDate?: string;
   schoolAddress: string;
   educationalAttainment: string;
   course: string;

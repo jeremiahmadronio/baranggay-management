@@ -71,6 +71,7 @@ export default function BlotterEntryForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successBlotterNo, setSuccessBlotterNo] = useState("");
   const [errors, setErrors] = useState<Errors>({});
@@ -276,6 +277,37 @@ export default function BlotterEntryForm() {
       reader.readAsDataURL(file);
     });
 
+  const isDuplicatePerson = (): boolean => {
+    // Check if Complainant and Respondent match
+    if (complainant.id && respondent.id && complainant.id === respondent.id) return true;
+    if (
+      complainant.firstName.trim() &&
+      respondent.firstName.trim() &&
+      complainant.firstName.trim().toLowerCase() === respondent.firstName.trim().toLowerCase() &&
+      complainant.lastName.trim().toLowerCase() === respondent.lastName.trim().toLowerCase() &&
+      complainant.middleName.trim().toLowerCase() === respondent.middleName.trim().toLowerCase()
+    ) return true;
+    
+    // Check if any Witness matches Complainant or Respondent
+    for (const w of witnesses) {
+      if (!w.fullName.trim()) continue;
+      
+      const witnessNameLower = w.fullName.trim().toLowerCase();
+      
+      // Compare with Complainant
+      const compFullName = `${complainant.firstName.trim()} ${complainant.middleName.trim()} ${complainant.lastName.trim()}`.replace(/\s+/g, " ").trim().toLowerCase();
+      if (witnessNameLower === compFullName) return true;
+      if (w.personId && complainant.id && w.personId === complainant.id) return true;
+      
+      // Compare with Respondent
+      const respFullName = `${respondent.firstName.trim()} ${respondent.middleName.trim()} ${respondent.lastName.trim()}`.replace(/\s+/g, " ").trim().toLowerCase();
+      if (witnessNameLower === respFullName) return true;
+      if (w.personId && respondent.id && w.personId === respondent.id) return true;
+    }
+
+    return false;
+  };
+
   const validate = (): boolean => {
     const e: Errors = {};
     // Officer assignment only required for formal complaints
@@ -375,6 +407,38 @@ export default function BlotterEntryForm() {
     }
     if (mode === "formal" && !certified)
       e.certified = "You must certify before filing.";
+
+    if (complainant.id && respondent.id && complainant.id === respondent.id) {
+      e.cFirstName = "Complainant and Respondent cannot be the same person.";
+      e.rFirstName = "Complainant and Respondent cannot be the same person.";
+    } else if (
+      complainant.firstName.trim() &&
+      respondent.firstName.trim() &&
+      complainant.firstName.trim().toLowerCase() === respondent.firstName.trim().toLowerCase() &&
+      complainant.lastName.trim().toLowerCase() === respondent.lastName.trim().toLowerCase() &&
+      complainant.middleName.trim().toLowerCase() === respondent.middleName.trim().toLowerCase()
+    ) {
+      e.cFirstName = "Complainant and Respondent cannot have the exact same name.";
+      e.rFirstName = "Complainant and Respondent cannot have the exact same name.";
+    }
+
+    // Witness duplication validation
+    if (mode === "formal") {
+      witnesses.forEach((w, idx) => {
+        if (!w.fullName.trim()) return;
+        const witnessNameLower = w.fullName.trim().toLowerCase();
+        const compFullName = `${complainant.firstName.trim()} ${complainant.middleName.trim()} ${complainant.lastName.trim()}`.replace(/\s+/g, " ").trim().toLowerCase();
+        const respFullName = `${respondent.firstName.trim()} ${respondent.middleName.trim()} ${respondent.lastName.trim()}`.replace(/\s+/g, " ").trim().toLowerCase();
+
+        if (witnessNameLower === compFullName || (w.personId && complainant.id && w.personId === complainant.id)) {
+           e[`witnessFullName${idx}`] = "A witness cannot be the complainant.";
+        }
+        if (witnessNameLower === respFullName || (w.personId && respondent.id && w.personId === respondent.id)) {
+           e[`witnessFullName${idx}`] = "A witness cannot be the respondent.";
+        }
+      });
+    }
+
     setErrors(e);
     if (Object.keys(e).length > 0) {
       const firstKey = Object.keys(e)[0];
@@ -514,7 +578,24 @@ export default function BlotterEntryForm() {
     );
   }
   return (
-    <div className="min-h-screen bg-blue-50/40">
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmitClick();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          const target = e.target as HTMLElement;
+          const tagName = target.tagName.toLowerCase();
+          if (tagName === "textarea" || tagName === "button" || target.isContentEditable) {
+            return;
+          }
+          e.preventDefault();
+          handleSubmitClick();
+        }
+      }}
+      className="min-h-screen bg-blue-50/40"
+    >
       <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
         <FormNotice
           tone="warning"
@@ -557,6 +638,21 @@ export default function BlotterEntryForm() {
           onCancel={() => setShowConfirmModal(false)}
         />
 
+        <ConfirmModal
+          isOpen={showCancelModal}
+          type="danger"
+          title="Cancel Entry"
+          message="Are you sure you want to cancel? All information entered will be lost."
+          confirmText="Discard Form"
+          cancelText="Continue Editing"
+          onConfirm={() => {
+            setShowCancelModal(false);
+            resetForm();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onCancel={() => setShowCancelModal(false)}
+        />
+
         <ActionModal
           isOpen={showSuccessModal}
           onClose={handleSuccessClose}
@@ -593,6 +689,29 @@ export default function BlotterEntryForm() {
           onChange={updateComplainant}
           errors={errors}
           clearErr={clearErr}
+          onClearPerson={() => {
+            setComplainant({
+              id: undefined,
+              lastName: "",
+              firstName: "",
+              middleName: "",
+              contact: "",
+              age: "",
+              gender: "",
+              civilStatus: "",
+              email: "",
+              address: "",
+            });
+            [
+              "cLastName",
+              "cFirstName",
+              "cContact",
+              "cAge",
+              "cGender",
+              "cCivilStatus",
+              "cAddress",
+            ].forEach(clearErr);
+          }}
         />
 
         <RespondentSection
@@ -601,7 +720,28 @@ export default function BlotterEntryForm() {
           onChange={updateRespondent}
           errors={errors}
           clearErr={clearErr}
+          onClearPerson={() => {
+            setRespondent({
+              id: undefined,
+              lastName: "",
+              firstName: "",
+              middleName: "",
+              contact: "",
+              relationship: respondent.relationship,
+              address: "",
+              alias: "",
+              age: "",
+              dob: "",
+              gender: "",
+              civilStatus: "",
+              livingWith: respondent.livingWith,
+              email: "",
+            });
+            ["rLastName", "rFirstName"].forEach(clearErr);
+          }}
         />
+
+
 
         <IncidentDetailsSection
           mode={mode}
@@ -648,14 +788,33 @@ export default function BlotterEntryForm() {
           clearErr={() => clearErr("certified")}
         />
 
+        {isDuplicatePerson() && (
+          <div className="rounded-lg bg-red-50 p-4 border border-red-200 shadow-sm">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-bold text-red-800">Invalid Entry: Duplicate Person Detected</h3>
+                <div className="mt-1 text-sm text-red-700 font-medium">
+                  <p>A person (Complainant, Respondent, or Witness) cannot appear in multiple roles. Please correct the information before filing.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <FormActions
-          onCancel={() => window.history.back()}
+          onCancel={() => setShowCancelModal(true)}
           onSubmit={handleSubmitClick}
           submitLabel={mode === "record" ? "Save Record" : "File Case"}
           isSubmitting={isSubmitting}
+          disabled={isDuplicatePerson()}
           mode={mode}
         />
       </div>
-    </div>
+    </form>
   );
 }

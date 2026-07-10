@@ -55,7 +55,9 @@ export default function FtjsManagementPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [pendingStatusFilter, setPendingStatusFilter] = useState("");
   const [residentFilter, setResidentFilter] = useState("");
+  const [pendingResidentFilter, setPendingResidentFilter] = useState("");
   const [page, setPage] = useState(0);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [archiveEntry, setArchiveEntry] = useState<FtjsTableDTO | null>(null);
@@ -225,19 +227,11 @@ export default function FtjsManagementPage() {
   }, [page, totalPages]);
 
   const statusOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        records
-          .map((record) => String(record.status || "").toUpperCase())
-          .filter((status) => Boolean(status) && status !== "ARCHIVED"),
-      ),
-    )
-      .sort()
-      .map((status) => ({
-        label: formatStatusLabel(status),
-        value: status,
-      }));
-  }, [records]);
+    return [
+      { label: formatStatusLabel("ISSUED"), value: "ISSUED" },
+      { label: formatStatusLabel("RE_ISSUANCE"), value: "RE_ISSUANCE" },
+    ];
+  }, []);
 
   const activeFilterCount = [statusFilter, residentFilter].filter(
     Boolean,
@@ -414,7 +408,7 @@ export default function FtjsManagementPage() {
               label: "Status",
               key: "status",
               options: statusOptions,
-              value: statusFilter,
+              value: pendingStatusFilter,
             },
             {
               label: "Applicant Type",
@@ -423,17 +417,22 @@ export default function FtjsManagementPage() {
                 { label: "Registered Resident", value: "RESIDENT" },
                 { label: "Walk-in / Non-resident", value: "NON_RESIDENT" },
               ],
-              value: residentFilter,
+              value: pendingResidentFilter,
             },
           ]}
           onFilterChange={(key, value) => {
-            setPage(0);
-            if (key === "status") setStatusFilter(value);
-            if (key === "residentType") setResidentFilter(value);
+            if (key === "status") setPendingStatusFilter(value);
+            if (key === "residentType") setPendingResidentFilter(value);
           }}
-          onFilterClick={() => setPage(0)}
+          onFilterClick={() => {
+            setStatusFilter(pendingStatusFilter);
+            setResidentFilter(pendingResidentFilter);
+            setPage(0);
+          }}
           onClearClick={() => {
             setSearch("");
+            setPendingStatusFilter("");
+            setPendingResidentFilter("");
             setStatusFilter("");
             setResidentFilter("");
             setPage(0);

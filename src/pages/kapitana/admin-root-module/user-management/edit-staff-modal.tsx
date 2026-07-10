@@ -424,7 +424,7 @@ export function EditStaffModal({ user, onClose, onSuccess }: Props) {
                 >
                   Cancel
                 </button>
-                <button
+                <button autoFocus
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting || loading}

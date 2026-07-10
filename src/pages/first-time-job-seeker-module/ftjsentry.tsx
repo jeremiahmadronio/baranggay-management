@@ -21,9 +21,7 @@ import { PermissionDeniedPage } from "../blotter-module/reusable/PermissionDenie
 import {
   EDUCATIONAL_ATTAINMENT_OPTIONS,
   fileToByteArray,
-  getFtjsValidIdConfig,
   toDateInputValue,
-  VALID_ID_OPTIONS,
 } from "./shared";
 import { generateFtjsCertificate } from "./generateFtjsCertificate.ts";
 import { useFtjsAccess } from "./useFtjsAccess";
@@ -37,9 +35,17 @@ type FeedbackState = {
 const INITIAL_FORM = {
   residentId: "",
   firstName: "",
+  middleName: "",
   lastName: "",
+  suffix: "",
+  birthDate: "",
+  age: "",
   gender: "",
+  civilStatus: "",
   address: "",
+  religion: "",
+  residencyDate: "",
+  residencyYears: "",
   contactNumber: "",
   email: "",
   submittedDate: "",
@@ -47,7 +53,6 @@ const INITIAL_FORM = {
   course: "",
   institution: "",
   validIdType: "",
-  idNumber: "",
   schoolAddress: "",
   requestReason: "",
 };
@@ -59,16 +64,116 @@ const EDUCATIONAL_ATTAINMENT_SELECT_OPTIONS = EDUCATIONAL_ATTAINMENT_OPTIONS.map
   (option) => ({ value: option, label: option }),
 );
 
-const VALID_ID_SELECT_OPTIONS = VALID_ID_OPTIONS.map((option) => ({
-  value: option,
-  label: option,
-}));
-
 const GENDER_OPTIONS = [
   { value: "Male", label: "Male" },
   { value: "Female", label: "Female" },
-  { value: "Other", label: "Other" },
 ];
+
+const COURSE_OPTIONS = [
+  { value: "BS Information Technology", label: "BS Information Technology" },
+  { value: "BS Computer Science", label: "BS Computer Science" },
+  { value: "BS Business Administration", label: "BS Business Administration" },
+  { value: "BS Accountancy", label: "BS Accountancy" },
+  { value: "BS Education", label: "BS Education" },
+  { value: "BS Engineering", label: "BS Engineering" },
+  { value: "BS Nursing", label: "BS Nursing" },
+  { value: "BS Criminology", label: "BS Criminology" },
+  { value: "BS Hospitality Management", label: "BS Hospitality Management" },
+  { value: "BS Tourism Management", label: "BS Tourism Management" },
+  { value: "BS Psychology", label: "BS Psychology" },
+  { value: "BS Architecture", label: "BS Architecture" },
+  { value: "BS Pharmacy", label: "BS Pharmacy" },
+  { value: "BS Medical Technology", label: "BS Medical Technology" },
+  { value: "BS Radiologic Technology", label: "BS Radiologic Technology" },
+  { value: "BS Agriculture", label: "BS Agriculture" },
+  { value: "BS Marine Transportation", label: "BS Marine Transportation" },
+  { value: "BS Marine Engineering", label: "BS Marine Engineering" },
+  { value: "BA Communication", label: "BA Communication" },
+  { value: "BA Political Science", label: "BA Political Science" },
+  { value: "SHS - STEM", label: "SHS - STEM" },
+  { value: "SHS - ABM", label: "SHS - ABM" },
+  { value: "SHS - HUMSS", label: "SHS - HUMSS" },
+  { value: "SHS - GAS", label: "SHS - GAS" },
+  { value: "Others", label: "Others" }
+];
+
+const RELIGION_OPTIONS = [
+  { value: "Roman Catholic", label: "Roman Catholic" },
+  { value: "Islam", label: "Islam" },
+  { value: "Iglesia ni Cristo", label: "Iglesia ni Cristo" },
+  { value: "Born Again Christian", label: "Born Again Christian" },
+  { value: "Seventh-day Adventist", label: "Seventh-day Adventist" },
+  { value: "Others", label: "Others" }
+];
+
+const CIVIL_STATUS_OPTIONS = [
+  { value: "Single", label: "Single" },
+  { value: "Married", label: "Married" },
+  { value: "Widowed", label: "Widowed" },
+  { value: "Separated", label: "Separated" },
+];
+
+function calculateAge(birthDateStr: string): string {
+  if (!birthDateStr) return "";
+  const today = new Date();
+  const dob = new Date(birthDateStr);
+  if (isNaN(dob.getTime())) return "";
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age >= 0 ? String(age) : "";
+}
+
+function calculateBirthDateFromAge(ageStr: string, prevBirthDate: string = ""): string {
+  if (!ageStr) return "";
+  const age = parseInt(ageStr, 10);
+  if (isNaN(age) || age < 0) return "";
+  const today = new Date();
+  const birthYear = today.getFullYear() - age;
+  
+  if (prevBirthDate) {
+    const prevDate = new Date(prevBirthDate);
+    if (!isNaN(prevDate.getTime())) {
+      const month = String(prevDate.getMonth() + 1).padStart(2, '0');
+      const day = String(prevDate.getDate()).padStart(2, '0');
+      return `${birthYear}-${month}-${day}`;
+    }
+  }
+  return `${birthYear}-01-01`; // Approximation
+}
+
+function calculateResidencyYears(dateStr: string): string {
+  if (!dateStr) return "";
+  const today = new Date();
+  const start = new Date(dateStr);
+  if (isNaN(start.getTime())) return "";
+  let years = today.getFullYear() - start.getFullYear();
+  const m = today.getMonth() - start.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < start.getDate())) {
+    years--;
+  }
+  return years >= 0 ? String(years) : "";
+}
+
+function calculateResidencyDateFromYears(yearsStr: string, prevDateStr: string = ""): string {
+  if (!yearsStr) return "";
+  const years = parseInt(yearsStr, 10);
+  if (isNaN(years) || years < 0) return "";
+  const today = new Date();
+  const startYear = today.getFullYear() - years;
+  
+  if (prevDateStr) {
+    const prevDate = new Date(prevDateStr);
+    if (!isNaN(prevDate.getTime())) {
+      const month = String(prevDate.getMonth() + 1).padStart(2, '0');
+      const day = String(prevDate.getDate()).padStart(2, '0');
+      return `${startYear}-${month}-${day}`;
+    }
+  }
+  return `${startYear}-01-01`; // Approximation
+}
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PH_MOBILE_REGEX = /^09\d{9}$/;
@@ -227,16 +332,15 @@ export default function FtjsEntryPage() {
     submittedDate: toDateInputValue(new Date()),
   }));
   const [oathFile, setOathFile] = useState<File | null>(null);
+  const [hasBarangayUgongId, setHasBarangayUgongId] = useState(false);
+  const [courseSelection, setCourseSelection] = useState("");
+  const [religionSelection, setReligionSelection] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedResident, setSelectedResident] =
     useState<PersonSearchResponseDTO | null>(null);
 
-  const selectedValidIdConfig = getFtjsValidIdConfig(form.validIdType);
-  const acceptsIdNumber = selectedValidIdConfig.acceptsIdNumber;
-  const requiresSchoolAddress = selectedValidIdConfig.requiresSchoolAddress;
-  const requiresIdNumber = selectedValidIdConfig.requiresIdNumber;
   const personalFieldsLocked = Boolean(selectedResident);
   const canRegisterApplicant = hasFtjsPermission(
     userAccess,
@@ -252,36 +356,66 @@ export default function FtjsEntryPage() {
 
       switch (key) {
         case "firstName":
+        case "middleName":
         case "lastName":
-          return limitText(value, NAME_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+          // Letters, spaces, periods, hyphens (no numbers)
+          return limitText(value.replace(/[^a-zA-ZñÑ\s.,\-]/g, ""), NAME_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+        case "suffix":
+          return limitText(value.replace(/[^a-zA-Z\s.,]/g, ""), 10) as (typeof INITIAL_FORM)[K];
         case "address":
         case "schoolAddress":
-          return limitText(value, ADDRESS_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+          // Alphanumeric + basic punctuation
+          return limitText(value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()/#&]/g, ""), ADDRESS_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
         case "contactNumber":
           return normalizeMobileNumber(value) as (typeof INITIAL_FORM)[K];
         case "email":
-          return limitText(value, EMAIL_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+          return limitText(value.replace(/\s/g, ""), EMAIL_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
         case "course":
-          return limitText(value, COURSE_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+          return limitText(value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()]/g, ""), COURSE_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
         case "institution":
-          return limitText(value, INSTITUTION_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
-        case "idNumber":
-          return limitText(value, ID_NUMBER_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+          return limitText(value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()]/g, ""), INSTITUTION_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
         case "requestReason":
-          return limitText(value, REASON_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+          return limitText(value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()"\n]/g, ""), REASON_MAX_LENGTH) as (typeof INITIAL_FORM)[K];
+        case "age":
+        case "residencyYears":
+          return limitText(value.replace(/\D/g, ""), 3) as (typeof INITIAL_FORM)[K];
+        case "religion":
+          return limitText(value.replace(/[^a-zA-Z0-9ñÑ\s.,\-]/g, ""), 50) as (typeof INITIAL_FORM)[K];
         default:
           return value;
       }
     })();
 
     setForm((prev) => {
-      if (key === "validIdType") {
-        const config = getFtjsValidIdConfig(String(normalizedValue || ""));
+      if (key === "birthDate") {
         return {
           ...prev,
-          [key]: normalizedValue,
-          schoolAddress: config.requiresSchoolAddress ? prev.schoolAddress : "",
-          idNumber: config.acceptsIdNumber ? prev.idNumber : "",
+          birthDate: normalizedValue as string,
+          age: calculateAge(normalizedValue as string)
+        };
+      }
+
+      if (key === "age" && normalizedValue) {
+        return {
+          ...prev,
+          age: normalizedValue as string,
+          birthDate: calculateBirthDateFromAge(normalizedValue as string, prev.birthDate)
+        };
+      }
+
+      if (key === "residencyDate") {
+        return {
+          ...prev,
+          residencyDate: normalizedValue as string,
+          residencyYears: calculateResidencyYears(normalizedValue as string)
+        };
+      }
+
+      if (key === "residencyYears" && normalizedValue) {
+        return {
+          ...prev,
+          residencyYears: normalizedValue as string,
+          residencyDate: calculateResidencyDateFromYears(normalizedValue as string, prev.residencyDate)
         };
       }
 
@@ -291,7 +425,6 @@ export default function FtjsEntryPage() {
     setErrors((prev) => ({
       ...prev,
       [key]: "",
-      ...(key === "validIdType" ? { schoolAddress: "", idNumber: "" } : {}),
     }));
   }
 
@@ -301,6 +434,9 @@ export default function FtjsEntryPage() {
       submittedDate: toDateInputValue(new Date()),
     });
     setOathFile(null);
+    setHasBarangayUgongId(false);
+    setCourseSelection("");
+    setReligionSelection("");
     setErrors({});
     setSelectedResident(null);
   }
@@ -311,16 +447,57 @@ export default function FtjsEntryPage() {
       ...prev,
       residentId: String(person.id),
       firstName: limitText(person.firstName || "", NAME_MAX_LENGTH),
+      middleName: limitText(person.middleName || "", NAME_MAX_LENGTH),
       lastName: limitText(person.lastName || "", NAME_MAX_LENGTH),
+      suffix: limitText((person as any).suffix || "", 10),
+      birthDate: person.birthDate || "",
+      age: person.age ? String(person.age) : "",
       gender: person.gender || "",
+      civilStatus: person.civilStatus || "",
       address: limitText(person.completeAddress || "", ADDRESS_MAX_LENGTH),
       contactNumber: normalizeMobileNumber(person.contactNumber || ""),
       email: limitText(person.email || "", EMAIL_MAX_LENGTH),
+      // Note: We leave religion empty if it was unselected so the user can see it's blank.
+      religion: limitText((person as any).religion || "", 50),
+      residencyDate: (person as any).residencyDate || "",
+      residencyYears: calculateResidencyYears((person as any).residencyDate || ""),
     }));
+    
+    if ((person as any).religion) {
+      const isStandardReligion = RELIGION_OPTIONS.some(opt => opt.value === (person as any).religion);
+      if (isStandardReligion) {
+        setReligionSelection((person as any).religion);
+      } else {
+        setReligionSelection("Others");
+      }
+    }
   }
 
   async function handleSelectResident(person: PersonSearchResponseDTO) {
     applyResidentProfile(person);
+  }
+
+  function handleClearSelection() {
+    setSelectedResident(null);
+    setForm((prev) => ({
+      ...prev,
+      residentId: "",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      suffix: "",
+      birthDate: "",
+      age: "",
+      gender: "",
+      civilStatus: "",
+      address: "",
+      contactNumber: "",
+      email: "",
+      religion: "",
+      residencyDate: "",
+      residencyYears: "",
+    }));
+    setReligionSelection("");
   }
 
   function validate() {
@@ -371,13 +548,7 @@ export default function FtjsEntryPage() {
       nextErrors.educationalAttainment = "Educational attainment is required.";
     }
 
-    if (requiresSchoolAddress && !form.schoolAddress.trim()) {
-      nextErrors.schoolAddress =
-        "School address is required when School ID is used.";
-    } else if (
-      requiresSchoolAddress &&
-      form.schoolAddress.trim().length > ADDRESS_MAX_LENGTH
-    ) {
+    if (form.schoolAddress.trim().length > ADDRESS_MAX_LENGTH) {
       nextErrors.schoolAddress = `School address must not exceed ${ADDRESS_MAX_LENGTH} characters.`;
     }
 
@@ -387,12 +558,6 @@ export default function FtjsEntryPage() {
 
     if (form.institution.trim().length > INSTITUTION_MAX_LENGTH) {
       nextErrors.institution = `Institution must not exceed ${INSTITUTION_MAX_LENGTH} characters.`;
-    }
-
-    if (acceptsIdNumber && form.idNumber.trim().length > ID_NUMBER_MAX_LENGTH) {
-      nextErrors.idNumber = `ID number must not exceed ${ID_NUMBER_MAX_LENGTH} characters.`;
-    } else if (requiresIdNumber && !form.idNumber.trim()) {
-      nextErrors.idNumber = `${selectedValidIdConfig.idNumberLabel} is required.`;
     }
 
     if (!oathFile) {
@@ -428,16 +593,22 @@ export default function FtjsEntryPage() {
       const payload: FtjsRequestDTO = {
         resident_id: form.residentId.trim() ? Number(form.residentId) : null,
         firstName: form.firstName.trim(),
+        middleName: form.middleName.trim() || undefined,
         lastName: form.lastName.trim(),
+        suffix: form.suffix.trim() || undefined,
+        birthDate: form.birthDate || undefined,
+        age: form.age ? Number(form.age) : undefined,
         gender: form.gender.trim(),
+        civilStatus: form.civilStatus.trim() || undefined,
         address: form.address.trim(),
+        religion: form.religion.trim() || undefined,
+        residencyDate: form.residencyDate || undefined,
         contactNumber: form.contactNumber.trim(),
         email: form.email.trim() || undefined,
         educationalAttainment: form.educationalAttainment,
         course: form.course.trim() || undefined,
         institution: form.institution.trim() || undefined,
         validIdType: form.validIdType || undefined,
-        idNumber: acceptsIdNumber ? form.idNumber.trim() || undefined : undefined,
         schoolAddress: form.schoolAddress.trim() || undefined,
         oathFiles: await fileToByteArray(oathFile),
         purpose: form.requestReason.trim(),
@@ -504,8 +675,21 @@ export default function FtjsEntryPage() {
             <ResidentSearchInput onSelect={handleSelectResident} />
 
             {selectedResident ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                Existing resident record selected: <span className="font-semibold">{selectedResident.firstName} {selectedResident.lastName}</span>
+              <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <span>
+                  Existing resident record selected: <span className="font-semibold">{selectedResident.firstName} {selectedResident.lastName}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearSelection}
+                  className="text-emerald-700 hover:text-emerald-900 hover:underline font-medium text-xs flex items-center gap-1 transition-colors"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                  Clear Selection
+                </button>
               </div>
             ) : null}
 
@@ -514,37 +698,81 @@ export default function FtjsEntryPage() {
                 label="First Name"
                 value={form.firstName}
                 onChange={(event) => setValue("firstName", event.target.value)}
-                readOnly={personalFieldsLocked}
+                disabled={!!selectedResident}
                 maxLength={NAME_MAX_LENGTH}
                 showCounter
                 required
                 error={errors.firstName}
               />
               <FormInput
+                label="Middle Name"
+                value={form.middleName}
+                onChange={(event) => setValue("middleName", event.target.value)}
+                disabled={!!selectedResident}
+                maxLength={NAME_MAX_LENGTH}
+                showCounter
+              />
+              <FormInput
                 label="Last Name"
                 value={form.lastName}
                 onChange={(event) => setValue("lastName", event.target.value)}
-                readOnly={personalFieldsLocked}
+                disabled={!!selectedResident}
                 maxLength={NAME_MAX_LENGTH}
                 showCounter
                 required
                 error={errors.lastName}
               />
+              <FormInput
+                label="Suffix"
+                value={form.suffix}
+                onChange={(event) => setValue("suffix", event.target.value)}
+                disabled={!!selectedResident}
+                maxLength={10}
+                placeholder="Jr., III, etc."
+              />
+            </FormRow>
+
+            <FormRow>
+              <FormDatePicker
+                label="Birthday"
+                value={form.birthDate}
+                onChange={(event) => setValue("birthDate", event.target.value)}
+                disabled={!!selectedResident}
+              />
+              <FormInput
+                label="Age"
+                value={form.age}
+                onChange={(event) => setValue("age", event.target.value)}
+                disabled={!!selectedResident}
+                inputMode="numeric"
+                maxLength={3}
+              />
               <FormSelect
                 label="Gender"
                 value={form.gender}
                 onChange={(event) => setValue("gender", event.target.value)}
-                disabled={personalFieldsLocked}
+                disabled={!!selectedResident}
                 required
                 options={GENDER_OPTIONS}
                 placeholder="Select gender"
                 error={errors.gender}
               />
+              <FormSelect
+                label="Civil Status"
+                value={form.civilStatus}
+                onChange={(event) => setValue("civilStatus", event.target.value)}
+                disabled={!!selectedResident}
+                options={CIVIL_STATUS_OPTIONS}
+                placeholder="Select civil status"
+              />
+            </FormRow>
+
+            <FormRow>
               <FormInput
                 label="Contact Number"
                 value={form.contactNumber}
                 onChange={(event) => setValue("contactNumber", event.target.value)}
-                readOnly={personalFieldsLocked}
+                disabled={!!selectedResident}
                 inputMode="numeric"
                 maxLength={MOBILE_MAX_LENGTH}
                 placeholder="09XXXXXXXXX"
@@ -558,7 +786,7 @@ export default function FtjsEntryPage() {
                 type="email"
                 value={form.email}
                 onChange={(event) => setValue("email", event.target.value)}
-                readOnly={personalFieldsLocked}
+                disabled={!!selectedResident}
                 placeholder="name@example.com"
                 maxLength={EMAIL_MAX_LENGTH}
                 showCounter
@@ -569,6 +797,7 @@ export default function FtjsEntryPage() {
                 value={form.submittedDate}
                 onChange={(event) => setValue("submittedDate", event.target.value)}
                 required
+                disabled
                 error={errors.submittedDate}
               />
             </FormRow>
@@ -578,99 +807,168 @@ export default function FtjsEntryPage() {
               value={form.address}
               rows={3}
               onChange={(event) => setValue("address", event.target.value)}
-              readOnly={personalFieldsLocked}
+              disabled={!!selectedResident}
               maxLength={ADDRESS_MAX_LENGTH}
               hint={`Maximum of ${ADDRESS_MAX_LENGTH} characters.`}
               required
               error={errors.address}
             />
+
+            <FormRow cols={2}>
+              <div className="col-span-1 md:col-span-1 xl:col-span-1">
+                <div className="flex gap-4 items-start">
+                  <div className="flex-1">
+                    <FormDatePicker
+                      label="Residency Date"
+                      value={form.residencyDate}
+                      onChange={(event) => setValue("residencyDate", event.target.value)}
+                      disabled={Boolean(selectedResident && (selectedResident as any).residencyDate)}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <FormInput
+                      label="Years"
+                      value={form.residencyYears}
+                      onChange={(event) => setValue("residencyYears", event.target.value)}
+                      inputMode="numeric"
+                      placeholder="Yrs"
+                      maxLength={3}
+                      disabled={Boolean(selectedResident && (selectedResident as any).residencyDate)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-1 md:col-span-1 xl:col-span-1">
+                <FormSelect
+                  label="Religion"
+                  value={religionSelection}
+                  onChange={(event) => {
+                    setReligionSelection(event.target.value);
+                    if (event.target.value !== "Others") {
+                      setValue("religion", event.target.value);
+                    } else {
+                      setValue("religion", "");
+                    }
+                  }}
+                  options={RELIGION_OPTIONS}
+                  placeholder="Select Religion"
+                  disabled={Boolean(selectedResident && (selectedResident as any).religion)}
+                />
+                {religionSelection === "Others" && (
+                  <div className="mt-3">
+                    <FormInput
+                      label="Specify Religion"
+                      value={form.religion}
+                      onChange={(event) => setValue("religion", event.target.value)}
+                      disabled={Boolean(selectedResident && (selectedResident as any).religion)}
+                      maxLength={50}
+                    />
+                  </div>
+                )}
+              </div>
+            </FormRow>
           </SectionCard>
 
           <SectionCard
             step="C"
             title="Educational & Identity Details"
-            notice="These fields are sent directly to the FTJS API request."
           >
-            <FormRow>
-              <FormSelect
-                label="Educational Attainment"
-                required
-                value={form.educationalAttainment}
-                onChange={(event) =>
-                  setValue("educationalAttainment", event.target.value)
-                }
-                options={EDUCATIONAL_ATTAINMENT_SELECT_OPTIONS}
-                placeholder="Select educational"
-                error={errors.educationalAttainment}
-              />
-              <FormInput
-                label="Course"
-                value={form.course}
-                onChange={(event) => setValue("course", event.target.value)}
-                placeholder="Course if applicable"
-                maxLength={COURSE_MAX_LENGTH}
-                showCounter
-                error={errors.course}
-              />
-              <FormInput
-                label="Institution"
-                value={form.institution}
-                onChange={(event) => setValue("institution", event.target.value)}
-                placeholder="School or training institution"
-                maxLength={INSTITUTION_MAX_LENGTH}
-                showCounter
-                error={errors.institution}
-              />
-              <FormSelect
-                label="Valid ID Type"
-                value={form.validIdType}
-                onChange={(event) => setValue("validIdType", event.target.value)}
-                options={VALID_ID_SELECT_OPTIONS}
-                placeholder="Select valid ID"
-              />
-              <FormInput
-                label={selectedValidIdConfig.idNumberLabel}
-                value={form.idNumber}
-                onChange={(event) => setValue("idNumber", event.target.value)}
-                placeholder={selectedValidIdConfig.idNumberPlaceholder}
-                maxLength={ID_NUMBER_MAX_LENGTH}
-                hint={selectedValidIdConfig.idNumberHint}
-                showCounter={acceptsIdNumber}
-                required={requiresIdNumber}
-                disabled={!form.validIdType || !acceptsIdNumber}
-                error={errors.idNumber}
-              />
-            </FormRow>
-
-            {requiresSchoolAddress ? (
-              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
-                <FormTextarea
-                  label="School Address"
+            <div className="flex gap-4 items-start">
+              <div className="flex-1">
+                <FormSelect
+                  label="Educational Attainment"
                   required
-                  value={form.schoolAddress}
-                  onChange={(event) => setValue("schoolAddress", event.target.value)}
-                  rows={3}
-                  placeholder="Enter school address"
-                  maxLength={ADDRESS_MAX_LENGTH}
-                  hint={`Maximum of ${ADDRESS_MAX_LENGTH} characters.`}
-                  error={errors.schoolAddress}
+                  value={form.educationalAttainment}
+                  onChange={(event) =>
+                    setValue("educationalAttainment", event.target.value)
+                  }
+                  options={EDUCATIONAL_ATTAINMENT_SELECT_OPTIONS}
+                  placeholder="Select educational"
+                  error={errors.educationalAttainment}
                 />
               </div>
-            ) : null}
+              <div className="flex-1">
+                <FormSelect
+                  label="Course"
+                  value={courseSelection}
+                  onChange={(event) => {
+                    setCourseSelection(event.target.value);
+                    if (event.target.value !== "Others") {
+                      setValue("course", event.target.value);
+                    } else {
+                      setValue("course", "");
+                    }
+                  }}
+                  options={COURSE_OPTIONS}
+                  placeholder="Select Course"
+                />
+                {courseSelection === "Others" && (
+                  <div className="mt-3">
+                    <FormInput
+                      label="Specify Course"
+                      value={form.course}
+                      onChange={(event) => setValue("course", event.target.value)}
+                      placeholder="Course if applicable"
+                      maxLength={COURSE_MAX_LENGTH}
+                      showCounter
+                      error={errors.course}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <FormInput
+                  label="Institution"
+                  value={form.institution}
+                  onChange={(event) => setValue("institution", event.target.value)}
+                  placeholder="School or training institution"
+                  maxLength={INSTITUTION_MAX_LENGTH}
+                  showCounter
+                  error={errors.institution}
+                />
+              </div>
+            </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
-              <label className="mb-1.5 block text-sm font-semibold tracking-wide text-slate-700">
-                Oath Attachment
-                <span className="ml-0.5 text-red-500">*</span>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 flex items-center justify-between relative mt-4">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasBarangayUgongId}
+                  onChange={(e) => {
+                    setHasBarangayUgongId(e.target.checked);
+                    setValue("validIdType", e.target.checked ? "Barangay Ugong ID" : "");
+                  }}
+                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-semibold tracking-wide text-slate-700">Valid ID with Barangay Ugong address</span>
               </label>
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={(event) => setOathFile(event.target.files?.[0] ?? null)}
-                className="w-full text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
-              />
+
+              <div className="flex items-center space-x-4">
+                <input
+                  type="file"
+                  id="oathUpload"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={(event) => setOathFile(event.target.files?.[0] ?? null)}
+                  className="hidden"
+                  disabled={!hasBarangayUgongId}
+                />
+                <label 
+                  htmlFor="oathUpload" 
+                  className={`flex items-center justify-center space-x-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                    hasBarangayUgongId 
+                      ? "border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer" 
+                      : "border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed pointer-events-none"
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span>{oathFile ? oathFile.name : "Upload File"}</span>
+                </label>
+              </div>
               {errors.oathFiles ? (
-                <p className="mt-1 text-xs text-red-500">{errors.oathFiles}</p>
+                <p className="mt-1 text-xs text-red-500 w-full absolute left-0 -bottom-6">{errors.oathFiles}</p>
               ) : null}
             </div>
           </SectionCard>

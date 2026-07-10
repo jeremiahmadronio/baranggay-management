@@ -3,7 +3,7 @@ import {
   searchPeople,
   type PersonSearchResponseDTO,
 } from "../../../service/blotter-api/Resident";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
 interface PersonSearchInputProps {
   label?: string;
   placeholder?: string;
@@ -60,21 +60,16 @@ export const PersonSearchInput = ({
           </label>
         )}
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            {loading ? (
-              <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4 text-slate-400" />
-            )}
-          </div>
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 pl-10 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
             placeholder={placeholder}
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
-              if (e.target.value.length < 2) setIsOpen(false);
+              const sanitized = e.target.value.replace(/[0-9]/g, "").replace(/[^a-zA-Z\s.,-ñÑ]/g, "");
+              setQuery(sanitized);
+              if (sanitized.length < 2) setIsOpen(false);
             }}
             onFocus={() => {
               if (results.length > 0) setIsOpen(true);
@@ -82,37 +77,38 @@ export const PersonSearchInput = ({
           />
         </div>
       </div>
-
-      {isOpen && query.length >= 2 && (
-        <div className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border border-blue-100 max-h-60 overflow-auto">
-          {results.length > 0 ? (
-            <ul className="py-1">
-              {results.map((person) => (
-                <li
-                  key={person.id}
-                  className="px-4 py-2 hover:bg-blue-50/50 cursor-pointer border-b border-slate-100 last:border-0"
-                  onClick={() => {
-                    onSelect(person);
-                    setIsOpen(false);
-                    setQuery("");
-                  }}
-                >
-                  <div className="font-medium text-sm text-slate-900">
-                    {person.firstName}{" "}
-                    {person.middleName ? person.middleName + " " : ""}
-                    {person.lastName}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5 truncate">
-                    {person.completeAddress} • {person.contactNumber}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="px-4 py-3 text-sm text-slate-500 text-center">
-              No results found for "{query}"
-            </div>
-          )}
+      
+      {loading && <p className="text-xs text-slate-400 mt-1">Searching...</p>}
+      
+      {!loading && isOpen && results.length > 0 && (
+        <div className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+          {results.map((person) => (
+            <button
+              key={person.id}
+              type="button"
+              className="block w-full border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
+              onClick={() => {
+                onSelect(person);
+                setIsOpen(false);
+                setQuery("");
+              }}
+            >
+              <div className="text-sm font-medium text-slate-900">
+                {person.firstName} {person.middleName ? `${person.middleName} ` : ""}{person.lastName}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                {person.completeAddress}{person.contactNumber ? ` • ${person.contactNumber}` : ""}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      
+      {!loading && isOpen && query.length >= 2 && results.length === 0 && (
+        <div className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200">
+          <div className="px-4 py-3 text-sm text-slate-500 text-center">
+            No results found for "{query}"
+          </div>
         </div>
       )}
     </div>

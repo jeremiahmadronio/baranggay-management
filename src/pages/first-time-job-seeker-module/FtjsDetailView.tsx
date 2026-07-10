@@ -1730,7 +1730,7 @@ export default function FtjsDetailViewPage() {
                   onChange={(event) =>
                     setReissueForm((prev) => ({
                       ...prev,
-                      reason: event.target.value,
+                      reason: event.target.value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()"\n]/g, ""),
                     }))
                   }
                   rows={4}
@@ -1761,7 +1761,7 @@ export default function FtjsDetailViewPage() {
                 onChange={(event) =>
                   setReissueForm((prev) => ({
                     ...prev,
-                    orNumber: event.target.value,
+                    orNumber: event.target.value.replace(/\D/g, ""),
                   }))
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"

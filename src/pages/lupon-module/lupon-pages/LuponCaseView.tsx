@@ -15,7 +15,6 @@ import {
   updateCaseStatus,
 } from "../../../service/lupon-api/LuponCaseManagement-view-api-v2";
 import { getLuponCaseView } from "../../../service/lupon-api/Lupong-tagapamayapa-view-api";
-import { updateBlotterStatusById } from "../../../service/blotter-api/DocketView";
 import { extendCasePeriod } from "../../../service/lupon-api/LuponCaseManagement-api";
 import { getMyAccess } from "../../../service/lupon-api/LuponCasePermission";
 import { OverviewTab } from "../tabs/OverviewTab";
@@ -174,8 +173,9 @@ export function LuponCaseDetailView({
     }
     setActionLoading(true);
     try {
-      await updateBlotterStatusById(Number(idToUse), {
-        status: "ACTIVE",
+      await updateCaseStatus({
+        blotterNumber,
+        newStatus: "PENDING",
         reason: reason,
       });
       setModal(null);

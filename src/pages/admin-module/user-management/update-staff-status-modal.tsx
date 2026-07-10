@@ -133,7 +133,7 @@ export function UpdateStaffStatusModal({
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             type="button"
             onClick={handleSubmit}
             disabled={submitting || availableStatusOptions.length === 0}

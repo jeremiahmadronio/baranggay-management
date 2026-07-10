@@ -53,6 +53,9 @@ export interface BlotterRecordViewDTO {
   placeOfIncident: string;
 
   evidenceNames: string[];
+  settledAt?: string;
+  settlementVenue?: string;
+  hasSettlementDocument?: boolean;
 }
 
 export interface FtrSummaryStatsDTO {
@@ -145,4 +148,26 @@ export async function getCaseNarrative(
     `${BLOTTER_URL}/${encodeURIComponent(caseNumber)}/narrative`,
   );
   return data?.narrative ?? "";
+}
+
+export async function getSettlementDocument(
+  caseNumber: string,
+): Promise<string> {
+  const data = await apiFetch<{ narrative: string }>(
+    `${BLOTTER_URL}/${encodeURIComponent(caseNumber)}/settlement-document`,
+  );
+  return data?.narrative ?? "";
+}
+
+export interface CloseRecordPayload {
+  dateOfSettlement: string;
+  venue: string;
+  settlementFile: string;
+}
+
+export async function closeRecordCase(caseId: number, payload: CloseRecordPayload): Promise<void> {
+  await apiFetch(`${BASE}/api/v1/blotter-form/close-record/${caseId}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

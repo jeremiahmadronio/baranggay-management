@@ -92,6 +92,7 @@ export const ActionModal = ({
 
         <button
           onClick={onClose}
+          autoFocus
           className={`w-full py-2.5 font-medium rounded transition-colors ${buttonStyle}`}
         >
           OK

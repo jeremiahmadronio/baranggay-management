@@ -73,7 +73,13 @@ export const TableFilter = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-4">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onFilterClick?.();
+      }}
+      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-4"
+    >
       <div className="flex flex-wrap gap-4 items-end">
         {/* Search */}
         {showSearch && (
@@ -166,7 +172,7 @@ export const TableFilter = ({
         {/* Apply Button */}
         {showFilterButton && (
           <button
-            onClick={onFilterClick}
+            type="submit"
             disabled={disabled}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
@@ -196,6 +202,7 @@ export const TableFilter = ({
         {/* Clear Button */}
         {showClearButton && (
           <button
+            type="button"
             onClick={onClearClick}
             disabled={disabled}
             className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1 border border-gray-300"
@@ -217,6 +224,6 @@ export const TableFilter = ({
           </button>
         )}
       </div>
-    </div>
+    </form>
   );
 };

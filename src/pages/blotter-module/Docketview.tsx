@@ -10,11 +10,13 @@ import type {
   DocketTableParams,
   BlotterSummaryDTO,
   BlotterStatsDTO,
+  BlotterDocketViewDTO,
 } from "../../service/blotter-api/DocketView";
 import {
   getDocketTable,
   getDocketStats,
   archiveCase,
+  getFullBlotterDocket,
 } from "../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
@@ -30,7 +32,8 @@ import { referToLupon } from "../../service/blotter-api/ForwardToLupon";
 import {
   ReferToLuponModal,
   type PangkatMember,
-} from "./modal/ReferToLuponModal"; // ← adjust path to wherever you put it
+} from "./modal/ReferToLuponModal";
+import { EditCaseModal } from "./modal/EditCaseModal";
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "—";
@@ -105,7 +108,8 @@ const Docketview = () => {
     string | null
   >(null);
   const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
-  const [openEditOnDetailLoad, setOpenEditOnDetailLoad] = useState(false);
+  const [editDocket, setEditDocket] = useState<BlotterDocketViewDTO | null>(null);
+  const [fetchingEdit, setFetchingEdit] = useState<string | null>(null);
 
   // Filter state
   const [search, setSearch] = useState("");
@@ -123,7 +127,7 @@ const Docketview = () => {
     end: "",
     page: 0,
     size: PAGE_SIZE,
-    sort: "dateFiled,desc",
+    sort: "updatedAt,desc",
   });
 
   // Data state
@@ -148,6 +152,7 @@ const Docketview = () => {
     null,
   );
   const [archiveSuccessOpen, setArchiveSuccessOpen] = useState(false);
+  const [editSuccessOpen, setEditSuccessOpen] = useState(false);
   const safeTotalPages = Math.max(1, totalPages || 0);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -220,6 +225,25 @@ const Docketview = () => {
     value: String(n.id),
   }));
 
+  // Live Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const updated: DocketTableParams = {
+        search,
+        status: status || "",
+        natureId: natureId ? Number(natureId) : undefined,
+        start: startDate,
+        end: endDate,
+        page: 0,
+        size: PAGE_SIZE,
+        sort: "updatedAt,desc",
+      };
+      setParams(updated);
+      fetchTable(updated);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]); // Intentionally only run when search changes
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleApplyFilter = () => {
@@ -231,7 +255,7 @@ const Docketview = () => {
       end: endDate,
       page: 0,
       size: PAGE_SIZE,
-      sort: "dateFiled,desc",
+      sort: "updatedAt,desc",
     };
     setParams(updated);
     fetchTable(updated);
@@ -251,7 +275,7 @@ const Docketview = () => {
       end: "",
       page: 0,
       size: PAGE_SIZE,
-      sort: "dateFiled,desc",
+      sort: "updatedAt,desc",
     };
     setParams(reset);
     fetchTable(reset);
@@ -338,11 +362,15 @@ const Docketview = () => {
     {
       key: "natureOfComplaint",
       header: "Nature of Complaint",
-      render: (item) => (
-        <span className="text-gray-600 truncate block max-w-[180px]">
-          {item.natureOfComplaint}
-        </span>
-      ),
+      render: (item) => {
+        const found = natureOptions.find((n) => String(n.id) === String(item.natureOfComplaint));
+        const displayValue = found ? found.natureName : item.natureOfComplaint;
+        return (
+          <span className="text-gray-600 truncate block max-w-[180px]">
+            {displayValue}
+          </span>
+        );
+      },
     },
     {
       key: "status",
@@ -391,7 +419,6 @@ const Docketview = () => {
               onClick={(e) => {
                 e.stopPropagation();
                 if (canView) {
-                  setOpenEditOnDetailLoad(false);
                   setSelectedBlotterNumber(item.blotterNumber);
                   setSelectedCaseId(item.id);
                 }
@@ -408,13 +435,20 @@ const Docketview = () => {
 
             {/* Edit */}
             <button
-              disabled={!canView || !canEditThisStatus}
-              onClick={(e) => {
+              disabled={!canView || !canEditThisStatus || fetchingEdit === item.blotterNumber}
+              onClick={async (e) => {
                 e.stopPropagation();
                 if (canView && canEditThisStatus) {
-                  setOpenEditOnDetailLoad(true);
-                  setSelectedBlotterNumber(item.blotterNumber);
-                  setSelectedCaseId(item.id);
+                  setFetchingEdit(item.blotterNumber);
+                  try {
+                    const fullDocket = await getFullBlotterDocket(item.blotterNumber);
+                    fullDocket.caseId = item.id;
+                    setEditDocket(fullDocket);
+                  } catch {
+                    alert("Failed to load case details for editing.");
+                  } finally {
+                    setFetchingEdit(null);
+                  }
                 }
               }}
               title={
@@ -428,7 +462,11 @@ const Docketview = () => {
                   : "text-gray-500 hover:bg-amber-50"
               }`}
             >
-              <PencilLine className="w-4 h-4" />
+              {fetchingEdit === item.blotterNumber ? (
+                <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin block" />
+              ) : (
+                <PencilLine className="w-4 h-4" />
+              )}
             </button>
 
             {["UNSETTLED", "PENDING", "UNDER_MEDIATION"].includes(
@@ -483,9 +521,7 @@ const Docketview = () => {
       <BlotterDocketDetailView
         blotterNumber={selectedBlotterNumber}
         caseId={selectedCaseId ?? undefined}
-        openEditOnLoad={openEditOnDetailLoad}
         onBack={() => {
-          setOpenEditOnDetailLoad(false);
           setSelectedBlotterNumber(null);
           setSelectedCaseId(null);
           fetchTable(params);
@@ -508,6 +544,29 @@ const Docketview = () => {
           onCancel={() => setReferEntry(null)}
         />
       )}
+
+      {editDocket && (
+        <EditCaseModal
+          docket={editDocket}
+          hasPermission={true} // They passed the canEditThisStatus check
+          onCancel={() => setEditDocket(null)}
+          onSuccess={() => {
+            setEditDocket(null);
+            fetchTable(params);
+            fetchStats();
+            setEditSuccessOpen(true);
+          }}
+        />
+      )}
+
+      <ActionModal
+        isOpen={editSuccessOpen}
+        onClose={() => setEditSuccessOpen(false)}
+        title="Successfully Saved"
+        type="success"
+      >
+        The case information has been successfully updated and saved.
+      </ActionModal>
 
       <ActionModal
         isOpen={referSuccessOpen}
@@ -619,7 +678,6 @@ const Docketview = () => {
         variant="resident"
         onRowClick={(item) => {
           if (canView) {
-            setOpenEditOnDetailLoad(false);
             setSelectedBlotterNumber(item.blotterNumber);
             setSelectedCaseId(item.id);
           }

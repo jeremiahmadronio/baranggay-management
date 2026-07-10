@@ -79,25 +79,24 @@ export function NotesTab({
               placeholder="Type your note here..."
               value={noteText}
               onChange={(e) => {
-                // Limit to 1000 words
-                const words = e.target.value.split(/\s+/).filter(Boolean);
-                if (words.length <= 1500) {
-                  setNoteText(e.target.value);
-                } else {
-                  setNoteText(words.slice(0, 1500).join(" "));
+                // Sanitize: Only letters, numbers, periods, commas, and spaces
+                let text = e.target.value.replace(/[^a-zA-Z0-9.,\s]/g, "");
+                // Limit to 1000 characters
+                if (text.length > 1000) {
+                  text = text.slice(0, 1000);
                 }
+                setNoteText(text);
               }}
               rows={3}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none text-gray-900"
             />
             <div className="flex justify-between items-center mt-1">
               <span className="text-xs text-gray-400">
-                {noteText.trim().split(/\s+/).filter(Boolean).length} / 1000
-                words
+                {noteText.length} / 1000 characters
               </span>
-              {noteText.trim().split(/\s+/).filter(Boolean).length >= 1000 && (
+              {noteText.length >= 1000 && (
                 <span className="text-xs text-red-500 font-semibold">
-                  Word limit reached
+                  Character limit reached
                 </span>
               )}
             </div>

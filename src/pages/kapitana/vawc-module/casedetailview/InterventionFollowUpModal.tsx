@@ -59,7 +59,7 @@ export function InterventionFollowUpModal({
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             type="button"
             onClick={onSave}
             disabled={followUpLoading || saveDisabled}

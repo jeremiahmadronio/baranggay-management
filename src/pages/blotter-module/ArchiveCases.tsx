@@ -109,7 +109,7 @@ export default function ArchiveCasesPage() {
     dateTo: undefined,
     page: 0,
     size: PAGE_SIZE,
-    sort: "dateFiled,desc",
+    sort: "updatedAt,desc",
   });
 
   const [userAccess, setUserAccess] = useState<UserSecurityProfile | null>(
@@ -193,7 +193,7 @@ export default function ArchiveCasesPage() {
       dateTo: toEndDateTime(endDate),
       page: 0,
       size: PAGE_SIZE,
-      sort: "dateFiled,desc",
+      sort: "updatedAt,desc",
     };
     setParams(updated);
     fetchTable(updated);
@@ -212,7 +212,7 @@ export default function ArchiveCasesPage() {
       dateTo: undefined,
       page: 0,
       size: PAGE_SIZE,
-      sort: "dateFiled,desc",
+      sort: "updatedAt,desc",
     };
 
     setParams(reset);

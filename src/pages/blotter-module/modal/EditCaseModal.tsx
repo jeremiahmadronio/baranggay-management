@@ -202,6 +202,19 @@ export function EditCaseModal({
         setEvidenceOptions(evidences);
         setOfficerOptions(officers);
 
+        setSelectedEvidence((prev) => {
+          const next = new Set<string>();
+          prev.forEach((val) => {
+            if (!isNaN(Number(val)) && val.trim() !== "") {
+              next.add(val);
+            } else {
+              const found = evidences.find((e) => e.typName === val);
+              if (found) next.add(String(found.id));
+            }
+          });
+          return next;
+        });
+
         if (!form.natureOfComplaintId && natures.length > 0) {
           const found = natures.find(
             (n) => n.natureName === docket.natureOfComplaint,
@@ -314,28 +327,6 @@ export function EditCaseModal({
   const validate = () => {
     const nextErrors: Record<string, string> = {};
 
-    if (!form.complainantFirstName.trim())
-      nextErrors.complainantFirstName = "Required";
-    if (!form.complainantLastName.trim())
-      nextErrors.complainantLastName = "Required";
-    if (!form.complainantContact.trim())
-      nextErrors.complainantContact = "Required";
-    if (!form.complainantAddress.trim())
-      nextErrors.complainantAddress = "Required";
-
-    if (!form.respondentFirstName.trim())
-      nextErrors.respondentFirstName = "Required";
-    if (!form.respondentLastName.trim())
-      nextErrors.respondentLastName = "Required";
-
-    if (!form.natureOfComplaintId) nextErrors.natureOfComplaintId = "Required";
-    if (!form.dateOfIncident) nextErrors.dateOfIncident = "Required";
-    if (!form.placeOfIncident.trim()) nextErrors.placeOfIncident = "Required";
-    if (!form.narrativeStatement.trim())
-      nextErrors.narrativeStatement = "Required";
-    if (!form.assignToId)
-      nextErrors.assignToId = "Assigned officer is required";
-
     witnesses.forEach((w, idx) => {
       const testimony = (w.testimony ?? "").trim();
       if (testimony.length > MAX_WITNESS_TESTIMONY_LENGTH) {
@@ -424,7 +415,24 @@ export function EditCaseModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl max-h-[92vh] overflow-y-auto border border-slate-200">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const target = e.target as HTMLElement;
+            const tagName = target.tagName.toLowerCase();
+            if (tagName === "textarea" || tagName === "button" || target.isContentEditable) {
+              return;
+            }
+            e.preventDefault();
+            handleSubmit();
+          }
+        }}
+        className="bg-white rounded-lg shadow-lg w-full max-w-5xl max-h-[92vh] overflow-y-auto border border-slate-200"
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div>
             <h3 className="text-base font-semibold text-gray-900">
@@ -435,6 +443,7 @@ export function EditCaseModal({
             </p>
           </div>
           <button
+            type="button"
             onClick={onCancel}
             className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
           >
@@ -463,8 +472,7 @@ export function EditCaseModal({
                       Assigned Officer <span className="text-red-500">*</span>
                     </label>
                     <select
-                      className="input"
-                      value={form.assignToId}
+                      className="input" value={form.assignToId} disabled
                       onChange={(e) => setField("assignToId", e.target.value)}
                     >
                       <option value="">Select assigned officer</option>
@@ -512,36 +520,11 @@ export function EditCaseModal({
 
               <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  Complainant (with person re-link)
+                  Complainant
                 </p>
-                <PersonSearchInput
-                  label="Search and Re-link Complainant"
-                  placeholder="Search complainant by name..."
-                  onSelect={linkComplainant}
-                />
+                
 
-                {form.complainantId && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
-                    <div className="flex items-center gap-2 text-sm text-blue-700">
-                      <UserIcon className="w-4 h-4" />
-                      <span>
-                        Selected User:{" "}
-                        <strong>
-                          {selectedComplainantName ||
-                            `${form.complainantFirstName} ${form.complainantLastName}`.trim()}
-                        </strong>{" "}
-                        (ID #{form.complainantId})
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-blue-700 hover:text-blue-900"
-                      onClick={unlinkComplainant}
-                    >
-                      Edit manually
-                    </button>
-                  </div>
-                )}
+                
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
@@ -553,7 +536,7 @@ export function EditCaseModal({
                       placeholder="e.g. Juan"
                       value={form.complainantFirstName}
                       maxLength={MAX_FIRST_NAME_LENGTH}
-                      readOnly={lockComplainantFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("complainantFirstName", e.target.value)
                       }
@@ -571,7 +554,7 @@ export function EditCaseModal({
                       placeholder="Enter middle name"
                       value={form.complainantMiddleName}
                       maxLength={MAX_MIDDLE_NAME_LENGTH}
-                      readOnly={lockComplainantFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("complainantMiddleName", e.target.value)
                       }
@@ -590,7 +573,7 @@ export function EditCaseModal({
                       placeholder="Enter last name"
                       value={form.complainantLastName}
                       maxLength={MAX_LAST_NAME_LENGTH}
-                      readOnly={lockComplainantFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("complainantLastName", e.target.value)
                       }
@@ -609,7 +592,7 @@ export function EditCaseModal({
                       placeholder="09XX XXX XXXX"
                       value={form.complainantContact}
                       maxLength={MAX_CONTACT_LENGTH}
-                      readOnly={lockComplainantFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("complainantContact", e.target.value)
                       }
@@ -626,7 +609,7 @@ export function EditCaseModal({
                       className="input"
                       placeholder="Age"
                       value={form.complainantAge}
-                      maxLength={MAX_AGE_LENGTH}
+                      maxLength={MAX_AGE_LENGTH} readOnly={true}
                       onChange={(e) =>
                         setField(
                           "complainantAge",
@@ -646,7 +629,7 @@ export function EditCaseModal({
                       className="input"
                       placeholder="name@email.com"
                       value={form.complainantEmail}
-                      maxLength={MAX_EMAIL_LENGTH}
+                      maxLength={MAX_EMAIL_LENGTH} readOnly={true}
                       onChange={(e) =>
                         setField("complainantEmail", e.target.value)
                       }
@@ -666,7 +649,7 @@ export function EditCaseModal({
                     placeholder="Complete address"
                     value={form.complainantAddress}
                     maxLength={MAX_ADDRESS_LENGTH}
-                    readOnly={lockComplainantFields}
+                    readOnly={true}
                     onChange={(e) =>
                       setField("complainantAddress", e.target.value)
                     }
@@ -679,36 +662,11 @@ export function EditCaseModal({
 
               <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  Respondent (with person re-link)
+                  Respondent
                 </p>
-                <PersonSearchInput
-                  label="Search and Re-link Respondent"
-                  placeholder="Search respondent by name..."
-                  onSelect={linkRespondent}
-                />
+                
 
-                {form.respondentId && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
-                    <div className="flex items-center gap-2 text-sm text-blue-700">
-                      <UserIcon className="w-4 h-4" />
-                      <span>
-                        Selected User:{" "}
-                        <strong>
-                          {selectedRespondentName ||
-                            `${form.respondentFirstName} ${form.respondentLastName}`.trim()}
-                        </strong>{" "}
-                        (ID #{form.respondentId})
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-blue-700 hover:text-blue-900"
-                      onClick={unlinkRespondent}
-                    >
-                      Edit manually
-                    </button>
-                  </div>
-                )}
+                
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
@@ -720,7 +678,7 @@ export function EditCaseModal({
                       placeholder="e.g. Juan"
                       value={form.respondentFirstName}
                       maxLength={MAX_FIRST_NAME_LENGTH}
-                      readOnly={lockRespondentFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("respondentFirstName", e.target.value)
                       }
@@ -738,7 +696,7 @@ export function EditCaseModal({
                       placeholder="Enter middle name"
                       value={form.respondentMiddleName}
                       maxLength={MAX_MIDDLE_NAME_LENGTH}
-                      readOnly={lockRespondentFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("respondentMiddleName", e.target.value)
                       }
@@ -757,7 +715,7 @@ export function EditCaseModal({
                       placeholder="Enter last name"
                       value={form.respondentLastName}
                       maxLength={MAX_LAST_NAME_LENGTH}
-                      readOnly={lockRespondentFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("respondentLastName", e.target.value)
                       }
@@ -774,7 +732,7 @@ export function EditCaseModal({
                       className="input"
                       placeholder="Alias"
                       value={form.respondentAlias}
-                      maxLength={MAX_ALIAS_LENGTH}
+                      maxLength={MAX_ALIAS_LENGTH} readOnly={true}
                       onChange={(e) =>
                         setField("respondentAlias", e.target.value)
                       }
@@ -792,7 +750,7 @@ export function EditCaseModal({
                       placeholder="09XX XXX XXXX"
                       value={form.respondentContact}
                       maxLength={MAX_CONTACT_LENGTH}
-                      readOnly={lockRespondentFields}
+                      readOnly={true}
                       onChange={(e) =>
                         setField("respondentContact", e.target.value)
                       }
@@ -809,7 +767,7 @@ export function EditCaseModal({
                       className="input"
                       placeholder="Relationship"
                       value={form.relationshipTypeName}
-                      maxLength={MAX_RELATIONSHIP_LENGTH}
+                      maxLength={MAX_RELATIONSHIP_LENGTH} readOnly={true}
                       onChange={(e) =>
                         setField("relationshipTypeName", e.target.value)
                       }
@@ -830,7 +788,7 @@ export function EditCaseModal({
                     placeholder="Address"
                     value={form.respondentAddress}
                     maxLength={MAX_ADDRESS_LENGTH}
-                    readOnly={lockRespondentFields}
+                    readOnly={true}
                     onChange={(e) =>
                       setField("respondentAddress", e.target.value)
                     }
@@ -899,7 +857,7 @@ export function EditCaseModal({
                     className="input w-full min-h-[96px]"
                     placeholder="Provide complete incident narrative..."
                     value={form.narrativeStatement}
-                    maxLength={MAX_NARRATIVE_LENGTH}
+                    maxLength={MAX_NARRATIVE_LENGTH} readOnly={true}
                     onChange={(e) =>
                       setField("narrativeStatement", e.target.value)
                     }
@@ -957,7 +915,7 @@ export function EditCaseModal({
               <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Witnesses (with testimony)
+                    Witnesses
                   </p>
                   <button
                     type="button"
@@ -993,28 +951,7 @@ export function EditCaseModal({
                         </button>
                       </div>
 
-                      <PersonSearchInput
-                        label="Search and re-link witness"
-                        placeholder="Search witness by name..."
-                        onSelect={(person) => {
-                          updateWitness(i, "personId", person.id);
-                          updateWitness(
-                            i,
-                            "fullName",
-                            `${person.firstName ?? ""} ${person.lastName ?? ""}`.trim(),
-                          );
-                          updateWitness(
-                            i,
-                            "contactNumber",
-                            person.contactNumber || "",
-                          );
-                          updateWitness(
-                            i,
-                            "address",
-                            person.completeAddress || "",
-                          );
-                        }}
-                      />
+                      
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <input
@@ -1058,10 +995,11 @@ export function EditCaseModal({
                         className={`input w-full min-h-[84px] ${errors[`witnessTestimony${i}`] ? "border-red-400 bg-red-50" : ""}`}
                         placeholder="Testimony (optional)"
                         value={w.testimony ?? ""}
-                        maxLength={MAX_WITNESS_TESTIMONY_LENGTH}
-                        onChange={(e) =>
-                          updateWitness(i, "testimony", e.target.value)
-                        }
+                        maxLength={MAX_WITNESS_TESTIMONY_LENGTH} readOnly={true}
+                        onChange={(e) => {
+                          const sanitized = e.target.value.replace(/[^a-zA-Z0-9.,\s]/g, "");
+                          updateWitness(i, "testimony", sanitized);
+                        }}
                       />
                       <p className="text-xs text-gray-400">
                         {(w.testimony ?? "").length}/
@@ -1094,13 +1032,15 @@ export function EditCaseModal({
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
           <button
+            type="button"
             onClick={onCancel}
             disabled={submitting}
             className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-50"
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
+            type="submit"
             onClick={handleSubmit}
             disabled={submitting || !hasPermission || loadingOptions}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
@@ -1111,7 +1051,7 @@ export function EditCaseModal({
             {submitting ? "Updating..." : "Save Updates"}
           </button>
         </div>
-      </div>
+      </form>
 
       <style>{`
         .input {

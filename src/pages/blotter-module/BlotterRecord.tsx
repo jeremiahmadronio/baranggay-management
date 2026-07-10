@@ -77,7 +77,10 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const STATUS_OPTIONS = [{ value: "recorded", label: "Recorded" }];
+const STATUS_OPTIONS = [
+  { value: "recorded", label: "Recorded" },
+  { value: "closed", label: "Closed" },
+];
 const ARCHIVABLE_STATUSES = new Set([
   "RECORDED",
   "ELEVATED_TO_FORMAL",
@@ -175,6 +178,26 @@ const BlotterRecordsPage: React.FC = () => {
     window.addEventListener('offline-sync-complete', handleSyncComplete);
     return () => window.removeEventListener('offline-sync-complete', handleSyncComplete);
   }, [appliedParams, fetchRecords]);
+
+  // Live Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      let backendStatus = "";
+      if (status === "recorded") backendStatus = "RECORDED";
+      else if (status === "elevated_to_formal")
+        backendStatus = "ELEVATED_TO_FORMAL";
+        
+      setAppliedParams({
+        page: 0,
+        size: PAGE_SIZE,
+        ...(search && { search }),
+        ...(backendStatus ? { status: backendStatus } : {}),
+        ...(startDate && { start: startDate }),
+        ...(endDate && { end: endDate }),
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]); // Intentionally only run when search changes
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
   const handleApplyFilter = () => {

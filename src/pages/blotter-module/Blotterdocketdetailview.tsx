@@ -14,13 +14,17 @@ import {
   getHearingView,
   getCaseNotes,
   updateCaseStatus,
-  updateBlotterStatusById,
+  restoreCase,
 } from "../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
   getMyAccess,
   hasBlotterPermission,
 } from "../../service/blotter-api/BlotterPermission";
+import {
+  getNatureOfComplaintOptions,
+  type NatureOptionDTO,
+} from "../../service/blotter-api/BlotterFormComplaint";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { HearingsTab } from "./tabs/HearingTab";
 import { NotesTab } from "./tabs/NotesTab";
@@ -91,6 +95,7 @@ export function BlotterDocketDetailView({
   const [showEditSuccess, setShowEditSuccess] = useState(false);
   const [showReferSuccess, setShowReferSuccess] = useState(false);
   const [attemptedAutoEditOpen, setAttemptedAutoEditOpen] = useState(false);
+  const [natureOptions, setNatureOptions] = useState<NatureOptionDTO[]>([]);
 
   const EDITABLE_CASE_STATUSES = new Set(["PENDING", "UNDER_MEDIATION"]);
 
@@ -208,8 +213,9 @@ export function BlotterDocketDetailView({
     }
     setActionLoading(true);
     try {
-      await updateBlotterStatusById(Number(idToUse), {
-        status: "ACTIVE",
+      await updateCaseStatus({
+        blotterNumber,
+        newStatus: "PENDING",
         reason: reason,
       });
       setModal(null);
@@ -229,12 +235,14 @@ export function BlotterDocketDetailView({
       setDetailsLoading(true);
       setError(null);
       try {
-        const [d, m] = await Promise.all([
+        const [d, m, natures] = await Promise.all([
           getFullBlotterDocket(blotterNumber),
           getMediationProcess(blotterNumber),
+          getNatureOfComplaintOptions(),
         ]);
         setDocket(d);
         setMediation(m);
+        setNatureOptions(natures);
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "Failed to load case details.",
@@ -301,6 +309,9 @@ export function BlotterDocketDetailView({
   const canEditByStatus = EDITABLE_CASE_STATUSES.has(normalizedStatus);
   const isOfflineRecord = !!docket?._offline;
   const canEditCase = canUpdateCaseInfo && canEditByStatus && !isOfflineRecord;
+  const resolvedNatureOfComplaint = docket 
+    ? (natureOptions.find((n) => String(n.id) === String(docket.natureOfComplaint))?.natureName || docket.natureOfComplaint)
+    : "";
 
   useEffect(() => {
     if (attemptedAutoEditOpen) return;
@@ -433,7 +444,7 @@ export function BlotterDocketDetailView({
             blotterNumber={blotterNumber}
             hearingNumber={hearings.length + 1}
             caseNumber={docket.caseNumber}
-            natureOfComplaint={docket.natureOfComplaint}
+            natureOfComplaint={resolvedNatureOfComplaint}
             complainantName={`${docket.firstName} ${docket.lastName}`}
             respondentName={`${docket.respondentFirstName} ${docket.respondentLastName}`}
             onSuccess={async () => {
@@ -448,7 +459,7 @@ export function BlotterDocketDetailView({
           <RecordMinutesModal
             hearing={selectedHearing}
             caseNumber={docket.caseNumber}
-            natureOfComplaint={docket.natureOfComplaint}
+            natureOfComplaint={resolvedNatureOfComplaint}
             complainantName={`${docket.firstName} ${docket.lastName}`}
             respondentName={`${docket.respondentFirstName} ${docket.respondentLastName}`}
             onSuccess={async () => {
@@ -545,7 +556,9 @@ export function BlotterDocketDetailView({
               {docket.caseNumber}
             </h1>
           </div>
-          <p className="text-sm text-gray-500">{docket.natureOfComplaint}</p>
+          <p className="text-sm text-gray-500">
+            {resolvedNatureOfComplaint}
+          </p>
         </div>
 
         {/* ── TABS ── */}
@@ -601,7 +614,7 @@ export function BlotterDocketDetailView({
             hasPermission={canManageMediation && !isOfflineRecord}
             blotterNumber={blotterNumber}
             caseNumber={docket.caseNumber}
-            natureOfComplaint={docket.natureOfComplaint}
+            natureOfComplaint={resolvedNatureOfComplaint}
             complainantName={`${docket.firstName} ${docket.lastName}`}
             respondentName={`${docket.respondentFirstName} ${docket.respondentLastName}`}
             onScheduleHearing={() => setModal("schedule")}

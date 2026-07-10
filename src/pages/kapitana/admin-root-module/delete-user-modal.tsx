@@ -110,7 +110,7 @@ export function DeleteUserModal({ admin, onClose }: DeleteUserModalProps) {
           >
             Cancel
           </button>
-          <button
+          <button autoFocus
             onClick={handleConfirm}
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition disabled:opacity-50 flex items-center gap-2"

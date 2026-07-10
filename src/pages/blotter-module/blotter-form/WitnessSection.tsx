@@ -51,6 +51,7 @@ export const WitnessSection = ({
               </span>
               {witnesses.length > 1 && (
                 <button
+                  type="button"
                   onClick={() => removeWitness(i)}
                   className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1"
                 >
@@ -153,7 +154,8 @@ export const WitnessSection = ({
               error={errors[`witnessTestimony${i}`]}
               hint={`Max ${MAX_WITNESS_TESTIMONY_LENGTH} characters`}
               onChange={(e) => {
-                updateWitness(i, "testimony", e.target.value);
+                const sanitized = e.target.value.replace(/[^a-zA-Z0-9.,\s]/g, "");
+                updateWitness(i, "testimony", sanitized);
                 clearErr(`witnessTestimony${i}`);
               }}
             />
@@ -162,6 +164,7 @@ export const WitnessSection = ({
       </div>
 
       <button
+        type="button"
         onClick={addWitness}
         className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors self-start"
       >

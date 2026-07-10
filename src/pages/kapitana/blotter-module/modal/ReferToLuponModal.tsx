@@ -383,7 +383,7 @@ export function ReferToLuponModal({
                 >
                   Cancel
                 </button>
-                <button
+                <button autoFocus
                   onClick={handleSubmit}
                   disabled={
                     isLoading || !allFilled || fetchLoading || !!fetchError
