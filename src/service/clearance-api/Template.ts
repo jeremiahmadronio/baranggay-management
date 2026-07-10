@@ -204,4 +204,8 @@ export const clearanceTemplateApi = {
   // GET /archive-stats
   getArchiveStats: (): Promise<ArchiveStatsResponseDTO> =>
     apiFetch<ArchiveStatsResponseDTO>(`${CLEARANCE_TEMPLATE_URL}/archive-stats`),
+
+  // GET /person/{personId}/issuances
+  getIssuancesByPerson: (personId: number): Promise<SummaryResponseDTO[]> =>
+    apiFetch<SummaryResponseDTO[]>(`${CLEARANCE_TEMPLATE_URL}/person/${personId}/issuances`),
 };                                    
