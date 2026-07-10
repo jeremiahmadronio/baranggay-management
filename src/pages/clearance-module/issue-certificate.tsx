@@ -12,6 +12,8 @@ import {
   AlertCircle,
   Search,
   X,
+  ChevronLeft,
+  Scale,
 } from "lucide-react";
 import { LoadingModal } from "../../reusable/LoadingModal";
 import { ActionModal, ConfirmModal } from "../../reusable";
@@ -32,8 +34,14 @@ import { CertificatePreview } from "./clearance-template/CertificatPreview";
 import { type TemplateData } from "./clearance-template/template";
 import {
   searchPeople,
+  getResidentProfile,
   type PersonSearchResponseDTO,
+  type ResidentProfileViewDTO,
 } from "../../service/blotter-api/Resident";
+import {
+  clearanceTemplateApi,
+  type SummaryResponseDTO,
+} from "../../service/clearance-api/Template";
 
 // ============================================
 // MAIN COMPONENT
@@ -47,6 +55,12 @@ export const IssueCertificatePage = () => {
   );
   const [selectedResident, setSelectedResident] =
     useState<PersonSearchResponseDTO | null>(null);
+  const [residentProfile, setResidentProfile] =
+    useState<ResidentProfileViewDTO | null>(null);
+  const [issuanceHistory, setIssuanceHistory] = useState<SummaryResponseDTO[]>(
+    [],
+  );
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,17 +101,51 @@ export const IssueCertificatePage = () => {
   const loadTemplateOptions = useCallback(async () => {
     const options = await fetchTemplateOptions();
     setTemplateOptions(options);
-    setSelectedTemplateId((prev) => {
-      if (!options.length) return "";
-      if (prev && options.some((o) => String(o.id) === String(prev))) {
-        return prev;
-      }
-      const fallbackId =
-        options.find((o) => String(o.id) === "barangay-clearance")?.id ||
-        options[0].id;
-      return String(fallbackId);
-    });
   }, []);
+
+  // Fetch resident profile and clearance issuances history when selectedResident changes
+  useEffect(() => {
+    if (!selectedResident) {
+      setResidentProfile(null);
+      setIssuanceHistory([]);
+      return;
+    }
+    const fetchResidentDetails = async () => {
+      setIsProfileLoading(true);
+      let prof: ResidentProfileViewDTO | null = null;
+      let iss: SummaryResponseDTO[] = [];
+
+      try {
+        prof = await getResidentProfile(selectedResident.id);
+      } catch (err) {
+        console.error("Failed to load resident profile:", err);
+        // Fallback to basic selectedResident details if profile call fails
+        prof = {
+          id: selectedResident.id,
+          fullName: `${selectedResident.firstName} ${selectedResident.lastName}`,
+          firstName: selectedResident.firstName,
+          lastName: selectedResident.lastName,
+          completeAddress: selectedResident.completeAddress || "",
+          age: selectedResident.age || 0,
+          gender: selectedResident.gender || "",
+          civilStatus: selectedResident.civilStatus || "",
+          contactNumber: selectedResident.contactNumber || "",
+          cases: [],
+        } as unknown as ResidentProfileViewDTO;
+      }
+
+      try {
+        iss = await clearanceTemplateApi.getIssuancesByPerson(selectedResident.id);
+      } catch (err) {
+        console.error("Failed to load resident issuances:", err);
+      }
+
+      setResidentProfile(prof);
+      setIssuanceHistory(iss);
+      setIsProfileLoading(false);
+    };
+    void fetchResidentDetails();
+  }, [selectedResident]);
 
   // Map resident profile to form field values
   const mapResidentToFormData = useCallback(
@@ -173,7 +221,7 @@ export const IssueCertificatePage = () => {
         setIsLoading(false);
       }
     };
-    loadOptions();
+    void loadOptions();
   }, [loadTemplateOptions]);
 
   useEffect(() => {
@@ -327,6 +375,11 @@ export const IssueCertificatePage = () => {
           // snake_case equivalents for API templates
           or_date: formatDateReadable(today),
         };
+
+        if (selectedResident) {
+          const residentData = mapResidentToFormData(selectedResident);
+          Object.assign(autoFilledData, residentData);
+        }
 
         setFormData(autoFilledData);
       } catch (error) {
@@ -670,6 +723,29 @@ export const IssueCertificatePage = () => {
   // Form sections are already grouped in the API response
   const formSections = templateData?.formFields?.sections || [];
 
+  const ONGOING_STATUSES = [
+    "pending",
+    "under_mediation",
+    "under_conciliation",
+    "elevated_to_formal",
+    "referred_to_lupon",
+  ];
+
+  const hasOngoingCase = useMemo(() => {
+    if (!residentProfile || !residentProfile.cases) return false;
+    return residentProfile.cases.some(
+      (c) =>
+        c.role?.toLowerCase() === "respondent" &&
+        ONGOING_STATUSES.includes(c.status?.toLowerCase()),
+    );
+  }, [residentProfile]);
+
+  const isAlreadyIssued = (templateTitle: string) => {
+    return issuanceHistory.some(
+      (h) => h.certificateTitle.toLowerCase() === templateTitle.toLowerCase(),
+    );
+  };
+
   if (isLoading && templateOptions.length === 0) {
     return <LoadingModal isOpen={true} message="Loading templates..." />;
   }
@@ -677,57 +753,334 @@ export const IssueCertificatePage = () => {
   return (
     <div className="min-h-screen font-sans text-gray-900 pb-12 bg-gray-50">
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
-        {/* Template Selector */}
-        <TemplateSelector
-          options={templateOptions}
-          selectedId={selectedTemplateId}
-          onSelect={handleTemplateSelect}
-          onArchivedClick={handleArchivedButtonClick}
-          isArchivingTemplate={isArchivingTemplate}
-        />
+        {!selectedTemplateId ? (
+          // STEP 1: Search Resident and Document Grid
+          <div className="space-y-6">
+            <div className="mb-8">
+              <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+                Barangay Documents Issuance
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Search a resident and issue a barangay document.
+              </p>
+            </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* LEFT: Form Panel */}
-          <div className="w-full lg:w-5/12">
-            {isLoading ? (
-              <div className="flex items-center justify-center bg-white rounded-lg border border-gray-200 p-12">
+            {/* Resident Lookup Bar */}
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+              <ResidentSearchBar onSelect={handleResidentSelect} />
+            </div>
+
+            {isProfileLoading ? (
+              <div className="flex items-center justify-center p-12 bg-white rounded-xl border border-gray-200">
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
               </div>
-            ) : templateData ? (
-              <IssuanceForm
-                template={templateData}
-                formData={formData}
-                formSections={formSections}
-                onInputChange={handleInputChange}
-                onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
-                onResidentSelect={handleResidentSelect}
-                resetSignal={formResetSignal}
-              />
+            ) : residentProfile ? (
+              <div className="space-y-6">
+                {/* Selected Resident Profile */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-lg font-bold flex-shrink-0">
+                        {residentProfile.firstName[0]}
+                        {residentProfile.lastName[0]}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {residentProfile.fullName}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {residentProfile.completeAddress}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedResident(null);
+                        setResidentProfile(null);
+                        setIssuanceHistory([]);
+                      }}
+                      className="text-xs font-semibold text-red-600 hover:text-red-800 transition-colors border border-red-200 rounded px-2.5 py-1.5 hover:bg-red-50"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100">
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                        Age
+                      </span>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                        {residentProfile.age} yrs old
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                        Gender
+                      </span>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5 capitalize">
+                        {residentProfile.gender}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                        Civil Status
+                      </span>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                        {residentProfile.civilStatus}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                        Contact No
+                      </span>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                        {residentProfile.contactNumber || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Side-by-side Tables */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Issuance History */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col h-[320px]">
+                    <h4 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      <span>Issuance History</span>
+                    </h4>
+                    <div className="flex-1 overflow-auto">
+                      {issuanceHistory.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                          No clearance records found.
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-xs text-gray-500">
+                          <thead className="bg-gray-50 text-[10px] uppercase font-bold text-gray-600">
+                            <tr>
+                              <th className="py-2 px-3">Cert No</th>
+                              <th className="py-2 px-3">Type</th>
+                              <th className="py-2 px-3">Date</th>
+                              <th className="py-2 px-3">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {issuanceHistory.map((h) => (
+                              <tr key={h.id} className="hover:bg-gray-50/50">
+                                <td className="py-2.5 px-3 font-semibold text-gray-700">
+                                  {h.certNumber}
+                                </td>
+                                <td className="py-2.5 px-3 text-gray-800">
+                                  {h.certificateTitle}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  {new Date(h.requestedAt).toLocaleDateString()}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                      h.status === "RELEASED" ||
+                                      h.status === "ACTIVE"
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-red-100 text-red-700"
+                                    }`}
+                                  >
+                                    {h.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Case History */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col h-[320px]">
+                    <h4 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                      <Scale className="w-4 h-4 text-red-500" />
+                      <span>Case History</span>
+                    </h4>
+                    <div className="flex-1 overflow-auto">
+                      {!residentProfile.cases ||
+                      residentProfile.cases.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                          No case records found.
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-xs text-gray-500">
+                          <thead className="bg-gray-50 text-[10px] uppercase font-bold text-gray-600">
+                            <tr>
+                              <th className="py-2 px-3">Case No</th>
+                              <th className="py-2 px-3">Dept / Nature</th>
+                              <th className="py-2 px-3">Role</th>
+                              <th className="py-2 px-3">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {residentProfile.cases.map((c, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50/50">
+                                <td className="py-2.5 px-3 font-semibold text-gray-700">
+                                  {c.blotterNumber}
+                                </td>
+                                <td className="py-2.5 px-3 text-gray-800">
+                                  {c.incidentNature}
+                                </td>
+                                <td className="py-2.5 px-3 font-medium capitalize">
+                                  {c.role}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                      ONGOING_STATUSES.includes(
+                                        c.status?.toLowerCase(),
+                                      )
+                                        ? "bg-amber-100 text-amber-700"
+                                        : "bg-green-100 text-green-700"
+                                    }`}
+                                  >
+                                    {c.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Blocking notice */}
+                {hasOngoingCase && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3 text-red-700 text-sm">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Clearance Blocked</span>
+                      <p className="mt-1 text-red-600">
+                        This resident has an ongoing case where they are listed
+                        as a respondent. Clearance issuance is disabled until
+                        the case is resolved.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Documents card grid */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">
+                    Select Document Type
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {templateOptions.map((option) => {
+                      const isIssued = isAlreadyIssued(option.name);
+                      const disabled = hasOngoingCase;
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            if (disabled) return;
+                            handleTemplateSelect(String(option.id));
+                          }}
+                          disabled={disabled}
+                          className={`flex flex-col items-start p-4 text-left border rounded-xl transition-all ${
+                            disabled
+                              ? "bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed"
+                              : "bg-white border-gray-200 hover:border-blue-500 hover:ring-1 hover:ring-blue-500 hover:shadow-sm"
+                          }`}
+                        >
+                          <div
+                            className={`p-2 rounded-lg mb-3 ${
+                              disabled
+                                ? "bg-gray-100 text-gray-400"
+                                : "bg-blue-50 text-blue-600"
+                            }`}
+                          >
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <span className="font-bold text-gray-900 text-sm">
+                            {option.name}
+                          </span>
+                          {isIssued && (
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full mt-2">
+                              ALREADY ISSUED
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             ) : (
-              <div className="flex items-center justify-center bg-white rounded-lg border border-gray-200 p-12">
-                <p className="text-gray-400">Select a template to continue</p>
+              <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-gray-200 text-center">
+                <Search className="w-8 h-8 text-gray-300 mb-2" />
+                <p className="text-sm text-gray-500">
+                  Search and select a resident to view their history and issue a
+                  document.
+                </p>
               </div>
             )}
           </div>
+        ) : (
+          // STEP 2: Selected Document Issuance Form and Live Preview
+          <div className="space-y-4">
+            <button
+              onClick={() => {
+                setSelectedTemplateId("");
+                setTemplateData(null);
+              }}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Back to Documents</span>
+            </button>
 
-          {/* RIGHT: Live Preview */}
-          <div className="w-full lg:w-7/12">
-            <div className="lg:sticky lg:top-4">
-              {isLoading ? (
-                <div className="flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200 p-12">
-                  <p className="text-gray-400">Loading preview...</p>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* LEFT: Form Panel */}
+              <div className="w-full lg:w-5/12">
+                {isLoading ? (
+                  <div className="flex items-center justify-center bg-white rounded-xl border border-gray-200 p-12">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                ) : templateData ? (
+                  <IssuanceForm
+                    template={templateData}
+                    formData={formData}
+                    formSections={formSections}
+                    onInputChange={handleInputChange}
+                    onSubmit={handleSubmit}
+                    isSubmitting={isSubmitting}
+                    onResidentSelect={handleResidentSelect}
+                    resetSignal={formResetSignal}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center bg-white rounded-xl border border-gray-200 p-12">
+                    <p className="text-gray-400">Loading form...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT: Live Preview */}
+              <div className="w-full lg:w-7/12">
+                <div className="lg:sticky lg:top-4">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center bg-gray-100 rounded-xl border border-gray-200 p-12">
+                      <p className="text-gray-400">Loading preview...</p>
+                    </div>
+                  ) : previewTemplate ? (
+                    <CertificatePreviewWrapper
+                      template={previewTemplate}
+                      formData={formData}
+                      printContentRef={printContentRef}
+                    />
+                  ) : null}
                 </div>
-              ) : previewTemplate ? (
-                <CertificatePreviewWrapper
-                  template={previewTemplate}
-                  formData={formData}
-                  printContentRef={printContentRef}
-                />
-              ) : null}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Toast Notification */}
@@ -737,31 +1090,10 @@ export const IssueCertificatePage = () => {
             notification.type === "warning" ? "bg-amber-500" : "bg-red-600"
           }`}
         >
-          {notification.type === "warning" && (
-            <AlertCircle className="w-4 h-4" />
-          )}
-          {notification.type === "error" && <AlertCircle className="w-4 h-4" />}
+          <AlertCircle className="w-4 h-4" />
           <span>{notification.message}</span>
         </div>
       )}
-
-      <ConfirmModal
-        isOpen={isArchiveConfirmOpen}
-        onCancel={() => setIsArchiveConfirmOpen(false)}
-        onConfirm={() => {
-          setIsArchiveConfirmOpen(false);
-          void archiveSelectedTemplate();
-        }}
-        title="Archive Template"
-        message={`Are you sure you want to archive "${
-          templateOptions.find(
-            (option) => String(option.id) === String(selectedTemplateId),
-          )?.name || "selected template"
-        }"?`}
-        confirmText="Archive"
-        cancelText="Cancel"
-        type="warning"
-      />
 
       <ActionModal
         isOpen={actionModal.isOpen}
@@ -851,6 +1183,15 @@ function TemplateSelector({
   );
 }
 
+const fileToBase64Payload = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 // ============================================
 // ISSUANCE FORM COMPONENT
 // ============================================
@@ -910,26 +1251,142 @@ function IssuanceForm({
 
       {/* Form Body - Sections from API */}
       <div className="p-6 space-y-6">
-        {formSections.map((section, idx) => (
-          <div key={idx} className="space-y-4">
-            <FormSection
-              title={section.title}
-              icon={getSectionIcon(section.title)}
-              subtitle=""
-            />
-            <div className="grid grid-cols-1 gap-4">
-              {section.fields.map((field) => (
-                <FormField
-                  key={field.name}
-                  field={field}
-                  value={formData[field.name] || ""}
-                  onChange={(value) => onInputChange(field.name, value)}
-                  resetSignal={resetSignal}
-                />
-              ))}
+        {formSections.map((section, idx) => {
+          if (section.title === "Requirements Checklist") {
+            return (
+              <div key={idx} className="space-y-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded">
+                    <ClipboardList className="w-3 h-3" />
+                  </div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Requirements Verification
+                  </h4>
+                </div>
+                <div className="space-y-3">
+                  {section.fields.map((field) => {
+                    // For commercial_or_residential, render standard FormField select
+                    if (field.name === "commercial_or_residential") {
+                      return (
+                        <div key={field.name} className="p-3 border border-gray-200 rounded-lg">
+                          <FormField
+                            field={field}
+                            value={formData[field.name] || ""}
+                            onChange={(value) => onInputChange(field.name, value)}
+                            resetSignal={resetSignal}
+                          />
+                        </div>
+                      );
+                    }
+
+                    const fileVal = formData[field.name] || "";
+                    const isUploaded = fileVal.startsWith("data:");
+                    const isChecked = fileVal === "Yes" || isUploaded;
+                    const fileName = formData[`${field.name}_filename`] || "";
+
+                    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const base64 = await fileToBase64Payload(file);
+                        onInputChange(field.name, base64);
+                        onInputChange(`${field.name}_filename`, file.name);
+                      } catch (err) {
+                        console.error("Failed to upload file:", err);
+                      }
+                    };
+
+                    const handleCheckboxToggle = (checked: boolean) => {
+                      if (!checked) {
+                        // Clear file payload and checkbox state
+                        onInputChange(field.name, "");
+                        onInputChange(`${field.name}_filename`, "");
+                      } else {
+                        // Mark as Checked
+                        onInputChange(field.name, "Yes");
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={field.name}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 border border-gray-200 rounded-lg hover:bg-gray-50/50 transition-colors"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => handleCheckboxToggle(e.target.checked)}
+                            className="w-4.5 h-4.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-semibold text-gray-700 leading-tight">
+                              {field.label}
+                            </span>
+                            {fileName && (
+                              <span className="text-xs text-blue-600 font-medium mt-1 flex items-center gap-1 min-w-0">
+                                <span className="flex-shrink-0">📄</span>
+                                <span className="underline truncate max-w-[200px]" title={fileName}>
+                                  {fileName}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+                            <svg
+                              className="w-3.5 h-3.5 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                              />
+                            </svg>
+                            <span>{isUploaded ? "Change File" : "Upload File"}</span>
+                            <input
+                              type="file"
+                              onChange={handleFileChange}
+                              className="hidden"
+                              accept="image/*,application/pdf"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={idx} className="space-y-4">
+              <FormSection
+                title={section.title}
+                icon={getSectionIcon(section.title)}
+                subtitle=""
+              />
+              <div className="grid grid-cols-1 gap-4">
+                {section.fields.map((field) => (
+                  <FormField
+                    key={field.name}
+                    field={field}
+                    value={formData[field.name] || ""}
+                    onChange={(value) => onInputChange(field.name, value)}
+                    resetSignal={resetSignal}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Fee Summary */}
         <div className="pt-4 border-t border-gray-200">
