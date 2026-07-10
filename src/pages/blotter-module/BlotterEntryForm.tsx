@@ -3,7 +3,7 @@ import {
   BLOTTER_PERMISSIONS,
   hasBlotterPermission,
 } from "../../service/blotter-api/BlotterPermission";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ActionModal } from "./reusable/SuccessModal";
 import {
   RadioCard,
@@ -296,17 +296,65 @@ export default function BlotterEntryForm() {
       
       // Compare with Complainant
       const compFullName = `${complainant.firstName.trim()} ${complainant.middleName.trim()} ${complainant.lastName.trim()}`.replace(/\s+/g, " ").trim().toLowerCase();
-      if (witnessNameLower === compFullName) return true;
+      if (witnessNameLower === compFullName && compFullName !== "") return true;
       if (w.personId && complainant.id && w.personId === complainant.id) return true;
       
       // Compare with Respondent
       const respFullName = `${respondent.firstName.trim()} ${respondent.middleName.trim()} ${respondent.lastName.trim()}`.replace(/\s+/g, " ").trim().toLowerCase();
-      if (witnessNameLower === respFullName) return true;
+      if (witnessNameLower === respFullName && respFullName !== "") return true;
       if (w.personId && respondent.id && w.personId === respondent.id) return true;
     }
 
     return false;
   };
+
+  const checkDuplicatePersonSelection = (personId: number, firstName: string, lastName: string, middleName: string): boolean => {
+    // Check Complainant
+    if (complainant.id === personId) return true;
+    if (
+      complainant.firstName.trim() &&
+      complainant.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() &&
+      complainant.lastName.trim().toLowerCase() === lastName.trim().toLowerCase() &&
+      complainant.middleName.trim().toLowerCase() === (middleName || "").trim().toLowerCase()
+    ) return true;
+
+    // Check Respondent
+    if (respondent.id === personId) return true;
+    if (
+      respondent.firstName.trim() &&
+      respondent.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() &&
+      respondent.lastName.trim().toLowerCase() === lastName.trim().toLowerCase() &&
+      respondent.middleName.trim().toLowerCase() === (middleName || "").trim().toLowerCase()
+    ) return true;
+
+    // Check Witnesses
+    for (const w of witnesses) {
+      if (w.personId === personId) return true;
+      const wFullName = w.fullName.trim().toLowerCase();
+      const testFullName = `${firstName.trim()} ${(middleName || "").trim()} ${lastName.trim()}`.replace(/\s+/g, " ").trim().toLowerCase();
+      if (wFullName === testFullName && testFullName !== "") return true;
+    }
+    return false;
+  };
+
+  const handleDuplicateSelection = (person: any) => {
+    if (checkDuplicatePersonSelection(person.id, person.firstName, person.lastName, person.middleName)) {
+      setSubmitError("Duplicate person detected. Cannot select the same resident for multiple roles.");
+      setShowErrorModal(true);
+      return true;
+    }
+    return false;
+  };
+
+  const prevDuplicateRef = useRef(false);
+  useEffect(() => {
+    const isDup = isDuplicatePerson();
+    if (isDup && !prevDuplicateRef.current) {
+      setSubmitError("Duplicate person detected. Cannot select the same resident for multiple roles.");
+      setShowErrorModal(true);
+    }
+    prevDuplicateRef.current = isDup;
+  }, [complainant, respondent, witnesses]);
 
   const validate = (): boolean => {
     const e: Errors = {};
@@ -712,6 +760,7 @@ export default function BlotterEntryForm() {
               "cAddress",
             ].forEach(clearErr);
           }}
+          onCheckDuplicate={handleDuplicateSelection}
         />
 
         <RespondentSection
@@ -739,6 +788,7 @@ export default function BlotterEntryForm() {
             });
             ["rLastName", "rFirstName"].forEach(clearErr);
           }}
+          onCheckDuplicate={handleDuplicateSelection}
         />
 
 
@@ -778,6 +828,7 @@ export default function BlotterEntryForm() {
             updateWitness={updateWitness}
             errors={errors}
             clearErr={clearErr}
+            onCheckDuplicate={handleDuplicateSelection}
           />
         )}
 
@@ -788,23 +839,6 @@ export default function BlotterEntryForm() {
           clearErr={() => clearErr("certified")}
         />
 
-        {isDuplicatePerson() && (
-          <div className="rounded-lg bg-red-50 p-4 border border-red-200 shadow-sm">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-bold text-red-800">Invalid Entry: Duplicate Person Detected</h3>
-                <div className="mt-1 text-sm text-red-700 font-medium">
-                  <p>A person (Complainant, Respondent, or Witness) cannot appear in multiple roles. Please correct the information before filing.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <FormActions
           onCancel={() => setShowCancelModal(true)}

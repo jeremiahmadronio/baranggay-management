@@ -355,7 +355,7 @@ const KapitanaBlotterRecordsPage: React.FC = () => {
       </KPIGrid>
 
       <TableFilter
-        searchPlaceholder="Search by blotter number"
+        searchPlaceholder="Search by case no. or name"
         searchValue={search}
         onSearchChange={setSearch}
         filters={[

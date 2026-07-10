@@ -44,6 +44,7 @@ interface RespondentSectionProps {
   errors: Record<string, string>;
   clearErr: (key: string) => void;
   onClearPerson?: () => void;
+  onCheckDuplicate?: (person: PersonSearchResponseDTO) => boolean;
 }
 
 const CharCounter = ({ current, max }: { current: number; max: number }) => (
@@ -63,12 +64,14 @@ export const RespondentSection = ({
   errors,
   clearErr,
   onClearPerson,
+  onCheckDuplicate,
 }: RespondentSectionProps) => {
   const NAME_LIMIT = 50;
   const ADDRESS_LIMIT = 150;
   const ALIAS_LIMIT = 30;
 
   const handleSelectPerson = (person: PersonSearchResponseDTO) => {
+    if (onCheckDuplicate && onCheckDuplicate(person)) return;
     onChange("id", person.id);
     onChange("firstName", person.firstName.substring(0, NAME_LIMIT));
     onChange("lastName", person.lastName.substring(0, NAME_LIMIT));

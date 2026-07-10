@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, ShieldOff } from "lucide-react";
+import { Search, ShieldOff, X, Loader2 } from "lucide-react";
 import {
   DocketInfoCard,
   FormActions,
@@ -40,12 +40,17 @@ function ResidentSearch({ label, placeholder, onSelect }: {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PersonSearchResponseDTO[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (query.trim().length < 2) { setResults([]); return; }
+      if (query.trim().length < 2) { setResults([]); setIsOpen(false); return; }
       setLoading(true);
-      try { const data = await searchPeople(query); setResults(data); }
+      try { 
+        const data = await searchPeople(query); 
+        setResults(data); 
+        setIsOpen(true);
+      }
       catch { setResults([]); }
       finally { setLoading(false); }
     }, 300);
@@ -54,37 +59,47 @@ function ResidentSearch({ label, placeholder, onSelect }: {
 
   return (
     <div className="relative w-full mb-4">
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-slate-700 tracking-wide">{label}</label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={placeholder}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 pl-10 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
-          />
+      <label className="text-sm font-semibold text-slate-700 tracking-wide">{label}</label>
+      <div className="relative mt-1">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+          ) : (
+            <Search className="h-4 w-4 text-slate-400" />
+          )}
         </div>
+        <input
+          type="text"
+          maxLength={50}
+          value={query}
+          onChange={(e) => {
+            const sanitized = e.target.value.replace(/[0-9]/g, "").replace(/[^a-zA-Z\s.,\-ñÑ']/g, "");
+            setQuery(sanitized);
+            if (sanitized.length < 2) setIsOpen(false);
+          }}
+          onFocus={() => { if (results.length > 0) setIsOpen(true); }}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 pl-10 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
+        />
       </div>
-      {loading && <p className="text-xs text-slate-400 mt-1">Searching...</p>}
-      {!loading && results.length > 0 && (
-        <div className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-          {results.map((person) => (
-            <button
-              key={person.id}
-              type="button"
-              onClick={() => { onSelect(person); setQuery(""); setResults([]); }}
-              className="block w-full border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
-            >
-              <div className="text-sm font-medium text-slate-900">
-                {person.firstName} {person.middleName ? `${person.middleName} ` : ""}{person.lastName}
-              </div>
-              <div className="mt-1 text-xs text-slate-500">
-                {person.completeAddress}{person.contactNumber ? ` • ${person.contactNumber}` : ""}
-              </div>
-            </button>
-          ))}
+      {isOpen && results.length > 0 && (
+        <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+          <ul className="py-1">
+            {results.map((person) => (
+              <li
+                key={person.id}
+                onClick={() => { onSelect(person); setQuery(""); setResults([]); setIsOpen(false); }}
+                className="cursor-pointer border-b border-slate-100 px-4 py-3 hover:bg-slate-50 last:border-0"
+              >
+                <div className="text-sm font-medium text-slate-900">
+                  {person.firstName} {person.middleName ? `${person.middleName} ` : ""}{person.lastName}
+                </div>
+                <div className="mt-0.5 truncate text-xs text-slate-500">
+                  {person.completeAddress || "No address"}{person.contactNumber ? ` • ${person.contactNumber}` : ""}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
@@ -118,17 +133,13 @@ const VIOLENCE_TYPE_OPTIONS = [
 const GENDER_OPTIONS = [
   { value: "Male", label: "Male" },
   { value: "Female", label: "Female" },
-  { value: "Other", label: "Prefer not to say" },
 ];
 
 const RELATIONSHIP_OPTIONS = [
   { value: "Parent", label: "Parent" },
   { value: "Step-Parent", label: "Step-Parent" },
-  { value: "Relative", label: "Relative" },
   { value: "Guardian", label: "Guardian" },
   { value: "Neighbor", label: "Neighbor" },
-  { value: "Teacher/School Staff", label: "Teacher / School Staff" },
-  { value: "Stranger", label: "Stranger" },
   { value: "Other", label: "Other" },
 ];
 
@@ -154,15 +165,22 @@ function computeAgeFromBirthday(birthdayStr: string): string {
   return age >= 0 ? String(age) : "";
 }
 
+function computeBirthdayFromAge(ageStr: string): string {
+  const age = parseInt(ageStr, 10);
+  if (isNaN(age)) return "";
+  const today = new Date();
+  return `${today.getFullYear() - age}-01-01`;
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function BcpcNewCaseEntryPage() {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const { user } = useUser();
+  const formattedDate = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
+  const formattedTime = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase();
+  const { user, loading } = useUser();
   // Show the full name of the signed-in account; fallback while loading
-  const filedByName = user
-    ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username
-    : "Loading...";
+  const filedByName = loading ? "Loading..." : getUserDisplayName(user, user?.username || "Unknown Officer");
 
   // ── Permission guard ───────────────────────────────────────────────────
   const [canCreate, setCanCreate] = useState<boolean | null>(null);
@@ -195,7 +213,9 @@ export default function BcpcNewCaseEntryPage() {
   const [cAge, setCAge] = useState("");
   const [cBirthday, setCBirthday] = useState("");
   const [cGender, setCGender] = useState("");
-  const [cGradeSchool, setCGradeSchool] = useState("");
+  const [cGrade, setCGrade] = useState("");
+  const [cSchool, setCSchool] = useState("");
+  const [cParent, setCParent] = useState("");
   const [cGuardian, setCGuardian] = useState("");
   const [cContact, setCContact] = useState("");
   const [cAddress, setCAddress] = useState("");
@@ -209,7 +229,9 @@ export default function BcpcNewCaseEntryPage() {
   const [rAge, setRAge] = useState("");
   const [rBirthday, setRBirthday] = useState("");
   const [rGender, setRGender] = useState("");
-  const [rGradeSchool, setRGradeSchool] = useState("");
+  const [rGrade, setRGrade] = useState("");
+  const [rSchool, setRSchool] = useState("");
+  const [rParent, setRParent] = useState("");
   const [rGuardian, setRGuardian] = useState("");
   const [rContact, setRContact] = useState("");
   const [rAddress, setRAddress] = useState("");
@@ -273,8 +295,21 @@ export default function BcpcNewCaseEntryPage() {
       document
         .getElementById(`field-${Object.keys(e)[0]}`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
     }
-    return Object.keys(e).length === 0;
+
+    if (
+      (cPersonId && rPersonId && cPersonId === rPersonId) ||
+      (cFirstName.toLowerCase().trim() === rFirstName.toLowerCase().trim() &&
+       cLastName.toLowerCase().trim() === rLastName.toLowerCase().trim() &&
+       cFirstName.trim() !== "")
+    ) {
+      setSubmitError("Complainant and Respondent cannot be the same person. Please verify the names.");
+      setShowErrorModal(true);
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmitClick = () => {
@@ -298,8 +333,8 @@ export default function BcpcNewCaseEntryPage() {
         childAge: cAge ? parseInt(cAge) : undefined,
         childBirthday: cBirthday || undefined,
         childGender: cGender || undefined,
-        childGradeSchool: cGradeSchool || undefined,
-        childGuardian: cGuardian || undefined,
+        childGradeSchool: (cGrade || cSchool) ? `${cGrade || ""} - ${cSchool || ""}` : undefined,
+        childGuardian: (cParent || cGuardian) ? `${cParent || ""} - ${cGuardian || ""}` : undefined,
         childContact: cContact || undefined,
         childAddress: cAddress,
         childRelationship: cRelationship,
@@ -311,8 +346,8 @@ export default function BcpcNewCaseEntryPage() {
         respondentAge: rAge ? parseInt(rAge) : undefined,
         respondentBirthday: rBirthday || undefined,
         respondentGender: rGender || undefined,
-        respondentGradeSchool: rGradeSchool || undefined,
-        respondentGuardian: rGuardian || undefined,
+        respondentGradeSchool: (rGrade || rSchool) ? `${rGrade || ""} - ${rSchool || ""}` : undefined,
+        respondentGuardian: (rParent || rGuardian) ? `${rParent || ""} - ${rGuardian || ""}` : undefined,
         respondentContact: rContact || undefined,
         respondentAddress: rAddress || undefined,
         relationshipToChild: relationship,
@@ -343,9 +378,9 @@ export default function BcpcNewCaseEntryPage() {
   const resetForm = () => {
     setAssignedOfficer("");
     setCPersonId(undefined); setCLastName(""); setCFirstName(""); setCMiddleName("");
-    setCAge(""); setCBirthday(""); setCGender(""); setCGradeSchool(""); setCGuardian(""); setCContact(""); setCAddress(""); setCRelationship("");
+    setCAge(""); setCBirthday(""); setCGender(""); setCGrade(""); setCSchool(""); setCParent(""); setCGuardian(""); setCContact(""); setCAddress(""); setCRelationship("");
     setRPersonId(undefined); setRLastName(""); setRFirstName(""); setRMiddleName("");
-    setRAge(""); setRBirthday(""); setRGender(""); setRGradeSchool(""); setRGuardian(""); setRContact(""); setRAddress(""); setRelationship("");
+    setRAge(""); setRBirthday(""); setRGender(""); setRGrade(""); setRSchool(""); setRParent(""); setRGuardian(""); setRContact(""); setRAddress(""); setRelationship("");
     setViolenceType(""); setNatureOfCase("");
     setIncidentDate(""); setIncidentTime(""); setIncidentPlace(""); setFrequency(""); setInjuryDesc("");
     setNarrativeFile(null); setCertified(false); setErrors({});
@@ -425,9 +460,10 @@ export default function BcpcNewCaseEntryPage() {
         <SectionCard letter="A" title="Case Information">
           <DocketInfoCard
             fields={[
-              { label: "Date Filed", value: today, hint: "(today)" },
-              { label: "Department", value: "BCPC", hint: "(child protection desk)" },
-              { label: "Case Filed By", value: filedByName, hint: "(current user)" },
+              { label: "Case Number", value: "2026-BCP-001", hint: "(auto-generated)" },
+              { label: "Date Filed", value: formattedDate, hint: "(today)" },
+              { label: "Time Filed", value: formattedTime, hint: "(now)" },
+              { label: "Reporting Officer", value: filedByName, hint: "(logged in)" },
             ]}
           />
           <div className="md:w-1/2">
@@ -457,8 +493,15 @@ export default function BcpcNewCaseEntryPage() {
               setCBirthday(p.birthDate || "");
               setCAge(p.age ? String(p.age) : (p.birthDate ? computeAgeFromBirthday(p.birthDate) : ""));
               setCGender(p.gender || "");
-              setCGradeSchool(p.gradeSchool || "");
-              setCGuardian(p.guardianName || "");
+              if (p.gradeSchool) {
+                const parts = p.gradeSchool.split(" - ");
+                setCGrade(parts[0] || "");
+                setCSchool(parts[1] || "");
+              } else {
+                setCGrade(""); setCSchool("");
+              }
+              setCParent(p.guardianName || "");
+              setCGuardian("");
               setCContact(p.contactNumber || "");
               setCAddress(p.completeAddress || "");
               clearErr("cLastName"); clearErr("cFirstName"); clearErr("cAge");
@@ -467,21 +510,19 @@ export default function BcpcNewCaseEntryPage() {
           />
           {/* Lock notice when autofilled */}
           {cPersonId && (
-            <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
-              <p className="text-xs text-blue-700">
-                ℹ️ Fields are locked — auto-filled from resident record.
-              </p>
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <p>Existing resident record selected: <span className="font-semibold">{cFirstName} {cLastName}</span></p>
               <button
                 type="button"
                 onClick={() => {
                   setCPersonId(undefined);
                   setCLastName(""); setCFirstName(""); setCMiddleName("");
                   setCAge(""); setCBirthday(""); setCGender("");
-                  setCGradeSchool(""); setCGuardian(""); setCContact(""); setCAddress("");
+                  setCGrade(""); setCSchool(""); setCParent(""); setCGuardian(""); setCContact(""); setCAddress("");
                 }}
-                className="ml-4 rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                className="flex items-center text-emerald-700 hover:text-emerald-900 font-medium"
               >
-                Cancel Autofill
+                <X className="mr-1 h-4 w-4" /> Clear Selection
               </button>
             </div>
           )}
@@ -492,10 +533,10 @@ export default function BcpcNewCaseEntryPage() {
               required
               value={cLastName}
               onChange={(e) => { if (!cPersonId) { setCLastName(e.target.value); clearErr("cLastName"); } }}
-              readOnly={!!cPersonId}
+              disabled={!!cPersonId}
               placeholder="e.g. Santos"
               error={errors.cLastName}
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormInput
               id="field-cFirstName"
@@ -503,18 +544,18 @@ export default function BcpcNewCaseEntryPage() {
               required
               value={cFirstName}
               onChange={(e) => { if (!cPersonId) { setCFirstName(e.target.value); clearErr("cFirstName"); } }}
-              readOnly={!!cPersonId}
+              disabled={!!cPersonId}
               placeholder="e.g. Maria Isabel"
               error={errors.cFirstName}
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormInput
               label="Middle Name"
               value={cMiddleName}
               onChange={(e) => { if (!cPersonId) setCMiddleName(e.target.value); }}
-              readOnly={!!cPersonId}
+              disabled={!!cPersonId}
               placeholder="e.g. Dela Cruz"
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
           </FormRow>
           <FormRow cols={3}>
@@ -524,11 +565,22 @@ export default function BcpcNewCaseEntryPage() {
               required
               inputMode="numeric"
               value={cAge}
-              onChange={(e) => { if (!cPersonId) { setCAge(e.target.value.replace(/\D/g, "").slice(0, 2)); clearErr("cAge"); } }}
-              readOnly={!!cPersonId}
+              onChange={(e) => {
+                if (!cPersonId) {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 2);
+                  setCAge(val);
+                  clearErr("cAge");
+                  if (val) {
+                    setCBirthday(computeBirthdayFromAge(val));
+                  } else {
+                    setCBirthday("");
+                  }
+                }
+              }}
+              disabled={!!cPersonId}
               placeholder="e.g. 12"
               error={errors.cAge}
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormDatePicker
               label="Birthday"
@@ -541,7 +593,7 @@ export default function BcpcNewCaseEntryPage() {
                 if (computed) { setCAge(computed); clearErr("cAge"); }
               }}
               disabled={!!cPersonId}
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormSelect
               id="field-cGender"
@@ -553,10 +605,41 @@ export default function BcpcNewCaseEntryPage() {
               placeholder="Select"
               error={errors.cGender}
               disabled={!!cPersonId}
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
           </FormRow>
-          <FormRow cols={2}>
+          <FormRow cols={3}>
+            <FormSelect
+              label="Grade"
+              value={cGrade}
+              onChange={(e) => setCGrade(e.target.value)}
+              options={Array.from({ length: 12 }, (_, i) => ({ value: `Grade ${12 - i}`, label: `Grade ${12 - i}` }))}
+              placeholder="Select"
+            />
+            <div className="col-span-2">
+              <FormInput
+                label="School Name"
+                value={cSchool}
+                onChange={(e) => setCSchool(e.target.value)}
+                placeholder="e.g. Bagong Bayan Elementary"
+              />
+            </div>
+          </FormRow>
+          <FormRow cols={3}>
+            <FormInput
+              label="Parent Name"
+              value={cParent}
+              onChange={(e) => { if (!cPersonId) setCParent(e.target.value); }}
+              disabled={!!cPersonId}
+              placeholder="e.g. Maria Dela Cruz"
+              className={cPersonId ? "bg-slate-100 cursor-not-allowed text-slate-500" : ""}
+            />
+            <FormInput
+              label="Guardian Name"
+              value={cGuardian}
+              onChange={(e) => setCGuardian(e.target.value)}
+              placeholder="e.g. Juan Dela Cruz (Optional)"
+            />
             <FormSelect
               id="field-cRelationship"
               label="Relationship to Child"
@@ -567,19 +650,7 @@ export default function BcpcNewCaseEntryPage() {
               placeholder="Select Relationship"
               error={errors.cRelationship}
             />
-            <FormInput
-              label="Grade / School"
-              value={cGradeSchool}
-              onChange={(e) => setCGradeSchool(e.target.value)}
-              placeholder="e.g. Grade 5 — Bagong Bayan Elementary"
-            />
           </FormRow>
-          <FormInput
-            label="Guardian / Parent Name"
-            value={cGuardian}
-            onChange={(e) => setCGuardian(e.target.value)}
-            placeholder="e.g. Juan Dela Cruz"
-          />
           <FormRow cols={2}>
             <FormInput
               label="Contact Number"
@@ -587,9 +658,9 @@ export default function BcpcNewCaseEntryPage() {
               maxLength={11}
               value={cContact}
               onChange={(e) => { if (!cPersonId) setCContact(e.target.value.replace(/\D/g, "").slice(0, 11)); }}
-              readOnly={!!cPersonId}
+              disabled={!!cPersonId}
               placeholder="09XXXXXXXXX"
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormInput
               id="field-cAddress"
@@ -597,20 +668,30 @@ export default function BcpcNewCaseEntryPage() {
               required
               value={cAddress}
               onChange={(e) => { if (!cPersonId) { setCAddress(e.target.value); clearErr("cAddress"); } }}
-              readOnly={!!cPersonId}
+              disabled={!!cPersonId}
               placeholder="House No., Street, Barangay, City"
               error={errors.cAddress}
-              className={cPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={cPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
           </FormRow>
         </SectionCard>
 
         {/* ── Section C: Respondent / Guardian Information ── */}
         <SectionCard letter="C" title="Respondent / Guardian Information">
+          {cFirstName && rFirstName && cFirstName.toLowerCase().trim() === rFirstName.toLowerCase().trim() && cLastName.toLowerCase().trim() === rLastName.toLowerCase().trim() && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900 font-medium flex items-center gap-2">
+              <ShieldOff className="w-4 h-4" /> Warning: Respondent cannot have the exact same name as the Complainant.
+            </div>
+          )}
           <ResidentSearch
             label="Search Resident Record"
             placeholder="Type name to search and auto-fill..."
             onSelect={(p: any) => {
+              if (cPersonId && p.id === cPersonId) {
+                setSubmitError("Cannot select the same resident as the complainant.");
+                setShowErrorModal(true);
+                return;
+              }
               setRPersonId(p.id);
               setRFirstName(p.firstName || "");
               setRLastName(p.lastName || "");
@@ -618,8 +699,15 @@ export default function BcpcNewCaseEntryPage() {
               setRBirthday(p.birthDate || "");
               setRAge(p.age ? String(p.age) : (p.birthDate ? computeAgeFromBirthday(p.birthDate) : ""));
               setRGender(p.gender || "");
-              setRGradeSchool(p.gradeSchool || "");
-              setRGuardian(p.guardianName || "");
+              if (p.gradeSchool) {
+                const parts = p.gradeSchool.split(" - ");
+                setRGrade(parts[0] || "");
+                setRSchool(parts[1] || "");
+              } else {
+                setRGrade(""); setRSchool("");
+              }
+              setRParent(p.guardianName || "");
+              setRGuardian("");
               setRContact(p.contactNumber || "");
               setRAddress(p.completeAddress || "");
               clearErr("rLastName"); clearErr("rFirstName"); clearErr("relationship");
@@ -627,21 +715,19 @@ export default function BcpcNewCaseEntryPage() {
           />
           {/* Lock notice when autofilled */}
           {rPersonId && (
-            <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
-              <p className="text-xs text-blue-700">
-                ℹ️ Fields are locked — auto-filled from resident record.
-              </p>
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <p>Existing resident record selected: <span className="font-semibold">{rFirstName} {rLastName}</span></p>
               <button
                 type="button"
                 onClick={() => {
                   setRPersonId(undefined);
                   setRLastName(""); setRFirstName(""); setRMiddleName("");
                   setRAge(""); setRBirthday(""); setRGender("");
-                  setRGradeSchool(""); setRGuardian(""); setRContact(""); setRAddress("");
+                  setRGrade(""); setRSchool(""); setRParent(""); setRGuardian(""); setRContact(""); setRAddress("");
                 }}
-                className="ml-4 rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                className="flex items-center text-emerald-700 hover:text-emerald-900 font-medium"
               >
-                Cancel Autofill
+                <X className="mr-1 h-4 w-4" /> Clear Selection
               </button>
             </div>
           )}
@@ -652,10 +738,10 @@ export default function BcpcNewCaseEntryPage() {
               required
               value={rLastName}
               onChange={(e) => { if (!rPersonId) { setRLastName(e.target.value); clearErr("rLastName"); } }}
-              readOnly={!!rPersonId}
+              disabled={!!rPersonId}
               placeholder="e.g. Santos"
               error={errors.rLastName}
-              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormInput
               id="field-rFirstName"
@@ -663,18 +749,18 @@ export default function BcpcNewCaseEntryPage() {
               required
               value={rFirstName}
               onChange={(e) => { if (!rPersonId) { setRFirstName(e.target.value); clearErr("rFirstName"); } }}
-              readOnly={!!rPersonId}
+              disabled={!!rPersonId}
               placeholder="e.g. Teresa"
               error={errors.rFirstName}
-              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormInput
               label="Middle Name"
               value={rMiddleName}
               onChange={(e) => { if (!rPersonId) setRMiddleName(e.target.value); }}
-              readOnly={!!rPersonId}
+              disabled={!!rPersonId}
               placeholder="e.g. Reyes"
-              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
           </FormRow>
           <FormRow cols={3}>
@@ -682,10 +768,20 @@ export default function BcpcNewCaseEntryPage() {
               label="Age"
               inputMode="numeric"
               value={rAge}
-              onChange={(e) => { if (!rPersonId) setRAge(e.target.value.replace(/\D/g, "").slice(0, 3)); }}
-              readOnly={!!rPersonId}
+              onChange={(e) => {
+                if (!rPersonId) {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 3);
+                  setRAge(val);
+                  if (val) {
+                    setRBirthday(computeBirthdayFromAge(val));
+                  } else {
+                    setRBirthday("");
+                  }
+                }
+              }}
+              disabled={!!rPersonId}
               placeholder="e.g. 42"
-              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormDatePicker
               label="Birthday"
@@ -698,7 +794,7 @@ export default function BcpcNewCaseEntryPage() {
                 if (computed) setRAge(computed);
               }}
               disabled={!!rPersonId}
-              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
             <FormSelect
               label="Gender"
@@ -707,10 +803,41 @@ export default function BcpcNewCaseEntryPage() {
               options={GENDER_OPTIONS}
               placeholder="Select"
               disabled={!!rPersonId}
-              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
           </FormRow>
-          <FormRow cols={2}>
+          <FormRow cols={3}>
+            <FormSelect
+              label="Grade"
+              value={rGrade}
+              onChange={(e) => setRGrade(e.target.value)}
+              options={Array.from({ length: 12 }, (_, i) => ({ value: `Grade ${12 - i}`, label: `Grade ${12 - i}` }))}
+              placeholder="Select"
+            />
+            <div className="col-span-2">
+              <FormInput
+                label="School Name"
+                value={rSchool}
+                onChange={(e) => setRSchool(e.target.value)}
+                placeholder="e.g. Bagong Bayan Elementary"
+              />
+            </div>
+          </FormRow>
+          <FormRow cols={3}>
+            <FormInput
+              label="Parent Name"
+              value={rParent}
+              onChange={(e) => { if (!rPersonId) setRParent(e.target.value); }}
+              disabled={!!rPersonId}
+              placeholder="e.g. Maria Dela Cruz"
+              className={rPersonId ? "bg-slate-100 cursor-not-allowed text-slate-500" : ""}
+            />
+            <FormInput
+              label="Guardian Name"
+              value={rGuardian}
+              onChange={(e) => setRGuardian(e.target.value)}
+              placeholder="e.g. Juan Dela Cruz (Optional)"
+            />
             <FormSelect
               id="field-relationship"
               label="Relationship to Child"
@@ -721,39 +848,27 @@ export default function BcpcNewCaseEntryPage() {
               placeholder="Select Relationship"
               error={errors.relationship}
             />
-            <FormInput
-              label="Grade / School"
-              value={rGradeSchool}
-              onChange={(e) => setRGradeSchool(e.target.value)}
-              placeholder="e.g. Grade 5 — Bagong Bayan Elementary"
-            />
           </FormRow>
           <FormRow cols={2}>
-            <FormInput
-              label="Guardian / Parent Name"
-              value={rGuardian}
-              onChange={(e) => setRGuardian(e.target.value)}
-              placeholder="e.g. Juan Dela Cruz"
-            />
             <FormInput
               label="Contact Number"
               inputMode="numeric"
               maxLength={11}
               value={rContact}
               onChange={(e) => { if (!rPersonId) setRContact(e.target.value.replace(/\D/g, "").slice(0, 11)); }}
-              readOnly={!!rPersonId}
+              disabled={!!rPersonId}
               placeholder="09XXXXXXXXX"
-              className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
+            />
+            <FormInput
+              label="Complete Address"
+              value={rAddress}
+              onChange={(e) => { if (!rPersonId) setRAddress(e.target.value); }}
+              disabled={!!rPersonId}
+              placeholder="House No., Street, Barangay, City"
+              className={rPersonId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
             />
           </FormRow>
-          <FormInput
-            label="Complete Address"
-            value={rAddress}
-            onChange={(e) => { if (!rPersonId) setRAddress(e.target.value); }}
-            readOnly={!!rPersonId}
-            placeholder="House No., Street, Barangay, City"
-            className={rPersonId ? "bg-slate-100 cursor-not-allowed" : ""}
-          />
         </SectionCard>
 
         {/* ── Section D: Incident Details ── */}
@@ -776,6 +891,18 @@ export default function BcpcNewCaseEntryPage() {
               options={VIOLENCE_TYPE_OPTIONS}
               placeholder="Select Violence Type"
             />
+            <FormSelect
+              id="field-frequency"
+              label="Frequency of Incident"
+              required
+              options={FREQUENCY_OPTIONS}
+              placeholder="Select Frequency"
+              value={frequency}
+              onChange={(e) => { setFrequency(e.target.value); clearErr("frequency"); }}
+              error={errors.frequency}
+            />
+          </FormRow>
+          <FormRow cols={3}>
             <FormDatePicker
               id="field-incidentDate"
               label="Date of Incident"
@@ -789,8 +916,6 @@ export default function BcpcNewCaseEntryPage() {
               value={incidentTime}
               onChange={(e) => setIncidentTime(e.target.value)}
             />
-          </FormRow>
-          <FormRow cols={3}>
             <FormInput
               id="field-incidentPlace"
               label="Place / Location of Incident"
@@ -800,23 +925,13 @@ export default function BcpcNewCaseEntryPage() {
               onChange={(e) => { setIncidentPlace(e.target.value); clearErr("incidentPlace"); }}
               error={errors.incidentPlace}
             />
-            <FormSelect
-              id="field-frequency"
-              label="Frequency of Incident"
-              required
-              options={FREQUENCY_OPTIONS}
-              placeholder="Select Frequency"
-              value={frequency}
-              onChange={(e) => { setFrequency(e.target.value); clearErr("frequency"); }}
-              error={errors.frequency}
-            />
-            <FormInput
-              label="Description of Injuries / Damages"
-              placeholder="If any physical injuries or property damage"
-              value={injuryDesc}
-              onChange={(e) => setInjuryDesc(e.target.value)}
-            />
           </FormRow>
+          <FormInput
+            label="Description of Injuries / Damages"
+            placeholder="If any physical injuries or property damage"
+            value={injuryDesc}
+            onChange={(e) => setInjuryDesc(e.target.value)}
+          />
         </SectionCard>
 
         {/* ── Section E: Narrative (File Upload — same as Blotter) ── */}

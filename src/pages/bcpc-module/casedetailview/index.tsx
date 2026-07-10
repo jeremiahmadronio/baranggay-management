@@ -278,7 +278,7 @@ export default function BcpcCaseDetailsPage({ isAdminView = false }: { isAdminVi
         </div>
 
         {/* ── TABS ── */}
-        <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-1 border-b border-gray-200 overflow-x-auto overflow-y-hidden scrollbar-hide">
           {tabDefs.map((tab) => (
             <button
               key={tab.key}

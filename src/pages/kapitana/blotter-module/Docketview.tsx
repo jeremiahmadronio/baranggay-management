@@ -493,7 +493,7 @@ const KapitanaDocketview = () => {
 
       {/* Filters */}
       <TableFilter
-        searchPlaceholder="Search by case no."
+        searchPlaceholder="Search by case no. or name"
         searchValue={search}
         onSearchChange={setSearch}
         filters={[

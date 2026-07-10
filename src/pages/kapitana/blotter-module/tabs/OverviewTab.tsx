@@ -290,8 +290,9 @@ export function OverviewTab({
                   status === "ACTIVE") && (
                   <button
                     onClick={onReferToLupon}
-                    disabled={!hasEscalationPerm}
-                    className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasEscalationPerm ? "opacity-50 cursor-not-allowed" : ""}`}
+                    disabled={!hasEscalationPerm || status === "UNDER_MEDIATION"}
+                    title={status === "UNDER_MEDIATION" ? "Wait for mediation to finish" : ""}
+                    className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasEscalationPerm || status === "UNDER_MEDIATION" ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <div className="p-2.5 rounded-lg bg-violet-50">
                       <AlertCircleIcon className="w-5 h-5 text-violet-600" />

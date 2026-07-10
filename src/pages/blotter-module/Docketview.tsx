@@ -473,14 +473,14 @@ const Docketview = () => {
               item.status,
             ) && (
               <button
-                disabled={!canEscalate}
+                disabled={!canEscalate || statusKey === "UNDER_MEDIATION"}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (canEscalate) setReferEntry(item);
+                  if (canEscalate && statusKey !== "UNDER_MEDIATION") setReferEntry(item);
                 }}
-                title="Escalate to Lupon"
+                title={statusKey === "UNDER_MEDIATION" ? "Wait for mediation to finish" : "Escalate to Lupon"}
                 className={`p-1.5 rounded-lg transition-colors ${
-                  !canEscalate
+                  !canEscalate || statusKey === "UNDER_MEDIATION"
                     ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
                     : "text-violet-600 hover:bg-violet-50"
                 }`}
@@ -633,7 +633,7 @@ const Docketview = () => {
 
       {/* Filters */}
       <TableFilter
-        searchPlaceholder="Search by case no."
+        searchPlaceholder="Search by case no. or name"
         searchValue={search}
         onSearchChange={setSearch}
         filters={[

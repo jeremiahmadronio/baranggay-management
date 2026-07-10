@@ -27,6 +27,7 @@ interface WitnessSectionProps {
   updateWitness: (i: number, field: keyof WitnessEntry, value: any) => void;
   errors: Record<string, string>;
   clearErr: (key: string) => void;
+  onCheckDuplicate?: (person: PersonSearchResponseDTO) => boolean;
 }
 
 export const WitnessSection = ({
@@ -36,6 +37,7 @@ export const WitnessSection = ({
   updateWitness,
   errors,
   clearErr,
+  onCheckDuplicate,
 }: WitnessSectionProps) => {
   return (
     <SectionCard letter="G" title="Witnesses">
@@ -77,6 +79,7 @@ export const WitnessSection = ({
               label="Search Witness (Auto-fill)"
               placeholder="Search by name..."
               onSelect={(person: PersonSearchResponseDTO) => {
+                if (onCheckDuplicate && onCheckDuplicate(person)) return;
                 updateWitness(i, "personId", person.id);
                 updateWitness(
                   i,

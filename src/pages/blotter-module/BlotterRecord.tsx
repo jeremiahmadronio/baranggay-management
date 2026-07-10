@@ -439,7 +439,7 @@ const BlotterRecordsPage: React.FC = () => {
       <br />
 
       <TableFilter
-        searchPlaceholder="Search by blotter number"
+        searchPlaceholder="Search by case no. or name"
         searchValue={search}
         onSearchChange={setSearch}
         filters={[

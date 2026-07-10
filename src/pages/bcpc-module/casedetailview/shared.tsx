@@ -100,8 +100,11 @@ export interface BcpcCaseDetailDTO {
   childFirstName: string;
   childMiddleName?: string;
   childLastName: string;
-  childGender: string;
   childAge: number;
+  childBirthday?: string;
+  childGender: string;
+  childGradeSchool?: string;
+  childGuardianName?: string;
   childContact?: string;
   childAddress?: string;
   childRelationship?: string;
@@ -111,6 +114,9 @@ export interface BcpcCaseDetailDTO {
   respondentLastName: string;
   respondentGender: string;
   respondentAge: number;
+  respondentBirthday?: string;
+  respondentGradeSchool?: string;
+  respondentGuardianName?: string;
   respondentContact?: string;
   respondentAddress?: string;
   /** Relationship of respondent to the child — maps to backend `relationshipToChild` */

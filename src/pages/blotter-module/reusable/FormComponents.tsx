@@ -136,16 +136,21 @@ export const FormInput = ({
     } else if (identifier.includes("name") && !identifier.includes("username")) {
       // No numbers and standard name characters only
       sanitized = sanitized.replace(/[0-9]/g, "");
-      sanitized = sanitized.replace(/[^a-zA-Z\s.,-ñÑ]/g, "");
+      sanitized = sanitized.replace(/[^a-zA-Z\s.,ñÑ-]/g, "");
     } else if (props.type !== "password") {
       // General sanitization
-      sanitized = sanitized.replace(/[^a-zA-Z0-9\s.,-ñÑ/]/g, "");
+      sanitized = sanitized.replace(/[^a-zA-Z0-9\s.,ñÑ/-]/g, "");
     }
     
     if (e.target.value !== sanitized) {
-      e.target.value = sanitized;
+      const mockEvent = {
+        ...e,
+        target: { ...e.target, value: sanitized }
+      } as React.ChangeEvent<HTMLInputElement>;
+      props.onChange?.(mockEvent);
+    } else {
+      props.onChange?.(e);
     }
-    props.onChange?.(e);
   };
 
   return (
@@ -259,11 +264,16 @@ export const FormTextarea = ({
   ...props
 }: FormTextareaProps) => {
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s.,-ñÑ!?()'"/]/g, "");
+    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s.,ñÑ!?()'"/-]/g, "");
     if (e.target.value !== sanitized) {
-      e.target.value = sanitized;
+      const mockEvent = {
+        ...e,
+        target: { ...e.target, value: sanitized }
+      } as React.ChangeEvent<HTMLTextAreaElement>;
+      props.onChange?.(mockEvent);
+    } else {
+      props.onChange?.(e);
     }
-    props.onChange?.(e);
   };
 
   return (

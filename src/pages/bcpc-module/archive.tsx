@@ -41,7 +41,7 @@ const getStatusPillClass = (status: string) => {
     case "PENDING":
       return "bg-amber-50 text-amber-700 border border-amber-200";
     case "UNDER_MEDIATION":
-    case "UNDER_INTERVENTION":
+    case "UNDER_MEDIATION":
       return "bg-sky-50 text-sky-700 border border-sky-200";
     case "UNDER_CONCILIATION":
       return "bg-indigo-50 text-indigo-700 border border-indigo-200";

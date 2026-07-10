@@ -87,6 +87,12 @@ export function OverviewTab({
       ? `${remainingDays} day${remainingDays === 1 ? '' : 's'} remaining`
       : 'Pending';
 
+  const childGradeParts = caseData.childGradeSchool?.split(' - ') || [];
+  const childGuardianParts = caseData.childGuardianName?.split(' - ') || [];
+
+  const resGradeParts = caseData.respondentGradeSchool?.split(' - ') || [];
+  const resGuardianParts = caseData.respondentGuardianName?.split(' - ') || [];
+
   return (
     <div className="space-y-5">
       {/* ── Terminal Status Banner ── */}
@@ -224,12 +230,17 @@ export function OverviewTab({
             <div className="grid grid-cols-2 gap-4">
               <InfoField label="Full Name" value={childFullName} />
               <InfoField label="Age" value={caseData.childAge ? `${caseData.childAge} years old` : undefined} />
+              <InfoField label="Birthday" value={caseData.childBirthday ? formatDate(caseData.childBirthday) : undefined} />
               <InfoField label="Gender" value={caseData.childGender} />
-              <InfoField label="Contact Number" value={caseData.childContact} />
+              <InfoField label="Grade" value={childGradeParts[0]} />
+              <InfoField label="School Name" value={childGradeParts[1]} />
+              <InfoField label="Parent Name" value={childGuardianParts[0]} />
+              <InfoField label="Guardian Name" value={childGuardianParts[1]} />
               {caseData.childRelationship && (
                 <InfoField label="Relationship to Child" value={caseData.childRelationship} />
               )}
-              <div className={caseData.childRelationship ? "" : "col-span-2"}>
+              <InfoField label="Contact Number" value={caseData.childContact} />
+              <div className="col-span-2">
                 <InfoField label="Complete Address" value={caseData.childAddress} />
               </div>
             </div>
@@ -238,6 +249,13 @@ export function OverviewTab({
           <SectionCard title="Respondent / Guardian Information" icon={<UserIcon className="w-4 h-4 text-gray-400" />}>
             <div className="grid grid-cols-2 gap-4">
               <InfoField label="Full Name" value={respondentFullName || undefined} />
+              <InfoField label="Age" value={caseData.respondentAge ? `${caseData.respondentAge} years old` : undefined} />
+              <InfoField label="Birthday" value={caseData.respondentBirthday ? formatDate(caseData.respondentBirthday) : undefined} />
+              <InfoField label="Gender" value={caseData.respondentGender} />
+              <InfoField label="Grade" value={resGradeParts[0]} />
+              <InfoField label="School Name" value={resGradeParts[1]} />
+              <InfoField label="Parent Name" value={resGuardianParts[0]} />
+              <InfoField label="Guardian Name" value={resGuardianParts[1]} />
               <InfoField label="Relationship to Child" value={caseData.relationshipToChild || caseData.respondentRelationship} />
               <InfoField label="Contact Number" value={caseData.respondentContact} />
               <div className="col-span-2">
@@ -355,10 +373,16 @@ export function OverviewTab({
             <div className="space-y-3 px-6 py-5">
               <textarea
                 value={withdrawReason}
-                onChange={(e) => onWithdrawReasonChange(e.target.value)}
+                maxLength={500}
+                onChange={(e) => {
+                  const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s.,\-ñÑ/?()]/g, "");
+                  if (sanitized.length <= 500) {
+                    onWithdrawReasonChange(sanitized);
+                  }
+                }}
                 rows={4}
                 placeholder="Reason for withdrawal..."
-                className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none"
               />
               {withdrawError && <p className="text-xs text-rose-600">{withdrawError}</p>}
             </div>

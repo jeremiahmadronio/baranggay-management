@@ -76,14 +76,20 @@ export function NotesTab({
           <div className="mb-4 space-y-2">
             <textarea
               autoFocus
-              placeholder="Type your note here..."
+              placeholder="Type your note here... (Press Enter to save)"
               value={noteText}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (noteText.trim() && !noteLoading) handleAddNote();
+                }
+              }}
               onChange={(e) => {
                 // Sanitize: Only letters, numbers, periods, commas, and spaces
                 let text = e.target.value.replace(/[^a-zA-Z0-9.,\s]/g, "");
-                // Limit to 1000 characters
-                if (text.length > 1000) {
-                  text = text.slice(0, 1000);
+                // Limit to 500 characters
+                if (text.length > 500) {
+                  text = text.slice(0, 500);
                 }
                 setNoteText(text);
               }}
@@ -92,9 +98,9 @@ export function NotesTab({
             />
             <div className="flex justify-between items-center mt-1">
               <span className="text-xs text-gray-400">
-                {noteText.length} / 1000 characters
+                {noteText.length} / 500 characters
               </span>
-              {noteText.length >= 1000 && (
+              {noteText.length >= 500 && (
                 <span className="text-xs text-red-500 font-semibold">
                   Character limit reached
                 </span>

@@ -15,6 +15,7 @@ import {
   getCaseNotes,
   updateCaseStatus,
   restoreCase,
+  reopenCaseApi,
 } from "../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
@@ -94,6 +95,8 @@ export function BlotterDocketDetailView({
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showEditSuccess, setShowEditSuccess] = useState(false);
   const [showReferSuccess, setShowReferSuccess] = useState(false);
+  const [showReopenSuccess, setShowReopenSuccess] = useState(false);
+  const [newReopenedCaseNumber, setNewReopenedCaseNumber] = useState("");
   const [attemptedAutoEditOpen, setAttemptedAutoEditOpen] = useState(false);
   const [natureOptions, setNatureOptions] = useState<NatureOptionDTO[]>([]);
 
@@ -213,13 +216,10 @@ export function BlotterDocketDetailView({
     }
     setActionLoading(true);
     try {
-      await updateCaseStatus({
-        blotterNumber,
-        newStatus: "PENDING",
-        reason: reason,
-      });
+      const newCaseNumber = await reopenCaseApi(blotterNumber, reason);
       setModal(null);
-      await refreshData();
+      setNewReopenedCaseNumber(newCaseNumber);
+      setShowReopenSuccess(true);
     } catch (err: any) {
       alert(err.message || "Action failed.");
     } finally {
@@ -541,6 +541,18 @@ export function BlotterDocketDetailView({
           type="success"
         >
           Case has been successfully referred to Lupon.
+        </ActionModal>
+
+        <ActionModal
+          isOpen={showReopenSuccess}
+          onClose={() => {
+            setShowReopenSuccess(false);
+            onBack();
+          }}
+          title="Case Reopened Successfully"
+          type="success"
+        >
+          Case successfully reopened! New Case Number: <strong className="font-bold">{newReopenedCaseNumber}</strong>
         </ActionModal>
 
         {/* ── HEADER ── */}

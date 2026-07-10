@@ -693,4 +693,15 @@ export async function restoreCase(
   });
 }
 
+export async function reopenCaseApi(
+  blotterNumber: string,
+  reason: string,
+): Promise<string> {
+  if (!blotterNumber) throw new Error("Blotter number is required");
+  return apiFetch<string>(`${BASE}/api/v1/blotter-form/reopen/${encodeURIComponent(blotterNumber)}`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
 

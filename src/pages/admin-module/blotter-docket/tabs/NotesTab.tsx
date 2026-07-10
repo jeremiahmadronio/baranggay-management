@@ -54,31 +54,47 @@ export function NotesTab({
         title="Case Notes"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
         action={undefined}
+        action={
+          hasManageNotes && !isTerminal ? (
+            <button
+              onClick={() => setShowNoteInput(!showNoteInput)}
+              className="text-blue-600 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
+            >
+              <PlusIcon className="w-5 h-5" />
+            </button>
+          ) : undefined
+        }
       >
 
         {showNoteInput && (
           <div className="mb-4 space-y-2">
             <textarea
               autoFocus
-              placeholder="Type your note here..."
+              placeholder="Type your note here... (Press Enter to save)"
               value={noteText}
-              onChange={(e) => {
-                // Limit to 1000 characters
-                const text = e.target.value;
-                if (text.length <= 1000) {
-                  setNoteText(text);
-                } else {
-                  setNoteText(text.slice(0, 1000));
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (noteText.trim() && !noteLoading) handleAddNote();
                 }
+              }}
+              onChange={(e) => {
+                // Sanitize: Only letters, numbers, periods, commas, and spaces
+                let text = e.target.value.replace(/[^a-zA-Z0-9.,\s]/g, "");
+                // Limit to 500 characters
+                if (text.length > 500) {
+                  text = text.slice(0, 500);
+                }
+                setNoteText(text);
               }}
               rows={3}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none text-gray-900"
             />
             <div className="flex justify-between items-center mt-1">
               <span className="text-xs text-gray-400">
-                {noteText.length} / 1000 characters
+                {noteText.length} / 500 characters
               </span>
-              {noteText.length >= 1000 && (
+              {noteText.length >= 500 && (
                 <span className="text-xs text-red-500 font-semibold">
                   Character limit reached
                 </span>

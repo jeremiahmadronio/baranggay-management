@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import type {
   ArchiveStatsDTO,
@@ -30,6 +30,15 @@ import {
   mockArchiveTableResponse,
   mockKapitanaBlotterAccess,
 } from "../mock/blotter-kapitana-mock";
+
+function useDebounce<T>(value: T, delay = 400): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 const PAGE_SIZE = 10;
 
@@ -188,6 +197,23 @@ export default function ArchiveCasesPage() {
         .catch(() => setUserAccess(null)),
     ]);
   }, []);
+
+  const debouncedSearch = useDebounce(search);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const updated: ArchiveTableParams = {
+      ...params,
+      search: debouncedSearch,
+      page: 0,
+    };
+    setParams(updated);
+    fetchTable(updated);
+  }, [debouncedSearch]);
 
   const canView = hasBlotterPermission(
     userAccess,
@@ -422,7 +448,7 @@ export default function ArchiveCasesPage() {
       </ActionModal>
 
       <TableFilter
-        searchPlaceholder="Search by blotter no., complainant, respondent"
+        searchPlaceholder="Search by case no. or name"
         searchValue={search}
         onSearchChange={setSearch}
         filters={[

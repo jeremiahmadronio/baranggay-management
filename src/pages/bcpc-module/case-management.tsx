@@ -54,7 +54,7 @@ const getStatusPillClass = (status: string) => {
     case "PENDING":
       return "bg-amber-50 text-amber-700 border border-amber-200";
     case "UNDER_MEDIATION":
-    case "UNDER_INTERVENTION":
+    case "UNDER_MEDIATION":
       return "bg-sky-50 text-sky-700 border border-sky-200";
     case "UNDER_CONCILIATION":
       return "bg-indigo-50 text-indigo-700 border border-indigo-200";
@@ -328,10 +328,10 @@ export default function BcpcCaseManagement() {
       key: "status",
       options: [
         { value: "PENDING",                  label: "Pending" },
-        { value: "UNDER_INTERVENTION",       label: "Under Intervention" },
+        { value: "UNDER_MEDIATION",          label: "Under Intervention" },
         { value: "SETTLED",                  label: "Resolved / Settled" },
         { value: "CERTIFIED_TO_FILE_ACTION", label: "Certified To File Action" },
-        { value: "REFERRED",                 label: "Referred" },
+        { value: "ISSUED_REFERRAL",          label: "Referred" },
         { value: "WITHDRAWN",                label: "Withdrawn" },
         { value: "DISMISSED",                label: "Dismissed" },
         { value: "CLOSED",                   label: "Closed" },

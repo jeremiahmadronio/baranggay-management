@@ -221,24 +221,40 @@ function InterventionDetailsModal({ intervention, onClose }: {
   intervention: BcpcInterventionDTO; onClose: () => void;
 }) {
 
+  const formatDateTime = (d: string) => {
+    try {
+      return new Date(d).toLocaleString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch { return d; }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-xl max-h-[90vh] flex flex-col">
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900">{intervention.sessionType}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{formatShortDate(intervention.scheduledDate)}</p>
-          </div>
+          <h3 className="text-base font-semibold text-gray-900">Intervention Log Details</h3>
           <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100"><XCircleIcon className="w-5 h-5" /></button>
         </div>
         <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div>
-            <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Details</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{intervention.remarks}</p>
+            <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Intervention Type</p>
+            <p className="text-sm font-medium text-gray-900">{intervention.sessionType || '—'}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Date & Time</p>
+              <p className="text-sm text-gray-700">{formatDateTime(intervention.scheduledDate)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Assigned Worker / Officer</p>
+              <p className="text-sm text-gray-700">{intervention.conductedBy || '—'}</p>
+            </div>
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Performed By</p>
-            <p className="text-sm text-gray-700">{intervention.conductedBy || '—'}</p>
+            <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Details</p>
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{intervention.remarks || 'No details recorded.'}</p>
           </div>
         </div>
       </div>

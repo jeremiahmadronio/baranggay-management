@@ -56,10 +56,19 @@ export function NotesTab({
             autoFocus
             placeholder="Type your note here..."
             value={noteText}
-            onChange={(event) => onNoteTextChange(event.target.value)}
+            maxLength={500}
+            onChange={(event) => {
+              const sanitized = event.target.value.replace(/[^a-zA-Z0-9\s.,\-ñÑ/?()]/g, "");
+              if (sanitized.length <= 500) {
+                onNoteTextChange(sanitized);
+              }
+            }}
             rows={3}
             className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none text-gray-900"
           />
+          <div className="flex justify-end text-xs text-gray-400 mt-1">
+            <span className="tabular-nums">{noteText.length} / 500</span>
+          </div>
           {noteError && <p className="text-xs text-red-500">{noteError}</p>}
           <div className="flex justify-end gap-2">
             <button
@@ -100,7 +109,7 @@ export function NotesTab({
         <div className="space-y-2">
           {notes.map((note) => (
             <div key={note.id} className="p-4 bg-gray-50/80 rounded-xl border border-gray-100">
-              <p className="text-sm text-gray-900 leading-relaxed">{note.note}</p>
+              <p className="text-sm text-gray-900 leading-relaxed break-words whitespace-pre-wrap">{note.note}</p>
               <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
                 <UserCircle2Icon className="w-4 h-4" />
                 <span className="font-bold">{note.createdBy}</span>

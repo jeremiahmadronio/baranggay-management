@@ -276,10 +276,12 @@ function ResidentSearchInput({
         </div>
         <input
           type="text"
+          maxLength={50}
           value={query}
           onChange={(event) => {
-            setQuery(event.target.value);
-            if (event.target.value.trim().length < 2) setIsOpen(false);
+            const sanitized = event.target.value.replace(/[0-9]/g, "").replace(/[^a-zA-Z\s.,\-ñÑ]/g, "");
+            setQuery(sanitized);
+            if (sanitized.length < 2) setIsOpen(false);
           }}
           onFocus={() => {
             if (results.length > 0) setIsOpen(true);
