@@ -6,17 +6,20 @@ import { Table, type TableColumn } from "../../reusable";
 import { TableFilter } from "../../hooks/TableFilter";
 import { ActionModal } from "../../hooks/SuccessModal";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
+import { ConfirmModal } from "../../reusable";
 import type {
   DocketTableParams,
   BlotterSummaryDTO,
   BlotterStatsDTO,
   BlotterDocketViewDTO,
+  MediationProcessDTO,
 } from "../../service/blotter-api/DocketView";
 import {
   getDocketTable,
   getDocketStats,
   archiveCase,
   getFullBlotterDocket,
+  getMediationProcess,
 } from "../../service/blotter-api/DocketView";
 import {
   BLOTTER_PERMISSIONS,
@@ -51,7 +54,7 @@ const formatDate = (dateStr: string) => {
 const PAGE_SIZE = 10;
 
 const STATUS_FILTER_OPTIONS = [
-  { label: "Pending", value: "PENDING" },
+  { label: "Ongoing", value: "PENDING" },
   { label: "Settled", value: "SETTLED" },
   { label: "Dismissed", value: "DISMISSED" },
   { label: "Under Mediation", value: "UNDER_MEDIATION" },
@@ -60,7 +63,6 @@ const STATUS_FILTER_OPTIONS = [
   { label: "Certified to File Action", value: "CERTIFIED_TO_FILE_ACTION" },
   { label: "Withdrawn", value: "WITHDRAWN" },
   { label: "Closed", value: "CLOSED" },
-  { label: "Expired / Unactioned", value: "EXPIRED_UNACTIONED" },
 ];
 
 const ARCHIVABLE_STATUSES = new Set([
@@ -142,6 +144,7 @@ const Docketview = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [mediationStatuses, setMediationStatuses] = useState<Record<string, MediationProcessDTO>>({});
 
   // Refer to Lupon modal state
   const [referEntry, setReferEntry] = useState<BlotterSummaryDTO | null>(null);
@@ -174,9 +177,14 @@ const Docketview = () => {
     try {
       const data = await getDocketTable(p);
       setTableData(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
-      setCurrentPage(data.number ?? 0);
+      setMediationStatuses({});
+      // Spring Boot 3.1+ wraps pagination metadata under a nested 'page' object
+      const totalPages = (data as any).page?.totalPages ?? data.totalPages ?? 1;
+      const totalElements = (data as any).page?.totalElements ?? data.totalElements ?? 0;
+      const currentNumber = (data as any).page?.number ?? data.number ?? 0;
+      setTotalPages(totalPages);
+      setTotalElements(totalElements);
+      setCurrentPage(currentNumber);
     } catch {
       console.error("Failed to load records.");
     } finally {
@@ -202,6 +210,28 @@ const Docketview = () => {
         }),
     ]);
   }, []);
+
+  useEffect(() => {
+    const fetchMediationStatuses = async () => {
+      const neededRows = tableData.filter(item => 
+        (item.status === "UNDER_MEDIATION" || item.status === "PENDING") && 
+        !mediationStatuses[item.blotterNumber]
+      );
+      if (neededRows.length === 0) return;
+
+      const newStatuses = { ...mediationStatuses };
+      await Promise.all(neededRows.map(async (row) => {
+        try {
+          const process = await getMediationProcess(row.blotterNumber);
+          newStatuses[row.blotterNumber] = process;
+        } catch (e) {
+          console.error("Failed to fetch mediation for", row.blotterNumber, e);
+        }
+      }));
+      setMediationStatuses(newStatuses);
+    };
+    fetchMediationStatuses();
+  }, [tableData]);
 
   // ── Permissions ───────────────────────────────────────────────────────────
 
@@ -375,17 +405,21 @@ const Docketview = () => {
     {
       key: "status",
       header: "Status",
+      align: "center",
       width: "175px",
       render: (item) => {
         const docketStatus = String(item.status || "")
           .toUpperCase()
           .trim();
+        const displayStatus = docketStatus === "PENDING" ? "ONGOING" : docketStatus ? docketStatus.replace(/_/g, " ") : "UNKNOWN";
         return (
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusPillClass(docketStatus)}`}
-          >
-            {docketStatus ? docketStatus.replace(/_/g, " ") : "UNKNOWN"}
-          </span>
+          <div className="flex justify-center">
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${getStatusPillClass(docketStatus)}`}
+            >
+              {displayStatus}
+            </span>
+          </div>
         );
       },
     },
@@ -469,25 +503,7 @@ const Docketview = () => {
               )}
             </button>
 
-            {["UNSETTLED", "PENDING", "UNDER_MEDIATION"].includes(
-              item.status,
-            ) && (
-              <button
-                disabled={!canEscalate || statusKey === "UNDER_MEDIATION"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (canEscalate && statusKey !== "UNDER_MEDIATION") setReferEntry(item);
-                }}
-                title={statusKey === "UNDER_MEDIATION" ? "Wait for mediation to finish" : "Escalate to Lupon"}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  !canEscalate || statusKey === "UNDER_MEDIATION"
-                    ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
-                    : "text-violet-600 hover:bg-violet-50"
-                }`}
-              >
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            )}
+
 
             <button
               disabled={!canArchive || !canArchiveThisStatus}
@@ -534,7 +550,8 @@ const Docketview = () => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full space-y-5">
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="mx-auto max-w-7xl px-4 py-8 space-y-5">
       {referEntry && (
         <ReferToLuponModal
           blotterNumber={referEntry.blotterNumber}
@@ -579,14 +596,14 @@ const Docketview = () => {
       </ActionModal>
 
       {archiveEntry && (
-        <ArchiveReasonModal
+        <ConfirmModal
           isOpen={!!archiveEntry}
-          onClose={() => setArchiveEntry(null)}
           title="Archive Docket Case"
-          subjectName={archiveEntry.blotterNumber}
-          subjectLabel="case"
-          submitLabel="Archive"
-          onSubmit={handleArchiveSubmit}
+          message={`Are you sure you want to archive case ${archiveEntry.blotterNumber}?`}
+          onConfirm={() => handleArchiveSubmit("Case Archived")}
+          onCancel={() => setArchiveEntry(null)}
+          type="warning"
+          confirmText="Archive"
         />
       )}
 
@@ -693,6 +710,7 @@ const Docketview = () => {
           onPageChange: handlePageChange,
         }}
       />
+    </div>
     </div>
   );
 };

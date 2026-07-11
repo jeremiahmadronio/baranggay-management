@@ -145,9 +145,13 @@ const AdminBlotterRecordsPage: React.FC = () => {
     try {
       const page = await getPagedBlotters(params);
       setRecords(page.content.filter((row) => !isArchivedStatus(row.status)));
-      setTotalPages(page.totalPages);
-      setTotalItems(page.totalElements);
-      setCurrentPage(page.number);
+      // Spring Boot 3.1+ wraps pagination metadata under a nested 'page' object
+      const totalPages = (page as any).page?.totalPages ?? page.totalPages ?? 1;
+      const totalElements = (page as any).page?.totalElements ?? page.totalElements ?? 0;
+      const currentNumber = (page as any).page?.number ?? page.number ?? 0;
+      setTotalPages(totalPages);
+      setTotalItems(totalElements);
+      setCurrentPage(currentNumber);
     } catch (err: any) {
       console.error("Failed to load blotter records.");
     } finally {

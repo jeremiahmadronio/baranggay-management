@@ -7,8 +7,10 @@ import {
   UserIcon,
   ClipboardIcon,
   FileTextIcon,
-  HashIcon,
   RotateCcwIcon,
+  DownloadIcon,
+  LinkIcon,
+  ArrowRightIcon,
 } from "lucide-react";
 
 import type {
@@ -19,7 +21,9 @@ import { isTerminalStatus } from "../shared/StatusBadge";
 import { InfoRow } from "../shared/InfoRow";
 import { SectionCard } from "../shared/SectionCard";
 import { NarrativeViewer } from "../shared/NarrativeViewer";
+import { EvidenceViewer } from "../shared/EvidenceViewer";
 import { formatDate, formatTime } from "../shared/utils";
+import { viewOrDownloadFile } from "../../../utils/fileViewer";
 // ── Helpers ──
 const getMediationProgress = (
   dateFiled: string,
@@ -51,34 +55,8 @@ interface OverviewTabProps {
   onDismissCase: () => void;
   onIssueCFA: () => void;
   onReopenCase: () => void;
+  onNavigateLinkedCase: (caseNumber: string) => void;
 }
-const MEDIATION_STEPS = [
-  {
-    key: "stepCaseReceived",
-    label: "Case Received",
-    sub: (p: MediationProcessDTO) =>
-      p.caseReceivedDate
-        ? `Received from Barangay Blotter on ${formatDate(p.caseReceivedDate)}`
-        : "Awaiting receipt",
-  },
-  {
-    key: "stepSummonIssued",
-    label: "Pangkat Assignment / Mediation Issued",
-    sub: (p: MediationProcessDTO) => p.summonStatus ?? "Awaiting first summon",
-  },
-  {
-    key: "stepMediationOngoing",
-    label: "Mediation Process",
-    sub: (p: MediationProcessDTO) =>
-      `${p.hearingsConducted} mediation(s) conducted`,
-  },
-  {
-    key: "stepResolved",
-    label: "Case Resolution",
-    sub: (p: MediationProcessDTO) =>
-      p.resolutionStatus ?? "Awaiting resolution",
-  },
-];
 // ── Component ──
 export function OverviewTab({
   docket,
@@ -91,6 +69,7 @@ export function OverviewTab({
   onReferToLupon,
   onDismissCase,
   onReopenCase,
+  onNavigateLinkedCase,
 }: OverviewTabProps) {
   const status = docket.caseStatus;
   const isTerminal =
@@ -106,15 +85,6 @@ export function OverviewTab({
     docket.mediationDeadline,
     displayDaysRemaining,
   );
-  const mediationProgress = mediation
-    ? [
-        mediation.stepCaseReceived,
-        mediation.stepSummonIssued,
-        mediation.stepMediationOngoing,
-        mediation.stepResolved,
-      ]
-    : [false, false, false, false];
-  // Debug log for settlement agreement fields
   console.log(
     "[OverviewTab] agreementsTerm:",
     docket.agreementsTerm,
@@ -139,6 +109,70 @@ export function OverviewTab({
 
   return (
     <div className="space-y-5">
+      {docket.caseHistory && docket.caseHistory.length > 1 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
+          <div className="mb-4">
+            <h3 className="font-semibold text-slate-800">Case History</h3>
+          </div>
+          <div className="space-y-3">
+            {docket.caseHistory.map((history, idx) => {
+              const isCurrent = history.caseNumber === docket.caseNumber;
+              const isLatestActive = idx === docket.caseHistory!.length - 1;
+              
+              return (
+                <div 
+                  key={history.caseNumber}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    isLatestActive 
+                      ? "bg-emerald-50 border-emerald-300 shadow-sm ring-1 ring-emerald-200" 
+                      : isCurrent 
+                        ? "bg-white border-blue-200 shadow-sm ring-1 ring-blue-100" 
+                        : "bg-slate-100/50 border-slate-200 hover:bg-slate-100 transition-colors"
+                  }`}
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${isLatestActive ? "text-emerald-800" : isCurrent ? "text-blue-700" : "text-slate-700"}`}>
+                        {history.caseNumber}
+                      </span>
+                      {isLatestActive && (
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                          Latest Active Case
+                        </span>
+                      )}
+                      {isCurrent && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                          Current View
+                        </span>
+                      )}
+                      {!isLatestActive && history.relationshipType !== "Current" && (
+                        <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-[10px] font-medium uppercase tracking-wider rounded-full">
+                          {history.relationshipType}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-3">
+                      <span>Filed: {new Date(history.dateFiled).toLocaleDateString()}</span>
+                      <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                      <span>Status: {history.status}</span>
+                    </div>
+                  </div>
+                  {!isCurrent && (
+                    <button
+                      onClick={() => onNavigateLinkedCase(history.caseNumber)}
+                      className="shrink-0 flex items-center gap-2 text-xs font-medium bg-white hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors shadow-sm"
+                    >
+                      View Record
+                      <ArrowRightIcon className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {isTerminal ? (
         <div
           className={`border shadow-sm rounded-xl p-4 flex items-start gap-3 ${
@@ -200,17 +234,56 @@ export function OverviewTab({
               </span>
 
               {docket.caseStatusRemarks ? (
-                <span
-                  className={`text-sm ${
-                    status === "SETTLED"
-                      ? "text-emerald-700"
-                      : status === "DISMISSED"
-                        ? "text-red-700"
-                        : "text-blue-700"
-                  }`}
-                >
-                  {docket.caseStatusRemarks}
-                </span>
+                <div className="mt-1">
+                  {(() => {
+                    const remark = docket.caseStatusRemarks!;
+                    const isBase64ImageOrDoc = remark.length > 1000 && !remark.includes(' ');
+                    
+                    if (!isBase64ImageOrDoc) {
+                      return (
+                        <span
+                          className={`text-sm ${
+                            status === "SETTLED"
+                              ? "text-emerald-700"
+                              : status === "DISMISSED"
+                                ? "text-red-700"
+                                : "text-blue-700"
+                          }`}
+                        >
+                          {remark}
+                        </span>
+                      );
+                    }
+                    
+                    // It's a file
+                    const isPng = remark.startsWith('iVBORw0KGgo');
+                    const isJpeg = remark.startsWith('/9j/');
+                    const isPdf = remark.startsWith('JVBERi0');
+                    const isDocx = remark.startsWith('UEsDBBQ');
+                    
+                    let mime = 'application/octet-stream';
+                    let ext = 'file';
+                    
+                    if (isPng) { mime = 'image/png'; ext = 'png'; }
+                    else if (isJpeg) { mime = 'image/jpeg'; ext = 'jpg'; }
+                    else if (isPdf) { mime = 'application/pdf'; ext = 'pdf'; }
+                    else if (isDocx) { mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'; ext = 'docx'; }
+                    else if (remark.startsWith('0M8R4KGxGuE')) { mime = 'application/msword'; ext = 'doc'; }
+                    
+                    const dataUrl = `data:${mime};base64,${remark}`;
+                    
+                    return (
+                      <a
+                        href={dataUrl}
+                        download={`Dismissal_${docket.caseNumber}.${ext}`}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-gray-50 hover:text-blue-700 mt-1"
+                      >
+                        <DownloadIcon className="h-3.5 w-3.5" />
+                        Download Attached Document
+                      </a>
+                    );
+                  })()}
+                </div>
               ) : docket.agreementsTerm && status === "SETTLED" ? (
                 <span className="text-sm text-emerald-700">
                   Both parties have an agreement.
@@ -255,10 +328,10 @@ export function OverviewTab({
 
       {(true) && (
         <div className="mb-5">
-          <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
             Quick Actions
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {!isTerminal ? (
               <>
                 <button
@@ -269,57 +342,51 @@ export function OverviewTab({
                   <div className="p-2.5 rounded-lg bg-blue-50">
                     <CalendarIcon className="w-5 h-5 text-blue-600" />
                   </div>
-                  <span className="text-sm text-blue-600">Schedule Mediation</span>
+                  <span className="text-sm text-blue-600 font-medium">Schedule Mediation</span>
                   <span className="text-xs text-gray-500">Set mediation date</span>
-                </button>
-
-                <button
-                  onClick={onMarkSettled}
-                  disabled={!hasResolvePerm}
-                  className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <div className="p-2.5 rounded-lg bg-emerald-50">
-                    <CheckCircleIcon className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <span className="text-sm text-emerald-600">Mark as Settled</span>
-                  <span className="text-xs text-gray-500">Amicable settlement</span>
                 </button>
 
                 {(status === "UNDER_MEDIATION" ||
                   status === "MEDIATION" ||
                   status === "PENDING" ||
-                  status === "ACTIVE") && (
-                  <button
-                    onClick={onReferToLupon}
-                    disabled={!hasEscalationPerm || status === "UNDER_MEDIATION"}
-                    title={status === "UNDER_MEDIATION" ? "Wait for mediation to finish" : ""}
-                    className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasEscalationPerm || status === "UNDER_MEDIATION" ? "opacity-50 cursor-not-allowed" : ""}`}
-                  >
-                    <div className="p-2.5 rounded-lg bg-violet-50">
-                      <AlertCircleIcon className="w-5 h-5 text-violet-600" />
-                    </div>
-                    <span className="text-sm text-violet-600">
-                      Escalate to Lupon
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {" "}
-                      escalation process
-                    </span>
-                  </button>
-                )}
+                  status === "ACTIVE") && (() => {
+                  const completedSessions = mediation?.hearingsConducted ?? 0;
+                  const periodExpired = displayDaysRemaining <= 0;
+                  const canEscalate = completedSessions >= 3 || periodExpired;
+                  const disableEscalate = !hasEscalationPerm || !canEscalate;
+                  const escalateTitle = !canEscalate
+                    ? periodExpired
+                      ? "Mediation period has expired — escalation allowed"
+                      : `${completedSessions}/3 sessions complete — escalation available after 3 sessions or when the 15-day period expires`
+                    : "";
+                  return (
+                    <button
+                      onClick={onReferToLupon}
+                      disabled={disableEscalate}
+                      title={escalateTitle}
+                      className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${disableEscalate ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <div className="p-2.5 rounded-lg bg-violet-50">
+                        <AlertCircleIcon className="w-5 h-5 text-violet-600" />
+                      </div>
+                      <span className="text-sm text-violet-600 font-medium">Escalate to Lupon</span>
+                      <span className="text-xs text-gray-500">
+                        {canEscalate ? "Escalation available" : `${completedSessions}/3 sessions or period expired`}
+                      </span>
+                    </button>
+                  );
+                })()}
 
                 <button
                   onClick={onDismissCase}
                   disabled={!hasResolvePerm}
                   className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
-                  <div className="p-2.5 rounded-lg bg-gray-100">
-                    <XIcon className="w-5 h-5 text-gray-600" />
+                  <div className="p-2.5 rounded-lg bg-red-50">
+                    <XIcon className="w-5 h-5 text-red-600" />
                   </div>
-                  <span className="text-sm text-gray-700">Dismiss Case</span>
-                  <span className="text-xs text-gray-500">
-                    Complainant withdrew
-                  </span>
+                  <span className="text-sm text-red-600 font-medium">Dismiss Case</span>
+                  <span className="text-xs text-gray-500">Complainant withdrew</span>
                 </button>
               </>
             ) : (
@@ -331,7 +398,7 @@ export function OverviewTab({
                 <div className="p-2.5 rounded-lg bg-blue-50">
                   <RotateCcwIcon className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="text-sm text-blue-600">Re-open Case</span>
+                <span className="text-sm text-blue-600 font-medium">Re-open Case</span>
                 <span className="text-xs text-gray-500">Restore case to active</span>
               </button>
             )}
@@ -447,23 +514,6 @@ export function OverviewTab({
           {docket.frequencyOfIncident && (
             <InfoRow label="Frequency" value={docket.frequencyOfIncident} />
           )}
-          {docket.evidenceTypeIds && docket.evidenceTypeIds.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1.5">
-                Evidence Submitted
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {docket.evidenceTypeIds.map((id) => (
-                  <span
-                    key={id}
-                    className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full"
-                  >
-                    Evidence #{id}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -480,6 +530,33 @@ export function OverviewTab({
             <p className="text-sm text-gray-900">
               {docket.descriptionOfInjuries}
             </p>
+          </div>
+        )}
+        {docket.evidences && docket.evidences.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-2">
+              Evidence Submitted
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {docket.evidences.map((ev) => (
+                <div
+                  key={ev.recordId}
+                  className="flex flex-col gap-1 p-3 rounded-lg border border-gray-200 bg-gray-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-800">
+                      {ev.customDescription || ev.typeName}
+                    </span>
+                    {ev.hasFile && (
+                      <EvidenceViewer
+                        recordId={ev.recordId}
+                        fileName={ev.customDescription || ev.typeName}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </SectionCard>
@@ -521,16 +598,63 @@ export function OverviewTab({
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 flex-1">
                   <InfoRow label="Name" value={w.fullName} />
-
                   <InfoRow label="Contact" value={w.contactNumber} />
-                  {w.address && (
-                    <div className="col-span-2">
-                      <InfoRow label="Address" value={w.address} />
-                    </div>
-                  )}
-                  {w.testimony && (
-                    <div className="col-span-2">
-                      <InfoRow label="Testimony" value={w.testimony} />
+                  <div className="col-span-2">
+                    <InfoRow label="Address" value={w.address} />
+                  </div>
+                  {w.testimonyFile && (
+                    <div className="col-span-2 mt-2">
+                      <button
+                        onClick={() => {
+                          const raw = w.testimonyFile || "";
+                          const isPdf = raw.startsWith("JVBERi0");
+                          const isPng = raw.startsWith("iVBORw0KGgo");
+                          const isJpeg = raw.startsWith("/9j/");
+                          const isDocx = raw.startsWith("UEsDBBQ");
+                          const isMp4 = raw.startsWith("AAAA") && raw.substring(0, 20).includes("Z0eXB");
+                          const isWebm = raw.startsWith("GkXfo");
+                          const isAvi = raw.startsWith("UklGR");
+
+                          let mime = "application/octet-stream";
+                          let ext = "bin";
+
+                          if (isPdf) {
+                            mime = "application/pdf";
+                            ext = "pdf";
+                          } else if (isPng) {
+                            mime = "image/png";
+                            ext = "png";
+                          } else if (isJpeg) {
+                            mime = "image/jpeg";
+                            ext = "jpg";
+                          } else if (isDocx) {
+                            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                            ext = "docx";
+                          } else if (isMp4) {
+                            mime = "video/mp4";
+                            ext = "mp4";
+                          } else if (isWebm) {
+                            mime = "video/webm";
+                            ext = "webm";
+                          } else if (isAvi) {
+                            mime = "video/x-msvideo";
+                            ext = "avi";
+                          } else if (raw.startsWith("0M8R4KGxGuE")) {
+                            mime = "application/msword";
+                            ext = "doc";
+                          } else if (raw.length < 50000 && !raw.includes("AAB")) {
+                            mime = "text/plain";
+                            ext = "txt";
+                          }
+
+                          viewOrDownloadFile(raw, mime, ext, `Testimony_${w.fullName.replace(/\s+/g, "_")}`);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                        title="View Testimony"
+                      >
+                        <FileTextIcon className="w-3.5 h-3.5" />
+                        View Testimony
+                      </button>
                     </div>
                   )}
                 </div>
@@ -565,48 +689,7 @@ export function OverviewTab({
           </SectionCard>
         )}
 
-      {mediation && (
-        <SectionCard
-          title="Mediation Process"
-          icon={<HashIcon className="w-4 h-4 text-gray-400" />}
-        >
-          <div className="space-y-0">
-            {MEDIATION_STEPS.map((step, idx) => {
-              const done = mediationProgress[idx];
-              const isLast = idx === MEDIATION_STEPS.length - 1;
-              return (
-                <div key={step.key} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${done ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-400 border-2 border-gray-200"}`}
-                    >
-                      {done ? <CheckCircleIcon className="w-4 h-4" /> : idx + 1}
-                    </div>
-                    {!isLast && (
-                      <div
-                        className={`w-0.5 flex-1 my-1 ${done ? "bg-emerald-300" : "bg-gray-200"}`}
-                      />
-                    )}
-                  </div>
-                  <div className="pb-5 flex-1 flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-gray-700">{step.label}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {step.sub(mediation)}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full shrink-0 ml-4 ${done ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
-                    >
-                      {done ? "COMPLETED" : "PENDING"}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
-      )}
+
     </div>
   );
 }

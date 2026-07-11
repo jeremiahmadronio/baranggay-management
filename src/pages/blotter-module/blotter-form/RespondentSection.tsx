@@ -409,7 +409,7 @@ export const RespondentSection = ({
         />
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Currently Living with Complainant?
+            Currently Living with Complainant? <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center gap-5 mt-2">
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
@@ -418,7 +418,10 @@ export const RespondentSection = ({
                 name="livingWith"
                 value="true"
                 checked={data.livingWith === "true"}
-                onChange={() => onChange("livingWith", "true")}
+                onChange={() => {
+                  onChange("livingWith", "true");
+                  clearErr("rLivingWith");
+                }}
                 className="accent-blue-600"
               />
               Yes
@@ -429,12 +432,18 @@ export const RespondentSection = ({
                 name="livingWith"
                 value="false"
                 checked={data.livingWith === "false"}
-                onChange={() => onChange("livingWith", "false")}
+                onChange={() => {
+                  onChange("livingWith", "false");
+                  clearErr("rLivingWith");
+                }}
                 className="accent-blue-600"
               />
               No
             </label>
           </div>
+          {errors.rLivingWith && (
+            <p className="text-red-500 text-xs mt-1">{errors.rLivingWith}</p>
+          )}
         </div>
       </FormRow>
     </SectionCard>

@@ -133,6 +133,14 @@ export async function updateCaseStatus(id: number, status: string, reason: strin
   });
 }
 
+// Extend case monitoring period
+export async function extendCase(id: number, reason: string): Promise<void> {
+  return apiFetch<void>(`${BCPC_CASE_URL}/${id}/extend`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
 // Archive case
 export async function archiveCase(id: number, reason: string): Promise<void> {
   return apiFetch<void>(`${BCPC_CASE_URL}/${id}/archive`, {

@@ -2,10 +2,10 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const BCPC_DASHBOARD_URL = `${BASE}/api/v1/bcpc-dashboard`;
 
 export interface DashboardStatsDTO {
-  hearingsToday: number;
-  pendingNewCases: number;
-  nearingDeadline: number;
-  settledThisMonth: number;
+  totalCases: number;
+  onGoingCases: number;
+  settledCases: number;
+  mostNatureCases: string;
 }
 
 export interface MonthlyCaseChartDTO {

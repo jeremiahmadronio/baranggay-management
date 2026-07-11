@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { InfoField, SectionCard, formatDate } from './shared';
 import type { BcpcCaseDetailDTO, BcpcInterventionDTO } from '../../../service/bcpc-api/CaseDetail';
-import { activateBpo, getInterventions, scheduleIntervention } from '../../../service/bcpc-api/CaseDetail';
+import { activateBpo, getInterventions, scheduleIntervention, recordIntervention } from '../../../service/bcpc-api/CaseDetail';
 import { getCaseTimeline } from '../../../service/blotter-api/DocketView';
 import { ActionModal } from '../../../hooks/SuccessModal';
 
@@ -137,6 +137,9 @@ function AddInterventionModal({ onClose, onSave }: {
     onSave({ 
       sessionType: resolved, 
       remarks: details.trim(), 
+      // @ts-ignore - Added to ensure backend mapping works if field names differ
+      details: details.trim(),
+      description: details.trim(),
       scheduledDate: `${date}T${startTime}:00`, 
       conductedBy: officer,
       status: 'COMPLETED'
@@ -170,7 +173,10 @@ function AddInterventionModal({ onClose, onSave }: {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Details <span className="text-red-500">*</span></label>
-            <textarea rows={3} value={details} onChange={e => setDetails(e.target.value)} placeholder="Describe the intervention..."
+            <textarea rows={3} maxLength={500} value={details} onChange={e => {
+              const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s.,\-ñÑ/?()]/g, "");
+              setDetails(sanitized);
+            }} placeholder="Describe the intervention..."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none resize-none" />
           </div>
 
@@ -254,7 +260,7 @@ function InterventionDetailsModal({ intervention, onClose }: {
           </div>
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">Details</p>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{intervention.remarks || 'No details recorded.'}</p>
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{intervention.remarks || (intervention as any).details || (intervention as any).description || 'No details recorded.'}</p>
           </div>
         </div>
       </div>
@@ -283,7 +289,9 @@ export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly
   const fetchInterventions = async () => {
     try {
       const data = await getInterventions(caseData.id);
-      setInterventions(data);
+      // Sort by newest date first
+      const sortedData = [...data].sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
+      setInterventions(sortedData);
     } catch (err) {
       console.error(err);
     }
@@ -353,6 +361,23 @@ export function BpoTab({ caseData, childFullName, respondentFullName, isReadOnly
   const handleAddIntervention = async (data: Omit<BcpcInterventionDTO, 'id'>) => {
     try {
       await scheduleIntervention(caseData.id, data);
+      
+      // Two-step process: fetch the newly created intervention and record the remarks
+      const newInterventions = await getInterventions(caseData.id);
+      if (newInterventions && newInterventions.length > 0) {
+        // Assume the latest intervention is the one with the highest ID
+        const latest = [...newInterventions].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+        
+        if (latest && latest.id) {
+          await recordIntervention(latest.id, {
+            ...latest,
+            status: 'COMPLETED',
+            remarks: data.remarks || (data as any).details || (data as any).description,
+            conductedBy: data.conductedBy
+          });
+        }
+      }
+
       setShowAddLog(false);
       showSuccess('Intervention log saved successfully.');
       fetchInterventions();

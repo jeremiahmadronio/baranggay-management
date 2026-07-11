@@ -9,6 +9,7 @@ import {
   FileTextIcon,
   HashIcon,
   RotateCcwIcon,
+  DownloadIcon,
 } from "lucide-react";
 
 import type {
@@ -18,7 +19,9 @@ import type {
 import { isTerminalStatus } from "../shared/StatusBadge";
 import { InfoRow } from "../shared/InfoRow";
 import { SectionCard } from "../shared/SectionCard";
+import { EvidenceViewer } from "../../../blotter-module/shared/EvidenceViewer";
 import { formatDate, formatTime } from "../shared/utils";
+import { viewOrDownloadFile } from "../../../../utils/fileViewer";
 // ── Helpers ──
 const getMediationProgress = (
   dateFiled: string,
@@ -272,40 +275,38 @@ export function OverviewTab({
                   <span className="text-xs text-gray-500">Set mediation date</span>
                 </button>
 
-                <button
-                  onClick={onMarkSettled}
-                  disabled={!hasResolvePerm}
-                  className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasResolvePerm ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <div className="p-2.5 rounded-lg bg-emerald-50">
-                    <CheckCircleIcon className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <span className="text-sm text-emerald-600">Mark as Settled</span>
-                  <span className="text-xs text-gray-500">Amicable settlement</span>
-                </button>
-
                 {(status === "UNDER_MEDIATION" ||
                   status === "MEDIATION" ||
                   status === "PENDING" ||
-                  status === "ACTIVE") && (
-                  <button
-                    onClick={onReferToLupon}
-                    disabled={!hasEscalationPerm || status === "UNDER_MEDIATION"}
-                    title={status === "UNDER_MEDIATION" ? "Wait for mediation to finish" : ""}
-                    className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${!hasEscalationPerm || status === "UNDER_MEDIATION" ? "opacity-50 cursor-not-allowed" : ""}`}
-                  >
-                    <div className="p-2.5 rounded-lg bg-violet-50">
-                      <AlertCircleIcon className="w-5 h-5 text-violet-600" />
-                    </div>
-                    <span className="text-sm text-violet-600">
-                      Escalate to Lupon
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {" "}
-                      escalation process
-                    </span>
-                  </button>
-                )}
+                  status === "ACTIVE") && (() => {
+                  const completedSessions = mediation?.hearingsConducted ?? 0;
+                  const periodExpired = displayDaysRemaining <= 0;
+                  const canEscalate = completedSessions >= 3 || periodExpired;
+                  const disableEscalate = !hasEscalationPerm || !canEscalate;
+                  const escalateTitle = !canEscalate
+                    ? `${completedSessions}/3 sessions complete — available after 3 sessions or 15-day period expires`
+                    : "";
+                  return (
+                    <button
+                      onClick={onReferToLupon}
+                      disabled={disableEscalate}
+                      title={escalateTitle}
+                      className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none focus-visible:outline-none active:bg-white ${disableEscalate ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <div className="p-2.5 rounded-lg bg-violet-50">
+                        <AlertCircleIcon className="w-5 h-5 text-violet-600" />
+                      </div>
+                      <span className="text-sm text-violet-600">
+                        Escalate to Lupon
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {canEscalate
+                          ? "Escalation available"
+                          : `${completedSessions}/3 sessions or period expired`}
+                      </span>
+                    </button>
+                  );
+                })()}
 
                 <button
                   onClick={onDismissCase}
@@ -446,23 +447,6 @@ export function OverviewTab({
           {docket.frequencyOfIncident && (
             <InfoRow label="Frequency" value={docket.frequencyOfIncident} />
           )}
-          {docket.evidenceTypeIds && docket.evidenceTypeIds.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1.5">
-                Evidence Submitted
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {docket.evidenceTypeIds.map((id) => (
-                  <span
-                    key={id}
-                    className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full"
-                  >
-                    Evidence #{id}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -470,9 +454,7 @@ export function OverviewTab({
         title="Incident Details"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
       >
-        <p className="text-sm text-gray-900 leading-relaxed">
-          {docket.narrative}
-        </p>
+        <NarrativeViewer caseNumber={docket.caseNumber} />
         {docket.descriptionOfInjuries && (
           <div className="mt-4 pt-4 border-t border-gray-100">
             <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1.5">
@@ -481,6 +463,33 @@ export function OverviewTab({
             <p className="text-sm text-gray-900">
               {docket.descriptionOfInjuries}
             </p>
+          </div>
+        )}
+        {docket.evidences && docket.evidences.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-2">
+              Evidence Submitted
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {docket.evidences.map((ev) => (
+                <div
+                  key={ev.recordId}
+                  className="flex flex-col gap-1 p-3 rounded-lg border border-gray-200 bg-gray-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-800">
+                      {ev.customDescription || ev.typeName}
+                    </span>
+                    {ev.hasFile && (
+                      <EvidenceViewer
+                        recordId={ev.recordId}
+                        fileName={ev.customDescription || ev.typeName}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </SectionCard>
@@ -524,14 +533,62 @@ export function OverviewTab({
                   <InfoRow label="Name" value={w.fullName} />
 
                   <InfoRow label="Contact" value={w.contactNumber} />
-                  {w.address && (
-                    <div className="col-span-2">
-                      <InfoRow label="Address" value={w.address} />
-                    </div>
-                  )}
-                  {w.testimony && (
-                    <div className="col-span-2">
-                      <InfoRow label="Testimony" value={w.testimony} />
+                  <div className="col-span-2">
+                    <InfoRow label="Address" value={w.address} />
+                  </div>
+                  {w.testimonyFile && (
+                    <div className="col-span-2 mt-2">
+                      <button
+                        onClick={() => {
+                          const raw = w.testimonyFile || "";
+                          const isPdf = raw.startsWith("JVBERi0");
+                          const isPng = raw.startsWith("iVBORw0KGgo");
+                          const isJpeg = raw.startsWith("/9j/");
+                          const isDocx = raw.startsWith("UEsDBBQ");
+                          const isMp4 = raw.startsWith("AAAA") && raw.substring(0, 20).includes("Z0eXB");
+                          const isWebm = raw.startsWith("GkXfo");
+                          const isAvi = raw.startsWith("UklGR");
+
+                          let mime = "application/octet-stream";
+                          let ext = "bin";
+
+                          if (isPdf) {
+                            mime = "application/pdf";
+                            ext = "pdf";
+                          } else if (isPng) {
+                            mime = "image/png";
+                            ext = "png";
+                          } else if (isJpeg) {
+                            mime = "image/jpeg";
+                            ext = "jpg";
+                          } else if (isDocx) {
+                            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                            ext = "docx";
+                          } else if (isMp4) {
+                            mime = "video/mp4";
+                            ext = "mp4";
+                          } else if (isWebm) {
+                            mime = "video/webm";
+                            ext = "webm";
+                          } else if (isAvi) {
+                            mime = "video/x-msvideo";
+                            ext = "avi";
+                          } else if (raw.startsWith("0M8R4KGxGuE")) {
+                            mime = "application/msword";
+                            ext = "doc";
+                          } else if (raw.length < 50000 && !raw.includes("AAB")) {
+                            mime = "text/plain";
+                            ext = "txt";
+                          }
+
+                          viewOrDownloadFile(raw, mime, ext, `Testimony_${w.fullName.replace(/\s+/g, "_")}`);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                        title="View Testimony"
+                      >
+                        <FileTextIcon className="w-3.5 h-3.5" />
+                        View Testimony
+                      </button>
                     </div>
                   )}
                 </div>

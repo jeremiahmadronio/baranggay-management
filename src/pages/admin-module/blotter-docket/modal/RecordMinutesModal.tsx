@@ -197,8 +197,9 @@ export function RecordMinutesModal({
             </p>
             <textarea
               value={hearingNotes}
-              onChange={(e) => setHearingNotes(e.target.value)}
+              onChange={(e) => setHearingNotes(e.target.value.replace(/[^a-zA-Z0-9\s.,!?'-]/g, ''))}
               rows={4}
+              maxLength={500}
               placeholder="Brief summary of what transpired during the hearing..."
               className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-800 placeholder:text-gray-400"
             />
@@ -245,8 +246,9 @@ export function RecordMinutesModal({
                   </label>
                   <textarea
                     value={settlementTerms}
-                    onChange={(e) => setSettlementTerms(e.target.value)}
+                    onChange={(e) => setSettlementTerms(e.target.value.replace(/[^a-zA-Z0-9\s.,!?'-]/g, ''))}
                     rows={5}
+                    maxLength={1000}
                     autoFocus
                     placeholder="Please enter the terms of settlement / napagkasunduan..."
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-800 placeholder:text-gray-400"

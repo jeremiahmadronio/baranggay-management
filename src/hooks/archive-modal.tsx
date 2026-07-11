@@ -31,6 +31,7 @@ interface ArchiveReasonModalProps {
   subjectLabel?: string;
   submitLabel?: string;
   placeholder?: string;
+  hideReasonInput?: boolean;
 }
 
 export function ArchiveReasonModal({
@@ -42,6 +43,7 @@ export function ArchiveReasonModal({
   subjectLabel = "record",
   submitLabel = "Archive",
   placeholder = "Provide a reason for this status change...",
+  hideReasonInput = false,
 }: ArchiveReasonModalProps) {
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState("");
@@ -57,10 +59,10 @@ export function ArchiveReasonModal({
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    const trimmedReason = reason.trim();
+    const trimmedReason = hideReasonInput ? (submitLabel === "Restore" ? "Case Restored" : "Case Archived") : reason.trim();
     setSubmitError("");
 
-    if (!trimmedReason) {
+    if (!hideReasonInput && !trimmedReason) {
       setReasonError("Please provide a reason.");
       return;
     }
@@ -114,28 +116,34 @@ export function ArchiveReasonModal({
           </p>
         ) : null}
 
-        <div>
-          <FormFieldLabel label="Reason" required />
-          <textarea
-            value={reason}
-            onChange={(e) => {
-              const cleanedValue = e.target.value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()"\n]/g, "");
-              if (cleanedValue.length <= REASON_LIMIT) {
-                setReason(cleanedValue);
-              }
-              setReasonError("");
-            }}
-            placeholder={placeholder}
-            rows={5}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-          />
-          <div className="flex items-start justify-between mt-1">
-            <FormFieldError msg={reasonError} />
-            <p className="text-xs text-gray-400 ml-auto shrink-0">
-              {reason.length} / {REASON_LIMIT}
-            </p>
+        {hideReasonInput ? (
+          <p className="text-sm text-gray-700">
+            Are you sure you want to {submitLabel.toLowerCase()} this {subjectLabel}?
+          </p>
+        ) : (
+          <div>
+            <FormFieldLabel label="Reason" required />
+            <textarea
+              value={reason}
+              onChange={(e) => {
+                const cleanedValue = e.target.value.replace(/[^a-zA-Z0-9ñÑ\s.,\-'()"\n]/g, "");
+                if (cleanedValue.length <= REASON_LIMIT) {
+                  setReason(cleanedValue);
+                }
+                setReasonError("");
+              }}
+              placeholder={placeholder}
+              rows={5}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            />
+            <div className="flex items-start justify-between mt-1">
+              <FormFieldError msg={reasonError} />
+              <p className="text-xs text-gray-400 ml-auto shrink-0">
+                {reason.length} / {REASON_LIMIT}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <FormFieldError msg={submitError} />
       </div>

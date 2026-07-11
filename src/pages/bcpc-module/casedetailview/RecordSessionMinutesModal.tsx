@@ -107,7 +107,7 @@ export function RecordSessionMinutesModal({ hearing, caseNumber, natureOfComplai
           {/* 2 — Session Notes */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">2 — Session Notes</p>
-            <textarea value={sessionNotes} onChange={e => setSessionNotes(e.target.value)} rows={4}
+            <textarea value={sessionNotes} maxLength={500} onChange={e => setSessionNotes(e.target.value.replace(/[^a-zA-Z0-9\s.,!?'-]/g, ''))} rows={4}
               placeholder="Brief summary of what transpired during the session..."
               className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none text-gray-800 placeholder:text-gray-400" />
           </div>
@@ -131,7 +131,7 @@ export function RecordSessionMinutesModal({ hearing, caseNumber, natureOfComplai
                     <label className="text-xs font-medium text-gray-600">Terms of Settlement <span className="text-red-400">*</span></label>
                     <span className="text-xs text-red-400 font-medium">Required</span>
                   </div>
-                  <textarea value={settlementTerms} onChange={e => setSettlementTerms(e.target.value)} rows={4} autoFocus
+                  <textarea value={settlementTerms} maxLength={500} onChange={e => setSettlementTerms(e.target.value.replace(/[^a-zA-Z0-9\s.,!?'-]/g, ''))} rows={4} autoFocus
                     placeholder="Agreement details..."
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none text-gray-800 placeholder:text-gray-400" />
                   <p className="text-xs text-gray-400 mt-1">Ang mga ito ay ilalagay sa opisyal na rekord ng kasong ito.</p>

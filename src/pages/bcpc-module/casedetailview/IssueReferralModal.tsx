@@ -304,8 +304,12 @@ export function IssueReferralModal({
             </label>
             <textarea
               rows={4}
+              maxLength={500}
               value={grounds}
-              onChange={(e) => setGrounds(e.target.value)}
+              onChange={(e) => {
+                const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s.,\-ñÑ/?()]/g, "");
+                setGrounds(sanitized);
+              }}
               placeholder="State the reason why this case needs to be referred..."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none resize-none"
             />
@@ -319,9 +323,9 @@ export function IssueReferralModal({
               </label>
               <input
                 type="date"
+                disabled
                 value={referralDate}
-                onChange={(e) => setReferralDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed px-3 py-2 text-sm focus:outline-none"
               />
             </div>
 

@@ -3,6 +3,7 @@ import { FileOutputIcon, PlusIcon, UserCircle2Icon, CalendarDaysIcon, PrinterIco
 import { SectionCard, formatDate } from './shared';
 import { getReferrals } from '../../../service/bcpc-api/CaseDetail';
 import type { BcpcReferralDTO } from '../../../service/bcpc-api/CaseDetail';
+import { getHearingView } from '../../../service/blotter-api/DocketView';
 import { IssueReferralModal, printReferralLetter } from './IssueReferralModal';
 
 const REFERRAL_STATUS_PILL: Record<string, string> = {
@@ -14,13 +15,15 @@ const REFERRAL_STATUS_PILL: Record<string, string> = {
 type ReferralsTabProps = {
   caseId: number;
   isReadOnly: boolean;
+  caseStatus?: string;
   caseNumber?: string;
   childName?: string;
   onRefresh?: () => void;
 };
 
-export function ReferralsTab({ caseId, isReadOnly, caseNumber, childName, onRefresh }: ReferralsTabProps) {
+export function ReferralsTab({ caseId, isReadOnly, caseStatus, caseNumber, childName, onRefresh }: ReferralsTabProps) {
   const [referrals, setReferrals] = useState<BcpcReferralDTO[]>([]);
+  const [completedMediations, setCompletedMediations] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showIssueModal, setShowIssueModal] = useState(false);
 
@@ -29,35 +32,62 @@ export function ReferralsTab({ caseId, isReadOnly, caseNumber, childName, onRefr
     try {
       const data = await getReferrals(caseId);
       setReferrals(data);
+      if (caseNumber) {
+        const hearings = await getHearingView(caseNumber);
+        setCompletedMediations(hearings.filter(h => h.status === 'COMPLETED').length);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, caseNumber]);
 
   useEffect(() => {
     fetchReferrals();
   }, [fetchReferrals]);
+
+  const isUnderMediation = caseStatus === 'UNDER_MEDIATION' && completedMediations < 3;
 
   return (
     <SectionCard
       title="Referrals"
       icon={<FileOutputIcon className="w-4 h-4 text-gray-400" />}
       action={
-        <button
-          onClick={() => setShowIssueModal(true)}
-          disabled={isReadOnly}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors ${
-            isReadOnly
-              ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
-              : 'bg-violet-50 text-violet-600 border-violet-200 hover:bg-violet-100'
-          }`}
-        >
-          <PlusIcon className="w-3.5 h-3.5" /> Issue Referral
-        </button>
+        <div className="flex items-center gap-2">
+          {isUnderMediation && (
+            <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">
+              Cannot issue referral during mediation
+            </span>
+          )}
+          <button
+            onClick={() => setShowIssueModal(true)}
+            disabled={isReadOnly || isUnderMediation}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors ${
+              isReadOnly || isUnderMediation
+                ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                : 'bg-violet-50 text-violet-600 border-violet-200 hover:bg-violet-100'
+            }`}
+          >
+            <PlusIcon className="w-3.5 h-3.5" /> Issue Referral
+          </button>
+        </div>
       }
     >
+
+      {isUnderMediation && (
+        <div className="mb-4 p-4 rounded-xl border border-amber-200 bg-amber-50/70 flex items-start gap-3">
+          <div className="mt-0.5 shrink-0 text-amber-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-amber-800">Referrals Restricted</h4>
+            <p className="text-sm text-amber-700 mt-1">
+              This case is currently undergoing mediation. You cannot issue new referrals until 3 mediation sessions are completed or the case is resolved.
+            </p>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="animate-pulse flex flex-col gap-3">
@@ -77,7 +107,7 @@ export function ReferralsTab({ caseId, isReadOnly, caseNumber, childName, onRefr
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">{referral.referredTo}</p>
                   {referral.grounds && (
-                    <p className="text-sm text-gray-700 mt-1 leading-relaxed whitespace-pre-wrap">{referral.grounds}</p>
+                    <p className="text-sm text-gray-700 mt-1 leading-relaxed whitespace-pre-wrap break-words">{referral.grounds}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-3">

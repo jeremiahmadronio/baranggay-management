@@ -304,14 +304,13 @@ export default function BcpcReportsPage() {
 
   const handlePrintReport = () => {
     const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-    const safeStats = stats || { totalCases: 0, resolvedCases: 0, closedCases: 0, activeIntervention: 0 };
-    const effPct = safeStats.totalCases > 0 ? (safeStats.resolvedCases / safeStats.totalCases) * 100 : 0;
+    const safeStats = stats || { totalCases: 0, referredCases: 0, settledCases: 0, mostNatureCases: "N/A" };
     
     const kpiCards = [
       { label: "Total Cases", value: safeStats.totalCases, sub: "Filed within period" },
-      { label: "Resolved Cases", value: safeStats.resolvedCases, sub: `${effPct.toFixed(0)}% resolution rate` },
-      { label: "Closed Cases", value: safeStats.closedCases, sub: "Closed / Dismissed" },
-      { label: "Active Intervention", value: safeStats.activeIntervention, sub: "Under Mediation" },
+      { label: "Referred Cases", value: safeStats.referredCases, sub: "Referred outside" },
+      { label: "Most Nature Cases", value: safeStats.mostNatureCases, sub: "Top reported type" },
+      { label: "Settled Cases", value: safeStats.settledCases, sub: "Successfully resolved" },
     ];
     
     const kpiHtml = kpiCards.map((k) => `
@@ -535,11 +534,10 @@ export default function BcpcReportsPage() {
 
   const safeStats = {
     totalCases: stats?.totalCases ?? 0,
-    resolvedCases: stats?.resolvedCases ?? 0,
-    closedCases: stats?.closedCases ?? 0,
-    activeIntervention: stats?.activeIntervention ?? 0,
+    referredCases: stats?.referredCases ?? 0,
+    settledCases: stats?.settledCases ?? 0,
+    mostNatureCases: stats?.mostNatureCases ?? "N/A",
   };
-  const effPct = safeStats.totalCases > 0 ? (safeStats.resolvedCases / safeStats.totalCases) * 100 : 0;
   
   const totalNature = nature.reduce((s, i) => s + i.count, 0);
   const sortedNature = [...nature].sort((a, b) => b.count - a.count);
@@ -631,28 +629,27 @@ export default function BcpcReportsPage() {
             trend={typeof stats?.totalCasesTrend === 'number' ? { value: `${Math.abs(Number(stats.totalCasesTrend.toFixed(1)))}%`, direction: stats.totalCasesTrend > 0 ? 'up' : stats.totalCasesTrend < 0 ? 'down' : 'neutral', label: 'vs prev. period' } : undefined}
           />
           <KPICard
-            title="Resolved Cases"
-            value={safeStats.resolvedCases.toLocaleString()}
+            title="Referred Cases"
+            value={safeStats.referredCases.toLocaleString()}
+            icon={<CircleAlert className="w-6 h-6" />}
+            color="violet"
+            subtitle="Cases referred to outside agency"
+            trend={typeof stats?.referredCasesTrend === 'number' ? { value: `${Math.abs(Number(stats.referredCasesTrend.toFixed(1)))}%`, direction: stats.referredCasesTrend > 0 ? 'up' : stats.referredCasesTrend < 0 ? 'down' : 'neutral', label: 'vs prev. period' } : undefined}
+          />
+          <KPICard
+            title="Most Nature Cases"
+            value={safeStats.mostNatureCases}
+            icon={<Timer className="w-6 h-6" />}
+            color="amber"
+            subtitle="Top reported incident type"
+          />
+          <KPICard
+            title="Settled Cases"
+            value={safeStats.settledCases.toLocaleString()}
             icon={<CheckCircle2 className="w-6 h-6" />}
             color="emerald"
-            subtitle={`${formatPercent(effPct)} overall resolution rate`}
-            trend={typeof stats?.resolvedCasesTrend === 'number' ? { value: `${Math.abs(Number(stats.resolvedCasesTrend.toFixed(1)))}%`, direction: stats.resolvedCasesTrend > 0 ? 'up' : stats.resolvedCasesTrend < 0 ? 'down' : 'neutral', label: 'vs prev. period' } : undefined}
-          />
-          <KPICard
-            title="Closed Cases"
-            value={safeStats.closedCases.toLocaleString()}
-            icon={<ArchiveX className="w-6 h-6" />}
-            color="rose"
-            subtitle="Closed or dismissed cases"
-            trend={typeof stats?.closedCasesTrend === 'number' ? { value: `${Math.abs(Number(stats.closedCasesTrend.toFixed(1)))}%`, direction: stats.closedCasesTrend > 0 ? 'up' : stats.closedCasesTrend < 0 ? 'down' : 'neutral', label: 'vs prev. period' } : undefined}
-          />
-          <KPICard
-            title="Active Intervention"
-            value={safeStats.activeIntervention.toLocaleString()}
-            icon={<Timer className="w-6 h-6" />}
-            color="violet"
-            subtitle="Under Mediation / Intervention"
-            trend={typeof stats?.activeInterventionTrend === 'number' ? { value: `${Math.abs(Number(stats.activeInterventionTrend.toFixed(1)))}%`, direction: stats.activeInterventionTrend > 0 ? 'up' : stats.activeInterventionTrend < 0 ? 'down' : 'neutral', label: 'vs prev. period' } : undefined}
+            subtitle="Successfully resolved"
+            trend={typeof stats?.settledCasesTrend === 'number' ? { value: `${Math.abs(Number(stats.settledCasesTrend.toFixed(1)))}%`, direction: stats.settledCasesTrend > 0 ? 'up' : stats.settledCasesTrend < 0 ? 'down' : 'neutral', label: 'vs prev. period' } : undefined}
           />
         </KPIGrid>
 

@@ -5,7 +5,7 @@ import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
 import { Table, type TableColumn } from "../../../reusable";
 import { TableFilter } from "../../../hooks/TableFilter";
 import { ActionModal } from "../../../hooks/SuccessModal";
-import { ArchiveReasonModal } from "../../../hooks/archive-modal";
+import { ConfirmModal } from "../../../reusable";
 import type {
   DocketTableParams,
   BlotterSummaryDTO,
@@ -49,7 +49,7 @@ const formatDate = (dateStr: string) => {
 const PAGE_SIZE = 10;
 
 const STATUS_FILTER_OPTIONS = [
-  { label: "Pending", value: "PENDING" },
+  { label: "Ongoing", value: "PENDING" },
   { label: "Settled", value: "SETTLED" },
   { label: "Dismissed", value: "DISMISSED" },
   { label: "Under Mediation", value: "UNDER_MEDIATION" },
@@ -58,7 +58,6 @@ const STATUS_FILTER_OPTIONS = [
   { label: "Certified to File Action", value: "CERTIFIED_TO_FILE_ACTION" },
   { label: "Withdrawn", value: "WITHDRAWN" },
   { label: "Closed", value: "CLOSED" },
-  { label: "Expired / Unactioned", value: "EXPIRED_UNACTIONED" },
 ];
 
 
@@ -169,9 +168,13 @@ const KapitanaDocketview = () => {
       }
       const data = await getDocketTable(p);
       setTableData(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
-      setCurrentPage(data.number ?? 0);
+      // Spring Boot 3.1+ wraps pagination metadata under a nested 'page' object
+      const totalPages = (data as any).page?.totalPages ?? data.totalPages ?? 1;
+      const totalElements = (data as any).page?.totalElements ?? data.totalElements ?? 0;
+      const currentNumber = (data as any).page?.number ?? data.number ?? 0;
+      setTotalPages(totalPages);
+      setTotalElements(totalElements);
+      setCurrentPage(currentNumber);
     } catch {
       console.error("Failed to load records.");
     } finally {
@@ -333,17 +336,21 @@ const KapitanaDocketview = () => {
     {
       key: "status",
       header: "Status",
+      align: "center",
       width: "175px",
       render: (item) => {
         const docketStatus = String(item.status || "")
           .toUpperCase()
           .trim();
+        const displayStatus = docketStatus === "PENDING" ? "ONGOING" : docketStatus ? docketStatus.replace(/_/g, " ") : "UNKNOWN";
         return (
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusPillClass(docketStatus)}`}
-          >
-            {docketStatus ? docketStatus.replace(/_/g, " ") : "UNKNOWN"}
-          </span>
+          <div className="flex justify-center">
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${getStatusPillClass(docketStatus)}`}
+            >
+              {displayStatus}
+            </span>
+          </div>
         );
       },
     },
@@ -439,14 +446,14 @@ const KapitanaDocketview = () => {
       </ActionModal>
 
       {archiveEntry && (
-        <ArchiveReasonModal
+        <ConfirmModal
           isOpen={!!archiveEntry}
-          onClose={() => setArchiveEntry(null)}
           title="Archive Docket Case"
-          subjectName={archiveEntry.blotterNumber}
-          subjectLabel="case"
-          submitLabel="Archive"
-          onSubmit={handleArchiveSubmit}
+          message={`Are you sure you want to archive case ${archiveEntry.blotterNumber}?`}
+          onConfirm={() => handleArchiveSubmit("Case Archived")}
+          onCancel={() => setArchiveEntry(null)}
+          type="warning"
+          confirmText="Archive"
         />
       )}
 

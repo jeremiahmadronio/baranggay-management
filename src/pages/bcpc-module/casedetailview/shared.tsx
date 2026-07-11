@@ -32,7 +32,7 @@ export function InfoField({
   return (
     <div>
       <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-sm text-gray-700">{display}</p>
+      <p className="text-sm text-gray-700 break-words break-all">{display}</p>
     </div>
   );
 }

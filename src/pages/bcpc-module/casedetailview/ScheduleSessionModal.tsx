@@ -33,6 +33,7 @@ const getTimeStatus = (s: string, e: string): TimeStatus => {
   if (!s||!e) return null;
   const sm=timeToMin(s), em=timeToMin(e);
   if (em<=sm) return 'end_before_start';
+  
   if ((sm>=timeToMin('07:00')&&em<=timeToMin('11:30'))||(sm>=timeToMin('13:00')&&em<=timeToMin('17:00'))) return 'valid';
   if (sm<timeToMin('11:30')&&em>timeToMin('13:00')) return 'crosses_lunch';
   return 'outside';
@@ -56,12 +57,15 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    if (d.getDay() === 0 || d.getDay() === 6) return '';
+    return toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+  });
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [venueOption, setVenueOption] = useState(VENUE_OPTIONS[0]);
   const [customVenue, setCustomVenue] = useState('');
-  const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -86,7 +90,7 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
     try {
       setLoading(true);
       setError('');
-      await onSave({ date: selectedDate, startTime, endTime, venue: finalVenue, notes: notes.trim() });
+      await onSave({ date: selectedDate, startTime, endTime, venue: finalVenue, notes: '' });
     } catch (err: any) {
       setError(err.message || 'Failed to schedule mediation');
     } finally {
@@ -101,7 +105,7 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
           <div>
             <h3 className="text-base font-semibold text-gray-900">Schedule Mediation #{sessionNumber}</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Pick a date, set a time within office hours, then confirm. A summon letter (Paanyaya) will be generated automatically.</p>
+            <p className="text-sm text-gray-500 mt-0.5">Pick a date, set a time within office hours, then confirm. You can generate the summon letter (Paanyaya) manually afterwards.</p>
           </div>
           <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
             <XIcon className="w-4 h-4" />
@@ -122,17 +126,20 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
             <div className="grid grid-cols-7 gap-y-1">
               {Array.from({ length: firstDay }).map((_,i) => <div key={`e${i}`} />)}
               {Array.from({ length: daysInMonth }, (_,i)=>i+1).map(day => {
+                const dateObj = new Date(viewYear, viewMonth, day);
+                const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
                 const ds = toDateStr(viewYear, viewMonth, day);
                 const isPast = ds < todayStr;
+                const isDisabled = isPast || isWeekend;
                 const isSel = ds === selectedDate;
                 const isToday = ds === todayStr;
                 return (
-                  <button key={day} disabled={isPast} onClick={() => setSelectedDate(ds)}
+                  <button key={day} disabled={isDisabled} onClick={() => setSelectedDate(ds)}
                     className={`relative mx-auto w-9 h-9 rounded-full text-xs font-semibold flex items-center justify-center transition-all
-                      ${isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 cursor-pointer'}
+                      ${isDisabled ? 'text-gray-300 cursor-not-allowed bg-gray-50/50' : 'hover:bg-blue-50 cursor-pointer'}
                       ${isSel ? 'bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-600' : ''}
                       ${isToday&&!isSel ? 'ring-2 ring-blue-400 text-blue-600' : ''}
-                      ${!isSel&&!isToday&&!isPast ? 'text-gray-700' : ''}`}>
+                      ${!isSel&&!isToday&&!isDisabled ? 'text-gray-700' : ''}`}>
                     {day}
                   </button>
                 );
@@ -208,13 +215,7 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
               )}
             </div>
 
-            {/* Notes */}
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Notes (Optional)</p>
-              <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}
-                placeholder="Additional instructions for the parties..."
-                className="w-full px-3 py-2.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-white text-gray-800" />
-            </div>
+
 
             {error && (
               <div className="flex items-start gap-1.5 p-2.5 bg-red-50 border border-red-200 rounded-md">

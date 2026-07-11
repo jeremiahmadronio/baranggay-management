@@ -71,10 +71,15 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
       window.location.href = "/login";
       throw new Error("Session expired. Please login again.");
     }
-    const contentType = response.headers.get("content-type");
-    const errMsg = contentType?.includes("application/json")
-      ? (await response.json().catch(() => ({}))).message
-      : await response.text();
+    let errMsg = "";
+    if (contentType?.includes("application/json")) {
+      const errJson = await response.json().catch(() => ({}));
+      console.error("Backend Error JSON:", errJson);
+      errMsg = errJson.message || JSON.stringify(errJson);
+    } else {
+      errMsg = await response.text();
+      console.error("Backend Error Text:", errMsg);
+    }
     throw new Error(errMsg || `HTTP error! status: ${response.status}`);
   }
   if (response.status === 204) return {} as T;
@@ -133,17 +138,17 @@ export interface BcpcCaseSummaryDTO {
 }
 
 export interface BcpcStatsDTO {
-  totalPending: number;
-  totalClosed: number;
-  totalExpiringSoon: number;
   totalCases: number;
+  totalOngoing: number;
+  totalReferred: number;
+  totalSettled: number;
 }
 
 export interface BcpcArchiveStatsDTO {
   totalArchived: number;
   totalWithdrawn: number;
-  totalResolved: number;
-  totalExpired: number;
+  totalSettled: number;
+  totalReferred: number;
 }
 
 export interface SpringPage<T> {

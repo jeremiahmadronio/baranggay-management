@@ -40,6 +40,7 @@ import { ChangeStatusModal } from "./modal/ChangeStatusModal";
 import { EditCaseModal } from "./modal/EditCaseModal";
 import { ActionModal } from "./reusable/SuccessModal";
 import { StatusUpdateModal } from "../../reusable/StatusUpdateModal";
+import { DismissCaseModal } from "../../reusable/DismissCaseModal";
 import { PermissionDeniedPage } from "./reusable/PermissionDeniedPage";
 import { CenteredLoader, CircleLoader } from "../../hooks/LoadingStates";
 import { ArchiveReasonModal } from "../../hooks/archive-modal";
@@ -72,6 +73,18 @@ export function BlotterDocketDetailView({
   openEditOnLoad = false,
   caseId,
 }: Props) {
+  const [overrideBlotterNumber, setOverrideBlotterNumber] = useState<string | null>(null);
+  const activeBlotterNumber = overrideBlotterNumber || blotterNumber;
+
+  const handleNavigateLinkedCase = (caseNum: string) => {
+    setOverrideBlotterNumber(caseNum);
+    setActiveTab("overview");
+  };
+
+  const handleBack = () => {
+    onBack();
+  };
+
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [docket, setDocket] = useState<BlotterDocketViewDTO | null>(null);
   const [mediation, setMediation] = useState<MediationProcessDTO | null>(null);
@@ -159,14 +172,16 @@ export function BlotterDocketDetailView({
   // ── Refresh data ──
   const refreshData = async () => {
     try {
-      const [d, m, h] = await Promise.all([
-        getFullBlotterDocket(blotterNumber),
-        getMediationProcess(blotterNumber),
-        getHearingView(blotterNumber),
+      const [d, m, h, n] = await Promise.all([
+        getFullBlotterDocket(activeBlotterNumber),
+        getMediationProcess(activeBlotterNumber),
+        getHearingView(activeBlotterNumber),
+        getCaseNotes(activeBlotterNumber),
       ]);
       setDocket(d);
       setMediation(m);
       setHearings(h);
+      setNotes(n);
     } catch (err) {
       console.error(err);
     }
@@ -184,7 +199,7 @@ export function BlotterDocketDetailView({
     setActionLoading(true);
     try {
       await updateCaseStatus({
-        blotterNumber,
+        blotterNumber: activeBlotterNumber,
         newStatus: statusToSend,
         reason: reasonToSend,
       });
@@ -216,7 +231,7 @@ export function BlotterDocketDetailView({
     }
     setActionLoading(true);
     try {
-      const newCaseNumber = await reopenCaseApi(blotterNumber, reason);
+      const newCaseNumber = await reopenCaseApi(activeBlotterNumber, reason);
       setModal(null);
       setNewReopenedCaseNumber(newCaseNumber);
       setShowReopenSuccess(true);
@@ -235,14 +250,18 @@ export function BlotterDocketDetailView({
       setDetailsLoading(true);
       setError(null);
       try {
-        const [d, m, natures] = await Promise.all([
-          getFullBlotterDocket(blotterNumber),
-          getMediationProcess(blotterNumber),
+        const [d, m, natures, h, n] = await Promise.all([
+          getFullBlotterDocket(activeBlotterNumber),
+          getMediationProcess(activeBlotterNumber),
           getNatureOfComplaintOptions(),
+          getHearingView(activeBlotterNumber),
+          getCaseNotes(activeBlotterNumber),
         ]);
         setDocket(d);
         setMediation(m);
         setNatureOptions(natures);
+        setHearings(h);
+        setNotes(n);
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "Failed to load case details.",
@@ -253,29 +272,29 @@ export function BlotterDocketDetailView({
       }
     };
     load();
-  }, [blotterNumber]);
+  }, [activeBlotterNumber]);
 
   // ── Hearings tab ──
   useEffect(() => {
     if (activeTab !== "hearings" && activeTab !== "timeline") return;
     setHearingsLoading(true);
-    getHearingView(blotterNumber)
+    getHearingView(activeBlotterNumber)
       .then(setHearings)
       .catch(console.error)
       .finally(() => setHearingsLoading(false));
-  }, [activeTab, blotterNumber]);
+  }, [activeTab, activeBlotterNumber]);
 
   // ── Notes tab ──
   const loadNotes = useCallback(async () => {
     setNotesLoading(true);
     try {
-      setNotes(await getCaseNotes(blotterNumber));
+      setNotes(await getCaseNotes(activeBlotterNumber));
     } catch (err) {
       console.error(err);
     } finally {
       setNotesLoading(false);
     }
-  }, [blotterNumber]);
+  }, [activeBlotterNumber]);
 
   useEffect(() => {
     if (activeTab !== "notes" && activeTab !== "timeline") return;
@@ -285,7 +304,7 @@ export function BlotterDocketDetailView({
   const handleReferConfirm = async (members: any[]) => {
     setActionLoading(true);
     try {
-      await referToLupon(blotterNumber, { members });
+      await referToLupon(activeBlotterNumber, { members });
       setModal(null);
       setShowReferSuccess(true);
       await refreshData();
@@ -342,7 +361,7 @@ export function BlotterDocketDetailView({
         <AlertCircleIcon className="w-8 h-8 text-red-400" />
         <p className="text-sm text-red-500">{error ?? "Case not found."}</p>
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="text-sm text-blue-500 hover:underline"
         >
           Go Back
@@ -356,7 +375,7 @@ export function BlotterDocketDetailView({
         message="You do not have permission to view this case."
         hint="View Cases permission is required to open docket details."
         actionLabel="Back to Docket"
-        onAction={onBack}
+        onAction={handleBack}
       />
     );
   }
@@ -375,7 +394,7 @@ export function BlotterDocketDetailView({
 
         {modal === "refer" && (
           <ReferToLuponModal
-            blotterNumber={blotterNumber}
+            blotterNumber={activeBlotterNumber}
             complainantName={`${docket.firstName} ${docket.lastName}`}
             loading={actionLoading}
             onConfirm={handleReferConfirm}
@@ -398,7 +417,7 @@ export function BlotterDocketDetailView({
             isOpen
             onClose={() => setModal(null)}
             title="Mark Case as Settled"
-            subjectName={blotterNumber}
+            subjectName={activeBlotterNumber}
             subjectLabel="case"
             submitLabel="Mark as Settled"
             placeholder="Provide settlement details..."
@@ -407,15 +426,11 @@ export function BlotterDocketDetailView({
         )}
 
         {modal === "dismiss" && (
-          <ArchiveReasonModal
+          <DismissCaseModal
             isOpen
             onClose={() => setModal(null)}
-            title="Close / Dismiss Case"
-            subjectName={blotterNumber}
-            subjectLabel="case"
-            submitLabel="Close Case"
-            placeholder="Provide reason for closing/dismissal..."
-            onSubmit={(reason) => handleUpdateStatus("DISMISSED", reason)}
+            onSubmit={(base64Data) => handleUpdateStatus("DISMISSED", base64Data)}
+            dismissedBy={`${docket.firstName} ${docket.lastName}`}
           />
         )}
 
@@ -441,7 +456,7 @@ export function BlotterDocketDetailView({
 
         {modal === "schedule" && (
           <ScheduleHearingModal
-            blotterNumber={blotterNumber}
+            blotterNumber={activeBlotterNumber}
             hearingNumber={hearings.length + 1}
             caseNumber={docket.caseNumber}
             natureOfComplaint={resolvedNatureOfComplaint}
@@ -488,7 +503,7 @@ export function BlotterDocketDetailView({
           <FollowUpModal
             hearingId={followUpHearing.hearingId}
             hearingNumber={followUpHearing.hearingNumber}
-            caseNumber={blotterNumber}
+            caseNumber={activeBlotterNumber}
             hasPermission={canManageMediation}
             onSuccess={async () => {
               await refreshData();
@@ -547,7 +562,7 @@ export function BlotterDocketDetailView({
           isOpen={showReopenSuccess}
           onClose={() => {
             setShowReopenSuccess(false);
-            onBack();
+            handleNavigateLinkedCase(newReopenedCaseNumber);
           }}
           title="Case Reopened Successfully"
           type="success"
@@ -558,7 +573,7 @@ export function BlotterDocketDetailView({
         {/* ── HEADER ── */}
         <div>
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-4 transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" /> Back to Docket
@@ -615,6 +630,7 @@ export function BlotterDocketDetailView({
             onDismissCase={() => setModal("dismiss")}
             onIssueCFA={() => setModal("issueCFA")}
             onReopenCase={() => setModal("reopen")}
+            onNavigateLinkedCase={handleNavigateLinkedCase}
           />
         )}
 
@@ -624,7 +640,7 @@ export function BlotterDocketDetailView({
             hearingsLoading={hearingsLoading}
             caseStatus={docket.caseStatus}
             hasPermission={canManageMediation && !isOfflineRecord}
-            blotterNumber={blotterNumber}
+            blotterNumber={activeBlotterNumber}
             caseNumber={docket.caseNumber}
             natureOfComplaint={resolvedNatureOfComplaint}
             complainantName={`${docket.firstName} ${docket.lastName}`}
@@ -645,7 +661,7 @@ export function BlotterDocketDetailView({
           <NotesTab
             notes={notes}
             notesLoading={notesLoading}
-            blotterNumber={blotterNumber}
+            blotterNumber={activeBlotterNumber}
             caseStatus={docket.caseStatus}
             hasManageNotes={canManageCaseNotes}
             onNoteAdded={loadNotes}
@@ -653,7 +669,7 @@ export function BlotterDocketDetailView({
         )}
 
         {activeTab === "timeline" && (
-          <TimelineTab blotterNumber={blotterNumber} />
+          <TimelineTab blotterNumber={activeBlotterNumber} />
         )}
       </div>
     </div>

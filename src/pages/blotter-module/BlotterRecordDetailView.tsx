@@ -17,6 +17,7 @@ import { NarrativeViewer } from "./shared/NarrativeViewer";
 import { formatDate, formatTime } from "./shared/utils";
 import { generateInvitation } from "./modal/GenerateInvitation";
 import { InvitationPreview } from "./modal/InvitationPreview";
+import { EvidenceViewer } from "./shared/EvidenceViewer";
 import { closeRecordCase, getSettlementDocument } from "../../service/blotter-api/RecordView";
 import { Upload, X, PrinterIcon, Download } from "lucide-react";
 import { TimelineTab } from "../admin-module/blotter-docket/tabs/TimeLineTab";
@@ -313,19 +314,29 @@ const BlotterRecordDetailViewPage: React.FC = () => {
                 title="Incident Details"
                 icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
               >
-                {record.evidenceNames && record.evidenceNames.length > 0 ? (
+                {record.evidences && record.evidences.length > 0 ? (
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1.5">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-2">
                       Evidence Submitted
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {record.evidenceNames.map((name, idx) => (
-                        <span
-                          key={`${name}-${idx}`}
-                          className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full"
+                    <div className="flex flex-col gap-2">
+                      {record.evidences.map((ev) => (
+                        <div
+                          key={ev.recordId}
+                          className="flex flex-col gap-1 p-2.5 rounded-lg border border-gray-100 bg-gray-50/50"
                         >
-                          {name}
-                        </span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-800">
+                              {ev.customDescription || ev.typeName}
+                            </span>
+                            {ev.hasFile && (
+                              <EvidenceViewer
+                                recordId={ev.recordId}
+                                fileName={ev.customDescription || ev.typeName}
+                              />
+                            )}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>

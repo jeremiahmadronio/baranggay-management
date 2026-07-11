@@ -38,9 +38,7 @@ import type {
 } from "../../service/blotter-api/BlotterFormComplaint";
 function generateBlotterNumber(): string {
   const year = new Date().getFullYear();
-  return `${year}-BLT-${Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, "0")}`;
+  return `${year}-BLT-XXX`;
 }
 type Mode = "record" | "formal";
 type Errors = Record<string, string>;
@@ -67,6 +65,8 @@ export default function BlotterEntryForm() {
     checkPerm();
   }, []);
   const [mode, setMode] = useState<Mode>("record");
+  const recordStateRef = useRef<any>(null);
+  const formalStateRef = useRef<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -132,7 +132,9 @@ export default function BlotterEntryForm() {
   const [selectedEvidence, setSelectedEvidence] = useState<Set<number>>(
     new Set(),
   );
+  const [evidenceFiles, setEvidenceFiles] = useState<Record<number, File | null>>({});
   const [customEvidence, setCustomEvidence] = useState("");
+  const [customEvidenceFile, setCustomEvidenceFile] = useState<File | null>(null);
   const [witnesses, setWitnesses] = useState<WitnessEntry[]>([
     {
       personId: 0,
@@ -159,6 +161,44 @@ export default function BlotterEntryForm() {
     };
     init();
   }, []);
+
+  const saveCurrentModeState = (currentMode: Mode) => {
+    const state = {
+      complainant,
+      respondent,
+      incident,
+      narrativeFile,
+      selectedEvidence,
+      evidenceFiles,
+      customEvidence,
+      customEvidenceFile,
+      witnesses,
+      assignedOfficerId,
+      certified,
+    };
+    if (currentMode === "record") recordStateRef.current = state;
+    else formalStateRef.current = state;
+  };
+
+  const loadTargetModeState = (targetMode: Mode) => {
+    const state = targetMode === "record" ? recordStateRef.current : formalStateRef.current;
+    if (state) {
+      setComplainant(state.complainant);
+      setRespondent(state.respondent);
+      setIncident(state.incident);
+      setNarrativeFile(state.narrativeFile);
+      setSelectedEvidence(state.selectedEvidence);
+      setEvidenceFiles(state.evidenceFiles);
+      setCustomEvidence(state.customEvidence);
+      setCustomEvidenceFile(state.customEvidenceFile);
+      setWitnesses(state.witnesses);
+      setAssignedOfficerId(state.assignedOfficerId);
+      setCertified(state.certified);
+    } else {
+      resetForm();
+    }
+  };
+
   const updateComplainant = (field: keyof ComplainantState, value: any) =>
     setComplainant((prev) => ({
       ...prev,
@@ -181,6 +221,9 @@ export default function BlotterEntryForm() {
       else next.add(id);
       return next;
     });
+  };
+  const setEvidenceFile = (id: number, file: File | null) => {
+    setEvidenceFiles((prev) => ({ ...prev, [id]: file }));
   };
   const addWitness = () =>
     setWitnesses((w) => [
@@ -249,7 +292,9 @@ export default function BlotterEntryForm() {
     });
     setNarrativeFile(null);
     setSelectedEvidence(new Set());
+    setEvidenceFiles({});
     setCustomEvidence("");
+    setCustomEvidenceFile(null);
     setAssignedOfficerId("");
     setWitnesses([
       {
@@ -380,6 +425,8 @@ export default function BlotterEntryForm() {
         e.rFirstName = "First name is required.";
       if (!respondent.relationship)
         e.rRelationship = "Relationship to complainant is required.";
+      if (!respondent.livingWith)
+        e.rLivingWith = "Please indicate if respondent is currently living with complainant.";
       // Witness fullName validation for formal complaints
       witnesses.forEach((w, idx) => {
         // Only require fullName if at least one other field is filled (not all blank)
@@ -400,6 +447,12 @@ export default function BlotterEntryForm() {
     const selectedEvidenceOptions = evidenceOptions.filter((option) =>
       selectedEvidence.has(option.id),
     );
+    selectedEvidenceOptions.forEach((option) => {
+      if (!evidenceFiles[option.id]) {
+        e[`evidenceFile_${option.id}`] = "File is required for selected evidence.";
+      }
+    });
+
     const hasSelectedOthersEvidence = selectedEvidenceOptions.some((option) =>
       /\bother(s)?\b/i.test(option.typName),
     );
@@ -408,6 +461,9 @@ export default function BlotterEntryForm() {
         'Please specify details for the selected "Others" evidence.';
     } else if (customEvidence.trim().length > MAX_CUSTOM_EVIDENCE_LENGTH) {
       e.customEvidence = `Other evidence must not exceed ${MAX_CUSTOM_EVIDENCE_LENGTH} characters.`;
+    }
+    if (customEvidence.trim().length > 0 && !customEvidenceFile) {
+      e.customEvidenceFile = "File is required for specified evidence.";
     }
 
     if (mode === "formal" && !incident.frequency)
@@ -446,10 +502,12 @@ export default function BlotterEntryForm() {
             `Witness ${idx + 1} address must not exceed ${MAX_WITNESS_ADDRESS_LENGTH} characters.`;
         }
 
-        const testimony = (w.testimony ?? "").trim();
-        if (testimony.length > MAX_WITNESS_TESTIMONY_LENGTH) {
+        if (!w.testimonyFile) {
           e[`witnessTestimony${idx}`] =
-            `Witness ${idx + 1} testimony must not exceed ${MAX_WITNESS_TESTIMONY_LENGTH} characters.`;
+            `Witness ${idx + 1} testimony image is required.`;
+        } else if (!w.testimonyFile.type.startsWith("image/")) {
+          e[`witnessTestimony${idx}`] =
+            `Witness ${idx + 1} testimony must be an image file (JPG, PNG, etc.).`;
         }
       });
     }
@@ -541,9 +599,38 @@ export default function BlotterEntryForm() {
             : {}),
         };
         const evidenceIds = buildEvidenceIds();
-        if (evidenceIds.length) payload.evidenceTypeIds = evidenceIds;
-        if (customEvidence.trim())
-          payload.customEvidence = customEvidence.trim();
+        const evidencesList: any[] = [];
+        
+        for (const id of evidenceIds) {
+          const isOthers = evidenceOptions.find((o) => o.id === Number(id))?.typName.toLowerCase().includes("other");
+          // For 'others', prioritize the customEvidenceFile if provided, otherwise fallback to the inline file.
+          const file = isOthers ? (customEvidenceFile || evidenceFiles[Number(id)]) : evidenceFiles[Number(id)];
+          if (!file) throw new Error(`Missing file for evidence type ${id}`);
+          
+          const base64 = await fileToBase64(file);
+          evidencesList.push({
+            evidenceTypeId: id,
+            fileData: base64,
+            customDescription: isOthers ? customEvidence.trim() : undefined,
+          });
+        }
+        
+        // Handle case where user filled out "Other/Specify" but didn't check the checkbox
+        const othersOption = evidenceOptions.find(o => /other(s)?/i.test(o.typName));
+        if (othersOption && customEvidence.trim().length > 0 && customEvidenceFile) {
+          const alreadyAdded = evidencesList.some(e => String(e.evidenceTypeId) === String(othersOption.id));
+          if (!alreadyAdded) {
+            const base64 = await fileToBase64(customEvidenceFile);
+            evidencesList.push({
+              evidenceTypeId: String(othersOption.id),
+              fileData: base64,
+              customDescription: customEvidence.trim(),
+            });
+          }
+        }
+        
+        if (evidencesList.length) payload.evidences = evidencesList;
+        
         resultBlotterNo = await submitForTheRecord(payload);
       } else {
         const payload = {
@@ -585,17 +672,46 @@ export default function BlotterEntryForm() {
 
           descriptionOfInjuries: incident.injuryDesc || undefined,
           narrativeStatement: narrativeBase64,
-          evidenceTypeIds: buildEvidenceIds().length
-            ? buildEvidenceIds()
-            : undefined,
-          customEvidence: customEvidence.trim() || undefined,
+          evidences: await (async () => {
+            const evidenceIds = buildEvidenceIds();
+            const evidencesList: any[] = [];
+            
+            for (const id of evidenceIds) {
+              const isOthers = evidenceOptions.find((o) => o.id === Number(id))?.typName.toLowerCase().includes("other");
+              const file = isOthers ? (customEvidenceFile || evidenceFiles[Number(id)]) : evidenceFiles[Number(id)];
+              if (!file) throw new Error(`Missing file for evidence type ${id}`);
+              
+              const base64 = await fileToBase64(file);
+              evidencesList.push({
+                evidenceTypeId: id,
+                fileData: base64,
+                customDescription: isOthers ? customEvidence.trim() : undefined,
+              });
+            }
+            
+            const othersOption = evidenceOptions.find(o => /other(s)?/i.test(o.typName));
+            if (othersOption && customEvidence.trim().length > 0 && customEvidenceFile) {
+              const alreadyAdded = evidencesList.some(e => String(e.evidenceTypeId) === String(othersOption.id));
+              if (!alreadyAdded) {
+                const base64 = await fileToBase64(customEvidenceFile);
+                evidencesList.push({
+                  evidenceTypeId: String(othersOption.id),
+                  fileData: base64,
+                  customDescription: customEvidence.trim(),
+                });
+              }
+            }
+            return evidencesList.length > 0 ? evidencesList : undefined;
+          })(),
           assignToId: assignedOfficerId ? Number(assignedOfficerId) : undefined,
-          witnesses: witnesses
-            .filter((w) => (w.fullName ?? "").trim())
-            .map((w) => ({
-              ...w,
-              testimony: (w.testimony ?? "").trim(),
-            })),
+          witnesses: await Promise.all(
+            witnesses
+              .filter((w) => (w.fullName ?? "").trim())
+              .map(async (w) => ({
+                ...w,
+                testimonyFile: w.testimonyFile ? await fileToBase64(w.testimonyFile) : undefined,
+              }))
+          ),
           certifiedTrue: certified,
         };
         resultBlotterNo = await submitFormalComplaint(payload);
@@ -656,8 +772,12 @@ export default function BlotterEntryForm() {
             value="record"
             checked={mode === "record"}
             onChange={() => {
-              setMode("record");
-              setErrors({});
+              if (mode !== "record") {
+                saveCurrentModeState(mode);
+                loadTargetModeState("record");
+                setMode("record");
+                setErrors({});
+              }
             }}
             title="For the Record Only"
             description="Walk-in consultation or blotter entry without formal complaint yet. (Para sa rekord lang)"
@@ -667,8 +787,12 @@ export default function BlotterEntryForm() {
             value="formal"
             checked={mode === "formal"}
             onChange={() => {
-              setMode("formal");
-              setErrors({});
+              if (mode !== "formal") {
+                saveCurrentModeState(mode);
+                loadTargetModeState("formal");
+                setMode("formal");
+                setErrors({});
+              }
             }}
             title="Formal Complaint"
             description="Formal complaint requiring barangay intervention. May involve mediation or legal action."
@@ -813,10 +937,14 @@ export default function BlotterEntryForm() {
           optionsLoading={optionsLoading}
           evidenceOptions={evidenceOptions}
           selectedEvidence={selectedEvidence}
+          evidenceFiles={evidenceFiles}
           toggleEvidence={toggleEvidence}
+          setEvidenceFile={setEvidenceFile}
           customEvidence={customEvidence}
           setCustomEvidence={setCustomEvidence}
-          error={errors.customEvidence}
+          customEvidenceFile={customEvidenceFile}
+          setCustomEvidenceFile={setCustomEvidenceFile}
+          errors={errors}
           clearErr={() => clearErr("customEvidence")}
         />
 

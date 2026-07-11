@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Eye, Archive, RotateCcw, ShieldOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { ArchiveReasonModal } from "../../hooks/archive-modal";
+import { ConfirmModal } from "../../reusable";
 import { ActionModal } from "../../hooks/SuccessModal";
 import { restoreCase } from "../../service/bcpc-api/CaseDetail";
 
@@ -33,6 +33,7 @@ const getStatusDisplay = (status: string) => {
   if (normalizeStatus(status) === "elevated to formal")
     return "ESCALATED TO CASE";
   if (normalizeStatus(status) === "recorded") return "RECORDED";
+  if (normalizeStatus(status) === "issued referral") return "REFERRED";
   return status.replace(/_/g, " ").toUpperCase();
 };
 
@@ -40,7 +41,6 @@ const getStatusPillClass = (status: string) => {
   switch (status) {
     case "PENDING":
       return "bg-amber-50 text-amber-700 border border-amber-200";
-    case "UNDER_MEDIATION":
     case "UNDER_MEDIATION":
       return "bg-sky-50 text-sky-700 border border-sky-200";
     case "UNDER_CONCILIATION":
@@ -145,8 +145,9 @@ export default function BcpcArchivePage() {
         size:   SIZE,
       });
       setCases(page.content ?? []);
-      setTotalElements(page.totalElements ?? 0);
-      setTotalPages(page.totalPages ?? 0);
+      const totalElems = page.page?.totalElements ?? page.totalElements;
+      setTotalElements(totalElems !== undefined ? totalElems : (page.content?.length ?? 0));
+      setTotalPages(page.page?.totalPages ?? page.totalPages ?? 1);
     } catch (err: any) {
       setTableError(err?.message || "Failed to load archived BCPC cases.");
       setCases([]);
@@ -164,6 +165,12 @@ export default function BcpcArchivePage() {
 
   // ── Table columns ────────────────────────────────────────────────────────────
   const columns: TableColumn<BcpcCaseSummaryDTO>[] = [
+    {
+      key: "index" as any,
+      header: "#",
+      align: "center",
+      render: (_, index) => currentPage * SIZE + index + 1,
+    },
     { key: "caseNumber", header: "CASE NUMBER", align: "left" },
     {
       key: "victimFullName",
@@ -318,18 +325,18 @@ export default function BcpcArchivePage() {
               subtitle="Cases withdrawn by complainant"
             />
             <KPICard
-              title="Settled / Resolved"
-              value={loading ? "—" : (stats?.totalResolved ?? 0).toLocaleString()}
+              title="Settled Cases"
+              value={loading ? "—" : (stats?.totalSettled ?? 0).toLocaleString()}
               icon={KPIIcons["check"]}
               color="emerald"
               subtitle="Successfully settled BCPC cases"
             />
             <KPICard
-              title="Total Expired"
-              value={loading ? "—" : (stats?.totalExpired ?? 0).toLocaleString()}
-              icon={KPIIcons["error"]}
-              color="rose"
-              subtitle="Cases expired without action"
+              title="Referred Cases"
+              value={loading ? "—" : (stats?.totalReferred ?? 0).toLocaleString()}
+              icon={KPIIcons["issued"]}
+              color="violet"
+              subtitle="Cases referred to outside agency"
             />
           </KPIGrid>
         </div>
@@ -342,15 +349,14 @@ export default function BcpcArchivePage() {
         )}
 
         {restoreEntry && (
-          <ArchiveReasonModal
-            isOpen={!!restoreEntry}
-            onClose={() => setRestoreEntry(null)}
+          <ConfirmModal
+            isOpen={restoreEntry !== null}
             title="Restore Archived Case"
-            subjectName={restoreEntry.caseNumber}
-            subjectLabel="case"
-            submitLabel="Restore"
-            placeholder="Provide reason for restoring this case..."
-            onSubmit={handleRestoreSubmit}
+            message={`Are you sure you want to restore case ${restoreEntry.caseNumber}?`}
+            onConfirm={() => handleRestoreSubmit("Case Restored")}
+            onCancel={() => setRestoreEntry(null)}
+            type="info"
+            confirmText="Restore"
           />
         )}
 
@@ -399,8 +405,8 @@ export default function BcpcArchivePage() {
           minRows={SIZE}
           onRowClick={(item) => { if (canView) navigate(`/bcpc/casedetailview?id=${item.id}`); }}
           pagination={{
-            currentPage: Math.min(currentPage + 1, Math.max(1, totalPages || 0)),
-            totalPages: Math.max(1, totalPages || 0),
+            currentPage: Math.min(currentPage + 1, Math.max(1, totalPages || 1)),
+            totalPages: Math.max(1, totalPages || 1),
             totalItems: totalElements,
             itemsPerPage: SIZE,
             onPageChange: (p) => setCurrentPage(p - 1),

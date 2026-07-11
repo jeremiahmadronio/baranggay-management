@@ -280,14 +280,15 @@ export default function BcpcNewCaseEntryPage() {
     if (!cAge.trim()) e.cAge = "Age is required.";
     if (!cGender) e.cGender = "Gender is required.";
     if (!cAddress.trim()) e.cAddress = "Complete address is required.";
-    if (!cRelationship) e.cRelationship = "Relationship is required.";
+    if (cGuardian.trim() && !cRelationship) e.cRelationship = "Relationship is required.";
     if (!rLastName.trim()) e.rLastName = "Last name is required.";
     if (!rFirstName.trim()) e.rFirstName = "First name is required.";
-    if (!relationship) e.relationship = "Relationship is required.";
+    if (rGuardian.trim() && !relationship) e.relationship = "Relationship is required.";
     if (!incidentDate) e.incidentDate = "Date of incident is required.";
     if (!incidentPlace.trim()) e.incidentPlace = "Place of incident is required.";
     if (!frequency) e.frequency = "Frequency is required.";
     if (!natureOfCase) e.natureOfCase = "Nature of complaint is required.";
+    if (!violenceType) e.violenceType = "Type of violence is required.";
     if (!narrativeFile) e.narrative = "Narrative file is required.";
     if (!certified) e.certified = "You must certify before filing.";
     setErrors(e);
@@ -337,7 +338,7 @@ export default function BcpcNewCaseEntryPage() {
         childGuardian: (cParent || cGuardian) ? `${cParent || ""} - ${cGuardian || ""}` : undefined,
         childContact: cContact || undefined,
         childAddress: cAddress,
-        childRelationship: cRelationship,
+        childRelationship: cRelationship || undefined,
 
         respondentPersonId: rPersonId,
         respondentFirstName: rFirstName,
@@ -350,7 +351,7 @@ export default function BcpcNewCaseEntryPage() {
         respondentGuardian: (rParent || rGuardian) ? `${rParent || ""} - ${rGuardian || ""}` : undefined,
         respondentContact: rContact || undefined,
         respondentAddress: rAddress || undefined,
-        relationshipToChild: relationship,
+        relationshipToChild: relationship || undefined,
 
         natureOfCase: natureOfCase || "Child Protection Concern",
         violenceType: violenceType || undefined,
@@ -619,6 +620,7 @@ export default function BcpcNewCaseEntryPage() {
             <div className="col-span-2">
               <FormInput
                 label="School Name"
+                maxLength={100}
                 value={cSchool}
                 onChange={(e) => setCSchool(e.target.value)}
                 placeholder="e.g. Bagong Bayan Elementary"
@@ -628,6 +630,7 @@ export default function BcpcNewCaseEntryPage() {
           <FormRow cols={3}>
             <FormInput
               label="Parent Name"
+              maxLength={100}
               value={cParent}
               onChange={(e) => { if (!cPersonId) setCParent(e.target.value); }}
               disabled={!!cPersonId}
@@ -636,6 +639,7 @@ export default function BcpcNewCaseEntryPage() {
             />
             <FormInput
               label="Guardian Name"
+              maxLength={100}
               value={cGuardian}
               onChange={(e) => setCGuardian(e.target.value)}
               placeholder="e.g. Juan Dela Cruz (Optional)"
@@ -643,7 +647,7 @@ export default function BcpcNewCaseEntryPage() {
             <FormSelect
               id="field-cRelationship"
               label="Relationship to Child"
-              required
+              required={!!cGuardian.trim()}
               value={cRelationship}
               onChange={(e) => { setCRelationship(e.target.value); clearErr("cRelationship"); }}
               options={RELATIONSHIP_OPTIONS}
@@ -817,6 +821,7 @@ export default function BcpcNewCaseEntryPage() {
             <div className="col-span-2">
               <FormInput
                 label="School Name"
+                maxLength={100}
                 value={rSchool}
                 onChange={(e) => setRSchool(e.target.value)}
                 placeholder="e.g. Bagong Bayan Elementary"
@@ -826,6 +831,7 @@ export default function BcpcNewCaseEntryPage() {
           <FormRow cols={3}>
             <FormInput
               label="Parent Name"
+              maxLength={100}
               value={rParent}
               onChange={(e) => { if (!rPersonId) setRParent(e.target.value); }}
               disabled={!!rPersonId}
@@ -834,6 +840,7 @@ export default function BcpcNewCaseEntryPage() {
             />
             <FormInput
               label="Guardian Name"
+              maxLength={100}
               value={rGuardian}
               onChange={(e) => setRGuardian(e.target.value)}
               placeholder="e.g. Juan Dela Cruz (Optional)"
@@ -841,7 +848,7 @@ export default function BcpcNewCaseEntryPage() {
             <FormSelect
               id="field-relationship"
               label="Relationship to Child"
-              required
+              required={!!rGuardian.trim()}
               value={relationship}
               onChange={(e) => { setRelationship(e.target.value); clearErr("relationship"); }}
               options={RELATIONSHIP_OPTIONS}
@@ -885,11 +892,14 @@ export default function BcpcNewCaseEntryPage() {
               error={errors.natureOfCase}
             />
             <FormSelect
+              id="field-violenceType"
               label="Type of Violence"
+              required
               value={violenceType}
-              onChange={(e) => setViolenceType(e.target.value)}
+              onChange={(e) => { setViolenceType(e.target.value); clearErr("violenceType"); }}
               options={VIOLENCE_TYPE_OPTIONS}
               placeholder="Select Violence Type"
+              error={errors.violenceType}
             />
             <FormSelect
               id="field-frequency"

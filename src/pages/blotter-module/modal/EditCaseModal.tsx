@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { XIcon, SearchIcon, UserIcon, ChevronDownIcon } from "lucide-react";
+import { XIcon, SearchIcon, UserIcon } from "lucide-react";
 import type {
   EditComplaintEntry,
   EvidenceOptionDTO,
@@ -22,12 +22,14 @@ import {
   getOfficerOptions,
   updateCaseInformation,
 } from "../../../service/blotter-api/BlotterFormComplaint";
-import { PersonSearchInput } from "../reusable/PersonSearchInput";
 import { formatDate } from "../shared/utils";
+import { EvidenceSection } from "../blotter-form/EvidenceSection";
+import { WitnessSection } from "../blotter-form/WitnessSection";
+import { EvidenceViewer } from "../shared/EvidenceViewer";
 
 const MAX_WITNESS_TESTIMONY_LENGTH = 500;
+const MAX_WITNESS_NAME_LENGTH = 100;
 const MAX_FIRST_NAME_LENGTH = 50;
-const INITIAL_EVIDENCE_VISIBLE = 6;
 const MAX_MIDDLE_NAME_LENGTH = 50;
 const MAX_LAST_NAME_LENGTH = 50;
 const MAX_ALIAS_LENGTH = 50;
@@ -38,7 +40,6 @@ const MAX_ADDRESS_LENGTH = 255;
 const MAX_RELATIONSHIP_LENGTH = 80;
 const MAX_PLACE_LENGTH = 150;
 const MAX_NARRATIVE_LENGTH = 2000;
-const MAX_WITNESS_NAME_LENGTH = 100;
 
 interface Props {
   docket: BlotterDocketViewDTO;
@@ -147,18 +148,22 @@ export function EditCaseModal({
   const [selectedRespondentName, setSelectedRespondentName] = useState("");
   const [showAllEvidence, setShowAllEvidence] = useState(false);
 
-  const [witnesses, setWitnesses] = useState<WitnessEntry[]>(
+  const [witnesses, setWitnesses] = useState<(WitnessEntry & { testimonyFile?: File | null })[]>(
     (docket.witnesses ?? []).map((w) => ({
       personId: w.personId ?? 0,
       fullName: w.fullName ?? "",
       contactNumber: w.contactNumber ?? "",
       address: w.address ?? "",
       testimony: w.testimony ?? "",
+      testimonyFile: null,
     })),
   );
-  const [selectedEvidence, setSelectedEvidence] = useState<Set<string>>(
-    new Set((docket.evidenceTypeIds ?? []).map(String)),
-  );
+
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<number>>(new Set());
+  const [lockedEvidenceIds, setLockedEvidenceIds] = useState<Set<number>>(new Set());
+  const [evidenceFiles, setEvidenceFiles] = useState<Record<number, File | null>>({});
+  const [customEvidence, setCustomEvidence] = useState("");
+  const [customEvidenceFile, setCustomEvidenceFile] = useState<File | null>(null);
 
   const [natureOptions, setNatureOptions] = useState<NatureOptionDTO[]>([]);
   const [evidenceOptions, setEvidenceOptions] = useState<EvidenceOptionDTO[]>(
@@ -185,9 +190,14 @@ export function EditCaseModal({
         contactNumber: w.contactNumber ?? "",
         address: w.address ?? "",
         testimony: w.testimony ?? "",
+        testimonyFile: null,
       })),
     );
-    setSelectedEvidence(new Set((docket.evidenceTypeIds ?? []).map(String)));
+    setSelectedEvidenceIds(new Set());
+    setLockedEvidenceIds(new Set());
+    setEvidenceFiles({});
+    setCustomEvidence("");
+    setCustomEvidenceFile(null);
   }, [docket]);
 
   useEffect(() => {
@@ -202,16 +212,17 @@ export function EditCaseModal({
         setEvidenceOptions(evidences);
         setOfficerOptions(officers);
 
-        setSelectedEvidence((prev) => {
-          const next = new Set<string>();
-          prev.forEach((val) => {
-            if (!isNaN(Number(val)) && val.trim() !== "") {
-              next.add(val);
-            } else {
-              const found = evidences.find((e) => e.typName === val);
-              if (found) next.add(String(found.id));
+        setSelectedEvidenceIds((prev) => {
+          const next = new Set<number>();
+          (docket.evidences ?? []).forEach((ev) => {
+            if (ev.evidenceTypeId !== null && ev.evidenceTypeId !== undefined) {
+              next.add(Number(ev.evidenceTypeId));
+            } else if (ev.typeName) {
+              const found = evidences.find((e) => e.typName === ev.typeName);
+              if (found) next.add(found.id);
             }
           });
+          setLockedEvidenceIds(new Set(next));
           return next;
         });
 
@@ -291,14 +302,30 @@ export function EditCaseModal({
     setLockRespondentFields(false);
   };
 
-  const toggleEvidence = (id: string) => {
-    setSelectedEvidence((prev) => {
+  const toggleEvidence = (id: number) => {
+    setSelectedEvidenceIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
   };
+
+  const setEvidenceFile = (id: number, file: File | null) => {
+    setEvidenceFiles((prev) => ({ ...prev, [id]: file }));
+  };
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64Data = result.split(",")[1];
+        resolve(base64Data);
+      };
+      reader.onerror = (error) => reject(error);
+    });
 
   const addWitness = () =>
     setWitnesses((prev) => [
@@ -309,6 +336,7 @@ export function EditCaseModal({
         contactNumber: "",
         address: "",
         testimony: "",
+        testimonyFile: null,
       },
     ]);
 
@@ -317,8 +345,8 @@ export function EditCaseModal({
 
   const updateWitness = (
     index: number,
-    field: keyof WitnessEntry,
-    value: string | number,
+    field: keyof WitnessEntry | "testimonyFile",
+    value: any,
   ) =>
     setWitnesses((prev) =>
       prev.map((w, i) => (i === index ? { ...w, [field]: value } : w)),
@@ -388,16 +416,53 @@ export function EditCaseModal({
         narrativeStatement: form.narrativeStatement.trim(),
 
         assignToId: form.assignToId ? Number(form.assignToId) : null,
-        evidenceTypeIds: Array.from(selectedEvidence),
-        witnesses: witnesses
-          .filter((w) => (w.fullName ?? "").trim())
-          .map((w) => ({
-            personId: w.personId ?? 0,
-            fullName: (w.fullName ?? "").trim(),
-            contactNumber: (w.contactNumber ?? "").trim() || undefined,
-            address: (w.address ?? "").trim() || undefined,
-            testimony: (w.testimony ?? "").trim() || undefined,
-          })),
+        evidenceTypeIds: Array.from(selectedEvidenceIds).map(String),
+        evidences: await (async () => {
+          const evidencesList: any[] = [];
+          for (const id of Array.from(selectedEvidenceIds)) {
+            const isOthers = evidenceOptions.find((o) => o.id === id)?.typName.toLowerCase().includes("other");
+            const file = isOthers ? (customEvidenceFile || evidenceFiles[id]) : evidenceFiles[id];
+            
+            // For editing, if there's no new file provided, we just send the evidenceTypeId in the other list. 
+            // We only upload new base64 files if the user actually chose a new file.
+            if (file) {
+              const base64 = await fileToBase64(file);
+              evidencesList.push({
+                evidenceTypeId: String(id),
+                fileData: base64,
+                customDescription: isOthers ? customEvidence.trim() : undefined,
+              });
+            }
+          }
+          
+          const othersOption = evidenceOptions.find(o => /other(s)?/i.test(o.typName));
+          if (othersOption && customEvidence.trim().length > 0 && customEvidenceFile) {
+            const alreadyAdded = evidencesList.some(e => String(e.evidenceTypeId) === String(othersOption.id));
+            if (!alreadyAdded) {
+              const base64 = await fileToBase64(customEvidenceFile);
+              evidencesList.push({
+                evidenceTypeId: String(othersOption.id),
+                fileData: base64,
+                customDescription: customEvidence.trim(),
+              });
+              // also add to IDs just in case
+              payload.evidenceTypeIds!.push(String(othersOption.id));
+            }
+          }
+          return evidencesList.length > 0 ? evidencesList : undefined;
+        })(),
+        witnesses: await Promise.all(
+          witnesses
+            .filter((w) => (w.fullName ?? "").trim())
+            .map(async (w) => ({
+              personId: w.personId ?? 0,
+              fullName: (w.fullName ?? "").trim(),
+              contactNumber: (w.contactNumber ?? "").trim() || undefined,
+              address: (w.address ?? "").trim() || undefined,
+              testimony: (w.testimony ?? "").trim() || undefined,
+              testimonyFile: w.testimonyFile ? await fileToBase64(w.testimonyFile) : undefined,
+            }))
+        ),
       };
 
       await updateCaseInformation(caseId, payload);
@@ -471,18 +536,17 @@ export function EditCaseModal({
                     <label className="text-sm font-medium text-slate-700">
                       Assigned Officer <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      className="input" value={form.assignToId} disabled
-                      onChange={(e) => setField("assignToId", e.target.value)}
-                    >
-                      <option value="">Select assigned officer</option>
-                      {officerOptions.map((o) => (
-                        <option key={o.id} value={String(o.id)}>
-                          {o.name}
-                          {o.position ? ` (${o.position})` : ""}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      className="input bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
+                      value={(() => {
+                        const officer = officerOptions.find(o => String(o.id) === form.assignToId);
+                        if (officer) return `${officer.name}${officer.position ? ` (${officer.position})` : ""}`;
+                        return docket.assignOfficer || "Unassigned";
+                      })()}
+                      readOnly
+                      disabled
+                    />
                     {errors.assignToId && (
                       <p className="text-xs text-red-500">
                         {errors.assignToId}
@@ -853,167 +917,74 @@ export function EditCaseModal({
                   <label className="text-sm font-medium text-slate-700">
                     Narrative Statement <span className="text-red-500">*</span>
                   </label>
-                  <textarea
-                    className="input w-full min-h-[96px]"
-                    placeholder="Provide complete incident narrative..."
-                    value={form.narrativeStatement}
-                    maxLength={MAX_NARRATIVE_LENGTH} readOnly={true}
-                    onChange={(e) =>
-                      setField("narrativeStatement", e.target.value)
-                    }
-                  />
-                  <p className="text-[11px] text-right text-slate-400">
-                    {form.narrativeStatement.length}/{MAX_NARRATIVE_LENGTH}
-                  </p>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Evidence Types
-                  </p>
-                  {evidenceOptions.length > INITIAL_EVIDENCE_VISIBLE && (
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
-                      onClick={() => setShowAllEvidence((s) => !s)}
-                    >
-                      {showAllEvidence
-                        ? "See less"
-                        : `See more (${evidenceOptions.length - INITIAL_EVIDENCE_VISIBLE})`}
-                      <ChevronDownIcon
-                        className={`w-3.5 h-3.5 transition-transform ${showAllEvidence ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                  {(showAllEvidence
-                    ? evidenceOptions
-                    : evidenceOptions.slice(0, INITIAL_EVIDENCE_VISIBLE)
-                  ).map((ev) => {
-                    const key = String(ev.id);
-                    const checked = selectedEvidence.has(key);
-                    return (
-                      <label
-                        key={ev.id}
-                        className={`flex items-center gap-2 border rounded-lg px-3 py-2 text-sm cursor-pointer ${checked ? "border-blue-300 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-700"}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleEvidence(key)}
-                        />
-                        <span>{ev.typName}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Witnesses
-                  </p>
-                  <button
-                    type="button"
-                    onClick={addWitness}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    + Add Witness
-                  </button>
-                </div>
-
-                {witnesses.length === 0 && (
-                  <p className="text-sm text-gray-500">
-                    No witnesses added yet.
-                  </p>
-                )}
-
-                <div className="space-y-3">
-                  {witnesses.map((w, i) => (
-                    <div
-                      key={i}
-                      className="border border-gray-200 rounded-lg p-4 bg-gray-50/40 space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          Witness {i + 1}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => removeWitness(i)}
-                          className="text-xs text-gray-400 hover:text-red-500"
-                        >
-                          Remove
-                        </button>
-                      </div>
-
-                      
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input
-                          className="input"
-                          placeholder="Full name"
-                          value={w.fullName ?? ""}
-                          maxLength={MAX_WITNESS_NAME_LENGTH}
-                          onChange={(e) =>
-                            updateWitness(i, "fullName", e.target.value)
-                          }
-                        />
-                        <input
-                          className="input"
-                          placeholder="Contact"
-                          value={w.contactNumber ?? ""}
-                          maxLength={MAX_CONTACT_LENGTH}
-                          onChange={(e) =>
-                            updateWitness(i, "contactNumber", e.target.value)
-                          }
-                        />
-                        <p className="text-[11px] text-right text-slate-400 -mt-1 md:col-span-1">
-                          {(w.fullName ?? "").length}/{MAX_WITNESS_NAME_LENGTH}
-                        </p>
-                        <p className="text-[11px] text-right text-slate-400 -mt-1 md:col-span-1">
-                          {(w.contactNumber ?? "").length}/{MAX_CONTACT_LENGTH}
-                        </p>
-                      </div>
-                      <input
-                        className="input w-full"
-                        placeholder="Address"
-                        value={w.address ?? ""}
-                        maxLength={MAX_ADDRESS_LENGTH}
-                        onChange={(e) =>
-                          updateWitness(i, "address", e.target.value)
-                        }
-                      />
-                      <p className="text-[11px] text-right text-slate-400 -mt-2">
-                        {(w.address ?? "").length}/{MAX_ADDRESS_LENGTH}
+                  <div className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-300 bg-slate-50/60 rounded-xl px-6 py-6 cursor-not-allowed opacity-80">
+                    <svg className="w-8 h-8 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-700">
+                        Drag &amp; drop narrative file here
                       </p>
-                      <textarea
-                        className={`input w-full min-h-[84px] ${errors[`witnessTestimony${i}`] ? "border-red-400 bg-red-50" : ""}`}
-                        placeholder="Testimony (optional)"
-                        value={w.testimony ?? ""}
-                        maxLength={MAX_WITNESS_TESTIMONY_LENGTH} readOnly={true}
-                        onChange={(e) => {
-                          const sanitized = e.target.value.replace(/[^a-zA-Z0-9.,\s]/g, "");
-                          updateWitness(i, "testimony", sanitized);
-                        }}
-                      />
-                      <p className="text-xs text-gray-400">
-                        {(w.testimony ?? "").length}/
-                        {MAX_WITNESS_TESTIMONY_LENGTH}
+                      <p className="text-xs text-slate-400 mt-1">
+                        Cannot be modified in edit mode
                       </p>
-                      {errors[`witnessTestimony${i}`] && (
-                        <p className="text-xs text-red-500 -mt-1">
-                          {errors[`witnessTestimony${i}`]}
-                        </p>
-                      )}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </section>
+
+              {/* Read-only Evidence Display */}
+              {docket.evidences && docket.evidences.length > 0 && (
+                <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Evidence Submitted</p>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">Cannot be modified</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {docket.evidences.map((ev) => (
+                      <div
+                        key={ev.recordId}
+                        className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <svg className="w-4 h-4 flex-shrink-0 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          <span className="text-sm font-medium">{ev.customDescription || ev.typeName}</span>
+                        </div>
+                        {ev.hasFile && (
+                          <EvidenceViewer
+                            recordId={ev.recordId}
+                            fileName={ev.customDescription || ev.typeName}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <EvidenceSection
+                optionsLoading={loadingOptions}
+                evidenceOptions={evidenceOptions}
+                selectedEvidence={selectedEvidenceIds}
+                evidenceFiles={evidenceFiles}
+                toggleEvidence={toggleEvidence}
+                setEvidenceFile={setEvidenceFile}
+                customEvidence={customEvidence}
+                setCustomEvidence={setCustomEvidence}
+                customEvidenceFile={customEvidenceFile}
+                setCustomEvidenceFile={setCustomEvidenceFile}
+                errors={errors}
+                clearErr={() => setErrors((e) => { const ne = { ...e }; delete ne.evidence; return ne; })}
+                lockedEvidence={lockedEvidenceIds}
+              />
+
+              <WitnessSection
+                witnesses={witnesses}
+                addWitness={addWitness}
+                removeWitness={removeWitness}
+                updateWitness={updateWitness}
+                errors={errors}
+                clearErr={() => {}}
+                disableUpload={true}
+              />
             </>
           )}
 

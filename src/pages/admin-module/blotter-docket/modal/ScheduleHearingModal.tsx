@@ -19,7 +19,7 @@ import {
   getMarkers,
   getBusySlots,
 } from "../../../../service/blotter-api/DocketView";
-import { generatePaanyaya } from "../modal/GeneratePaanyaya";
+// Paanyaya auto-download disabled as per user request
 
 // ── Constants ──
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -110,6 +110,7 @@ const getTimeStatus = (start: string, end: string): TimeStatus => {
   const s = timeToMin(start);
   const e = timeToMin(end);
   if (e <= s) return "end_before_start";
+  
   const inMorning = s >= timeToMin("07:00") && e <= timeToMin("11:30");
   const inAfternoon = s >= timeToMin("13:00") && e <= timeToMin("17:00");
   if (inMorning || inAfternoon) return "valid";
@@ -280,19 +281,8 @@ export function ScheduleHearingModal({
       };
       await scheduleHearing(body);
 
-      generatePaanyaya({
-        blotterNumber,
-        caseNumber,
-        natureOfComplaint,
-        complainantName,
-        respondentName,
-        hearingNumber,
-        date: selectedDate,
-        startTime,
-        endTime,
-        venue: finalVenue,
-        ...BARANGAY_CONFIG,
-      });
+      // generatePaanyaya auto-download removed
+
 
       onSuccess();
     } catch (err: unknown) {
@@ -327,8 +317,8 @@ export function ScheduleHearingModal({
               Schedule Mediation #{hearingNumber}
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              Pick a date, set a time within office hours, then confirm. A
-              summon letter (Paanyaya) will be generated automatically.
+              Pick a date, set a time within office hours, then confirm. You can generate
+              the summon letter (Paanyaya) manually afterwards.
             </p>
           </div>
           <button
@@ -385,18 +375,21 @@ export function ScheduleHearingModal({
                   const isSelected = dateStr === selectedDate;
                   const hasMarker = (markerMap[dateStr] ?? 0) > 0;
                   const isPast = dateStr < todayStr;
+                  const dateObj = new Date(viewYear, viewMonth, day);
+                  const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+                  const isDisabled = isPast || isWeekend;
                   return (
                     <button
                       key={day}
-                      disabled={isPast}
+                      disabled={isDisabled}
                       onClick={() => setSelectedDate(dateStr)}
                       className={`
                       relative mx-auto w-9 h-9 rounded-full text-xs font-semibold
                       flex items-center justify-center transition-all
-                      ${isPast ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 cursor-pointer"}
+                      ${isDisabled ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 cursor-pointer"}
                       ${isSelected ? "bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-600" : ""}
                       ${isToday && !isSelected ? "ring-2 ring-blue-400 text-blue-600" : ""}
-                      ${!isSelected && !isToday && !isPast ? "text-gray-700" : ""}
+                      ${!isSelected && !isToday && !isDisabled ? "text-gray-700" : ""}
                     `}
                     >
                       {day}
@@ -612,14 +605,13 @@ export function ScheduleHearingModal({
               {loading && (
                 <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               )}
-              Schedule Mediation & Generate Summon
+              Schedule Mediation
             </button>
 
             {/* PDF notice */}
             <p className="text-[10px] text-gray-400 text-center leading-relaxed">
-              Summon letter (Paanyaya) will be generated as a PDF file
-              immediately after scheduling. Please download and print the
-              document to serve the parties.
+              Ang Paanyaya (summon letter) ay maaari mong i-download o i-print 
+              sa Mediation table pagkatapos mag-schedule.
             </p>
           </div>
         </div>

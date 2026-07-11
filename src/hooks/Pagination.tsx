@@ -5,6 +5,8 @@ interface PaginationProps {
   totalItems?: number;
   itemsPerPage?: number;
   showItemCount?: boolean;
+  /** Actual number of items on the current page (for accurate "Showing X–Y" display) */
+  currentPageItemCount?: number;
 }
 
 export const Pagination = ({
@@ -14,6 +16,7 @@ export const Pagination = ({
   totalItems,
   itemsPerPage = 10,
   showItemCount = true,
+  currentPageItemCount,
 }: PaginationProps) => {
   const safeTotalPages = Math.max(1, totalPages || 0);
   const safeCurrentPage = Math.min(
@@ -21,10 +24,16 @@ export const Pagination = ({
     safeTotalPages,
   );
 
-  const startItem = totalItems ? (safeCurrentPage - 1) * itemsPerPage + 1 : 0;
-  const endItem = totalItems
-    ? Math.min(safeCurrentPage * itemsPerPage, totalItems)
-    : 0;
+  const startItem =
+    totalItems && totalItems > 0
+      ? (safeCurrentPage - 1) * itemsPerPage + 1
+      : 0;
+  const endItem =
+    totalItems && totalItems > 0
+      ? currentPageItemCount !== undefined
+        ? startItem + currentPageItemCount - 1
+        : Math.min(safeCurrentPage * itemsPerPage, totalItems)
+      : 0;
 
   const canGoPrev = safeCurrentPage > 1;
   const canGoNext = safeCurrentPage < safeTotalPages;

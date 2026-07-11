@@ -2,8 +2,8 @@ import {
   SectionCard,
   FormRow,
   FormInput,
-  FormTextarea,
 } from "../reusable/FormComponents";
+import { UploadCloudIcon, FileTextIcon, XCircleIcon } from "lucide-react";
 import { PersonSearchInput } from "../reusable/PersonSearchInput";
 import {
   type WitnessEntry,
@@ -18,7 +18,14 @@ import {
 
 const MAX_WITNESS_FULL_NAME_LENGTH = 80;
 const MAX_WITNESS_ADDRESS_LENGTH = 180;
-const MAX_WITNESS_TESTIMONY_LENGTH = 500;
+const MAX_MB = 10;
+const MAX_BYTES = MAX_MB * 1024 * 1024;
+
+const formatSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
 
 interface WitnessSectionProps {
   witnesses: WitnessEntry[];
@@ -143,20 +150,92 @@ export const WitnessSection = ({
               }}
             />
 
-            <FormTextarea
-              id={`field-witnessTestimony${i}`}
-              label="Testimony"
-              placeholder="Enter witness testimony / statement..."
-              value={w.testimony ?? ""}
-              rows={3}
-              maxLength={MAX_WITNESS_TESTIMONY_LENGTH}
-              error={errors[`witnessTestimony${i}`]}
-              hint={`Max ${MAX_WITNESS_TESTIMONY_LENGTH} characters`}
-              onChange={(e) => {
-                updateWitness(i, "testimony", e.target.value);
-                clearErr(`witnessTestimony${i}`);
-              }}
-            />
+            <div className="md:col-span-2">
+              <label className="text-sm font-semibold text-slate-700 tracking-wide mb-1 block">
+                Witness Photo / Signature Image (Images Only)
+              </label>
+
+              {!w.testimonyFile ? (
+                <div
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0] || null;
+                    if (file) {
+                      if (!file.type.startsWith("image/")) {
+                        alert("Only image files are allowed (JPG, PNG, etc.).");
+                        return;
+                      }
+                      if (file.size <= MAX_BYTES) {
+                        updateWitness(i, "testimonyFile", file);
+                        clearErr(`witnessTestimony${i}`);
+                      }
+                    }
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => document.getElementById(`field-witnessTestimony-kap-${i}`)?.click()}
+                  className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl px-6 py-6 cursor-pointer transition-colors ${
+                    errors?.[`witnessTestimony${i}`]
+                      ? "border-red-300 bg-red-50/40"
+                      : "border-slate-300 bg-slate-50/60 hover:border-blue-400 hover:bg-blue-50/40"
+                  }`}
+                >
+                  <UploadCloudIcon className="w-8 h-8 text-slate-400" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-slate-700">
+                      Drag &amp; drop witness image here
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      or click to browse — .jpg, .jpeg, .png (images only)
+                    </p>
+                  </div>
+                  <input
+                    id={`field-witnessTestimony-kap-${i}`}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      if (file) {
+                        if (!file.type.startsWith("image/")) {
+                          alert("Only image files are allowed (JPG, PNG, etc.).");
+                          e.target.value = "";
+                          return;
+                        }
+                        if (file.size <= MAX_BYTES) {
+                          updateWitness(i, "testimonyFile", file);
+                          clearErr(`witnessTestimony${i}`);
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <FileTextIcon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">
+                      {w.testimonyFile.name}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {formatSize(w.testimonyFile.size)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => updateWitness(i, "testimonyFile", undefined)}
+                    className="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors"
+                    title="Remove file"
+                  >
+                    <XCircleIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+              {errors[`witnessTestimony${i}`] && (
+                <p className="text-xs text-red-500 mt-1">{errors[`witnessTestimony${i}`]}</p>
+              )}
+            </div>
           </div>
         ))}
       </div>

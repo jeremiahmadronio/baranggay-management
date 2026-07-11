@@ -41,8 +41,8 @@ export interface MinutesSummaryDTO {
   respondentPresent: boolean;
   hearingNotes: string;
   outcome: string;
-
   recordedBy: string;
+  settlementTerms?: string;
 }
 
 export interface FollowUpSummaryDTO {
@@ -108,13 +108,23 @@ export interface WitnessDTO {
   fullName: string;
   contactNumber?: string;
   address?: string;
-  testimony?: string;
+  testimonyFile?: string;
+}
+
+export interface HistoricalCaseDTO {
+  caseNumber: string;
+  status: string;
+  dateFiled: string;
+  relationshipType: string;
 }
 
 //docket view all info
 export interface BlotterDocketViewDTO {
   caseId?: number;
   id?: number;
+  previousCaseNumber?: string;
+  reopenedCaseNumber?: string;
+  caseHistory?: HistoricalCaseDTO[];
   mediationDeadline: string;
   daysRemaining: number;
   caseNumber: string;
@@ -154,13 +164,21 @@ export interface BlotterDocketViewDTO {
   descriptionOfInjuries?: string;
   narrative: string;
 
-  evidenceTypeIds: string[];
+  evidences: EvidenceViewDTO[];
   witnesses: WitnessDTO[];
   agreementsTerm?: string;
   agreementDate?: string;
   luponManagement: CaseHandleByDTO[];
   assignOfficer: string;
   _offline?: boolean;
+}
+
+export interface EvidenceViewDTO {
+  recordId: number;
+  evidenceTypeId: number | null;
+  typeName: string;
+  customDescription: string | null;
+  hasFile: boolean;
 }
 
 export interface CaseHandleByDTO {

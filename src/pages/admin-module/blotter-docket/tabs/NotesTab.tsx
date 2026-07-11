@@ -53,7 +53,6 @@ export function NotesTab({
       <SectionCard
         title="Case Notes"
         icon={<FileTextIcon className="w-4 h-4 text-gray-400" />}
-        action={undefined}
         action={
           hasManageNotes && !isTerminal ? (
             <button

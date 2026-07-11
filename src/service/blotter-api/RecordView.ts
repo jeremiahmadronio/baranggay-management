@@ -52,10 +52,18 @@ export interface BlotterRecordViewDTO {
   timeOfIncident: string;
   placeOfIncident: string;
 
-  evidenceNames: string[];
+  evidences: EvidenceViewDTO[];
   settledAt?: string;
   settlementVenue?: string;
   hasSettlementDocument?: boolean;
+}
+
+export interface EvidenceViewDTO {
+  recordId: number;
+  evidenceTypeId: number | null;
+  typeName: string;
+  customDescription: string | null;
+  hasFile: boolean;
 }
 
 export interface FtrSummaryStatsDTO {
@@ -155,6 +163,13 @@ export async function getSettlementDocument(
 ): Promise<string> {
   const data = await apiFetch<{ narrative: string }>(
     `${BLOTTER_URL}/${encodeURIComponent(caseNumber)}/settlement-document`,
+  );
+  return data?.narrative ?? "";
+}
+
+export async function getEvidenceFile(evidenceId: number): Promise<string> {
+  const data = await apiFetch<{ narrative: string }>(
+    `${BLOTTER_URL}/evidence/${evidenceId}/file`,
   );
   return data?.narrative ?? "";
 }

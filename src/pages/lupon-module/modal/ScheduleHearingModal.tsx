@@ -272,8 +272,8 @@ export function ScheduleHearingModal({
               Schedule Conciliation #{hearingNumber}
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              Pick a date, set a time within office hours, then confirm. A
-              summon letter (Paanyaya) will be generated automatically.
+              Pick a date, set a time within office hours, then confirm. You can generate
+              the summon letter (Paanyaya) manually afterwards.
             </p>
           </div>
           <button

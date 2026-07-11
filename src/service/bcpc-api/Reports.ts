@@ -4,12 +4,11 @@ const BCPC_REPORTS_URL = `${BASE}/api/v1/bcpc-reports`;
 export interface BcpcReportStatsDTO {
   totalCases: number;
   totalCasesTrend: number;
-  resolvedCases: number;
-  resolvedCasesTrend: number;
-  closedCases: number;
-  closedCasesTrend: number;
-  activeIntervention: number;
-  activeInterventionTrend: number;
+  referredCases: number;
+  referredCasesTrend: number;
+  settledCases: number;
+  settledCasesTrend: number;
+  mostNatureCases: string;
 }
 
 export interface ChartDataDTO {

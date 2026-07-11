@@ -175,9 +175,54 @@ export function TimelineTab({ caseNumber }: TimelineTabProps) {
                       </div>
 
                       {event.description && (
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {event.description}
-                        </p>
+                        <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap break-words mt-2">
+                          {(() => {
+                            const isBase64Attachment = event.description.length > 300 && 
+                              (event.description.includes('iVBORw') || event.description.includes('JVBERi') || event.description.includes('/9j/'));
+                            
+                            if (isBase64Attachment) {
+                              const parts = event.description.split('Reason:');
+                              const textPart = parts[0]?.length > parts[1]?.length ? parts[1] : parts[0];
+                              const base64Match = event.description.match(/[A-Za-z0-9+/=]{100,}/);
+                              const base64Str = base64Match ? base64Match[0] : '';
+                              
+                              let mime = 'application/octet-stream';
+                              let ext = 'file';
+                              if (base64Str.startsWith('JVBERi')) { mime = 'application/pdf'; ext = 'pdf'; }
+                              else if (base64Str.startsWith('iVBORw')) { mime = 'image/png'; ext = 'png'; }
+                              else if (base64Str.startsWith('/9j/')) { mime = 'image/jpeg'; ext = 'jpg'; }
+                              else if (base64Str.startsWith('UEsDBB')) { mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'; ext = 'docx'; }
+                              else if (base64Str.startsWith('0M8R4KGxGuE')) { mime = 'application/msword'; ext = 'doc'; }
+                              
+                              const dataUrl = base64Str ? `data:${mime};base64,${base64Str}` : '#';
+
+                              return (
+                                <div className="flex flex-col items-start gap-1">
+                                  {textPart ? <span>Reason: {textPart.replace(/[A-Za-z0-9+/=]{100,}/g, '')}</span> : null}
+                                  {base64Str && (
+                                    <button 
+                                      onClick={() => {
+                                        const byteCharacters = atob(base64Str);
+                                        const byteNumbers = new Array(byteCharacters.length);
+                                        for (let i = 0; i < byteCharacters.length; i++) {
+                                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                        }
+                                        const byteArray = new Uint8Array(byteNumbers);
+                                        const blob = new Blob([byteArray], { type: mime });
+                                        const blobUrl = URL.createObjectURL(blob);
+                                        window.open(blobUrl, '_blank');
+                                        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors px-2.5 py-1.5 rounded-md border border-blue-200 font-medium mt-1 cursor-pointer">
+                                      <FileTextIcon className="w-4 h-4" /> Attached Narrative Document
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return <p>{event.description}</p>;
+                          })()}
+                        </div>
                       )}
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-gray-400">

@@ -29,13 +29,14 @@ import type { CaseNoteViewDTO } from '../../../service/blotter-api/DocketView';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Pending',
+  PENDING: 'Ongoing',
   ONGOING: 'Ongoing',
-  UNDER_INTERVENTION: 'Under Intervention',
-  UNDER_MEDIATION: 'Under Intervention', // Map it in case Blotter enum is used
+  UNDER_INTERVENTION: 'Under Mediation',
+  UNDER_MEDIATION: 'Under Mediation', // Map it in case Blotter enum is used
   RESOLVED: 'Resolved',
   SETTLED: 'Resolved',
   REFERRED: 'Referred',
+  ISSUED_REFERRAL: 'Referred',
   CERTIFIED_TO_FILE_ACTION: 'Certified to File Action',
   WITHDRAWN: 'Withdrawn',
   DISMISSED: 'Dismissed',
@@ -43,12 +44,13 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_PILL: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
-  ONGOING: 'bg-blue-50 text-blue-700 border border-blue-200',
+  ONGOING: 'bg-amber-50 text-amber-700 border border-amber-200',
   UNDER_INTERVENTION: 'bg-sky-50 text-sky-700 border border-sky-200',
   UNDER_MEDIATION: 'bg-sky-50 text-sky-700 border border-sky-200',
   RESOLVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   SETTLED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   REFERRED: 'bg-violet-50 text-violet-700 border border-violet-200',
+  ISSUED_REFERRAL: 'bg-violet-50 text-violet-700 border border-violet-200',
   CERTIFIED_TO_FILE_ACTION: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
   WITHDRAWN: 'bg-gray-100 text-gray-600 border border-gray-200',
   DISMISSED: 'bg-rose-50 text-rose-700 border border-rose-200',
@@ -337,6 +339,7 @@ export default function BcpcCaseDetailsPage({ isAdminView = false }: { isAdminVi
             childName={childFullName}
             respondentName={respondentFullName}
             natureOfComplaint={caseData.natureOfComplaint}
+            onRefresh={fetchCase}
           />
         )}
 
@@ -370,6 +373,7 @@ export default function BcpcCaseDetailsPage({ isAdminView = false }: { isAdminVi
             isReadOnly={isReadOnly}
             caseNumber={caseData.caseNumber}
             childName={childFullName}
+            caseStatus={caseData.caseStatus}
             onRefresh={fetchCase}
           />
         )}

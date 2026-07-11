@@ -172,16 +172,19 @@ export function BlotterDocketDetailView({
         setDocket(mockFullBlotterDocket(blotterNumber));
         setMediation(mockMediationProcess());
         setHearings(mockHearingsView());
+        setNotes(mockCaseNotes());
         return;
       }
-      const [d, m, h] = await Promise.all([
+      const [d, m, h, n] = await Promise.all([
         getFullBlotterDocket(blotterNumber),
         getMediationProcess(blotterNumber),
         getHearingView(blotterNumber),
+        getCaseNotes(blotterNumber),
       ]);
       setDocket(d);
       setMediation(m);
       setHearings(h);
+      setNotes(n);
     } catch (err) {
       console.error(err);
     }
@@ -266,14 +269,20 @@ export function BlotterDocketDetailView({
         if (useKapitanaMockData()) {
           setDocket(mockFullBlotterDocket(blotterNumber));
           setMediation(mockMediationProcess());
+          setHearings(mockHearingsView());
+          setNotes(mockCaseNotes());
           return;
         }
-        const [d, m] = await Promise.all([
+        const [d, m, h, n] = await Promise.all([
           getFullBlotterDocket(blotterNumber),
           getMediationProcess(blotterNumber),
+          getHearingView(blotterNumber),
+          getCaseNotes(blotterNumber),
         ]);
         setDocket(d);
         setMediation(m);
+        setHearings(h);
+        setNotes(n);
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "Failed to load case details.",

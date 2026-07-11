@@ -13,6 +13,12 @@ export interface EvidenceOptionDTO {
   typName: string;
 }
 
+export interface EvidenceUploadDTO {
+  evidenceTypeId: string;
+  fileData: string;
+  customDescription?: string;
+}
+
 export interface OfficerOptionDTO {
   id: number;
   name: string;
@@ -48,6 +54,7 @@ export interface RecordBlotterEntry {
   narrativeStatement: string;
 
   evidenceTypeIds?: string[];
+  evidences?: EvidenceUploadDTO[];
 }
 
 export interface WitnessEntry {
@@ -56,6 +63,7 @@ export interface WitnessEntry {
   contactNumber?: string;
   address?: string;
   testimony?: string;
+  testimonyFile?: string;
 }
 
 export interface FormalComplaintEntry {
@@ -96,6 +104,7 @@ export interface FormalComplaintEntry {
   narrativeStatement: string;
 
   evidenceTypeIds?: string[];
+  evidences?: EvidenceUploadDTO[];
 
   witnesses?: WitnessEntry[];
   certifiedTrue?: boolean;
@@ -139,7 +148,9 @@ export interface EditComplaintEntry {
 
   assignToId: number | null;
 
-  evidenceTypeIds: string[];
+  evidenceTypeIds?: string[];
+  evidences?: EvidenceUploadDTO[];
+
   witnesses: WitnessEntry[];
   isCertified?: boolean;
 }

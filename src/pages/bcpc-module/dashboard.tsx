@@ -257,32 +257,32 @@ const BcpcDashboard = () => {
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
         <KPIGrid columns={4}>
           <KPICard
-            title="Hearings Today"
-            value={cardValue(stats?.hearingsToday)}
+            title="Total Cases"
+            value={cardValue(stats?.totalCases)}
             color="blue"
-            icon={<Clock className="w-6 h-6" />}
-            subtitle="Scheduled for today"
-          />
-          <KPICard
-            title="Pending New Cases"
-            value={cardValue(stats?.pendingNewCases)}
-            color="amber"
             icon={<FileText className="w-6 h-6" />}
-            subtitle="Awaiting initial action"
+            subtitle="All recorded BCPC cases"
           />
           <KPICard
-            title="Nearing Deadline"
-            value={cardValue(stats?.nearingDeadline)}
-            color="rose"
-            icon={<AlertCircle className="w-6 h-6" />}
-            subtitle="Cases within 5 days"
+            title="On Going Cases"
+            value={cardValue(stats?.onGoingCases)}
+            color="amber"
+            icon={<Clock className="w-6 h-6" />}
+            subtitle="Pending or under mediation"
           />
           <KPICard
-            title="Settled This Month"
-            value={cardValue(stats?.settledThisMonth)}
+            title="Settled Cases"
+            value={cardValue(stats?.settledCases)}
             color="emerald"
             icon={<CheckCircle className="w-6 h-6" />}
-            subtitle="Successfully mediated"
+            subtitle="Successfully resolved"
+          />
+          <KPICard
+            title="Most Nature Cases"
+            value={loading ? <CircleLoader size="sm" /> : (stats?.mostNatureCases || "N/A")}
+            color="rose"
+            icon={<AlertCircle className="w-6 h-6" />}
+            subtitle="Top incident type"
           />
         </KPIGrid>
 

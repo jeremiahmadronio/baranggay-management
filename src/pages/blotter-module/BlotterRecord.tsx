@@ -19,7 +19,7 @@ import {
 } from "../../service/blotter-api/BlotterPermission";
 import { type BlotterSummaryDTO as RecordBlotterSummaryDTO } from "../../service/blotter-api/DocketView";
 import { CircleLoader } from "../../hooks/LoadingStates";
-import { ArchiveReasonModal } from "../../hooks/archive-modal";
+import { ConfirmModal } from "../../reusable";
 import { ActionModal } from "./reusable/SuccessModal";
 
 // Normalize status for internal logic
@@ -156,9 +156,13 @@ const BlotterRecordsPage: React.FC = () => {
     try {
       const page = await getPagedBlotters(params);
       setRecords(page.content.filter((row) => !isArchivedStatus(row.status)));
-      setTotalPages(page.totalPages);
-      setTotalItems(page.totalElements);
-      setCurrentPage(page.number);
+      // Spring Boot 3.1+ wraps pagination metadata under a nested 'page' object
+      const totalPages = (page as any).page?.totalPages ?? page.totalPages ?? 1;
+      const totalElements = (page as any).page?.totalElements ?? page.totalElements ?? 0;
+      const currentNumber = (page as any).page?.number ?? page.number ?? 0;
+      setTotalPages(totalPages);
+      setTotalItems(totalElements);
+      setCurrentPage(currentNumber);
     } catch (err: any) {
       console.error("Failed to load blotter records.");
     } finally {
@@ -361,16 +365,17 @@ const BlotterRecordsPage: React.FC = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="mb-4 ">
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="mx-auto max-w-7xl px-4 py-8 space-y-5">
       {archiveEntry && (
-        <ArchiveReasonModal
+        <ConfirmModal
           isOpen={!!archiveEntry}
-          onClose={() => setArchiveEntry(null)}
           title="Archive For the Record Case"
-          subjectName={archiveEntry.blotterNumber}
-          subjectLabel="case"
-          submitLabel="Archive"
-          onSubmit={handleArchiveSubmit}
+          message={`Are you sure you want to archive case ${archiveEntry.blotterNumber}?`}
+          onConfirm={() => handleArchiveSubmit("Case Archived")}
+          onCancel={() => setArchiveEntry(null)}
+          type="warning"
+          confirmText="Archive"
         />
       )}
 
@@ -507,6 +512,7 @@ const BlotterRecordsPage: React.FC = () => {
           onPageChange: handlePageChange,
         }}
       />
+    </div>
     </div>
   );
 };

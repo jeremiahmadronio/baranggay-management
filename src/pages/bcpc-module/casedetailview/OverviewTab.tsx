@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   FileTextIcon,
   UserIcon,
@@ -12,9 +13,15 @@ import {
 } from 'lucide-react';
 import { InfoField, SectionCard, formatDate, CASE_STATUS_COLORS } from './shared';
 import type { BcpcCaseDetailDTO } from './shared';
+import { useUser, getUserDisplayName } from '../../../context/UserContext';
+import { extendCase } from '../../../service/bcpc-api/CaseDetail';
+import { getHearingView } from '../../../service/blotter-api/DocketView';
 
 const STATUS_LABEL_OVERRIDES: Record<string, string> = {
-  UNDER_INTERVENTION: 'Under Intervention',
+  UNDER_INTERVENTION: 'Under Mediation',
+  UNDER_MEDIATION: 'Under Mediation',
+  PENDING: 'Ongoing',
+  ISSUED_REFERRAL: 'Referred',
   CERTIFIED_TO_FILE_ACTION: 'Certified to File Action',
 };
 
@@ -57,12 +64,49 @@ export function OverviewTab({
   onGoToBpo,
   onGoToReferrals,
 }: OverviewTabProps) {
+  const { user } = useUser();
+  const [withdrawFileName, setWithdrawFileName] = useState('');
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [extendReason, setExtendReason] = useState('');
+  const [extendLoading, setExtendLoading] = useState(false);
+  const [extendError, setExtendError] = useState('');
+  const [completedMediations, setCompletedMediations] = useState(0);
+
+  useEffect(() => {
+    if (caseData.caseNumber) {
+      getHearingView(caseData.caseNumber)
+        .then(hearings => setCompletedMediations(hearings.filter(h => h.status === 'COMPLETED').length))
+        .catch(console.error);
+    }
+  }, [caseData.caseNumber]);
+
+  const withdrawerName = getUserDisplayName(user);
+  const withdrawDate = new Date().toISOString().slice(0, 10);
+
+  const handleExtend = async () => {
+    if (!extendReason.trim()) {
+      setExtendError('Please provide a reason for extension.');
+      return;
+    }
+    setExtendLoading(true);
+    setExtendError('');
+    try {
+      await extendCase(caseData.id, extendReason.trim());
+      setShowExtendModal(false);
+      setExtendReason('');
+      window.location.reload();
+    } catch (err: any) {
+      setExtendError(err.message || 'Failed to extend case.');
+      setExtendLoading(false);
+    }
+  };
+
   const pillClass =
     CASE_STATUS_COLORS[caseStatus] ?? 'bg-gray-100 text-gray-600 border border-gray-200';
 
   const isWithdrawn = caseStatus === 'WITHDRAWN';
   const isDismissed = caseStatus === 'DISMISSED';
-  const isResolved = caseStatus === 'RESOLVED';
+  const isResolved = caseStatus === 'RESOLVED' || caseStatus === 'SETTLED';
   const isReferred = caseStatus === 'ISSUED_REFERRAL' || caseStatus === 'REFERRED';
   const isTerminal = isReadOnly;
 
@@ -70,14 +114,21 @@ export function OverviewTab({
   const deadlineDate = caseData.bpoDeadline
     ? new Date(caseData.bpoDeadline)
     : startDate
-      ? new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+      ? new Date(startDate.getTime() + 15 * 24 * 60 * 60 * 1000)
       : null;
-  const totalDays = 30;
+      
+  const isExtended = startDate && deadlineDate 
+    ? Math.round((deadlineDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) > 16
+    : false;
+    
+  const totalDays = isExtended ? 30 : 15;
   const elapsedDays = startDate
     ? Math.max(0, Math.floor((Date.now() - startDate.getTime()) / (24 * 60 * 60 * 1000)))
     : 0;
   const progressPercent = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
   const isUrgent = progressPercent >= 80;
+  
+  const canExtend = elapsedDays >= 13 && !isExtended;
   const remainingDays = deadlineDate
     ? Math.max(0, Math.ceil((deadlineDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
     : null;
@@ -121,13 +172,27 @@ export function OverviewTab({
               <AlertCircleIcon className="w-5 h-5" />
             )}
           </div>
-          <div className="flex-1">
-            <p className={`text-sm font-medium ${isResolved ? 'text-emerald-700' : isDismissed || isWithdrawn ? 'text-rose-700' : isReferred ? 'text-violet-700' : 'text-gray-700'}`}>
-              {isResolved ? 'Case Resolved' : isWithdrawn ? 'Case Withdrawn' : isDismissed ? 'Case Dismissed' : 'Case Closed'}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              This case is read-only. No further changes can be made.
-            </p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className={`text-sm font-medium ${isResolved ? 'text-emerald-700' : isDismissed || isWithdrawn ? 'text-rose-700' : isReferred ? 'text-violet-700' : 'text-gray-700'}`}>
+                {isResolved ? 'Case Settled – Both parties have an agreement' : isWithdrawn ? 'Case Withdrawn' : isDismissed ? 'Case Dismissed' : 'Case Closed'}
+              </p>
+            </div>
+            
+            {isResolved ? (
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                  Reason:
+                </span>
+                <span className="text-sm text-emerald-700">
+                  Both parties have an agreement.
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 mt-0.5">
+                This case is read-only. No further changes can be made.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -138,7 +203,21 @@ export function OverviewTab({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <ClockIcon className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-700">30-Day Monitoring Period</span>
+              <span className="text-gray-700">{isExtended ? '30-Day Monitoring Period' : '15-Day Monitoring Period'}</span>
+              <button 
+                onClick={() => setShowExtendModal(true)} 
+                disabled={!canExtend || isExtended}
+                title={isExtended ? 'Already extended' : !canExtend ? 'Can only extend after 13 days of monitoring' : 'Extend monitoring period'}
+                className={`ml-2 px-2 py-0.5 text-[10px] font-medium rounded-full uppercase tracking-wider ${
+                  isExtended 
+                    ? 'text-gray-500 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                    : canExtend 
+                      ? 'text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors'
+                      : 'text-gray-400 bg-gray-50 border border-gray-100 cursor-not-allowed'
+                }`}
+              >
+                {isExtended ? 'Extended' : 'Extend'}
+              </button>
             </div>
             <span className={`text-sm ${isUrgent ? 'text-red-500' : 'text-blue-600'}`}>
               {remainingDays === 0 ? 'Overdue' : remainingText}
@@ -194,9 +273,9 @@ export function OverviewTab({
             {/* Referrals */}
             <button
               onClick={onGoToReferrals}
-              disabled={isTerminal}
+              disabled={isTerminal || (caseStatus === 'UNDER_MEDIATION' && completedMediations < 3)}
               className={`flex flex-col items-start gap-2 p-5 bg-white border border-gray-200 shadow-sm rounded-xl transition-none text-left focus:outline-none ${
-                isTerminal ? 'opacity-50 cursor-not-allowed' : 'hover:border-violet-200 hover:bg-violet-50/30'
+                isTerminal || (caseStatus === 'UNDER_MEDIATION' && completedMediations < 3) ? 'opacity-50 cursor-not-allowed' : 'hover:border-violet-200 hover:bg-violet-50/30'
               }`}
             >
               <div className="p-2.5 rounded-lg bg-violet-50">
@@ -368,27 +447,86 @@ export function OverviewTab({
           <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
             <div className="border-b border-gray-200 px-6 py-4">
               <h3 className="text-base font-semibold text-gray-900">Withdraw Case</h3>
-              <p className="mt-1 text-sm text-gray-500">Provide the reason for withdrawing this BCPC case.</p>
+              <p className="mt-1 text-sm text-gray-500">Provide the narrative file for withdrawing this BCPC case.</p>
             </div>
-            <div className="space-y-3 px-6 py-5">
-              <textarea
-                value={withdrawReason}
-                maxLength={500}
-                onChange={(e) => {
-                  const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s.,\-ñÑ/?()]/g, "");
-                  if (sanitized.length <= 500) {
-                    onWithdrawReasonChange(sanitized);
-                  }
-                }}
-                rows={4}
-                placeholder="Reason for withdrawal..."
-                className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none"
-              />
+            <div className="space-y-4 px-6 py-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Withdrawn By</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={withdrawerName}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input
+                    type="date"
+                    disabled
+                    value={withdrawDate}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Narrative File (Image/Docs) <span className="text-red-500">*</span></label>
+                {!(withdrawFileName && withdrawReason) && (
+                  <div className="flex items-center justify-center w-full">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <FileOutputIcon className="w-8 h-8 mb-2 text-gray-400" />
+                        <p className="mb-1 text-sm text-gray-500"><span className="font-semibold">Click to upload</span></p>
+                        <p className="text-xs text-gray-500">PNG, JPG, PDF, or DOCX (Max 10MB)</p>
+                      </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept=".png,.jpg,.jpeg,.pdf,.docx,.doc"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 10 * 1024 * 1024) {
+                              alert('File is too large. Maximum size is 10MB.');
+                              return;
+                            }
+                            setWithdrawFileName(file.name);
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const base64 = (reader.result as string).split(',')[1];
+                              onWithdrawReasonChange(base64);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+                {withdrawFileName && withdrawReason && (
+                  <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                    <div className="flex items-center gap-2 text-sm text-emerald-700">
+                      <CheckCircleIcon className="w-4 h-4" />
+                      <span className="font-medium truncate max-w-[300px]">{withdrawFileName}</span>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => { setWithdrawFileName(''); onWithdrawReasonChange(''); }} 
+                      className="text-emerald-600 hover:text-emerald-800"
+                    >
+                      <XCircleIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {withdrawError && <p className="text-xs text-rose-600">{withdrawError}</p>}
             </div>
             <div className="flex justify-end gap-2 border-t border-gray-200 px-6 py-4">
               <button
-                onClick={() => { onShowWithdrawInput(false); onWithdrawReasonChange(''); }}
+                onClick={() => { onShowWithdrawInput(false); onWithdrawReasonChange(''); setWithdrawFileName(''); }}
                 className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
               >
                 Cancel
@@ -399,6 +537,47 @@ export function OverviewTab({
                 className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
               >
                 {withdrawLoading ? 'Saving...' : 'Confirm Withdraw'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Extend Modal ── */}
+      {showExtendModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+            <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">Extend Monitoring Period</h3>
+              <button onClick={() => setShowExtendModal(false)} className="text-gray-400 hover:text-gray-500">
+                <XCircleIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              {extendError && <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-lg">{extendError}</div>}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Extension <span className="text-red-500">*</span></label>
+                <textarea
+                  rows={4}
+                  value={extendReason}
+                  onChange={(e) => setExtendReason(e.target.value)}
+                  placeholder="Explain why this case needs an extension..."
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl">
+              <button
+                onClick={() => setShowExtendModal(false)}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExtend}
+                disabled={extendLoading || !extendReason.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {extendLoading ? 'Saving...' : 'Confirm Extension'}
               </button>
             </div>
           </div>

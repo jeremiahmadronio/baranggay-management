@@ -110,14 +110,16 @@ export function BlotterDocketDetailView({
   // ── Refresh data ──
   const refreshData = async () => {
     try {
-      const [d, m, h] = await Promise.all([
+      const [d, m, h, n] = await Promise.all([
         getFullBlotterDocket(blotterNumber),
         getMediationProcess(blotterNumber),
         getHearingView(blotterNumber),
+        getCaseNotes(blotterNumber),
       ]);
       setDocket(d);
       setMediation(m);
       setHearings(h);
+      setNotes(n);
     } catch (err) {
       console.error(err);
     }
@@ -189,12 +191,16 @@ export function BlotterDocketDetailView({
       setDetailsLoading(true);
       setError(null);
       try {
-        const [d, m] = await Promise.all([
+        const [d, m, h, n] = await Promise.all([
           getFullBlotterDocket(blotterNumber),
           getMediationProcess(blotterNumber),
+          getHearingView(blotterNumber),
+          getCaseNotes(blotterNumber),
         ]);
         setDocket(d);
         setMediation(m);
+        setHearings(h);
+        setNotes(n);
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "Failed to load case details.",

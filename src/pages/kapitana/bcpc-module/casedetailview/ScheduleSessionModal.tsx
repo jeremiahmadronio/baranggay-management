@@ -92,7 +92,7 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
           <div>
             <h3 className="text-base font-semibold text-gray-900">Schedule Mediation #{sessionNumber}</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Pick a date, set a time within office hours, then confirm. A summon letter (Paanyaya) will be generated automatically.</p>
+            <p className="text-sm text-gray-500 mt-0.5">Pick a date, set a time within office hours, then confirm. You can generate the summon letter (Paanyaya) manually afterwards.</p>
           </div>
           <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
             <XIcon className="w-4 h-4" />
@@ -115,12 +115,14 @@ export function ScheduleSessionModal({ sessionNumber, onSave, onCancel }: Props)
               {Array.from({ length: daysInMonth }, (_,i)=>i+1).map(day => {
                 const ds = toDateStr(viewYear, viewMonth, day);
                 const isPast = ds < todayStr;
+                const isWeekend = new Date(ds).getDay() === 0 || new Date(ds).getDay() === 6;
+                const isDisabled = isPast || isWeekend;
                 const isSel = ds === selectedDate;
                 const isToday = ds === todayStr;
                 return (
-                  <button key={day} disabled={isPast} onClick={() => setSelectedDate(ds)}
+                  <button key={day} disabled={isDisabled} onClick={() => setSelectedDate(ds)}
                     className={`relative mx-auto w-9 h-9 rounded-full text-xs font-semibold flex items-center justify-center transition-all
-                      ${isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 cursor-pointer'}
+                      ${isDisabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 cursor-pointer'}
                       ${isSel ? 'bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-600' : ''}
                       ${isToday&&!isSel ? 'ring-2 ring-blue-400 text-blue-600' : ''}
                       ${!isSel&&!isToday&&!isPast ? 'text-gray-700' : ''}`}>

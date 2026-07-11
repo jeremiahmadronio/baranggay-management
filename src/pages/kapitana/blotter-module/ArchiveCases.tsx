@@ -12,7 +12,7 @@ import { TableFilter } from "../../../hooks/TableFilter";
 import { KPICard, KPIGrid, KPIIcons } from "../../../hooks/KPICard";
 import { BlotterDocketDetailView } from "./Blotterdocketdetailview";
 import { ActionModal } from "./reusable/SuccessModal";
-import { ArchiveReasonModal } from "../../../hooks/archive-modal";
+import { ConfirmModal } from "../../../reusable";
 import {
   getArchiveStats,
   getArchiveTable,
@@ -426,15 +426,14 @@ export default function ArchiveCasesPage() {
       </KPIGrid>
 
       {restoreEntry && (
-        <ArchiveReasonModal
+        <ConfirmModal
           isOpen={!!restoreEntry}
-          onClose={() => setRestoreEntry(null)}
           title="Restore Archived Case"
-          subjectName={restoreEntry.blotterNumber}
-          subjectLabel="case"
-          submitLabel="Restore"
-          placeholder="Provide reason for restoring this case..."
-          onSubmit={handleRestoreSubmit}
+          message={`Are you sure you want to restore case ${restoreEntry.blotterNumber}?`}
+          onConfirm={() => handleRestoreSubmit("Case Restored")}
+          onCancel={() => setRestoreEntry(null)}
+          type="info"
+          confirmText="Restore"
         />
       )}
 

@@ -122,11 +122,11 @@ export const rootAdminNavItems: NavItemType[] = [
 // Blotter navigation items
 export const blotterNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/blotter/dashboard", icon: LayoutDashboard },
-  { label: "Residents Records", path: "/blotter/residents", icon: Users },
-  { label: "Docket Books", path: "/blotter/docket", icon: ScrollText },
-  { label: "Archive Cases", path: "/blotter/archive", icon: Archive },
+  { label: "Resident Records", path: "/blotter/residents", icon: Users },
   { label: "New Complaints", path: "/blotter/entry-form", icon: FilePlus2 },
-  { label: "Records", path: "/blotter/records", icon: FileText },
+  { label: "Docket Management", path: "/blotter/docket", icon: ScrollText },
+  { label: "Record Management", path: "/blotter/records", icon: FileText },
+  { label: "Archive Cases", path: "/blotter/archive", icon: Archive },
   { label: "Reports", path: "/blotter/reports", icon: ChartNoAxesCombined },
 ];
 
@@ -160,11 +160,11 @@ export const lupongTagapamayapaNavItems: NavItemType[] = [
 // BCPC navigation items
 export const BcpcNavItems: NavItemType[] = [
   { label: "Dashboard", path: "/bcpc/dashboard", icon: LayoutDashboard },
-  { label: "Resident", path: "/bcpc/resident-records", icon: Users },
+  { label: "Resident Records", path: "/bcpc/resident-records", icon: Users },
   { label: "Case Entry", path: "/bcpc/new-case-entry", icon: FilePlus2 },
   { label: "Case Management", path: "/bcpc/case-management", icon: FileText },
+  { label: "Archive Cases", path: "/bcpc/archive", icon: Archive },
   { label: "Reports", path: "/bcpc/report", icon: ChartNoAxesCombined },
-  { label: "Archived", path: "/bcpc/archive", icon: Archive },
 ];
 
 //Clearance navigation items

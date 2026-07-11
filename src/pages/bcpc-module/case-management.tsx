@@ -12,7 +12,7 @@ import {
   type BcpcStatsDTO,
 } from "../../service/bcpc-api/BcpcFormService";
 import { archiveCase } from "../../service/bcpc-api/CaseDetail";
-import { ArchiveReasonModal } from "../../hooks/archive-modal";
+import { ConfirmModal } from "../../reusable";
 import { ActionModal } from "../../hooks/SuccessModal";
 import {
   BCPC_PERMISSIONS,
@@ -37,9 +37,12 @@ const normalizeStatus = (s: string) => s.toLowerCase().replace(/_/g, " ");
 
 // Map status to display label
 const getStatusDisplay = (status: string) => {
-  if (normalizeStatus(status) === "elevated to formal")
-    return "ESCALATED TO CASE";
-  if (normalizeStatus(status) === "recorded") return "RECORDED";
+  const norm = normalizeStatus(status);
+  if (norm === "elevated to formal") return "ESCALATED TO CASE";
+  if (norm === "recorded") return "RECORDED";
+  if (norm === "pending") return "ONGOING";
+  if (norm === "under intervention" || norm === "under mediation") return "UNDER MEDIATION";
+  if (norm === "referred" || norm === "issued referral") return "REFERRED";
   return status.replace(/_/g, " ").toUpperCase();
 };
 
@@ -53,7 +56,6 @@ const getStatusPillClass = (status: string) => {
   switch (status) {
     case "PENDING":
       return "bg-amber-50 text-amber-700 border border-amber-200";
-    case "UNDER_MEDIATION":
     case "UNDER_MEDIATION":
       return "bg-sky-50 text-sky-700 border border-sky-200";
     case "UNDER_CONCILIATION":
@@ -90,7 +92,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     .trim();
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusPillClass(normalized)}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${getStatusPillClass(normalized)}`}
     >
       {getStatusDisplay(status)}
     </span>
@@ -105,6 +107,8 @@ const ARCHIVABLE_STATUSES = new Set([
   "WITHDRAWN",
   "CLOSED",
   "CERTIFIED_TO_FILE_ACTION",
+  "REFERRED",
+  "ISSUED_REFERRAL",
 ]);
 
 // nature stored as "NATURE" or "NATURE | VIOLENCE_TYPE"
@@ -120,10 +124,10 @@ const parseNatureAndViolence = (raw: string) => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const EMPTY_STATS: BcpcStatsDTO = {
-  totalPending: 0,
-  totalClosed: 0,
-  totalExpiringSoon: 0,
   totalCases: 0,
+  totalOngoing: 0,
+  totalReferred: 0,
+  totalSettled: 0,
 };
 
 const SIZE = 10;
@@ -184,8 +188,9 @@ export default function BcpcCaseManagement() {
         size:   SIZE,
       });
       setCases(page.content ?? []);
-      setTotalElements(page.totalElements ?? 0);
-      setTotalPages(page.totalPages ?? 0);
+      const totalElems = page.page?.totalElements ?? page.totalElements;
+      setTotalElements(totalElems !== undefined ? totalElems : (page.content?.length ?? 0));
+      setTotalPages(page.page?.totalPages ?? page.totalPages ?? 1);
     } catch (err: any) {
       setTableError(err?.message || "Failed to load BCPC cases.");
       setCases([]);
@@ -217,6 +222,12 @@ export default function BcpcCaseManagement() {
 
   // ── Table columns ────────────────────────────────────────────────────────────
   const columns: TableColumn<BcpcCaseSummaryDTO>[] = [
+    {
+      key: "index" as any,
+      header: "#",
+      align: "center",
+      render: (_, index) => currentPage * SIZE + index + 1,
+    },
     { key: "caseNumber", header: "CASE NUMBER", align: "left" },
     {
       key: "victimFullName",
@@ -255,7 +266,11 @@ export default function BcpcCaseManagement() {
       key: "status",
       header: "STATUS",
       align: "center",
-      render: (item) => <StatusBadge status={item.status} />,
+      render: (item) => (
+        <div className="flex justify-center">
+          <StatusBadge status={item.status} />
+        </div>
+      ),
     },
     {
       key: "dateFiled",
@@ -327,14 +342,11 @@ export default function BcpcCaseManagement() {
       label: "Status",
       key: "status",
       options: [
-        { value: "PENDING",                  label: "Pending" },
-        { value: "UNDER_MEDIATION",          label: "Under Intervention" },
+        { value: "PENDING",                  label: "Ongoing" },
+        { value: "UNDER_MEDIATION",          label: "Under Mediation" },
         { value: "SETTLED",                  label: "Resolved / Settled" },
-        { value: "CERTIFIED_TO_FILE_ACTION", label: "Certified To File Action" },
         { value: "ISSUED_REFERRAL",          label: "Referred" },
         { value: "WITHDRAWN",                label: "Withdrawn" },
-        { value: "DISMISSED",                label: "Dismissed" },
-        { value: "CLOSED",                   label: "Closed" },
       ],
       value: status,
     },
@@ -378,14 +390,14 @@ export default function BcpcCaseManagement() {
 
         {/* Modals */}
         {archiveEntry && (
-          <ArchiveReasonModal
-            isOpen={!!archiveEntry}
-            onClose={() => setArchiveEntry(null)}
+          <ConfirmModal
+            isOpen={archiveEntry !== null}
             title="Archive BCPC Case"
-            subjectName={archiveEntry.caseNumber}
-            subjectLabel="case"
-            submitLabel="Archive"
-            onSubmit={handleArchiveSubmit}
+            message={`Are you sure you want to archive case ${archiveEntry.caseNumber}?`}
+            onConfirm={() => handleArchiveSubmit("Case Archived")}
+            onCancel={() => setArchiveEntry(null)}
+            type="warning"
+            confirmText="Archive"
           />
         )}
 
@@ -401,35 +413,35 @@ export default function BcpcCaseManagement() {
         {/* KPI Cards */}
         <div className="mb-8">
           <KPIGrid columns={4}>
-            <KPICard
-              title="Pending Cases"
-              value={loadingStats ? "—" : stats.totalPending.toLocaleString()}
-              icon={KPIIcons["clock"]}
-              color="amber"
-              subtitle="Awaiting action or review"
-            />
-            <KPICard
-              title="Closed Cases"
-              value={loadingStats ? "—" : stats.totalClosed.toLocaleString()}
-              icon={KPIIcons["check"]}
-              color="emerald"
-              subtitle="Settled, dismissed or closed"
-            />
-            <KPICard
-              title="Expiring Soon"
-              value={loadingStats ? "—" : stats.totalExpiringSoon.toLocaleString()}
-              icon={KPIIcons["month"]}
-              color="rose"
-              subtitle="Pending cases near 15-day limit"
-            />
-            <KPICard
-              title="Total Cases"
-              value={loadingStats ? "—" : stats.totalCases.toLocaleString()}
-              icon={KPIIcons["document"]}
-              color="blue"
-              subtitle="All BCPC records"
-            />
-          </KPIGrid>
+          <KPICard
+            title="Total Cases"
+            value={loadingStats ? "—" : stats.totalCases.toLocaleString()}
+            color="blue"
+            icon={KPIIcons["document"]}
+            subtitle="All BCPC records"
+          />
+          <KPICard
+            title="On Going Cases"
+            value={loadingStats ? "—" : stats.totalOngoing.toLocaleString()}
+            color="amber"
+            icon={KPIIcons["clock"]}
+            subtitle="Pending or under mediation"
+          />
+          <KPICard
+            title="Referred Cases"
+            value={loadingStats ? "—" : stats.totalReferred.toLocaleString()}
+            color="violet"
+            icon={KPIIcons["issued"]}
+            subtitle="Cases referred to outside agency"
+          />
+          <KPICard
+            title="Settled Cases"
+            value={loadingStats ? "—" : stats.totalSettled.toLocaleString()}
+            color="emerald"
+            icon={KPIIcons["check"]}
+            subtitle="Successfully resolved"
+          />
+        </KPIGrid>
         </div>
 
         {/* Error banner */}
@@ -468,8 +480,8 @@ export default function BcpcCaseManagement() {
           minRows={SIZE}
           onRowClick={(item) => { if (canView) navigate(`/bcpc/casedetailview?id=${item.id}`); }}
           pagination={{
-            currentPage: Math.min(currentPage + 1, Math.max(1, totalPages || 0)),
-            totalPages: Math.max(1, totalPages || 0),
+            currentPage: Math.min(currentPage + 1, Math.max(1, totalPages || 1)),
+            totalPages: Math.max(1, totalPages || 1),
             totalItems: totalElements,
             itemsPerPage: SIZE,
             onPageChange: (p) => setCurrentPage(p - 1),
